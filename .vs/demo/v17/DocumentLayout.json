@@ -1,0 +1,61 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\AccessControl\uFF08C#\uFF09\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{44DA23F9-B572-4FD0-A607-96FD9CB69121}|demo\\demo.csproj|d:\\accesscontrol\uFF08c#\uFF09\\demo\\cdlggrant.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{44DA23F9-B572-4FD0-A607-96FD9CB69121}|demo\\demo.csproj|solutionrelative:demo\\cdlggrant.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{44DA23F9-B572-4FD0-A607-96FD9CB69121}|demo\\demo.csproj|d:\\accesscontrol\uFF08c#\uFF09\\demo\\cdlggrant.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{44DA23F9-B572-4FD0-A607-96FD9CB69121}|demo\\demo.csproj|solutionrelative:demo\\cdlggrant.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:129:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "CDlgGrant.cs",
+              "DocumentMoniker": "D:\\AccessControl\uFF08C#\uFF09\\demo\\CDlgGrant.cs",
+              "RelativeDocumentMoniker": "demo\\CDlgGrant.cs",
+              "ToolTip": "D:\\AccessControl\uFF08C#\uFF09\\demo\\CDlgGrant.cs",
+              "RelativeToolTip": "demo\\CDlgGrant.cs",
+              "ViewState": "AgIAAAQAAAAAAAAAAAAAABUAAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-01T20:52:14.581Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "CDlgGrant.cs [Design]",
+              "DocumentMoniker": "D:\\AccessControl\uFF08C#\uFF09\\demo\\CDlgGrant.cs",
+              "RelativeDocumentMoniker": "demo\\CDlgGrant.cs",
+              "ToolTip": "D:\\AccessControl\uFF08C#\uFF09\\demo\\CDlgGrant.cs [Design]",
+              "RelativeToolTip": "demo\\CDlgGrant.cs [Design]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-01T20:51:37.923Z",
+              "EditorCaption": " [Design]"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

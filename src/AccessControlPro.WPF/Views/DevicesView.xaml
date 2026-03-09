@@ -1,0 +1,374 @@
+<UserControl x:Class="AccessControlPro.WPF.Views.DevicesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="http://schemas.fontawesome.io/icons/">
+
+    <Grid Margin="32,28,32,32">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ═══ Header ═══ -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="{Binding Lang.NavDevices}"
+                       FontSize="26" FontWeight="Bold"
+                       Foreground="{StaticResource TextPrimaryBrush}"
+                       VerticalAlignment="Center"/>
+
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                        HorizontalAlignment="Right" VerticalAlignment="Center">
+                <!-- Search Box -->
+                <Border Background="{StaticResource BgInputBrush}" CornerRadius="10"
+                        Padding="12,8" Margin="0,0,10,0" MinWidth="220">
+                    <DockPanel>
+                        <fa:ImageAwesome Icon="Search" Width="13" Height="13"
+                                         Foreground="{StaticResource TextMutedBrush}"
+                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="Transparent" BorderThickness="0"
+                                 Foreground="{StaticResource TextPrimaryBrush}"
+                                 FontSize="13" VerticalAlignment="Center"
+                                 CaretBrush="{StaticResource TextPrimaryBrush}"/>
+                    </DockPanel>
+                </Border>
+
+                <!-- Search Network Button -->
+                <Button Style="{StaticResource PrimaryButton}" Margin="0,0,8,0"
+                        Command="{Binding SearchNetworkCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Wifi" Width="13" Height="13"
+                                         Foreground="White" Margin="0,0,8,0"
+                                         VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Lang.SearchNetwork}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Add Device Button -->
+                <Button Style="{StaticResource PrimaryButton}"
+                        Background="{StaticResource SuccessBrush}">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Plus" Width="12" Height="12"
+                                         Foreground="White" Margin="0,0,8,0"
+                                         VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Lang.AddDevice}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- ═══ Stats Bar ═══ -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,20">
+            <!-- Online -->
+            <Border Background="{StaticResource BgCardBrush}" CornerRadius="10"
+                    Padding="16,10" Margin="0,0,10,0">
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Width="10" Height="10" Fill="{StaticResource SuccessBrush}"
+                             VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock FontSize="14" Foreground="{StaticResource TextPrimaryBrush}"
+                               VerticalAlignment="Center">
+                        <Run Text="{Binding OnlineCount, Mode=OneWay}"/>
+                        <Run Text=" "/>
+                        <Run Text="{Binding Lang.Online, Mode=OneWay}"/>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <!-- Offline -->
+            <Border Background="{StaticResource BgCardBrush}" CornerRadius="10"
+                    Padding="16,10" Margin="0,0,10,0">
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Width="10" Height="10" Fill="{StaticResource DangerBrush}"
+                             VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock FontSize="14" Foreground="{StaticResource TextPrimaryBrush}"
+                               VerticalAlignment="Center">
+                        <Run Text="{Binding OfflineCount, Mode=OneWay}"/>
+                        <Run Text=" "/>
+                        <Run Text="{Binding Lang.Offline, Mode=OneWay}"/>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <!-- Total -->
+            <Border Background="{StaticResource BgCardBrush}" CornerRadius="10"
+                    Padding="16,10">
+                <StackPanel Orientation="Horizontal">
+                    <fa:ImageAwesome Icon="Server" Width="12" Height="12"
+                                     Foreground="{StaticResource PrimaryLightBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock FontSize="14" Foreground="{StaticResource TextPrimaryBrush}"
+                               VerticalAlignment="Center">
+                        <Run Text="{Binding TotalCount, Mode=OneWay}"/>
+                        <Run Text=" "/>
+                        <Run Text="{Binding Lang.Total, Mode=OneWay}"/>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <!-- Refresh -->
+            <Button Style="{StaticResource SidebarButton}"
+                    Command="{Binding RefreshCommand}" Margin="10,0,0,0">
+                <fa:ImageAwesome Icon="Refresh" Width="14" Height="14"
+                                 Foreground="{StaticResource TextMutedBrush}"/>
+            </Button>
+        </StackPanel>
+
+        <!-- ═══ Table Header ═══ -->
+        <Border Grid.Row="2" Background="{StaticResource BgInputBrush}" CornerRadius="12,12,0,0"
+                Padding="18,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="90"/>
+                    <ColumnDefinition Width="120"/>
+                    <ColumnDefinition Width="140"/>
+                    <ColumnDefinition Width="55"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="280"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{Binding Lang.Status}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+                <TextBlock Grid.Column="1" Text="{Binding Lang.DeviceName}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+                <TextBlock Grid.Column="2" Text="{Binding Lang.Model}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+                <TextBlock Grid.Column="3" Text="{Binding Lang.IPAddress}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+                <TextBlock Grid.Column="4" Text="{Binding Lang.MACAddress}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+                <TextBlock Grid.Column="5" Text="{Binding Lang.Port}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+                <TextBlock Grid.Column="6" Text="{Binding Lang.Doors}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+                <TextBlock Grid.Column="7" Text="{Binding Lang.Actions}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+            </Grid>
+        </Border>
+
+        <!-- ═══ Table Body ═══ -->
+        <Border Grid.Row="3" Background="{StaticResource BgCardBrush}" CornerRadius="0,0,12,12">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Devices}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border x:Name="row" Background="Transparent"
+                                    Padding="18,14" CornerRadius="0"
+                                    BorderBrush="#08FFFFFF" BorderThickness="0,0,0,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="50"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="140"/>
+                                        <ColumnDefinition Width="55"/>
+                                        <ColumnDefinition Width="50"/>
+                                        <ColumnDefinition Width="280"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Status dot -->
+                                    <Ellipse Grid.Column="0" Width="10" Height="10"
+                                             HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{StaticResource DangerBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                                                        <Setter Property="Fill" Value="{StaticResource SuccessBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+
+                                    <!-- Name + Serial -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Bold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding SerialNumber}" FontSize="11"
+                                                   Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                                    </StackPanel>
+
+                                    <!-- Model -->
+                                    <TextBlock Grid.Column="2" Text="{Binding DeviceType}"
+                                               FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center"/>
+
+                                    <!-- IP -->
+                                    <TextBlock Grid.Column="3" Text="{Binding IP}"
+                                               FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center"/>
+
+                                    <!-- MAC -->
+                                    <TextBlock Grid.Column="4" Text="{Binding MAC}"
+                                               FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                               VerticalAlignment="Center"/>
+
+                                    <!-- Port -->
+                                    <TextBlock Grid.Column="5" Text="{Binding TCPPort}"
+                                               FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center"/>
+
+                                    <!-- Doors -->
+                                    <Border Grid.Column="6" Background="{StaticResource BgInputBrush}"
+                                            CornerRadius="6" Padding="8,4"
+                                            HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DoorCount}" FontSize="12" FontWeight="Bold"
+                                                   Foreground="{StaticResource PrimaryLightBrush}"
+                                                   HorizontalAlignment="Center"/>
+                                    </Border>
+
+                                    <!-- Actions -->
+                                    <StackPanel Grid.Column="7" Orientation="Horizontal"
+                                                VerticalAlignment="Center">
+                                        <!-- Connect -->
+                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.Connect, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                Command="{Binding DataContext.ConnectDeviceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bg" Background="Transparent"
+                                                            CornerRadius="6" Padding="8,6">
+                                                        <fa:ImageAwesome Icon="Plug" Width="12" Height="12"
+                                                                         Foreground="{StaticResource AccentBrush}"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bg" Property="Background" Value="#1878CDD7"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <!-- Device Info -->
+                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.DeviceInfo, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                Command="{Binding DataContext.GetDeviceInfoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bg" Background="Transparent"
+                                                            CornerRadius="6" Padding="8,6">
+                                                        <fa:ImageAwesome Icon="InfoCircle" Width="12" Height="12"
+                                                                         Foreground="{StaticResource PrimaryLightBrush}"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bg" Property="Background" Value="#18247B7B"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <!-- Open Door -->
+                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.OpenDoor, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                Command="{Binding DataContext.RemoteOpenDoorCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bg" Background="Transparent"
+                                                            CornerRadius="6" Padding="8,6">
+                                                        <fa:ImageAwesome Icon="UnlockAlt" Width="12" Height="12"
+                                                                         Foreground="{StaticResource SuccessBrush}"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bg" Property="Background" Value="#182ED47A"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <!-- Sync Time -->
+                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.SyncTime, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                Command="{Binding DataContext.SyncTimeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bg" Background="Transparent"
+                                                            CornerRadius="6" Padding="8,6">
+                                                        <fa:ImageAwesome Icon="ClockOutline" Width="12" Height="12"
+                                                                         Foreground="{StaticResource WarningBrush}"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bg" Property="Background" Value="#18FFB946"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <!-- Change IP -->
+                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.ChangeIP, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                Command="{Binding DataContext.ChangeIPCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bg" Background="Transparent"
+                                                            CornerRadius="6" Padding="8,6">
+                                                        <fa:ImageAwesome Icon="Exchange" Width="12" Height="12"
+                                                                         Foreground="{StaticResource WarningBrush}"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bg" Property="Background" Value="#18FFB946"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <!-- Edit/Rename -->
+                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.Edit, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                Command="{Binding DataContext.RenameDeviceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bg" Background="Transparent"
+                                                            CornerRadius="6" Padding="8,6">
+                                                        <fa:ImageAwesome Icon="Pencil" Width="12" Height="12"
+                                                                         Foreground="{StaticResource PrimaryLightBrush}"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bg" Property="Background" Value="#18247B7B"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <!-- Delete -->
+                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.Delete, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                Command="{Binding DataContext.DeleteDeviceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bg" Background="Transparent"
+                                                            CornerRadius="6" Padding="8,6">
+                                                        <fa:ImageAwesome Icon="TrashOutline" Width="12" Height="12"
+                                                                         Foreground="{StaticResource DangerBrush}"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bg" Property="Background" Value="#18F7685B"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <DataTemplate.Triggers>
+                                <Trigger SourceName="row" Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="row" Property="Background" Value="#08FFFFFF"/>
+                                </Trigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

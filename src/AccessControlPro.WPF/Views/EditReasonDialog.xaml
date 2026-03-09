@@ -1,0 +1,88 @@
+<Window x:Class="AccessControlPro.WPF.Views.EditReasonDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="http://schemas.fontawesome.io/icons/"
+        Title="{Binding Lang.EditReason}"
+        Width="460" Height="320"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        WindowStyle="SingleBorderWindow"
+        Background="#1A1A2E"
+        FontFamily="{StaticResource CairoFont}"
+        FontWeight="Bold"
+        FlowDirection="{Binding Lang.FlowDirection}"
+        DataContext="{Binding RelativeSource={RelativeSource Self}}">
+
+    <Grid Margin="28,24,28,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+            <fa:ImageAwesome Icon="Pencil" Width="22" Height="22"
+                             Foreground="#4FC3F7" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <TextBlock Text="{Binding Lang.EditReason}"
+                       FontSize="20" FontWeight="Bold" Foreground="#FFFFFA"/>
+        </StackPanel>
+
+        <!-- Label -->
+        <TextBlock Grid.Row="1" Text="{Binding Lang.EnterEditReason}"
+                   Foreground="#9EC5C8" FontSize="13" Margin="0,0,0,8"/>
+
+        <!-- Reason TextBox -->
+        <TextBox x:Name="ReasonTextBox" Grid.Row="2"
+                 FontSize="13" Padding="10,8"
+                 Background="#2A2A3E" Foreground="#E0E0E0"
+                 BorderBrush="#3A3A50" BorderThickness="1.5"
+                 CaretBrush="#E0E0E0" AcceptsReturn="True"
+                 TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                 FontFamily="{StaticResource CairoFont}" FontWeight="Bold"
+                 Margin="0,0,0,14"/>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button Width="130" Height="40" Margin="0,0,14,0"
+                    Click="CancelButton_Click" Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="#2A2A3E" CornerRadius="10"
+                                BorderBrush="#444" BorderThickness="1.5">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#333350"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+                <TextBlock Text="{Binding Lang.Cancel}" Foreground="#B0B0CC"
+                           FontSize="14" FontWeight="Bold"/>
+            </Button>
+
+            <Button Width="130" Height="40"
+                    Click="OkButton_Click" IsDefault="True" Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="#4FC3F7" CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#29B6F6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+                <TextBlock Text="{Binding Lang.Edit}" Foreground="White"
+                           FontSize="14" FontWeight="Bold"/>
+            </Button>
+        </StackPanel>
+    </Grid>
+</Window>

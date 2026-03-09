@@ -1,0 +1,388 @@
+<Window x:Class="AccessControlPro.WPF.Views.AddEmployeeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding Lang.AddPlayer}" Width="820"
+        SizeToContent="Height" MaxHeight="780"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        WindowStyle="SingleBorderWindow"
+        Background="#1A1A2E"
+        FontFamily="{StaticResource CairoFont}"
+        FontWeight="Bold"
+        FlowDirection="{Binding Lang.FlowDirection}"
+        DataContext="{Binding RelativeSource={RelativeSource Self}}">
+
+    <Window.Resources>
+        <!-- Dark theme overrides for ComboBox dropdown + selected text -->
+        <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#2A2A3E"/>
+        <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#E0E0E0"/>
+        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#44A1A0"/>
+        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White"/>
+        <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#E0E0E0"/>
+        <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#44A1A0"/>
+        <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
+
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="Background" Value="#2A2A3E"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+
+        <!-- Dark DatePickerTextBox -->
+        <Style TargetType="DatePickerTextBox">
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DatePickerTextBox">
+                        <Border Background="#2A2A3E" BorderBrush="#44A1A0"
+                                BorderThickness="1.5" CornerRadius="6" Padding="10,7">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Hidden"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark TextBox base style -->
+        <Style x:Key="DarkTextBox" TargetType="TextBox">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="Background" Value="#2A2A3E"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="BorderBrush" Value="#3A3A50"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="CaretBrush" Value="#E0E0E0"/>
+            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Style.Triggers>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="#44A1A0"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Dark ComboBox with full ControlTemplate -->
+        <Style x:Key="DarkComboBox" TargetType="ComboBox">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="toggleButton"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          Focusable="False" ClickMode="Press">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="border" Background="#2A2A3E"
+                                                BorderBrush="#3A3A50" BorderThickness="1.5">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition/>
+                                                    <ColumnDefinition Width="32"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="1" Background="#222238" BorderThickness="1.5,0,0,0" BorderBrush="#3A3A50">
+                                                    <Path Fill="#78CDD7" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                          Data="M 0 0 L 5 5 L 10 0 Z"/>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="border" Property="BorderBrush" Value="#44A1A0"/>
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="border" Property="BorderBrush" Value="#44A1A0"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
+                                              HorizontalAlignment="Left" VerticalAlignment="Center"
+                                              Margin="12,8,32,8"/>
+                            <Popup x:Name="PART_Popup" AllowsTransparency="True"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom" PopupAnimation="Slide">
+                                <Grid MinWidth="{TemplateBinding ActualWidth}"
+                                      MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <Border Background="#2A2A3E" BorderBrush="#44A1A0"
+                                            BorderThickness="1.5" Padding="0,4">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <StackPanel IsItemsHost="True"/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Grid>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="32,16,32,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="170"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Form Fields -->
+            <Grid Grid.Column="0" Margin="0,0,24,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="130"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Title -->
+                <TextBlock Grid.Row="0" Grid.ColumnSpan="2" x:Name="DialogTitle"
+                           Text="{Binding Lang.AddPlayer}"
+                           FontSize="20" FontWeight="Bold" Foreground="#FFFFFA"
+                           Margin="0,0,0,12"/>
+
+                <!-- Name EN -->
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding Lang.NameEn}"
+                           Foreground="#9EC5C8" VerticalAlignment="Top" Margin="0,7,0,10" FontSize="13"/>
+                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,6">
+                    <TextBox x:Name="NameEnTextBox" Style="{StaticResource DarkTextBox}"
+                             LostFocus="NameEnTextBox_LostFocus"/>
+                    <TextBlock x:Name="NameEnWarning" Foreground="#FFB946" FontSize="11"
+                               FontFamily="{StaticResource CairoFont}" FontWeight="Bold"
+                               Margin="4,3,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+                </StackPanel>
+
+                <!-- Name AR -->
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding Lang.NameAr}"
+                           Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
+                <TextBox x:Name="NameArTextBox" Grid.Row="2" Grid.Column="1"
+                         Style="{StaticResource DarkTextBox}" Margin="0,0,0,10"
+                         FlowDirection="RightToLeft"/>
+
+                <!-- Card No -->
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding Lang.CardNo}"
+                           Foreground="#9EC5C8" VerticalAlignment="Top" Margin="0,7,0,10" FontSize="13"/>
+                <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,0,0,6">
+                    <TextBox x:Name="CardNoTextBox" Style="{StaticResource DarkTextBox}"
+                             LostFocus="CardNoTextBox_LostFocus"/>
+                    <TextBlock x:Name="CardNoError" Foreground="#F7685B" FontSize="11"
+                               FontFamily="{StaticResource CairoFont}" FontWeight="Bold"
+                               Margin="4,3,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+                </StackPanel>
+
+                <!-- Phone -->
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="{Binding Lang.Phone}"
+                           Foreground="#9EC5C8" VerticalAlignment="Top" Margin="0,7,0,10" FontSize="13"/>
+                <StackPanel Grid.Row="4" Grid.Column="1" Margin="0,0,0,6">
+                    <TextBox x:Name="PhoneTextBox" Style="{StaticResource DarkTextBox}"
+                             LostFocus="PhoneTextBox_LostFocus"/>
+                    <TextBlock x:Name="PhoneError" Foreground="#F7685B" FontSize="11"
+                               FontFamily="{StaticResource CairoFont}" FontWeight="Bold"
+                               Margin="4,3,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+                </StackPanel>
+
+                <!-- Subscription Type -->
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="{Binding Lang.Subscription}"
+                           Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
+                <ComboBox x:Name="SubscriptionTypeCombo" Grid.Row="5" Grid.Column="1"
+                          Style="{StaticResource DarkComboBox}" Margin="0,0,0,10"
+                          SelectionChanged="SubscriptionTypeCombo_SelectionChanged"/>
+
+                <!-- Period -->
+                <TextBlock Grid.Row="6" Grid.Column="0" Text="{Binding Lang.Period}"
+                           Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
+                <ComboBox x:Name="PeriodCombo" Grid.Row="6" Grid.Column="1"
+                          Style="{StaticResource DarkComboBox}" Margin="0,0,0,10"
+                          SelectionChanged="PeriodCombo_SelectionChanged"/>
+
+                <!-- Start Date -->
+                <TextBlock Grid.Row="7" Grid.Column="0" Text="{Binding Lang.StartDate}"
+                           Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
+                <DatePicker x:Name="StartDatePicker" Grid.Row="7" Grid.Column="1"
+                            FontSize="13" Margin="0,0,0,10"
+                            Foreground="#E0E0E0" BorderThickness="0"
+                            IsEnabled="False"/>
+
+                <!-- End Date -->
+                <TextBlock Grid.Row="8" Grid.Column="0" Text="{Binding Lang.EndDate}"
+                           Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
+                <DatePicker x:Name="EndDatePicker" Grid.Row="8" Grid.Column="1"
+                            FontSize="13" Margin="0,0,0,10"
+                            Foreground="#E0E0E0" BorderThickness="0"
+                            IsEnabled="False"/>
+
+                <!-- Fee / Paid Row -->
+                <TextBlock Grid.Row="9" Grid.Column="0" Text="{Binding Lang.Fee}"
+                           Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
+                <StackPanel Grid.Row="9" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBox x:Name="FeeTextBox" Width="120"
+                             Style="{StaticResource DarkTextBox}" IsReadOnly="True"
+                             TextChanged="FeeTextBox_TextChanged"/>
+                    <TextBlock Text="{Binding Lang.IQD}" Foreground="#78CDD7"
+                               VerticalAlignment="Center" Margin="8,0,20,0" FontSize="12"/>
+                    <TextBlock Text="{Binding Lang.Paid}" Foreground="#9EC5C8"
+                               VerticalAlignment="Center" Margin="0,0,10,0" FontSize="13"/>
+                    <TextBox x:Name="PaidTextBox" Width="120"
+                             Style="{StaticResource DarkTextBox}"
+                             TextChanged="PaidTextBox_TextChanged"/>
+                    <TextBlock Text="{Binding Lang.IQD}" Foreground="#78CDD7"
+                               VerticalAlignment="Center" Margin="8,0,0,0" FontSize="12"/>
+                </StackPanel>
+
+                <!-- Remaining Row -->
+                <TextBlock Grid.Row="10" Grid.Column="0" Text="{Binding Lang.Remaining}"
+                           Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
+                <StackPanel Grid.Row="10" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBox x:Name="RemainingTextBox" Width="120" IsReadOnly="True"
+                             FontSize="14" Padding="10,7" FontWeight="Bold"
+                             Background="#1A2A2E" Foreground="#F7685B"
+                             BorderBrush="#3A3A50" BorderThickness="1.5"
+                             FontFamily="{StaticResource CairoFont}"/>
+                    <TextBlock Text="{Binding Lang.IQD}" Foreground="#78CDD7"
+                               VerticalAlignment="Center" Margin="8,0,0,0" FontSize="12"/>
+                </StackPanel>
+
+                <!-- Height / Weight Row -->
+                <TextBlock Grid.Row="11" Grid.Column="0" Text="{Binding Lang.HeightCm}"
+                           Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
+                <StackPanel Grid.Row="11" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBox x:Name="HeightTextBox" Width="90"
+                             Style="{StaticResource DarkTextBox}"/>
+                    <TextBlock Text="{Binding Lang.WeightKg}" Foreground="#9EC5C8"
+                               VerticalAlignment="Center" Margin="16,0,10,0" FontSize="13"/>
+                    <TextBox x:Name="WeightTextBox" Width="90"
+                             Style="{StaticResource DarkTextBox}"/>
+                </StackPanel>
+
+                <!-- Notes -->
+                <TextBlock Grid.Row="12" Grid.Column="0" Text="{Binding Lang.Notes}"
+                           Foreground="#9EC5C8" VerticalAlignment="Top" Margin="0,0,0,10" FontSize="13"/>
+                <TextBox x:Name="NotesTextBox" Grid.Row="12" Grid.Column="1"
+                         Style="{StaticResource DarkTextBox}" Margin="0,0,0,10"
+                         Height="60" TextWrapping="Wrap" AcceptsReturn="True"
+                         VerticalScrollBarVisibility="Auto"/>
+
+                <!-- Buttons -->
+                <StackPanel Grid.Row="14" Grid.ColumnSpan="2" Orientation="Horizontal"
+                            HorizontalAlignment="Right" Margin="0,18,0,0">
+                    <!-- Cancel Button -->
+                    <Button Width="150" Height="44" Margin="0,0,14,0"
+                            Click="CancelButton_Click" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="bg" Background="#2A2A3E" CornerRadius="10"
+                                        BorderBrush="#444" BorderThickness="1.5">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bg" Property="Background" Value="#333350"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                        <TextBlock Text="{Binding Lang.Cancel}" Foreground="#B0B0CC"
+                                   FontSize="15" FontWeight="Bold"/>
+                    </Button>
+
+                    <!-- Submit Button -->
+                    <Button Width="150" Height="44"
+                            Click="OkButton_Click" IsDefault="True" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="bg" Background="#44A1A0" CornerRadius="10">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bg" Property="Background" Value="#247B7B"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                        <TextBlock Text="{Binding Lang.Submit}" Foreground="White"
+                                   FontSize="15" FontWeight="Bold"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- Right: Photo -->
+            <StackPanel Grid.Column="1" Margin="0,50,0,0">
+                <Border Width="150" Height="185" CornerRadius="10"
+                        Background="#2A2A3E" BorderBrush="#3A3A50" BorderThickness="1.5"
+                        Margin="0,0,0,10" ClipToBounds="True">
+                    <Image x:Name="PhotoImage" Stretch="UniformToFill"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <Button Height="34" Cursor="Hand" Margin="0,0,0,6"
+                        Click="BrowsePhoto_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bg" Background="#44A1A0" CornerRadius="8">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bg" Property="Background" Value="#247B7B"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <TextBlock Text="{Binding Lang.BrowsePhoto}" Foreground="White"
+                               FontSize="12" FontWeight="Bold"/>
+                </Button>
+                <Button Height="30" Cursor="Hand"
+                        Click="RemovePhoto_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bg" Background="#2A2A3E" CornerRadius="8"
+                                    BorderBrush="#444" BorderThickness="1">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bg" Property="Background" Value="#333350"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <TextBlock Text="{Binding Lang.RemovePhoto}" Foreground="#888"
+                               FontSize="11" FontWeight="Bold"/>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Window>
