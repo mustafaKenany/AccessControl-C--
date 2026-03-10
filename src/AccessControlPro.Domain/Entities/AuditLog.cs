@@ -7,5 +7,7 @@ public class AuditLog
     public string EntityType { get; set; } = string.Empty;   // "Employee", "AccessCard", "Device"
     public int? EntityId { get; set; }
     public string Details { get; set; } = string.Empty;
+    public string DetailsAr { get; set; } = string.Empty;
+    public string PerformedBy { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }

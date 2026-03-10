@@ -1,0 +1,33 @@
+## .NET
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+
+## Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.vsidx
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+## NuGet
+*.nupkg
+**/packages/*
+
+## Logs
+*.log
+sdk_log.txt
+install_log.txt
+updateip_log.txt
+
+## CSV exports
+RecordList.csv

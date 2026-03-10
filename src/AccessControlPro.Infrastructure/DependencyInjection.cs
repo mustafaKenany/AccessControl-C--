@@ -1,4 +1,5 @@
 using AccessControlPro.Domain.Interfaces;
+using AccessControlPro.Infrastructure.Logging;
 using AccessControlPro.Infrastructure.Persistence;
 using AccessControlPro.Infrastructure.Persistence.Repositories;
 using AccessControlPro.SDK.Wrapper;
@@ -27,6 +28,9 @@ public static class DependencyInjection
 
         // SDK
         services.AddSingleton<IAccessControlSdk, AccessControlSdkWrapper>();
+
+        // Logging
+        services.AddSingleton<ISessionLogger, SessionFileLogger>();
 
         return services;
     }

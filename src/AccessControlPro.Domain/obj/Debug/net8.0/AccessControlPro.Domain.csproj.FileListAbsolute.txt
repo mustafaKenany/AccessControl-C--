@@ -1,14 +1,3 @@
-D:\AccessControlPro\src\AccessControlPro.Domain\bin\Debug\net8.0\AccessControlPro.Domain.deps.json
-D:\AccessControlPro\src\AccessControlPro.Domain\bin\Debug\net8.0\AccessControlPro.Domain.dll
-D:\AccessControlPro\src\AccessControlPro.Domain\bin\Debug\net8.0\AccessControlPro.Domain.pdb
-D:\AccessControlPro\src\AccessControlPro.Domain\obj\Debug\net8.0\AccessControlPro.Domain.GeneratedMSBuildEditorConfig.editorconfig
-D:\AccessControlPro\src\AccessControlPro.Domain\obj\Debug\net8.0\AccessControlPro.Domain.AssemblyInfoInputs.cache
-D:\AccessControlPro\src\AccessControlPro.Domain\obj\Debug\net8.0\AccessControlPro.Domain.AssemblyInfo.cs
-D:\AccessControlPro\src\AccessControlPro.Domain\obj\Debug\net8.0\AccessControlPro.Domain.csproj.CoreCompileInputs.cache
-D:\AccessControlPro\src\AccessControlPro.Domain\obj\Debug\net8.0\AccessControlPro.Domain.dll
-D:\AccessControlPro\src\AccessControlPro.Domain\obj\Debug\net8.0\refint\AccessControlPro.Domain.dll
-D:\AccessControlPro\src\AccessControlPro.Domain\obj\Debug\net8.0\AccessControlPro.Domain.pdb
-D:\AccessControlPro\src\AccessControlPro.Domain\obj\Debug\net8.0\ref\AccessControlPro.Domain.dll
 D:\AccessControl（C#）\src\AccessControlPro.Domain\bin\Debug\net8.0\AccessControlPro.Domain.deps.json
 D:\AccessControl（C#）\src\AccessControlPro.Domain\bin\Debug\net8.0\AccessControlPro.Domain.dll
 D:\AccessControl（C#）\src\AccessControlPro.Domain\bin\Debug\net8.0\AccessControlPro.Domain.pdb
@@ -16,6 +5,7 @@ D:\AccessControl（C#）\src\AccessControlPro.Domain\obj\Debug\net8.0\AccessCont
 D:\AccessControl（C#）\src\AccessControlPro.Domain\obj\Debug\net8.0\AccessControlPro.Domain.AssemblyInfoInputs.cache
 D:\AccessControl（C#）\src\AccessControlPro.Domain\obj\Debug\net8.0\AccessControlPro.Domain.AssemblyInfo.cs
 D:\AccessControl（C#）\src\AccessControlPro.Domain\obj\Debug\net8.0\AccessControlPro.Domain.csproj.CoreCompileInputs.cache
+D:\AccessControl（C#）\src\AccessControlPro.Domain\obj\Debug\net8.0\AccessControlPro.Domain.sourcelink.json
 D:\AccessControl（C#）\src\AccessControlPro.Domain\obj\Debug\net8.0\AccessControlPro.Domain.dll
 D:\AccessControl（C#）\src\AccessControlPro.Domain\obj\Debug\net8.0\refint\AccessControlPro.Domain.dll
 D:\AccessControl（C#）\src\AccessControlPro.Domain\obj\Debug\net8.0\AccessControlPro.Domain.pdb
