@@ -365,7 +365,7 @@ public class EmployeeService : IEmployeeService
         }
     }
 
-    public async Task<bool> FreezePlayerAsync(int id, string reason)
+    public async Task<bool> FreezePlayerAsync(int id, string reason, IEnumerable<int>? deviceIds = null)
     {
         var employee = await _employeeRepository.GetByIdWithCardsAsync(id);
         if (employee == null || employee.IsFrozen) return false;
@@ -382,8 +382,8 @@ public class EmployeeService : IEmployeeService
         };
         await _freezeHistoryRepository.AddAsync(freeze);
 
-        // Disable all synced cards on hardware devices (overwrite with expired date)
-        await DisableCardsOnHardware(employee);
+        // Disable all synced cards on selected hardware devices (overwrite with expired date)
+        await DisableCardsOnHardware(employee, deviceIds);
 
         await LogAuditAsync("Freeze", "Player", id,
             $"Froze player: {employee.FullNameEn} ({employee.CardNo}). Reason: {reason}",
@@ -398,7 +398,7 @@ public class EmployeeService : IEmployeeService
         return true;
     }
 
-    public async Task<bool> UnfreezePlayerAsync(int id)
+    public async Task<bool> UnfreezePlayerAsync(int id, IEnumerable<int>? deviceIds = null)
     {
         var employee = await _employeeRepository.GetByIdWithCardsAsync(id);
         if (employee == null || !employee.IsFrozen || employee.FreezeStartDate == null) return false;
@@ -421,8 +421,8 @@ public class EmployeeService : IEmployeeService
             await _freezeHistoryRepository.UpdateAsync(activeFreeze);
         }
 
-        // Re-register all synced cards on hardware with extended EndDate
-        await ReEnableCardsOnHardware(employee);
+        // Re-register all synced cards on selected hardware devices with extended EndDate
+        await ReEnableCardsOnHardware(employee, deviceIds);
 
         await LogAuditAsync("Unfreeze", "Player", id,
             $"Unfroze player: {employee.FullNameEn} ({employee.CardNo}). Freeze duration: {freezeDays} days. EndDate extended to {employee.EndDate:yyyy-MM-dd}",
@@ -438,7 +438,7 @@ public class EmployeeService : IEmployeeService
     }
 
     public async Task<bool> RenewSubscriptionAsync(int id, string subscriptionType, int months, int customDays,
-        decimal fee, decimal amountPaid, string doorPermissions, int effectiveTimes)
+        decimal fee, decimal amountPaid, string doorPermissions, int effectiveTimes, IEnumerable<int>? deviceIds = null)
     {
         var employee = await _employeeRepository.GetByIdWithCardsAsync(id);
         if (employee == null) return false;
@@ -840,13 +840,13 @@ public class EmployeeService : IEmployeeService
         return (synced, failed, allCards.Count);
     }
 
-    public async Task<(int synced, int failed, int total, List<string> errors)> SyncCardToAllDevicesAsync(int cardId)
+    public async Task<(int synced, int failed, int total, List<string> errors)> SyncCardToDevicesAsync(int cardId, IEnumerable<int>? deviceIds = null)
     {
         var card = await _cardRepository.GetByIdAsync(cardId);
         if (card == null)
             throw new InvalidOperationException($"Card with ID {cardId} not found.");
 
-        var devices = (await _deviceRepository.GetAllAsync()).ToList();
+        var devices = await ResolveDevicesAsync(deviceIds);
         if (devices.Count == 0)
             return (0, 0, 0, new List<string> { "No devices found." });
 
@@ -894,10 +894,10 @@ public class EmployeeService : IEmployeeService
         return (synced, failed, devices.Count, errors);
     }
 
-    public async Task<(int synced, int failed, int total)> SyncAllCardsToAllDevicesAsync(
-        IProgress<(int current, int total, string cardNumber)>? progress = null)
+    public async Task<(int synced, int failed, int total)> SyncAllCardsToDevicesAsync(
+        IEnumerable<int>? deviceIds = null, IProgress<(int current, int total, string cardNumber)>? progress = null)
     {
-        var devices = (await _deviceRepository.GetAllAsync()).ToList();
+        var devices = await ResolveDevicesAsync(deviceIds);
         if (devices.Count == 0) return (0, 0, 0);
 
         var allCards = (await _cardRepository.GetAllWithEmployeeAsync())
@@ -956,13 +956,13 @@ public class EmployeeService : IEmployeeService
         return (synced, failed, totalOps);
     }
 
-    public async Task<(int synced, int failed, int total, List<string> errors)> RemoveCardFromAllDevicesAsync(int cardId)
+    public async Task<(int synced, int failed, int total, List<string> errors)> RemoveCardFromDevicesAsync(int cardId, IEnumerable<int>? deviceIds = null)
     {
         var card = await _cardRepository.GetByIdAsync(cardId);
         if (card == null)
             throw new InvalidOperationException($"Card with ID {cardId} not found.");
 
-        var devices = (await _deviceRepository.GetAllAsync()).ToList();
+        var devices = await ResolveDevicesAsync(deviceIds);
         if (devices.Count == 0)
             return (0, 0, 0, new List<string>());
 
@@ -1047,6 +1047,17 @@ public class EmployeeService : IEmployeeService
         return await _employeeRepository.ExistsByNameAsync(fullNameEn, excludeId);
     }
 
+    /// <summary>
+    /// Resolves target devices: null → ALL devices, otherwise only the specified IDs.
+    /// </summary>
+    private async Task<List<Device>> ResolveDevicesAsync(IEnumerable<int>? deviceIds)
+    {
+        var all = (await _deviceRepository.GetAllAsync()).ToList();
+        if (deviceIds == null) return all;
+        var ids = deviceIds.ToHashSet();
+        return all.Where(d => ids.Contains(d.Id)).ToList();
+    }
+
     private static DeviceInfo BuildDeviceInfo(Device device) => new()
     {
         IP = device.IP,
@@ -1058,13 +1069,13 @@ public class EmployeeService : IEmployeeService
         SubnetMask = device.SubnetMask
     };
 
-    private async Task DisableCardsOnHardware(Employee employee)
+    private async Task DisableCardsOnHardware(Employee employee, IEnumerable<int>? deviceIds = null)
     {
         var syncedCards = employee.AccessCards?.Where(c => c.IsActive && c.IsSyncedToDevice).ToList();
         if (syncedCards == null || syncedCards.Count == 0) return;
 
         _sdk.Initialize();
-        var devices = (await _deviceRepository.GetAllAsync()).ToList();
+        var devices = await ResolveDevicesAsync(deviceIds);
 
         foreach (var card in syncedCards)
         {
@@ -1094,13 +1105,13 @@ public class EmployeeService : IEmployeeService
         }
     }
 
-    private async Task ReEnableCardsOnHardware(Employee employee)
+    private async Task ReEnableCardsOnHardware(Employee employee, IEnumerable<int>? deviceIds = null)
     {
         var syncedCards = employee.AccessCards?.Where(c => c.IsActive && c.IsSyncedToDevice).ToList();
         if (syncedCards == null || syncedCards.Count == 0) return;
 
         _sdk.Initialize();
-        var devices = (await _deviceRepository.GetAllAsync()).ToList();
+        var devices = await ResolveDevicesAsync(deviceIds);
         var newPermitTime = employee.EndDate.ToString("yyyy-MM-dd HH:mm:ss");
 
         foreach (var card in syncedCards)

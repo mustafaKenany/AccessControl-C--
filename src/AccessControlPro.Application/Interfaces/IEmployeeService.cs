@@ -13,10 +13,13 @@ public interface IEmployeeService
     Task<bool> AssignCardAsync(int employeeId, AccessCardDto cardDto);
     Task<bool> RemoveCardAsync(int cardId);
     Task<bool> SyncCardToDeviceAsync(int cardId, int deviceId);
-    Task<(int synced, int failed, int total, List<string> errors)> SyncCardToAllDevicesAsync(int cardId);
+    /// <summary>Sync card to selected devices. Pass null for ALL devices.</summary>
+    Task<(int synced, int failed, int total, List<string> errors)> SyncCardToDevicesAsync(int cardId, IEnumerable<int>? deviceIds = null);
     Task<(int synced, int failed, int total)> SyncAllCardsToDeviceAsync(int deviceId, IProgress<(int current, int total, string cardNumber)>? progress = null);
-    Task<(int synced, int failed, int total)> SyncAllCardsToAllDevicesAsync(IProgress<(int current, int total, string cardNumber)>? progress = null);
-    Task<(int synced, int failed, int total, List<string> errors)> RemoveCardFromAllDevicesAsync(int cardId);
+    /// <summary>Sync all cards to selected devices. Pass null for ALL devices.</summary>
+    Task<(int synced, int failed, int total)> SyncAllCardsToDevicesAsync(IEnumerable<int>? deviceIds = null, IProgress<(int current, int total, string cardNumber)>? progress = null);
+    /// <summary>Remove/expire card on selected devices. Pass null for ALL devices.</summary>
+    Task<(int synced, int failed, int total, List<string> errors)> RemoveCardFromDevicesAsync(int cardId, IEnumerable<int>? deviceIds = null);
     Task IncrementVisitAsync(string cardNumber);
     Task<int> GetCountAsync();
     Task<bool> IsCardNoDuplicateAsync(string cardNo, int? excludeId = null);
@@ -26,13 +29,13 @@ public interface IEmployeeService
     // Soft delete with reason
     Task<bool> SoftDeleteEmployeeAsync(int id, string reason);
 
-    // Freeze / Unfreeze
-    Task<bool> FreezePlayerAsync(int id, string reason);
-    Task<bool> UnfreezePlayerAsync(int id);
+    // Freeze / Unfreeze — pass deviceIds=null for ALL devices
+    Task<bool> FreezePlayerAsync(int id, string reason, IEnumerable<int>? deviceIds = null);
+    Task<bool> UnfreezePlayerAsync(int id, IEnumerable<int>? deviceIds = null);
 
-    // Renew subscription
+    // Renew subscription — pass deviceIds=null for ALL devices
     Task<bool> RenewSubscriptionAsync(int id, string subscriptionType, int months, int customDays,
-        decimal fee, decimal amountPaid, string doorPermissions, int effectiveTimes);
+        decimal fee, decimal amountPaid, string doorPermissions, int effectiveTimes, IEnumerable<int>? deviceIds = null);
 
     // Player profile
     Task<PlayerProfileDto> GetPlayerProfileAsync(int id);
