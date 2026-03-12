@@ -1,0 +1,156 @@
+<Window x:Class="AccessControlPro.WPF.Views.MonitorDisplayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="http://schemas.fontawesome.io/icons/"
+        Title="Monitor Display"
+        WindowStyle="None"
+        WindowState="Maximized"
+        Background="#081B1D"
+        FontFamily="{StaticResource CairoFont}"
+        FontWeight="Bold"
+        FlowDirection="{Binding Lang.FlowDirection}">
+
+    <Grid x:Name="RootGrid">
+        <!-- Idle State: Gym Logo / Name -->
+        <Grid x:Name="IdlePanel" Visibility="Visible">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border Width="120" Height="120" CornerRadius="60" Margin="0,0,0,30">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#247B7B" Offset="0"/>
+                            <GradientStop Color="#44A1A0" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <fa:ImageAwesome Icon="Shield" Width="50" Height="50" Foreground="White"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="Access Control Pro" FontSize="42" Foreground="#44A1A0"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding Lang.MonitorReady}" FontSize="20" Foreground="#556677"
+                           HorizontalAlignment="Center" Margin="0,10,0,0"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Card Event Display -->
+        <Grid x:Name="EventPanel" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Status Banner -->
+            <Border x:Name="StatusBanner" Grid.Row="0" Padding="0,30" Margin="0,40,0,0">
+                <StackPanel HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <fa:ImageAwesome x:Name="StatusIcon" Icon="CheckCircle" Width="50" Height="50"
+                                         Foreground="White" VerticalAlignment="Center" Margin="0,0,20,0"/>
+                        <TextBlock x:Name="StatusText" FontSize="52" Foreground="White"
+                                   VerticalAlignment="Center" FontWeight="Bold"/>
+                    </StackPanel>
+                    <!-- Door Name -->
+                    <TextBlock x:Name="DoorNameText" FontSize="22" Foreground="#78CDD7"
+                               HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Player Info Card -->
+            <Border Grid.Row="1" Margin="80,40,80,80" CornerRadius="24" Background="#0D2B2E" Padding="60">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Player Photo -->
+                    <Border Grid.Column="0" Width="220" Height="220" CornerRadius="110"
+                            BorderBrush="#44A1A0" BorderThickness="4" Margin="0,0,50,0"
+                            VerticalAlignment="Top">
+                        <Border.Background>
+                            <ImageBrush x:Name="PlayerPhoto" Stretch="UniformToFill"/>
+                        </Border.Background>
+                        <Border CornerRadius="110" ClipToBounds="True">
+                            <!-- Fallback icon when no photo -->
+                            <fa:ImageAwesome x:Name="NoPhotoIcon" Icon="User" Width="80" Height="80"
+                                             Foreground="#334455" HorizontalAlignment="Center"
+                                             VerticalAlignment="Center" Visibility="Collapsed"/>
+                        </Border>
+                    </Border>
+
+                    <!-- Player Details -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <!-- Name -->
+                        <TextBlock x:Name="PlayerNameText" FontSize="44" Foreground="#E0E6ED"
+                                   TextWrapping="Wrap" Margin="0,0,0,20"/>
+
+                        <!-- Info Grid -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Subscription Type -->
+                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,20">
+                                <TextBlock x:Name="SubLabel" FontSize="16" Foreground="#556677"/>
+                                <TextBlock x:Name="SubValue" FontSize="26" Foreground="#78CDD7"/>
+                            </StackPanel>
+
+                            <!-- Card Number -->
+                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,20">
+                                <TextBlock x:Name="CardLabel" FontSize="16" Foreground="#556677"/>
+                                <TextBlock x:Name="CardValue" FontSize="26" Foreground="#AABBCC"/>
+                            </StackPanel>
+
+                            <!-- Start Date -->
+                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,20">
+                                <TextBlock x:Name="StartLabel" FontSize="16" Foreground="#556677"/>
+                                <TextBlock x:Name="StartValue" FontSize="26" Foreground="#AABBCC"/>
+                            </StackPanel>
+
+                            <!-- End Date -->
+                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,20">
+                                <TextBlock x:Name="EndLabel" FontSize="16" Foreground="#556677"/>
+                                <TextBlock x:Name="EndValue" FontSize="26" Foreground="#AABBCC"/>
+                            </StackPanel>
+
+                            <!-- Fee -->
+                            <StackPanel x:Name="FeePanel" Grid.Row="2" Grid.Column="0" Margin="0,0,0,20"
+                                        Visibility="Collapsed">
+                                <TextBlock x:Name="FeeLabel" FontSize="16" Foreground="#556677"/>
+                                <TextBlock x:Name="FeeValue" FontSize="26" Foreground="#AABBCC"/>
+                            </StackPanel>
+
+                            <!-- Paid -->
+                            <StackPanel x:Name="PaidPanel" Grid.Row="2" Grid.Column="1" Margin="0,0,0,20"
+                                        Visibility="Collapsed">
+                                <TextBlock x:Name="PaidLabel" FontSize="16" Foreground="#556677"/>
+                                <TextBlock x:Name="PaidValue" FontSize="26" Foreground="#2ED47A"/>
+                            </StackPanel>
+
+                            <!-- Remaining Balance -->
+                            <StackPanel x:Name="BalancePanel" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                                        Margin="0,0,0,20" Visibility="Collapsed">
+                                <TextBlock x:Name="BalanceLabel" FontSize="16" Foreground="#556677"/>
+                                <TextBlock x:Name="BalanceValue" FontSize="32" Foreground="#F7685B"
+                                           FontWeight="Bold"/>
+                            </StackPanel>
+
+                            <!-- Time -->
+                            <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,0,20">
+                                <TextBlock x:Name="TimeLabel" FontSize="16" Foreground="#556677"/>
+                                <TextBlock x:Name="TimeValue" FontSize="26" Foreground="#AABBCC"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

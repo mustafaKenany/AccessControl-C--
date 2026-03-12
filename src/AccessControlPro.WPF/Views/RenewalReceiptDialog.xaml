@@ -1,0 +1,149 @@
+<Window x:Class="AccessControlPro.WPF.Views.RenewalReceiptDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="http://schemas.fontawesome.io/icons/"
+        xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers"
+        Title="{Binding RcpRenewalReceipt, Source={x:Static helpers:LanguageManager.Instance}}"
+        Width="440" SizeToContent="Height" WindowStartupLocation="CenterOwner"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize"
+        FlowDirection="{Binding FlowDirection, Source={x:Static helpers:LanguageManager.Instance}}"
+        FontFamily="{StaticResource CairoFont}" FontWeight="Bold">
+    <Border Background="{StaticResource BgDarkBrush}" CornerRadius="16" Padding="28">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6" Color="Black"/>
+        </Border.Effect>
+        <StackPanel>
+            <!-- Header -->
+            <StackPanel HorizontalAlignment="Center" Margin="0,0,0,16">
+                <Border Width="50" Height="50" CornerRadius="25" HorizontalAlignment="Center"
+                        Margin="0,0,0,10">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#247B7B" Offset="0"/>
+                            <GradientStop Color="#44A1A0" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <fa:ImageAwesome Icon="Refresh" Width="20" Height="20" Foreground="White"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="{Binding RcpRenewalReceipt, Source={x:Static helpers:LanguageManager.Instance}}"
+                           FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"
+                           HorizontalAlignment="Center"/>
+                <TextBlock x:Name="DateText" FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                           HorizontalAlignment="Center" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <!-- Divider -->
+            <Border Height="1" Background="#15FFFFFF" Margin="0,0,0,12"/>
+
+            <!-- Printable content area -->
+            <StackPanel x:Name="ReceiptContent">
+                <!-- Player Name -->
+                <DockPanel Margin="0,4">
+                    <TextBlock Text="{Binding RcpPlayerName, Source={x:Static helpers:LanguageManager.Instance}}"
+                               FontSize="13" Foreground="{StaticResource TextMutedBrush}"/>
+                    <TextBlock x:Name="PlayerNameText" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                               FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                </DockPanel>
+
+                <!-- Card No -->
+                <DockPanel Margin="0,4">
+                    <TextBlock Text="{Binding CardNo, Source={x:Static helpers:LanguageManager.Instance}}"
+                               FontSize="13" Foreground="{StaticResource TextMutedBrush}"/>
+                    <TextBlock x:Name="CardNoText" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                               FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
+                </DockPanel>
+
+                <!-- Subscription Type -->
+                <DockPanel Margin="0,4">
+                    <TextBlock Text="{Binding RcpSubscriptionType, Source={x:Static helpers:LanguageManager.Instance}}"
+                               FontSize="13" Foreground="{StaticResource TextMutedBrush}"/>
+                    <TextBlock x:Name="SubTypeText" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                               FontSize="13" Foreground="{StaticResource PrimaryLightBrush}"/>
+                </DockPanel>
+
+                <!-- Period -->
+                <DockPanel Margin="0,4">
+                    <TextBlock Text="{Binding RcpPeriod, Source={x:Static helpers:LanguageManager.Instance}}"
+                               FontSize="13" Foreground="{StaticResource TextMutedBrush}"/>
+                    <TextBlock x:Name="PeriodText" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                               FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
+                </DockPanel>
+
+                <!-- Start Date -->
+                <DockPanel Margin="0,4">
+                    <TextBlock Text="{Binding StartDate, Source={x:Static helpers:LanguageManager.Instance}}"
+                               FontSize="13" Foreground="{StaticResource TextMutedBrush}"/>
+                    <TextBlock x:Name="StartDateText" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                               FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
+                </DockPanel>
+
+                <!-- End Date -->
+                <DockPanel Margin="0,4">
+                    <TextBlock Text="{Binding EndDate, Source={x:Static helpers:LanguageManager.Instance}}"
+                               FontSize="13" Foreground="{StaticResource TextMutedBrush}"/>
+                    <TextBlock x:Name="EndDateText" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                               FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
+                </DockPanel>
+
+                <!-- Divider -->
+                <Border Height="1" Background="#15FFFFFF" Margin="0,12"/>
+
+                <!-- Fee -->
+                <DockPanel Margin="0,4">
+                    <TextBlock Text="{Binding Fee, Source={x:Static helpers:LanguageManager.Instance}}"
+                               FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <TextBlock x:Name="FeeText" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                               FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                </DockPanel>
+
+                <!-- Amount Paid -->
+                <DockPanel Margin="0,4">
+                    <TextBlock Text="{Binding Paid, Source={x:Static helpers:LanguageManager.Instance}}"
+                               FontSize="14" FontWeight="Bold" Foreground="#2ED47A"/>
+                    <TextBlock x:Name="PaidText" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                               FontSize="16" FontWeight="Bold" Foreground="#2ED47A"/>
+                </DockPanel>
+
+                <!-- Remaining -->
+                <DockPanel Margin="0,4">
+                    <TextBlock Text="{Binding Remaining, Source={x:Static helpers:LanguageManager.Instance}}"
+                               FontSize="14" FontWeight="Bold" Foreground="#F7685B"/>
+                    <TextBlock x:Name="RemainingText" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                               FontSize="16" FontWeight="Bold" Foreground="#F7685B"/>
+                </DockPanel>
+            </StackPanel>
+
+            <!-- Divider -->
+            <Border Height="1" Background="#15FFFFFF" Margin="0,16,0,12"/>
+
+            <!-- Buttons -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Print Button -->
+                <Button Grid.Column="0" Style="{StaticResource PrimaryButton}" Padding="0,12"
+                        Click="PrintClick" HorizontalContentAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Print" Width="14" Height="14"
+                                         Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding RcpPrint, Source={x:Static helpers:LanguageManager.Instance}}"
+                                   FontSize="14"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Close Button -->
+                <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Padding="0,12"
+                        Click="CloseClick" HorizontalContentAlignment="Center">
+                    <TextBlock Text="{Binding OK, Source={x:Static helpers:LanguageManager.Instance}}"
+                               FontSize="14"/>
+                </Button>
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

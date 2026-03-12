@@ -1,0 +1,52 @@
+## .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+*.userprefs
+*.rsuser
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+bld/
+[Bb]in/
+[Oo]bj/
+
+## NuGet
+*.nupkg
+**/packages/*
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## Rider
+.idea/
+*.sln.iml
+
+## OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+## Logs
+*.log
+Logs/
+
+## Setup output
+setup/output/
+
+## App runtime files
+.setup_complete
+appsettings.json
+crash_log.txt
+admin_crash_log.txt
+pos_crash_log.txt
+
+## Publish output
+publish/

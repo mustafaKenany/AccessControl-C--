@@ -1,0 +1,331 @@
+<UserControl x:Class="AccessControlPro.WPF.Views.FinanceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="http://schemas.fontawesome.io/icons/"
+             xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Background="Transparent"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="32,28,32,32">
+
+            <!-- Header -->
+            <DockPanel Margin="0,0,0,20">
+                <TextBlock Text="{Binding Lang.NavFinance}"
+                           FontSize="26" FontWeight="Bold"
+                           Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                <Button DockPanel.Dock="Right" HorizontalAlignment="Right"
+                        Style="{StaticResource PrimaryButton}"
+                        Command="{Binding RefreshCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Refresh" Width="13" Height="13"
+                                         Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Lang.Refresh}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </DockPanel>
+
+            <!-- Filter Bar -->
+            <Border Style="{StaticResource DashboardCard}" Padding="16,12" Margin="0,0,0,16">
+                <WrapPanel VerticalAlignment="Center">
+                    <!-- Search label + box -->
+                    <fa:ImageAwesome Icon="Search" Width="14" Height="14"
+                                     Foreground="{StaticResource TextMutedBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding FinSearch, Source={x:Static helpers:LanguageManager.Instance}}"
+                               FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBox Style="{StaticResource DarkTextBox}" Width="220"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             Padding="10,8" Margin="0,0,10,0"/>
+                    <Button Style="{StaticResource SecondaryButton}" Padding="14,8"
+                            Command="{Binding SearchCommand}" Margin="0,0,24,0">
+                        <fa:ImageAwesome Icon="Search" Width="14" Height="14"
+                                         Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </Button>
+
+                    <!-- Period label + combo -->
+                    <fa:ImageAwesome Icon="Calendar" Width="14" Height="14"
+                                     Foreground="{StaticResource TextMutedBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding FinPeriod, Source={x:Static helpers:LanguageManager.Instance}}"
+                               FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <ComboBox Width="170" SelectedIndex="{Binding SelectedPeriodIndex}"
+                              Style="{StaticResource DarkComboBox}" Margin="0,0,10,0">
+                        <ComboBoxItem Content="{Binding FinAll, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                        <ComboBoxItem Content="{Binding FinToday, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                        <ComboBoxItem Content="{Binding FinYesterday, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                        <ComboBoxItem Content="{Binding FinThisWeek, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                        <ComboBoxItem Content="{Binding FinLastWeek, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                        <ComboBoxItem Content="{Binding FinThisMonth, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                        <ComboBoxItem Content="{Binding FinLastMonth, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                        <ComboBoxItem Content="{Binding FinLast3Months, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                        <ComboBoxItem Content="{Binding FinLast6Months, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                        <ComboBoxItem Content="{Binding FinThisYear, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                    </ComboBox>
+
+                    <Button Style="{StaticResource SecondaryButton}" Padding="14,8"
+                            Command="{Binding PeriodChangedCommand}">
+                        <fa:ImageAwesome Icon="Filter" Width="14" Height="14"
+                                         Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </Button>
+                </WrapPanel>
+            </Border>
+
+            <!-- Stat Cards -->
+            <UniformGrid Rows="1" Columns="4" Margin="0,0,0,20">
+
+                <!-- Total Revenue -->
+                <Border CornerRadius="16" Padding="22,20" Margin="0,0,10,0">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#2ED47A" Offset="0"/>
+                            <GradientStop Color="#56E89A" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.Effect>
+                        <DropShadowEffect Color="#2ED47A" BlurRadius="24" ShadowDepth="0" Opacity="0.25"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <Border Width="44" Height="44" CornerRadius="12" Background="#30FFFFFF"
+                                HorizontalAlignment="Left" Margin="0,0,0,12">
+                            <fa:ImageAwesome Icon="ArrowUp" Width="20" Height="20" Foreground="White"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="{Binding TotalRevenue, StringFormat='{}{0:N0}'}"
+                                   FontSize="30" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="{Binding Lang.FinTotalRevenue}"
+                                   FontSize="13" FontWeight="SemiBold" Foreground="#B0FFFFFF" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Total Expenses -->
+                <Border CornerRadius="16" Padding="22,20" Margin="5,0,5,0">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#F7685B" Offset="0"/>
+                            <GradientStop Color="#FF8A80" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.Effect>
+                        <DropShadowEffect Color="#F7685B" BlurRadius="24" ShadowDepth="0" Opacity="0.25"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <Border Width="44" Height="44" CornerRadius="12" Background="#30FFFFFF"
+                                HorizontalAlignment="Left" Margin="0,0,0,12">
+                            <fa:ImageAwesome Icon="ArrowDown" Width="20" Height="20" Foreground="White"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="{Binding TotalExpenses, StringFormat='{}{0:N0}'}"
+                                   FontSize="30" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="{Binding Lang.FinTotalExpenses}"
+                                   FontSize="13" FontWeight="SemiBold" Foreground="#B0FFFFFF" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Net Profit -->
+                <Border CornerRadius="16" Padding="22,20" Margin="5,0,5,0">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#0D5C63" Offset="0"/>
+                            <GradientStop Color="#247B7B" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.Effect>
+                        <DropShadowEffect Color="#0D5C63" BlurRadius="24" ShadowDepth="0" Opacity="0.25"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <Border Width="44" Height="44" CornerRadius="12" Background="#30FFFFFF"
+                                HorizontalAlignment="Left" Margin="0,0,0,12">
+                            <fa:ImageAwesome Icon="LineChart" Width="20" Height="20" Foreground="White"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="{Binding NetProfit, StringFormat='{}{0:N0}'}"
+                                   FontSize="30" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="{Binding Lang.FinNetProfit}"
+                                   FontSize="13" FontWeight="SemiBold" Foreground="#B0FFFFFF" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Unpaid Balances -->
+                <Border CornerRadius="16" Padding="22,20" Margin="10,0,0,0">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#FFB946" Offset="0"/>
+                            <GradientStop Color="#FFD080" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.Effect>
+                        <DropShadowEffect Color="#FFB946" BlurRadius="24" ShadowDepth="0" Opacity="0.25"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <Border Width="44" Height="44" CornerRadius="12" Background="#30FFFFFF"
+                                HorizontalAlignment="Left" Margin="0,0,0,12">
+                            <fa:ImageAwesome Icon="ExclamationCircle" Width="20" Height="20" Foreground="White"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="{Binding UnpaidBalances, StringFormat='{}{0:N0}'}"
+                                   FontSize="30" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="{Binding Lang.FinUnpaidBalances}"
+                                   FontSize="13" FontWeight="SemiBold" Foreground="#B0FFFFFF" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <!-- Outstanding Players -->
+            <Border Style="{StaticResource DashboardCard}" Margin="0,0,0,20">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,16">
+                        <fa:ImageAwesome Icon="ExclamationTriangle" Width="18" Height="18"
+                                         Foreground="#FFB946" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding Lang.FinOutstandingPlayers}"
+                                   Style="{StaticResource SectionTitle}" Margin="0"/>
+                    </DockPanel>
+
+                    <!-- Table Header -->
+                    <Border Background="{StaticResource BgInputBrush}" CornerRadius="10"
+                            Padding="16,10" Margin="0,0,0,6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="100"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{Binding Lang.PlayerName}"
+                                       FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Lang.CardNo}"
+                                       FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Lang.Fee}"
+                                       FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Grid.Column="3" Text="{Binding Lang.Paid}"
+                                       FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Grid.Column="4" Text="{Binding Lang.Remaining}"
+                                       FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Grid.Column="5" Text="{Binding Lang.Actions}"
+                                       FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                        </Grid>
+                    </Border>
+
+                    <ItemsControl ItemsSource="{Binding OutstandingPlayers}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource EventRow}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="100"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding NameEn}"
+                                                   FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding CardNo}"
+                                                   FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Fee, StringFormat='{}{0:N0}'}"
+                                                   FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding Paid, StringFormat='{}{0:N0}'}"
+                                                   FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="4" Text="{Binding Remaining, StringFormat='{}{0:N0}'}"
+                                                   FontSize="13" FontWeight="Bold" Foreground="#F7685B" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="5" Style="{StaticResource PrimaryButton}"
+                                                Padding="10,5" FontSize="11"
+                                                Command="{Binding DataContext.PayOutstandingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Visibility="{Binding DataContext.CanManage, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="{Binding DataContext.Lang.FinPayNow, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       FontSize="11"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Recent Transactions -->
+            <Border Style="{StaticResource DashboardCard}">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,16">
+                        <fa:ImageAwesome Icon="Exchange" Width="18" Height="18"
+                                         Foreground="{StaticResource InfoBrush}"
+                                         VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding Lang.FinRecentTransactions}"
+                                   Style="{StaticResource SectionTitle}" Margin="0"/>
+                    </DockPanel>
+
+                    <Border Background="{StaticResource BgInputBrush}" CornerRadius="10"
+                            Padding="16,10" Margin="0,0,0,6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="160"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{Binding Lang.Time}"
+                                       FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Lang.FinType}"
+                                       FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Lang.FinCategory}"
+                                       FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Grid.Column="3" Text="{Binding Lang.FinAmount}"
+                                       FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Grid.Column="4" Text="{Binding Lang.FinDescription}"
+                                       FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"/>
+                        </Grid>
+                    </Border>
+
+                    <ItemsControl ItemsSource="{Binding RecentTransactions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource EventRow}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="160"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding CreatedAt, StringFormat='yyyy-MM-dd HH:mm'}"
+                                                   FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" FontSize="13" FontWeight="SemiBold">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                                    <Setter Property="Text" Value="{Binding FinIncome, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                                                    <Setter Property="Foreground" Value="#2ED47A"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding TypeLabel}" Value="Expense">
+                                                            <Setter Property="Text" Value="{Binding FinExpense, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                                                            <Setter Property="Foreground" Value="#F7685B"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Grid.Column="2" Text="{Binding Category}"
+                                                   FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding Amount, StringFormat='{}{0:N0}'}"
+                                                   FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Grid.Column="4" Text="{Binding Description}"
+                                                   FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

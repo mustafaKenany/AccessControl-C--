@@ -1,0 +1,332 @@
+<UserControl x:Class="AccessControlPro.Admin.Views.AlertsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="http://schemas.fontawesome.io/icons/"
+             xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers;assembly=AccessControlPro.WPF"
+             Background="{StaticResource BgDarkBrush}">
+
+    <UserControl.Resources>
+        <helpers:BindingProxy x:Key="Proxy" Data="{Binding}"/>
+    </UserControl.Resources>
+
+    <Grid Margin="24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="{Binding Lang.AlertTitle}" FontSize="24"
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="{Binding Lang.AlertSubtitle}" FontSize="12"
+                       Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Tab Buttons -->
+        <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,12">
+            <!-- Expiring -->
+            <Border Margin="0,0,4,0" CornerRadius="10" Padding="16,12" Cursor="Hand"
+                    MouseLeftButtonUp="ExpiringTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedTab}" Value="0">
+                                <Setter Property="Background" Value="#1A44A1A0"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <DockPanel>
+                    <Border Width="40" Height="40" CornerRadius="10" Background="#20FFB946" DockPanel.Dock="Left" Margin="0,0,12,0">
+                        <fa:ImageAwesome Icon="ClockOutline" Width="18" Height="18" Foreground="#FFB946"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Lang.AlertExpiring}" FontSize="12" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Text="{Binding ExpiringCount}" FontSize="22" FontWeight="Bold" Foreground="#FFB946"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+            <!-- Expired -->
+            <Border Margin="4,0" CornerRadius="10" Padding="16,12" Cursor="Hand"
+                    MouseLeftButtonUp="ExpiredTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedTab}" Value="1">
+                                <Setter Property="Background" Value="#1AF7685B"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <DockPanel>
+                    <Border Width="40" Height="40" CornerRadius="10" Background="#20F7685B" DockPanel.Dock="Left" Margin="0,0,12,0">
+                        <fa:ImageAwesome Icon="TimesCircle" Width="18" Height="18" Foreground="#F7685B"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Lang.AlertExpired}" FontSize="12" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Text="{Binding ExpiredCount}" FontSize="22" FontWeight="Bold" Foreground="#F7685B"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+            <!-- Frozen -->
+            <Border Margin="4,0,0,0" CornerRadius="10" Padding="16,12" Cursor="Hand"
+                    MouseLeftButtonUp="FrozenTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedTab}" Value="2">
+                                <Setter Property="Background" Value="#1A6CB4EE"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <DockPanel>
+                    <Border Width="40" Height="40" CornerRadius="10" Background="#206CB4EE" DockPanel.Dock="Left" Margin="0,0,12,0">
+                        <fa:ImageAwesome Icon="Asterisk" Width="18" Height="18" Foreground="#6CB4EE"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Lang.AlertFrozen}" FontSize="12" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Text="{Binding FrozenCount}" FontSize="22" FontWeight="Bold" Foreground="#6CB4EE"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </UniformGrid>
+
+        <!-- Content -->
+        <Border Grid.Row="2" Style="{StaticResource DashboardCard}">
+            <Grid>
+                <!-- Loading -->
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
+                    <fa:ImageAwesome Icon="Spinner" Width="24" Height="24"
+                                     Foreground="{StaticResource PrimaryLightBrush}"
+                                     SpinDuration="1" Spin="True" HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Expiring Players List (Tab 0) -->
+                <DataGrid ItemsSource="{Binding ExpiringPlayers}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          Background="Transparent" BorderThickness="0"
+                          RowBackground="#0E2A2D" AlternatingRowBackground="#112F32"
+                          Foreground="{StaticResource TextPrimaryBrush}"
+                          GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#15FFFFFF"
+                          HeadersVisibility="Column" SelectionMode="Single" CanUserResizeRows="False"
+                          FontFamily="{StaticResource CairoFont}" FontSize="13" FontWeight="Bold">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding SelectedTab}" Value="0"/>
+                                        <Condition Binding="{Binding IsLoading}" Value="False"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#143436"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+                            <Setter Property="FontSize" Value="13"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Padding" Value="14,10"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridColumnHeader">
+                                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                              TextBlock.Foreground="{TemplateBinding Foreground}"
+                                                              TextBlock.FontFamily="{TemplateBinding FontFamily}"
+                                                              TextBlock.FontSize="{TemplateBinding FontSize}"
+                                                              TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Padding" Value="14,8"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridCell">
+                                        <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                            <ContentPresenter VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.CellStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PlayerName, Source={StaticResource Proxy}}"
+                                            Binding="{Binding FullNameEn}" Width="*"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Phone, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Phone}" Width="140"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Subscription, Source={StaticResource Proxy}}"
+                                            Binding="{Binding SubscriptionType}" Width="140"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.RptEndDate, Source={StaticResource Proxy}}"
+                                            Binding="{Binding EndDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="120"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Remaining, Source={StaticResource Proxy}}"
+                                            Binding="{Binding RemainingBalance, StringFormat='{}{0:N0}'}" Width="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Expired Players List (Tab 1) -->
+                <DataGrid ItemsSource="{Binding ExpiredPlayers}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          Background="Transparent" BorderThickness="0"
+                          RowBackground="#0E2A2D" AlternatingRowBackground="#112F32"
+                          Foreground="{StaticResource TextPrimaryBrush}"
+                          GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#15FFFFFF"
+                          HeadersVisibility="Column" SelectionMode="Single" CanUserResizeRows="False"
+                          FontFamily="{StaticResource CairoFont}" FontSize="13" FontWeight="Bold">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedTab}" Value="1">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#143436"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+                            <Setter Property="FontSize" Value="13"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Padding" Value="14,10"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridColumnHeader">
+                                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                              TextBlock.Foreground="{TemplateBinding Foreground}"
+                                                              TextBlock.FontFamily="{TemplateBinding FontFamily}"
+                                                              TextBlock.FontSize="{TemplateBinding FontSize}"
+                                                              TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Padding" Value="14,8"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridCell">
+                                        <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                            <ContentPresenter VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.CellStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PlayerName, Source={StaticResource Proxy}}"
+                                            Binding="{Binding FullNameEn}" Width="*"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Phone, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Phone}" Width="140"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Subscription, Source={StaticResource Proxy}}"
+                                            Binding="{Binding SubscriptionType}" Width="140"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.RptEndDate, Source={StaticResource Proxy}}"
+                                            Binding="{Binding EndDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="120"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Frozen Players List (Tab 2) -->
+                <DataGrid ItemsSource="{Binding FrozenPlayers}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          Background="Transparent" BorderThickness="0"
+                          RowBackground="#0E2A2D" AlternatingRowBackground="#112F32"
+                          Foreground="{StaticResource TextPrimaryBrush}"
+                          GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#15FFFFFF"
+                          HeadersVisibility="Column" SelectionMode="Single" CanUserResizeRows="False"
+                          FontFamily="{StaticResource CairoFont}" FontSize="13" FontWeight="Bold">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedTab}" Value="2">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#143436"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+                            <Setter Property="FontSize" Value="13"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Padding" Value="14,10"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridColumnHeader">
+                                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                              TextBlock.Foreground="{TemplateBinding Foreground}"
+                                                              TextBlock.FontFamily="{TemplateBinding FontFamily}"
+                                                              TextBlock.FontSize="{TemplateBinding FontSize}"
+                                                              TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Padding" Value="14,8"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridCell">
+                                        <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                            <ContentPresenter VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.CellStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PlayerName, Source={StaticResource Proxy}}"
+                                            Binding="{Binding FullNameEn}" Width="*"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Phone, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Phone}" Width="140"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Subscription, Source={StaticResource Proxy}}"
+                                            Binding="{Binding SubscriptionType}" Width="140"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.AlertFreezeDate, Source={StaticResource Proxy}}"
+                                            Binding="{Binding FreezeStartDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="120"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

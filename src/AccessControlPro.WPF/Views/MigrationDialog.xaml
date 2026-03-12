@@ -1,0 +1,183 @@
+<Window x:Class="AccessControlPro.WPF.Views.MigrationDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="http://schemas.fontawesome.io/icons/"
+        Title="{Binding Lang.MigDataMigration}"
+        Width="600" Height="620"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        WindowStyle="SingleBorderWindow"
+        Background="#1A1A2E"
+        FontFamily="{StaticResource CairoFont}"
+        FontWeight="Bold"
+        FlowDirection="{Binding Lang.FlowDirection}"
+        DataContext="{Binding RelativeSource={RelativeSource Self}}">
+
+    <Grid Margin="28,24,28,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
+            <fa:ImageAwesome Icon="Database" Width="26" Height="26"
+                             Foreground="#44A1A0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <TextBlock Text="{Binding Lang.MigDataMigration}"
+                       FontSize="22" FontWeight="Bold" Foreground="#FFFFFA"/>
+        </StackPanel>
+
+        <!-- Connection String -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,12">
+            <TextBlock Text="{Binding Lang.MigConnectionString}"
+                       Foreground="#9EC5C8" FontSize="13" Margin="0,0,0,6"/>
+            <TextBox x:Name="ConnectionStringBox"
+                     FontSize="12" Padding="10,8"
+                     Background="#2A2A3E" Foreground="#E0E0E0"
+                     BorderBrush="#3A3A50" BorderThickness="1.5"
+                     CaretBrush="#E0E0E0"
+                     FontFamily="{StaticResource CairoFont}" FontWeight="Bold"
+                     Text="Server=localhost;Database=OldGymDB;User Id=sa;Password=123;TrustServerCertificate=True;"/>
+        </StackPanel>
+
+        <!-- Table Name -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,14">
+            <TextBlock Text="{Binding Lang.MigTableName}"
+                       Foreground="#9EC5C8" FontSize="13" Margin="0,0,0,6"/>
+            <TextBox x:Name="TableNameBox"
+                     FontSize="13" Padding="10,8"
+                     Background="#2A2A3E" Foreground="#E0E0E0"
+                     BorderBrush="#3A3A50" BorderThickness="1.5"
+                     CaretBrush="#E0E0E0"
+                     FontFamily="{StaticResource CairoFont}" FontWeight="Bold"
+                     Text="TbUsers"/>
+        </StackPanel>
+
+        <!-- Test Connection -->
+        <Button Grid.Row="3" Width="180" Height="36" Margin="0,0,0,14"
+                HorizontalAlignment="Left"
+                Click="TestConnectionButton_Click" Cursor="Hand"
+                IsEnabled="{Binding IsNotBusy}">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="bg" Background="#2A2A3E" CornerRadius="10"
+                            BorderBrush="#3A3A50" BorderThickness="1.5">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bg" Property="Background" Value="#333350"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="bg" Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+            <StackPanel Orientation="Horizontal">
+                <fa:ImageAwesome Icon="Plug" Width="14" Height="14"
+                                 Foreground="#78CDD7" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBlock Text="{Binding Lang.MigTestConnection}" Foreground="#B0D0D5"
+                           FontSize="13" FontWeight="Bold"/>
+            </StackPanel>
+        </Button>
+
+        <!-- Preview / Import Buttons -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,14">
+            <Button Width="150" Height="40" Margin="0,0,14,0"
+                    Click="PreviewButton_Click" Cursor="Hand"
+                    IsEnabled="{Binding IsNotBusy}">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="#247B7B" CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#44A1A0"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bg" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+                <StackPanel Orientation="Horizontal">
+                    <fa:ImageAwesome Icon="Search" Width="14" Height="14"
+                                     Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding Lang.MigPreview}" Foreground="White"
+                               FontSize="14" FontWeight="Bold"/>
+                </StackPanel>
+            </Button>
+
+            <Button Width="150" Height="40"
+                    Click="ImportButton_Click" Cursor="Hand"
+                    IsEnabled="{Binding CanImport}">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="#2E8B57" CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#3CB371"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bg" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+                <StackPanel Orientation="Horizontal">
+                    <fa:ImageAwesome Icon="Download" Width="14" Height="14"
+                                     Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding Lang.MigImport}" Foreground="White"
+                               FontSize="14" FontWeight="Bold"/>
+                </StackPanel>
+            </Button>
+        </StackPanel>
+
+        <!-- Progress Bar -->
+        <StackPanel Grid.Row="5" Margin="0,0,0,10"
+                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+            <ProgressBar x:Name="ProgressBar" Height="8" Minimum="0" Maximum="100"
+                         Background="#2A2A3E" Foreground="#44A1A0"
+                         BorderThickness="0" Margin="0,0,0,6"/>
+            <TextBlock x:Name="ProgressText" Foreground="#78CDD7" FontSize="12"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Results Area -->
+        <ScrollViewer Grid.Row="6" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+            <TextBlock x:Name="ResultsText"
+                       Foreground="#B0D0D5" FontSize="13"
+                       TextWrapping="Wrap" LineHeight="22"/>
+        </ScrollViewer>
+
+        <!-- Close Button -->
+        <Button Grid.Row="7" Width="130" Height="40"
+                HorizontalAlignment="Right"
+                Click="CloseButton_Click" Cursor="Hand">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="bg" Background="#2A2A3E" CornerRadius="10"
+                            BorderBrush="#444" BorderThickness="1.5">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bg" Property="Background" Value="#333350"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+            <TextBlock Text="{Binding Lang.Cancel}" Foreground="#B0B0CC"
+                       FontSize="14" FontWeight="Bold"/>
+        </Button>
+    </Grid>
+</Window>

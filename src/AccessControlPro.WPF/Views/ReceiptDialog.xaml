@@ -1,0 +1,90 @@
+<Window x:Class="AccessControlPro.WPF.Views.ReceiptDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="http://schemas.fontawesome.io/icons/"
+        xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers"
+        Title="{Binding PosReceipt, Source={x:Static helpers:LanguageManager.Instance}}"
+        Width="420" SizeToContent="Height" WindowStartupLocation="CenterOwner"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize"
+        FlowDirection="{Binding FlowDirection, Source={x:Static helpers:LanguageManager.Instance}}"
+        FontFamily="{StaticResource CairoFont}" FontWeight="Bold">
+    <Border Background="{StaticResource BgDarkBrush}" CornerRadius="16" Padding="28">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6" Color="Black"/>
+        </Border.Effect>
+        <StackPanel>
+            <!-- Header -->
+            <StackPanel HorizontalAlignment="Center" Margin="0,0,0,16">
+                <Border Width="50" Height="50" CornerRadius="25" HorizontalAlignment="Center"
+                        Margin="0,0,0,10">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#2E7D32" Offset="0"/>
+                            <GradientStop Color="#4CAF50" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <fa:ImageAwesome Icon="Check" Width="20" Height="20" Foreground="White"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="{Binding PosReceipt, Source={x:Static helpers:LanguageManager.Instance}}"
+                           FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"
+                           HorizontalAlignment="Center"/>
+                <TextBlock x:Name="DateText" FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                           HorizontalAlignment="Center" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <!-- Divider -->
+            <Border Height="1" Background="#15FFFFFF" Margin="0,0,0,12"/>
+
+            <!-- Player Info (if any) -->
+            <TextBlock x:Name="PlayerText" FontSize="13" Foreground="#FFB946"
+                       HorizontalAlignment="Center" Margin="0,0,0,8"
+                       Visibility="Collapsed"/>
+
+            <!-- Items List -->
+            <ItemsControl x:Name="ItemsList">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel Margin="0,4">
+                            <TextBlock Text="{Binding ProductName}" FontSize="13"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       TextTrimming="CharacterEllipsis" MaxWidth="220"/>
+                            <TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                       FontSize="13" Foreground="{StaticResource TextMutedBrush}">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0} x {1:N0} = {2:N0}">
+                                        <Binding Path="Quantity"/>
+                                        <Binding Path="Price"/>
+                                        <Binding Path="Total"/>
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </DockPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Divider -->
+            <Border Height="1" Background="#15FFFFFF" Margin="0,12"/>
+
+            <!-- Total -->
+            <DockPanel Margin="0,0,0,4">
+                <TextBlock Text="{Binding Total, Source={x:Static helpers:LanguageManager.Instance}}"
+                           FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                <TextBlock x:Name="TotalText" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                           FontSize="22" FontWeight="Bold" Foreground="{StaticResource PrimaryLightBrush}"/>
+            </DockPanel>
+
+            <!-- Payment Method -->
+            <TextBlock x:Name="PaymentText" FontSize="13" Foreground="{StaticResource TextMutedBrush}"
+                       HorizontalAlignment="Center" Margin="0,4,0,16"/>
+
+            <!-- Close Button -->
+            <Button Style="{StaticResource PrimaryButton}" Padding="0,12"
+                    Click="CloseClick" HorizontalContentAlignment="Center">
+                <TextBlock Text="{Binding OK, Source={x:Static helpers:LanguageManager.Instance}}" FontSize="14"/>
+            </Button>
+        </StackPanel>
+    </Border>
+</Window>

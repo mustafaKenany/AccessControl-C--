@@ -1,0 +1,199 @@
+<UserControl x:Class="AccessControlPro.Admin.Views.AdminDashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="http://schemas.fontawesome.io/icons/"
+             xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers;assembly=AccessControlPro.WPF"
+             Background="{StaticResource BgDarkBrush}">
+
+    <UserControl.Resources>
+        <helpers:BindingProxy x:Key="Proxy" Data="{Binding}"/>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="24,20">
+            <!-- Header -->
+            <TextBlock Text="{Binding Lang.DashTitle}" FontSize="24"
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="{Binding Lang.DashSubtitle}" FontSize="12"
+                       Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,20"/>
+
+            <!-- Stats Row 1 -->
+            <UniformGrid Columns="4" Margin="0,0,0,12">
+                <!-- Total Players -->
+                <Border Style="{StaticResource DashboardCard}" Margin="0,0,8,0">
+                    <StackPanel>
+                        <DockPanel>
+                            <Border Width="36" Height="36" CornerRadius="8" Background="#2044A1A0" DockPanel.Dock="Left" Margin="0,0,12,0">
+                                <fa:ImageAwesome Icon="Users" Width="16" Height="16" Foreground="{StaticResource PrimaryLightBrush}"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Lang.DashTotalPlayers}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding TotalPlayers}" FontSize="22" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+                <!-- Expiring -->
+                <Border Style="{StaticResource DashboardCard}" Margin="4,0">
+                    <DockPanel>
+                        <Border Width="36" Height="36" CornerRadius="8" Background="#20FFB946" DockPanel.Dock="Left" Margin="0,0,12,0">
+                            <fa:ImageAwesome Icon="ClockOutline" Width="16" Height="16" Foreground="#FFB946"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Lang.DashExpiring}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Text="{Binding ExpiringThisWeek}" FontSize="22" FontWeight="Bold" Foreground="#FFB946"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <!-- Monthly Revenue -->
+                <Border Style="{StaticResource DashboardCard}" Margin="4,0">
+                    <DockPanel>
+                        <Border Width="36" Height="36" CornerRadius="8" Background="#202ED47A" DockPanel.Dock="Left" Margin="0,0,12,0">
+                            <fa:ImageAwesome Icon="ArrowUp" Width="16" Height="16" Foreground="#2ED47A"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Lang.DashRevenue}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Text="{Binding MonthlyRevenue, StringFormat='{}{0:N0}'}" FontSize="22" FontWeight="Bold" Foreground="#2ED47A"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <!-- Monthly Expenses -->
+                <Border Style="{StaticResource DashboardCard}" Margin="8,0,0,0">
+                    <DockPanel>
+                        <Border Width="36" Height="36" CornerRadius="8" Background="#20F7685B" DockPanel.Dock="Left" Margin="0,0,12,0">
+                            <fa:ImageAwesome Icon="ArrowDown" Width="16" Height="16" Foreground="#F7685B"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Lang.DashExpenses}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Text="{Binding MonthlyExpenses, StringFormat='{}{0:N0}'}" FontSize="22" FontWeight="Bold" Foreground="#F7685B"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+            </UniformGrid>
+
+            <!-- Stats Row 2 -->
+            <UniformGrid Columns="4" Margin="0,0,0,16">
+                <Border Style="{StaticResource DashboardCard}" Margin="0,0,8,0">
+                    <DockPanel>
+                        <Border Width="36" Height="36" CornerRadius="8" Background="#2044A1A0" DockPanel.Dock="Left" Margin="0,0,12,0">
+                            <fa:ImageAwesome Icon="LineChart" Width="16" Height="16" Foreground="{StaticResource PrimaryLightBrush}"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Lang.DashProfit}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Text="{Binding NetProfit, StringFormat='{}{0:N0}'}" FontSize="22" FontWeight="Bold" Foreground="{StaticResource PrimaryLightBrush}"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <Border Style="{StaticResource DashboardCard}" Margin="4,0">
+                    <DockPanel>
+                        <Border Width="36" Height="36" CornerRadius="8" Background="#20FFB946" DockPanel.Dock="Left" Margin="0,0,12,0">
+                            <fa:ImageAwesome Icon="ExclamationTriangle" Width="16" Height="16" Foreground="#FFB946"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Lang.DashUnpaid}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Text="{Binding UnpaidBalances, StringFormat='{}{0:N0}'}" FontSize="22" FontWeight="Bold" Foreground="#FFB946"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <Border Style="{StaticResource DashboardCard}" Margin="4,0">
+                    <DockPanel>
+                        <Border Width="36" Height="36" CornerRadius="8" Background="#20F7685B" DockPanel.Dock="Left" Margin="0,0,12,0">
+                            <fa:ImageAwesome Icon="Truck" Width="16" Height="16" Foreground="#F7685B"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Lang.DashSupplierDebt}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Text="{Binding SupplierDebt, StringFormat='{}{0:N0}'}" FontSize="22" FontWeight="Bold" Foreground="#F7685B"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <Border Style="{StaticResource DashboardCard}" Margin="8,0,0,0">
+                    <DockPanel>
+                        <Border Width="36" Height="36" CornerRadius="8" Background="#20FFB946" DockPanel.Dock="Left" Margin="0,0,12,0">
+                            <fa:ImageAwesome Icon="Archive" Width="16" Height="16" Foreground="#FFB946"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Lang.DashLowStock}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Text="{Binding LowStockCount}" FontSize="22" FontWeight="Bold" Foreground="#FFB946"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+            </UniformGrid>
+
+            <!-- Bottom: Recent Activity + Low Stock -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="360"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Recent Audit Logs -->
+                <Border Grid.Column="0" Style="{StaticResource DashboardCard}" Margin="0,0,8,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <fa:ImageAwesome Icon="History" Width="14" Height="14" Foreground="{StaticResource PrimaryLightBrush}"
+                                             VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="{Binding Lang.DashRecentActivity}" FontSize="15"
+                                       Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding RecentLogs}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#0E2A2D" CornerRadius="8" Padding="12,8" Margin="0,0,0,4">
+                                        <DockPanel>
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Timestamp, StringFormat='{}{0:MM-dd HH:mm}'}"
+                                                       FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                            <StackPanel>
+                                                <TextBlock FontSize="12" Foreground="{StaticResource TextPrimaryBrush}">
+                                                    <Run Text="{Binding Action, Mode=OneWay}"/>
+                                                    <Run Text=" — " Foreground="{StaticResource TextMutedBrush}"/>
+                                                    <Run Text="{Binding EntityType, Mode=OneWay}"/>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding PerformedBy}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Low Stock Products -->
+                <Border Grid.Column="1" Style="{StaticResource DashboardCard}" Margin="8,0,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <fa:ImageAwesome Icon="ExclamationTriangle" Width="14" Height="14" Foreground="#FFB946"
+                                             VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="{Binding Lang.DashLowStock}" FontSize="15"
+                                       Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding LowStockProducts}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#0E2A2D" CornerRadius="8" Padding="12,8" Margin="0,0,0,4">
+                                        <DockPanel>
+                                            <Border DockPanel.Dock="Right" CornerRadius="8" Padding="8,3"
+                                                    Background="#20F7685B">
+                                                <TextBlock Text="{Binding Stock}" FontSize="13" FontWeight="Bold" Foreground="#F7685B"/>
+                                            </Border>
+                                            <TextBlock Text="{Binding Name}" FontSize="13"
+                                                       Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,653 @@
+<UserControl x:Class="AccessControlPro.Admin.Views.PurchaseOrdersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="http://schemas.fontawesome.io/icons/"
+             xmlns:conv="clr-namespace:AccessControlPro.WPF.Converters;assembly=AccessControlPro.WPF"
+             xmlns:h="clr-namespace:AccessControlPro.WPF.Helpers;assembly=AccessControlPro.WPF"
+             Background="{StaticResource BgDarkBrush}">
+
+    <UserControl.Resources>
+        <h:BindingProxy x:Key="Proxy" Data="{Binding}"/>
+        <conv:MovementTypeToStringConverter x:Key="MoveTypeString"/>
+        <conv:MovementTypeToColorConverter x:Key="MoveTypeColor"/>
+
+        <!-- Shared DataGrid styles -->
+        <Style x:Key="DarkGridHeader" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#143436"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridColumnHeader">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                              TextBlock.Foreground="{TemplateBinding Foreground}"
+                                              TextBlock.FontFamily="{TemplateBinding FontFamily}"
+                                              TextBlock.FontSize="{TemplateBinding FontSize}"
+                                              TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="DarkGridCell" TargetType="DataGridCell">
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Tab button style -->
+        <Style x:Key="TabBtn" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,12">
+            <StackPanel DockPanel.Dock="Left">
+                <TextBlock Text="{Binding Lang.PoTitle}" FontSize="24"
+                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                <TextBlock Text="{Binding Lang.PoSubtitle}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Tab Bar -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,16">
+            <Button Style="{StaticResource TabBtn}" Command="{Binding ShowTabCommand}" CommandParameter="orders"
+                    Content="{Binding Lang.PoHistory}">
+                <Button.Triggers>
+                    <EventTrigger RoutedEvent="Loaded"/>
+                </Button.Triggers>
+            </Button>
+            <Button Style="{StaticResource TabBtn}" Command="{Binding ShowTabCommand}" CommandParameter="movements"
+                    Content="{Binding Lang.SmTitle}" Margin="4,0,0,0"/>
+            <Button Style="{StaticResource TabBtn}" Command="{Binding ShowTabCommand}" CommandParameter="balances"
+                    Content="{Binding Lang.SupBalances}" Margin="4,0,0,0"/>
+            <Border Height="2" Background="#15FFFFFF" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"/>
+        </StackPanel>
+
+        <!-- TAB 0: Purchase Orders -->
+        <Grid Grid.Row="2">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding SelectedTab}" Value="0">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="400"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Order History Table -->
+            <Border Grid.Column="0" Style="{StaticResource DashboardCard}" Margin="0,0,8,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                        <fa:ImageAwesome Icon="History" Width="14" Height="14"
+                                         Foreground="{StaticResource PrimaryLightBrush}" Margin="0,0,8,0"
+                                         VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Lang.PoHistory}" FontSize="15"
+                                   Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding Orders}"
+                              SelectedItem="{Binding SelectedOrder}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              RowBackground="#0E2A2D"
+                              AlternatingRowBackground="#112F32"
+                              Foreground="{StaticResource TextPrimaryBrush}"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="#15FFFFFF"
+                              HeadersVisibility="Column"
+                              SelectionMode="Single"
+                              CanUserResizeRows="False"
+                              FontFamily="{StaticResource CairoFont}"
+                              FontSize="13"
+                              FontWeight="Bold"
+                              ColumnHeaderStyle="{StaticResource DarkGridHeader}"
+                              CellStyle="{StaticResource DarkGridCell}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="#" Binding="{Binding Id}" Width="50"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.PoSupplier, Source={StaticResource Proxy}}"
+                                                Binding="{Binding SupplierName}" Width="*"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.PoDate, Source={StaticResource Proxy}}"
+                                                Binding="{Binding OrderDate, StringFormat={}{0:yyyy-MM-dd}}" Width="110"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.PoTotal, Source={StaticResource Proxy}}"
+                                                Binding="{Binding TotalAmount, StringFormat={}{0:N0}}" Width="90"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.PoPaid, Source={StaticResource Proxy}}"
+                                                Binding="{Binding AmountPaid, StringFormat={}{0:N0}}" Width="80"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.PoRemaining, Source={StaticResource Proxy}}"
+                                                Binding="{Binding RemainingAmount, StringFormat={}{0:N0}}" Width="80"/>
+                            <DataGridTemplateColumn Header="{Binding Data.Lang.PoStatus, Source={StaticResource Proxy}}" Width="85">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="8" Padding="6,3" HorizontalAlignment="Left">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#F7685B"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding PaymentStatus}" Value="Paid">
+                                                            <Setter Property="Background" Value="#2ED47A"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding PaymentStatus}" Value="Partial">
+                                                            <Setter Property="Background" Value="#FFB946"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding PaymentStatus}" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Order Detail + Payment -->
+                    <Border Grid.Row="2" Background="{StaticResource BgInputBrush}" CornerRadius="10"
+                            Padding="14,10" Margin="0,10,0,0"
+                            Visibility="{Binding SelectedOrder, Converter={StaticResource NullToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock FontSize="13" FontWeight="Bold" Foreground="{StaticResource PrimaryLightBrush}" Margin="0,0,0,6">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="PO #{0} — {1}">
+                                        <Binding Path="SelectedOrder.Id"/>
+                                        <Binding Path="SelectedOrder.SupplierName"/>
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <ItemsControl ItemsSource="{Binding SelectedOrder.Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <DockPanel Margin="0,2">
+                                            <TextBlock Text="{Binding ProductName}" FontSize="12"
+                                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                                            <TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" FontSize="12"
+                                                       Foreground="{StaticResource TextMutedBrush}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="{}{0} x {1:N0} = {2:N0}">
+                                                        <Binding Path="Quantity"/>
+                                                        <Binding Path="UnitCost"/>
+                                                        <Binding Path="TotalCost"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Payment summary -->
+                            <Border Height="1" Background="#15FFFFFF" Margin="0,8,0,6"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{Binding Lang.PoDiscount}" FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
+                                    <TextBlock Text="{Binding SelectedOrder.Discount, StringFormat='{}{0:N0}'}" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{Binding Lang.PoPaid}" FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
+                                    <TextBlock Text="{Binding SelectedOrder.AmountPaid, StringFormat='{}{0:N0}'}" FontSize="13" Foreground="#2ED47A"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="{Binding Lang.PoRemaining}" FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
+                                    <TextBlock Text="{Binding SelectedOrder.RemainingAmount, StringFormat='{}{0:N0}'}" FontSize="13" Foreground="#FFB946"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Pay supplier -->
+                            <DockPanel Margin="0,8,0,0">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Padding="12,6"
+                                        Command="{Binding PayOrderCommand}" Cursor="Hand" Margin="6,0,0,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <fa:ImageAwesome Icon="Money" Width="11" Height="11" Foreground="White" Margin="0,0,5,0"/>
+                                        <TextBlock Text="{Binding Lang.PoPay}" FontSize="12" Foreground="White"/>
+                                    </StackPanel>
+                                </Button>
+                                <TextBox Text="{Binding PayAmount, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource DarkTextBox}" Padding="8,5"/>
+                            </DockPanel>
+
+                            <TextBlock Text="{Binding SelectedOrder.Notes}" FontSize="11"
+                                       Foreground="{StaticResource TextMutedBrush}" Margin="0,6,0,0"
+                                       TextWrapping="Wrap" Visibility="{Binding SelectedOrder.Notes, Converter={StaticResource NullToVisibilityConverter}}"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Right: New Purchase Order Builder -->
+            <Border Grid.Column="1" Style="{StaticResource DashboardCard}" Margin="8,0,0,0">
+                <DockPanel>
+                    <!-- Title -->
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,16">
+                        <fa:ImageAwesome Icon="PlusCircle" Width="16" Height="16"
+                                         Foreground="{StaticResource PrimaryLightBrush}"
+                                         VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding Lang.PoNewOrder}" FontSize="16"
+                                   Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Supplier (using ItemTemplate to fix display) -->
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding Lang.PoSupplier}" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                    <ComboBox DockPanel.Dock="Top" ItemsSource="{Binding Suppliers}"
+                              SelectedItem="{Binding SelectedSupplier}"
+                              Style="{StaticResource DarkComboBox}"
+                              Margin="0,0,0,14">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" Foreground="#E0E0E0"
+                                           FontFamily="{StaticResource CairoFont}" FontWeight="Bold"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <!-- Add Item Row -->
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding Lang.PoAddItem}" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                    <!-- Labels -->
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="70"/>
+                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding Lang.SmProduct}" FontSize="10"
+                                   Foreground="{StaticResource TextMutedBrush}" Margin="2,0"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Lang.SmQty}" FontSize="10"
+                                   Foreground="{StaticResource TextMutedBrush}" Margin="2,0"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Lang.SmPrice}" FontSize="10"
+                                   Foreground="{StaticResource TextMutedBrush}" Margin="2,0"/>
+                    </Grid>
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="70"/>
+                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Grid.Column="0" ItemsSource="{Binding Products}"
+                                  SelectedItem="{Binding SelectedProduct}"
+                                  Style="{StaticResource DarkComboBox}" Margin="0,0,4,0">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" Foreground="#E0E0E0"
+                                               FontFamily="{StaticResource CairoFont}" FontWeight="Bold"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBox Grid.Column="1" Text="{Binding EditQuantity, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,4,0"/>
+                        <TextBox Grid.Column="2" Text="{Binding EditUnitCost, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,4,0"/>
+                        <Button Grid.Column="3" Style="{StaticResource PrimaryButton}" Padding="10,8"
+                                Command="{Binding AddItemCommand}" Cursor="Hand">
+                            <fa:ImageAwesome Icon="Plus" Width="12" Height="12" Foreground="White"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- Submit + Total at bottom -->
+                    <StackPanel DockPanel.Dock="Bottom">
+                        <Border Height="1" Background="#15FFFFFF" Margin="0,8,0,10"/>
+
+                        <!-- Discount + Amount Paid -->
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="{Binding Lang.PoDiscount}" FontSize="11"
+                                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding EditDiscount, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource DarkTextBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="{Binding Lang.PoPaid}" FontSize="11"
+                                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding EditAmountPaid, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource DarkTextBox}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Notes -->
+                        <TextBlock Text="{Binding Lang.PoNotes}" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                        <TextBox Text="{Binding EditNotes, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"
+                                 Height="40" TextWrapping="Wrap" AcceptsReturn="True"/>
+
+                        <DockPanel Margin="0,0,0,12">
+                            <TextBlock Text="{Binding Lang.PoTotal}" FontSize="16" FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                            <TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                       Text="{Binding PoTotal, StringFormat='{}{0:N0}'}"
+                                       FontSize="22" FontWeight="Bold"
+                                       Foreground="{StaticResource PrimaryLightBrush}"/>
+                        </DockPanel>
+
+                        <Button Style="{StaticResource PrimaryButton}" Padding="0,12"
+                                Command="{Binding SubmitOrderCommand}" Cursor="Hand"
+                                HorizontalContentAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="Check" Width="14" Height="14"
+                                                 Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Lang.PoSubmit}" FontSize="14" Foreground="White"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- PO Items List -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
+                        <ItemsControl ItemsSource="{Binding PoItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource BgInputBrush}" CornerRadius="10"
+                                            Padding="12,8" Margin="0,0,0,4">
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Cursor="Hand"
+                                                    Command="{Binding DataContext.RemoveItemCommand, Source={StaticResource Proxy}}"
+                                                    CommandParameter="{Binding}"
+                                                    Background="Transparent" BorderThickness="0" Padding="6">
+                                                <fa:ImageAwesome Icon="Times" Width="10" Height="10" Foreground="#F7685B"/>
+                                            </Button>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding ProductName}" FontSize="13" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding StringFormat="{}{0} x {1:N0} = {2:N0}">
+                                                            <Binding Path="Quantity"/>
+                                                            <Binding Path="UnitCost"/>
+                                                            <Binding Path="TotalCost"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- TAB 1: Stock Movements -->
+        <Grid Grid.Row="2">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding SelectedTab}" Value="1">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+
+            <Border Style="{StaticResource DashboardCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Filter Bar -->
+                    <WrapPanel Grid.Row="0" Margin="0,0,0,14">
+                        <fa:ImageAwesome Icon="Exchange" Width="14" Height="14"
+                                         Foreground="{StaticResource PrimaryLightBrush}" Margin="0,0,10,0"
+                                         VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Lang.SmTitle}" FontSize="15"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,20,0"/>
+
+                        <!-- Product filter -->
+                        <TextBlock Text="{Binding Lang.SmProduct}" FontSize="12"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox Width="180" ItemsSource="{Binding AllProducts}"
+                                  SelectedItem="{Binding FilterProduct}"
+                                  Style="{StaticResource DarkComboBox}" Margin="0,0,14,0">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" Foreground="#E0E0E0"
+                                               FontFamily="{StaticResource CairoFont}" FontWeight="Bold"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <!-- Type filter -->
+                        <TextBlock Text="{Binding Lang.SmType}" FontSize="12"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox Width="130" SelectedIndex="{Binding FilterTypeIndex}"
+                                  Style="{StaticResource DarkComboBox}" Margin="0,0,14,0">
+                            <ComboBoxItem Content="{Binding Lang.FinAll}"/>
+                            <ComboBoxItem Content="{Binding Lang.SmStockIn}"/>
+                            <ComboBoxItem Content="{Binding Lang.SmStockOut}"/>
+                        </ComboBox>
+
+                        <!-- Clear filter -->
+                        <Button Style="{StaticResource PrimaryButton}" Padding="8,6" Cursor="Hand"
+                                Command="{Binding ClearMovementFilterCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="Eraser" Width="12" Height="12" Foreground="White" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding Lang.SmClear}" FontSize="12" Foreground="White"/>
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+
+                    <!-- Movements DataGrid -->
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding FilteredMovements}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              RowBackground="#0E2A2D"
+                              AlternatingRowBackground="#112F32"
+                              Foreground="{StaticResource TextPrimaryBrush}"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="#15FFFFFF"
+                              HeadersVisibility="Column"
+                              SelectionMode="Single"
+                              CanUserResizeRows="False"
+                              FontFamily="{StaticResource CairoFont}"
+                              FontSize="13"
+                              FontWeight="Bold"
+                              ColumnHeaderStyle="{StaticResource DarkGridHeader}"
+                              CellStyle="{StaticResource DarkGridCell}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{Binding Data.Lang.SmDate, Source={StaticResource Proxy}}"
+                                                Binding="{Binding CreatedAt, StringFormat={}{0:yyyy-MM-dd HH:mm}}" Width="140"/>
+
+                            <DataGridTemplateColumn Header="{Binding Data.Lang.SmType, Source={StaticResource Proxy}}" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{Binding Type, Converter={StaticResource MoveTypeColor}}"
+                                                CornerRadius="8" Padding="8,3" HorizontalAlignment="Left" Opacity="0.85">
+                                            <TextBlock Text="{Binding Type, Converter={StaticResource MoveTypeString}}"
+                                                       FontSize="11" FontWeight="Bold" Foreground="White"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTextColumn Header="{Binding Data.Lang.SmProduct, Source={StaticResource Proxy}}"
+                                                Binding="{Binding ProductName}" Width="*"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.SmQty, Source={StaticResource Proxy}}"
+                                                Binding="{Binding Quantity}" Width="70"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.SmPrice, Source={StaticResource Proxy}}"
+                                                Binding="{Binding UnitPrice, StringFormat={}{0:N0}}" Width="90"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.SmRef, Source={StaticResource Proxy}}"
+                                                Binding="{Binding Reference}" Width="100"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.SmSupplier, Source={StaticResource Proxy}}"
+                                                Binding="{Binding SupplierName}" Width="120"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.PoBy, Source={StaticResource Proxy}}"
+                                                Binding="{Binding CreatedBy}" Width="90"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- TAB 2: Supplier Balances -->
+        <Grid Grid.Row="2">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding SelectedTab}" Value="2">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+
+            <Border Style="{StaticResource DashboardCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Title -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,14">
+                        <fa:ImageAwesome Icon="Bank" Width="14" Height="14"
+                                         Foreground="{StaticResource PrimaryLightBrush}" Margin="0,0,8,0"
+                                         VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Lang.SupBalances}" FontSize="15"
+                                   Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Supplier Balances DataGrid -->
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding SupplierBalances}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              RowBackground="#0E2A2D"
+                              AlternatingRowBackground="#112F32"
+                              Foreground="{StaticResource TextPrimaryBrush}"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="#15FFFFFF"
+                              HeadersVisibility="Column"
+                              SelectionMode="Single"
+                              CanUserResizeRows="False"
+                              FontFamily="{StaticResource CairoFont}"
+                              FontSize="13"
+                              FontWeight="Bold"
+                              ColumnHeaderStyle="{StaticResource DarkGridHeader}"
+                              CellStyle="{StaticResource DarkGridCell}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{Binding Data.Lang.SupName, Source={StaticResource Proxy}}"
+                                                Binding="{Binding SupplierName}" Width="*"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.SupPhone, Source={StaticResource Proxy}}"
+                                                Binding="{Binding Phone}" Width="120"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.SupOrders, Source={StaticResource Proxy}}"
+                                                Binding="{Binding TotalOrders}" Width="80"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.PoTotal, Source={StaticResource Proxy}}"
+                                                Binding="{Binding TotalAmount, StringFormat={}{0:N0}}" Width="110"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.PoDiscount, Source={StaticResource Proxy}}"
+                                                Binding="{Binding TotalDiscount, StringFormat={}{0:N0}}" Width="100"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.PoPaid, Source={StaticResource Proxy}}"
+                                                Binding="{Binding TotalPaid, StringFormat={}{0:N0}}" Width="100"/>
+                            <DataGridTemplateColumn Header="{Binding Data.Lang.PoRemaining, Source={StaticResource Proxy}}" Width="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding TotalRemaining, StringFormat={}{0:N0}}"
+                                                   FontSize="14" FontWeight="Bold" Foreground="#F7685B"
+                                                   FontFamily="{StaticResource CairoFont}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Width="Auto">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Style="{StaticResource PrimaryButton}" Padding="10,5" Cursor="Hand"
+                                                Command="{Binding Data.ViewSupplierOrdersCommand, Source={StaticResource Proxy}}"
+                                                CommandParameter="{Binding}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <fa:ImageAwesome Icon="Eye" Width="11" Height="11" Foreground="White" Margin="0,0,5,0"/>
+                                                <TextBlock Text="{Binding Data.Lang.PoPay, Source={StaticResource Proxy}}"
+                                                           FontSize="11" Foreground="White"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

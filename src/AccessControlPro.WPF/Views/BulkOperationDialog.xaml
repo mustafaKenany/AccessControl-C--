@@ -1,0 +1,116 @@
+<Window x:Class="AccessControlPro.WPF.Views.BulkOperationDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="http://schemas.fontawesome.io/icons/"
+        xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers"
+        Title="{Binding BulkOperations, Source={x:Static helpers:LanguageManager.Instance}}"
+        Width="500" SizeToContent="Height" WindowStartupLocation="CenterOwner"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize"
+        FlowDirection="{Binding FlowDirection, Source={x:Static helpers:LanguageManager.Instance}}"
+        FontFamily="{StaticResource CairoFont}" FontWeight="Bold">
+    <Border Background="{StaticResource BgDarkBrush}" CornerRadius="16" Padding="28">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6" Color="Black"/>
+        </Border.Effect>
+        <StackPanel>
+            <!-- Header -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                <fa:ImageAwesome Icon="ListAlt" Width="24" Height="24"
+                                 Foreground="{StaticResource PrimaryLightBrush}"
+                                 VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBlock Text="{Binding BulkOperations, Source={x:Static helpers:LanguageManager.Instance}}"
+                           FontSize="20" FontWeight="Bold"
+                           Foreground="{StaticResource TextPrimaryBrush}"/>
+            </StackPanel>
+
+            <Border Height="1" Background="#15FFFFFF" Margin="0,0,0,16"/>
+
+            <!-- Operation Type -->
+            <TextBlock Text="{Binding BulkSelectOperation, Source={x:Static helpers:LanguageManager.Instance}}"
+                       FontSize="13" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"/>
+            <ComboBox x:Name="OperationCombo" Style="{StaticResource DarkComboBox}"
+                      Margin="0,0,0,14" SelectionChanged="OperationCombo_SelectionChanged">
+                <ComboBoxItem>
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="PauseCircle" Width="14" Height="14" Foreground="#78CDD7"
+                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding BulkFreeze, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                    </StackPanel>
+                </ComboBoxItem>
+                <ComboBoxItem>
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="PlayCircle" Width="14" Height="14" Foreground="#2ED47A"
+                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding BulkUnfreeze, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                    </StackPanel>
+                </ComboBoxItem>
+                <ComboBoxItem>
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="CalendarPlusOutline" Width="14" Height="14" Foreground="#FFB946"
+                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding BulkExtend, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                    </StackPanel>
+                </ComboBoxItem>
+            </ComboBox>
+
+            <!-- Freeze Reason (only for freeze) -->
+            <StackPanel x:Name="FreezeReasonPanel" Visibility="Collapsed" Margin="0,0,0,14">
+                <TextBlock Text="{Binding EnterFreezeReason, Source={x:Static helpers:LanguageManager.Instance}}"
+                           FontSize="13" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,6"/>
+                <TextBox x:Name="ReasonTextBox" Style="{StaticResource DarkTextBox}" Padding="10,8"/>
+            </StackPanel>
+
+            <!-- Extend Days (only for extend) -->
+            <StackPanel x:Name="ExtendDaysPanel" Visibility="Collapsed" Margin="0,0,0,14">
+                <TextBlock Text="{Binding BulkExtendDays, Source={x:Static helpers:LanguageManager.Instance}}"
+                           FontSize="13" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,6"/>
+                <TextBox x:Name="DaysTextBox" Style="{StaticResource DarkTextBox}" Padding="10,8"
+                         Text="30"/>
+            </StackPanel>
+
+            <!-- Target -->
+            <TextBlock Text="{Binding BulkTarget, Source={x:Static helpers:LanguageManager.Instance}}"
+                       FontSize="13" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"/>
+            <ComboBox x:Name="TargetCombo" Style="{StaticResource DarkComboBox}" Margin="0,0,0,16">
+                <ComboBoxItem>
+                    <TextBlock Text="{Binding BulkAllActive, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                </ComboBoxItem>
+                <ComboBoxItem>
+                    <TextBlock Text="{Binding BulkExpiring7, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                </ComboBoxItem>
+                <ComboBoxItem>
+                    <TextBlock Text="{Binding BulkExpired, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                </ComboBoxItem>
+                <ComboBoxItem>
+                    <TextBlock Text="{Binding BulkFrozenPlayers, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                </ComboBoxItem>
+            </ComboBox>
+
+            <!-- Buttons -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0" Style="{StaticResource PrimaryButton}" Padding="0,12"
+                        Click="ExecuteClick" HorizontalContentAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Play" Width="13" Height="13"
+                                         Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding BulkExecute, Source={x:Static helpers:LanguageManager.Instance}}"
+                                   FontSize="14"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Padding="0,12"
+                        Click="CancelClick" HorizontalContentAlignment="Center">
+                    <TextBlock Text="{Binding Cancel, Source={x:Static helpers:LanguageManager.Instance}}"
+                               FontSize="14"/>
+                </Button>
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

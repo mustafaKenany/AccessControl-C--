@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <PlatformTarget>x86</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AccessControlPro.WPF\AccessControlPro.WPF.csproj" />
+    <ProjectReference Include="..\AccessControlPro.Application\AccessControlPro.Application.csproj" />
+    <ProjectReference Include="..\AccessControlPro.Infrastructure\AccessControlPro.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="FontAwesome.WPF" Version="4.7.0.9" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.*" />
+  </ItemGroup>
+
+  <!-- Link font files so pack URIs in shared styles resolve correctly -->
+  <ItemGroup>
+    <Resource Include="..\AccessControlPro.WPF\Resources\Fonts\Cairo-Regular.ttf" Link="Resources\Fonts\Cairo-Regular.ttf" />
+    <Resource Include="..\AccessControlPro.WPF\Resources\Fonts\Cairo-Bold.ttf" Link="Resources\Fonts\Cairo-Bold.ttf" />
+    <Resource Include="..\AccessControlPro.WPF\Resources\Fonts\Cairo-SemiBold.ttf" Link="Resources\Fonts\Cairo-SemiBold.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Allow duplicate content files during publish (Admin has its own appsettings.json, WPF also has one) -->
+  <PropertyGroup>
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+  </PropertyGroup>
+
+</Project>

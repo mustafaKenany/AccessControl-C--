@@ -1,0 +1,154 @@
+<Window x:Class="AccessControlPro.WPF.Views.ActivationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="http://schemas.fontawesome.io/icons/"
+        Title="Software Activation"
+        Width="520" Height="480"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        FontFamily="{StaticResource CairoFont}"
+        FontWeight="Bold">
+
+    <Border CornerRadius="16">
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#0A1A1D" Offset="0"/>
+                <GradientStop Color="#1A1A2E" Offset="0.5"/>
+                <GradientStop Color="#0A1A1D" Offset="1"/>
+            </LinearGradientBrush>
+        </Border.Background>
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6" Color="Black"/>
+        </Border.Effect>
+
+        <Grid Margin="30">
+            <!-- Drag area -->
+            <Border Background="Transparent" MouseLeftButtonDown="DragBar_MouseLeftButtonDown"
+                    VerticalAlignment="Top" Height="40" Panel.ZIndex="0"/>
+
+            <StackPanel VerticalAlignment="Center">
+                <!-- Icon -->
+                <fa:FontAwesome Icon="Key" FontSize="48" Foreground="#FF6B35"
+                                HorizontalAlignment="Center" Margin="0,0,0,10"/>
+
+                <!-- Title -->
+                <TextBlock Text="Software Activation" FontSize="22" Foreground="White"
+                           HorizontalAlignment="Center" Margin="0,0,0,5"/>
+
+                <!-- Status Message -->
+                <TextBlock x:Name="StatusText" FontSize="13" Foreground="#FF6B6B"
+                           HorizontalAlignment="Center" Margin="0,0,0,20"
+                           TextWrapping="Wrap" TextAlignment="Center"/>
+
+                <!-- Machine ID -->
+                <TextBlock Text="Your Machine ID:" FontSize="13" Foreground="#AAB8C2"
+                           Margin="0,0,0,5"/>
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="MachineIdBox" IsReadOnly="True" FontSize="16"
+                             FontFamily="Consolas" Background="#1E2D3D" Foreground="#4FC3F7"
+                             BorderBrush="#2A3A4A" BorderThickness="1" Padding="10,8"
+                             VerticalContentAlignment="Center"/>
+                    <Button Grid.Column="1" Content="Copy" Width="60" Margin="8,0,0,0"
+                            Click="CopyButton_Click"
+                            Background="#2A3A4A" Foreground="White" BorderBrush="#3A4A5A"
+                            BorderThickness="1" Cursor="Hand" FontSize="12"/>
+                </Grid>
+
+                <!-- License Key Input -->
+                <TextBlock Text="Enter Activation Code:" FontSize="13" Foreground="#AAB8C2"
+                           Margin="0,0,0,5"/>
+                <TextBox x:Name="LicenseKeyBox" FontSize="16" FontFamily="Consolas"
+                         Background="#1E2D3D" Foreground="White" BorderBrush="#2A3A4A"
+                         BorderThickness="1" Padding="10,8" Margin="0,0,0,5"
+                         MaxLength="24" CharacterCasing="Upper"
+                         VerticalContentAlignment="Center"
+                         TextChanged="LicenseKeyBox_TextChanged"/>
+                <TextBlock Text="Format: XXXX-XXXX-XXXX-XXXX-XXXX" FontSize="11"
+                           Foreground="#556677" Margin="0,0,0,20"/>
+
+                <!-- Error Message -->
+                <TextBlock x:Name="ErrorText" FontSize="12" Foreground="#FF6B6B"
+                           HorizontalAlignment="Center" Margin="0,0,0,15"
+                           Visibility="Collapsed" TextWrapping="Wrap" TextAlignment="Center"/>
+
+                <!-- Buttons -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button x:Name="ActivateButton" Content="Activate" Grid.Column="0"
+                            Height="42" Margin="0,0,8,0" FontSize="14"
+                            Click="ActivateButton_Click" IsDefault="True"
+                            Background="#FF6B35" Foreground="White" BorderThickness="0"
+                            Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                    CornerRadius="8" Padding="10,8">
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#FF8C55"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <Button Content="Exit" Grid.Column="1" Height="42" Margin="8,0,0,0"
+                            FontSize="14" Click="ExitButton_Click"
+                            Background="#3A3A4A" Foreground="#AAB8C2" BorderThickness="0"
+                            Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                    CornerRadius="8" Padding="10,8">
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#4A4A5A"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+
+                <!-- Developer Contact Info -->
+                <Border Background="#111D25" CornerRadius="8" Padding="12,8" Margin="0,15,0,0">
+                    <StackPanel>
+                        <TextBlock x:Name="DevCompanyText" FontSize="12" Foreground="#4FC3F7"
+                                   HorizontalAlignment="Center" FontWeight="Bold" Margin="0,0,0,4"/>
+                        <TextBlock x:Name="DevContactText" FontSize="11" Foreground="#8899AA"
+                                   HorizontalAlignment="Center" TextWrapping="Wrap"
+                                   TextAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

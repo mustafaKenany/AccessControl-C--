@@ -1,0 +1,310 @@
+<UserControl x:Class="AccessControlPro.Admin.Views.UsersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="http://schemas.fontawesome.io/icons/"
+             xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers;assembly=AccessControlPro.WPF"
+             Background="{StaticResource BgDarkBrush}">
+
+    <UserControl.Resources>
+        <helpers:BindingProxy x:Key="Proxy" Data="{Binding}"/>
+    </UserControl.Resources>
+
+    <Grid Margin="24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,16">
+            <StackPanel DockPanel.Dock="Left">
+                <TextBlock Text="{Binding Lang.NavUsers}" FontSize="24"
+                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                <TextBlock Text="{Binding Lang.UsrSubtitle}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
+            </StackPanel>
+            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}"
+                    HorizontalAlignment="Right" VerticalAlignment="Center"
+                    Command="{Binding StartAddUserCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <fa:ImageAwesome Icon="UserPlus" Width="14" Height="14"
+                                     Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding Lang.UsrAddUser}" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+        </DockPanel>
+
+        <!-- Content: Users Table + Edit Panel -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Users Table -->
+            <Border Grid.Column="0" Style="{StaticResource DashboardCard}" Margin="0,0,8,0">
+                <Grid>
+                    <!-- Loading -->
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
+                        <fa:ImageAwesome Icon="Spinner" Width="24" Height="24"
+                                         Foreground="{StaticResource PrimaryLightBrush}"
+                                         SpinDuration="1" Spin="True" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding Lang.UsrLoading}" Foreground="{StaticResource TextMutedBrush}"
+                                   HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                    </StackPanel>
+
+                    <!-- DataGrid -->
+                    <DataGrid ItemsSource="{Binding Users}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              RowBackground="#0E2A2D"
+                              AlternatingRowBackground="#112F32"
+                              Foreground="{StaticResource TextPrimaryBrush}"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="#15FFFFFF"
+                              HeadersVisibility="Column"
+                              SelectionMode="Single"
+                              CanUserResizeRows="False"
+                              FontFamily="{StaticResource CairoFont}"
+                              FontSize="13"
+                              FontWeight="Bold"
+                              Visibility="{Binding IsLoading, Converter={StaticResource InverseBoolToVisibility}}">
+
+                        <DataGrid.ColumnHeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#143436"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+                                <Setter Property="FontSize" Value="13"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Padding" Value="14,10"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="DataGridColumnHeader">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                                  TextBlock.Foreground="{TemplateBinding Foreground}"
+                                                                  TextBlock.FontFamily="{TemplateBinding FontFamily}"
+                                                                  TextBlock.FontSize="{TemplateBinding FontSize}"
+                                                                  TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </DataGrid.ColumnHeaderStyle>
+
+                        <DataGrid.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="Padding" Value="14,8"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="DataGridCell">
+                                            <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                                <ContentPresenter VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </DataGrid.CellStyle>
+
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{Binding Data.Lang.UsrID, Source={StaticResource Proxy}}" Binding="{Binding Id}" Width="60"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.UsrUsername, Source={StaticResource Proxy}}" Binding="{Binding Username}" Width="*"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.UsrDisplayName, Source={StaticResource Proxy}}" Binding="{Binding DisplayName}" Width="*"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.UsrRole, Source={StaticResource Proxy}}" Binding="{Binding Role}" Width="100"/>
+                            <DataGridTemplateColumn Header="{Binding Data.Lang.UsrStatus, Source={StaticResource Proxy}}" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="8" Padding="8,4" HorizontalAlignment="Left">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#302ED47A"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                                            <Setter Property="Background" Value="#30F7685B"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock FontSize="11">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="{Binding DataContext.Lang.UsrActive, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                                                <Setter Property="Text" Value="{Binding DataContext.Lang.UsrDisabled, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                                                                <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="" Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Style="{StaticResource SecondaryButton}"
+                                                Padding="10,6" Cursor="Hand"
+                                                Command="{Binding DataContext.StartEditUserCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}">
+                                            <fa:ImageAwesome Icon="Pencil" Width="12" Height="12"
+                                                             Foreground="{StaticResource AccentBrush}"/>
+                                        </Button>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <!-- Edit Panel (slides in when editing) -->
+            <Border Grid.Column="1" Width="420" Style="{StaticResource DashboardCard}" Margin="8,0,0,0"
+                    Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- Panel Title -->
+                        <DockPanel Margin="0,0,0,20">
+                            <TextBlock DockPanel.Dock="Left" FontSize="16"
+                                       Foreground="{StaticResource TextPrimaryBrush}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="{Binding Lang.UsrEditUser}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsAddingNew}" Value="True">
+                                                <Setter Property="Text" Value="{Binding Lang.UsrAddNewUser}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <Button DockPanel.Dock="Right" Background="Transparent" BorderThickness="0"
+                                    Cursor="Hand" Command="{Binding CancelEditCommand}"
+                                    HorizontalAlignment="Right">
+                                <fa:ImageAwesome Icon="Times" Width="14" Height="14"
+                                                 Foreground="{StaticResource TextMutedBrush}"/>
+                            </Button>
+                        </DockPanel>
+
+                        <!-- Username -->
+                        <TextBlock Text="{Binding Lang.UsrUsername}" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                        <TextBox Text="{Binding EditUsername, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"
+                                 IsEnabled="{Binding IsAddingNew}"/>
+
+                        <!-- Display Name -->
+                        <TextBlock Text="{Binding Lang.UsrDisplayName}" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                        <TextBox Text="{Binding EditDisplayName, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"/>
+
+                        <!-- Role -->
+                        <TextBlock Text="{Binding Lang.UsrRole}" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                        <ComboBox ItemsSource="{Binding AvailableRoles}"
+                                  SelectedItem="{Binding EditRole}"
+                                  Style="{StaticResource DarkComboBox}" Margin="0,0,0,14"/>
+
+                        <!-- Password -->
+                        <TextBlock FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="{Binding Lang.UsrNewPassword}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsAddingNew}" Value="True">
+                                            <Setter Property="Text" Value="{Binding Lang.UsrPassword}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBox Text="{Binding EditPassword, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"/>
+
+                        <!-- Active Toggle -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,14"
+                                    Visibility="{Binding IsAddingNew, Converter={StaticResource InverseBoolToVisibility}}">
+                            <CheckBox IsChecked="{Binding EditIsActive}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="{Binding Lang.UsrAccountActive}" FontSize="13"
+                                       Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Permissions Section -->
+                        <Border Height="1" Background="#15FFFFFF" Margin="0,4,0,14"/>
+
+                        <DockPanel Margin="0,0,0,10">
+                            <TextBlock DockPanel.Dock="Left" Text="{Binding Lang.PermPermissions}" FontSize="14"
+                                       Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Style="{StaticResource SecondaryButton}" Padding="8,4" Margin="0,0,6,0"
+                                        Command="{Binding SelectAllPermissionsCommand}" Cursor="Hand">
+                                    <TextBlock Text="{Binding Lang.PermSelectAll}" FontSize="11"/>
+                                </Button>
+                                <Button Style="{StaticResource SecondaryButton}" Padding="8,4"
+                                        Command="{Binding ClearAllPermissionsCommand}" Cursor="Hand">
+                                    <TextBlock Text="{Binding Lang.PermClearAll}" FontSize="11"/>
+                                </Button>
+                            </StackPanel>
+                        </DockPanel>
+
+                        <TextBlock Text="{Binding Lang.PermAdminNote}" FontSize="11"
+                                   Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" TextWrapping="Wrap"/>
+
+                        <!-- Permissions Grouped List -->
+                        <ItemsControl ItemsSource="{Binding EditPermissions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="12,2,0,2">
+                                        <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="{Binding DisplayName}" FontSize="12"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Border Height="1" Background="#15FFFFFF" Margin="0,14,0,14"/>
+
+                        <!-- Error Message -->
+                        <TextBlock Text="{Binding ErrorMessage}" FontSize="12"
+                                   Foreground="{StaticResource DangerBrush}" Margin="0,0,0,10"
+                                   TextWrapping="Wrap"
+                                   Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}"/>
+
+                        <!-- Save / Cancel Buttons -->
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <Button Style="{StaticResource PrimaryButton}" Padding="20,10"
+                                    Command="{Binding SaveUserCommand}" Margin="0,0,10,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <fa:ImageAwesome Icon="Check" Width="12" Height="12"
+                                                     Foreground="White" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="{Binding Lang.UsrSave}" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource SecondaryButton}" Padding="20,10"
+                                    Command="{Binding CancelEditCommand}">
+                                <TextBlock Text="{Binding Lang.UsrCancel}" FontSize="13"/>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

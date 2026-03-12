@@ -1,0 +1,121 @@
+<Window x:Class="AccessControlPro.WPF.Views.SelectDoorDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers"
+        Title="{Binding DispSelectDoor, Source={x:Static helpers:LanguageManager.Instance}}"
+        Width="400" Height="400"
+        FlowDirection="{Binding FlowDirection, Source={x:Static helpers:LanguageManager.Instance}}"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        WindowStyle="SingleBorderWindow"
+        Background="#1E1E2E"
+        FontFamily="{StaticResource CairoFont}" FontWeight="Bold">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="{Binding DispSelectDoor, Source={x:Static helpers:LanguageManager.Instance}}"
+                   FontSize="18" FontWeight="SemiBold"
+                   Foreground="#E0E0E0" Margin="0,0,0,8"/>
+
+        <TextBlock Grid.Row="1"
+                   Text="{Binding DispSelectDoorDesc, Source={x:Static helpers:LanguageManager.Instance}}"
+                   FontSize="12" Foreground="#8888A0"
+                   TextWrapping="Wrap" Margin="0,0,0,16"/>
+
+        <!-- Door List (Multi-Select) -->
+        <ListBox x:Name="DoorList" Grid.Row="2"
+                 Background="Transparent" BorderThickness="0"
+                 SelectionMode="Multiple"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Margin" Value="0,0,0,4"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <Border x:Name="Bd" Background="#2A2A3E" BorderBrush="#3A3A50"
+                                        BorderThickness="1" CornerRadius="8" Padding="14,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, RelativeSource={RelativeSource TemplatedParent}}"
+                                                  VerticalAlignment="Center" Margin="0,0,10,0" IsHitTestVisible="False"/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding Name}" FontSize="14" Foreground="#E0E0E0"/>
+                                            <TextBlock FontSize="11" Foreground="#667788">
+                                                <Run Text="{Binding DeviceName, Mode=OneWay}"/>
+                                                <Run Text=" — "/>
+                                                <Run Text="{Binding DeviceIP, Mode=OneWay}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="Bd" Property="BorderBrush" Value="#44A1A0"/>
+                                        <Setter TargetName="Bd" Property="Background" Value="#2A3A4E"/>
+                                    </Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#333350"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListBox.ItemContainerStyle>
+        </ListBox>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="{Binding Cancel, Source={x:Static helpers:LanguageManager.Instance}}"
+                    Width="90" Height="34" Margin="0,0,10,0" Click="CancelClick"
+                    Background="#3A3A50" Foreground="#E0E0E0" BorderBrush="#4A4A60"
+                    FontSize="13" Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1" CornerRadius="6" Padding="12,6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#4A4A60"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+            <Button Content="{Binding Confirm, Source={x:Static helpers:LanguageManager.Instance}}"
+                    Width="110" Height="34" Click="ConfirmClick" IsDefault="True"
+                    Background="#44A1A0" Foreground="White" BorderBrush="#44A1A0"
+                    FontSize="13" FontWeight="SemiBold" Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1" CornerRadius="6" Padding="12,6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#3A8A89"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </StackPanel>
+    </Grid>
+</Window>

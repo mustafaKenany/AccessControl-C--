@@ -1,0 +1,190 @@
+<Window x:Class="AccessControlPro.WPF.Views.ConnectionSetupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="http://schemas.fontawesome.io/icons/"
+        Title="Database Connection Setup"
+        Width="500" Height="520"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        FontFamily="{StaticResource CairoFont}"
+        FontWeight="Bold">
+
+    <Border CornerRadius="16">
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#0A1A1D" Offset="0"/>
+                <GradientStop Color="#1A1A2E" Offset="0.5"/>
+                <GradientStop Color="#0A1A1D" Offset="1"/>
+            </LinearGradientBrush>
+        </Border.Background>
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6" Color="Black"/>
+        </Border.Effect>
+
+        <Grid Margin="30">
+            <!-- Drag area -->
+            <Border Background="Transparent" MouseLeftButtonDown="DragBar_MouseLeftButtonDown"
+                    VerticalAlignment="Top" Height="40" Panel.ZIndex="0"/>
+
+            <StackPanel VerticalAlignment="Center">
+                <!-- Icon -->
+                <fa:FontAwesome Icon="Database" FontSize="44" Foreground="#44A1A0"
+                                HorizontalAlignment="Center" Margin="0,0,0,8"/>
+
+                <!-- Title -->
+                <TextBlock Text="Database Connection" FontSize="22" Foreground="White"
+                           HorizontalAlignment="Center" Margin="0,0,0,5"/>
+
+                <!-- Subtitle -->
+                <TextBlock x:Name="SubtitleText" FontSize="13" Foreground="#AAB8C2"
+                           HorizontalAlignment="Center" Margin="0,0,0,20"
+                           TextWrapping="Wrap" TextAlignment="Center"
+                           Text="Enter the database server details to connect."/>
+
+                <!-- Server IP / Hostname -->
+                <TextBlock Text="Server IP / Hostname:" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,5"/>
+                <TextBox x:Name="ServerBox" FontSize="14" Background="#1E2D3D" Foreground="White"
+                         BorderBrush="#2A3A4A" BorderThickness="1" Padding="10,8" Margin="0,0,0,12"
+                         VerticalContentAlignment="Center" Text="localhost"/>
+
+                <!-- Database Name -->
+                <TextBlock Text="Database Name:" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,5"/>
+                <TextBox x:Name="DatabaseBox" FontSize="14" Background="#1E2D3D" Foreground="White"
+                         BorderBrush="#2A3A4A" BorderThickness="1" Padding="10,8" Margin="0,0,0,12"
+                         VerticalContentAlignment="Center" Text="AccessControlPro"/>
+
+                <!-- Username / Password row -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Username:" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,5"/>
+                        <TextBox x:Name="UserBox" FontSize="14" Background="#1E2D3D" Foreground="White"
+                                 BorderBrush="#2A3A4A" BorderThickness="1" Padding="10,8"
+                                 VerticalContentAlignment="Center" Text="sa"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Password:" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,5"/>
+                        <PasswordBox x:Name="PasswordBox" FontSize="14" Background="#1E2D3D" Foreground="White"
+                                     BorderBrush="#2A3A4A" BorderThickness="1" Padding="10,8"
+                                     VerticalContentAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Status Message -->
+                <TextBlock x:Name="StatusText" FontSize="12" Foreground="#AAB8C2"
+                           HorizontalAlignment="Center" Margin="0,0,0,15"
+                           TextWrapping="Wrap" TextAlignment="Center" Visibility="Collapsed"/>
+
+                <!-- Buttons -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Test Button -->
+                    <Button x:Name="TestButton" Grid.Column="0" Height="40" Margin="0,0,6,0"
+                            FontSize="13" Click="TestButton_Click"
+                            Background="#2A3A4A" Foreground="White" BorderThickness="0" Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                    CornerRadius="8" Padding="10,8">
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#3A4A5A"/>
+                                                </Trigger>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter TargetName="Bd" Property="Opacity" Value="0.5"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <fa:FontAwesome Icon="Plug" FontSize="14" Foreground="#4FC3F7" Margin="0,0,6,0"
+                                            VerticalAlignment="Center"/>
+                            <TextBlock Text="Test" Foreground="White" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Save Button -->
+                    <Button x:Name="SaveButton" Grid.Column="1" Height="40" Margin="6,0,6,0"
+                            FontSize="13" Click="SaveButton_Click" IsEnabled="False"
+                            Background="#44A1A0" Foreground="White" BorderThickness="0" Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                    CornerRadius="8" Padding="10,8">
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#55B2B1"/>
+                                                </Trigger>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter TargetName="Bd" Property="Opacity" Value="0.5"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <fa:FontAwesome Icon="Check" FontSize="14" Foreground="White" Margin="0,0,6,0"
+                                            VerticalAlignment="Center"/>
+                            <TextBlock Text="Save" Foreground="White" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Exit Button -->
+                    <Button Grid.Column="2" Height="40" Margin="6,0,0,0"
+                            FontSize="13" Click="ExitButton_Click"
+                            Background="#3A3A4A" Foreground="#AAB8C2" BorderThickness="0" Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                    CornerRadius="8" Padding="10,8">
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#4A4A5A"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                        <TextBlock Text="Exit" Foreground="#AAB8C2" VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

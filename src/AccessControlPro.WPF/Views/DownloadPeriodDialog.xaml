@@ -1,0 +1,139 @@
+<Window x:Class="AccessControlPro.WPF.Views.DownloadPeriodDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers"
+        Title="{Binding DownloadLogs, Source={x:Static helpers:LanguageManager.Instance}}"
+        Width="380" Height="340"
+        FlowDirection="{Binding FlowDirection, Source={x:Static helpers:LanguageManager.Instance}}"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        WindowStyle="SingleBorderWindow"
+        Background="#1E1E2E">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0"
+                   Text="{Binding SelectPeriod, Source={x:Static helpers:LanguageManager.Instance}}"
+                   FontFamily="Cairo" FontSize="18" FontWeight="SemiBold"
+                   Foreground="#E0E0E0" Margin="0,0,0,8"/>
+
+        <TextBlock Grid.Row="1"
+                   Text="{Binding SelectPeriodDesc, Source={x:Static helpers:LanguageManager.Instance}}"
+                   FontFamily="Cairo" FontSize="12" Foreground="#8888A0"
+                   TextWrapping="Wrap" Margin="0,0,0,16"/>
+
+        <!-- Period Options -->
+        <StackPanel Grid.Row="2" VerticalAlignment="Top">
+            <StackPanel.Resources>
+                <Style TargetType="RadioButton">
+                    <Setter Property="Foreground" Value="#E0E0E0"/>
+                    <Setter Property="FontFamily" Value="Cairo"/>
+                    <Setter Property="FontSize" Value="14"/>
+                    <Setter Property="Margin" Value="0,0,0,6"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Padding" Value="8,6"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="RadioButton">
+                                <Border x:Name="Bd" Background="#2A2A3E" BorderBrush="#3A3A50"
+                                        BorderThickness="1" CornerRadius="8" Padding="12,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse x:Name="OuterCircle" Grid.Column="0"
+                                                 Width="18" Height="18" Stroke="#44A1A0"
+                                                 StrokeThickness="2" Fill="Transparent"
+                                                 VerticalAlignment="Center"/>
+                                        <Ellipse x:Name="InnerDot" Grid.Column="0"
+                                                 Width="10" Height="10" Fill="#44A1A0"
+                                                 VerticalAlignment="Center" Opacity="0"/>
+                                        <ContentPresenter Grid.Column="1" Margin="10,0,0,0"
+                                                          VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="InnerDot" Property="Opacity" Value="1"/>
+                                        <Setter TargetName="Bd" Property="BorderBrush" Value="#44A1A0"/>
+                                        <Setter TargetName="Bd" Property="Background" Value="#2A3A4E"/>
+                                    </Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#333350"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </StackPanel.Resources>
+
+            <RadioButton x:Name="Opt1Month"
+                         Content="{Binding Last1Month, Source={x:Static helpers:LanguageManager.Instance}}"
+                         IsChecked="True" GroupName="Period"/>
+            <RadioButton x:Name="Opt3Months"
+                         Content="{Binding Last3Months, Source={x:Static helpers:LanguageManager.Instance}}"
+                         GroupName="Period"/>
+            <RadioButton x:Name="Opt6Months"
+                         Content="{Binding Last6Months, Source={x:Static helpers:LanguageManager.Instance}}"
+                         GroupName="Period"/>
+            <RadioButton x:Name="Opt1Year"
+                         Content="{Binding Last1Year, Source={x:Static helpers:LanguageManager.Instance}}"
+                         GroupName="Period"/>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button x:Name="CancelButton"
+                    Content="{Binding Cancel, Source={x:Static helpers:LanguageManager.Instance}}"
+                    Width="90" Height="34"
+                    Margin="0,0,10,0" Click="CancelButton_Click"
+                    Background="#3A3A50" Foreground="#E0E0E0" BorderBrush="#4A4A60"
+                    FontFamily="Cairo" FontSize="13" Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1" CornerRadius="6" Padding="12,6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#4A4A60"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+            <Button x:Name="DownloadButton"
+                    Content="{Binding Download, Source={x:Static helpers:LanguageManager.Instance}}"
+                    Width="110" Height="34"
+                    Click="DownloadButton_Click" IsDefault="True"
+                    Background="#44A1A0" Foreground="White" BorderBrush="#44A1A0"
+                    FontFamily="Cairo" FontSize="13" FontWeight="SemiBold" Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1" CornerRadius="6" Padding="12,6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#3A8A89"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -1,0 +1,732 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter</value></resheader>
+  <!-- App -->
+  <data name="AppTitle" xml:space="preserve"><value>نظام التحكم بالوصول</value></data>
+  <!-- Navigation -->
+  <data name="NavDashboard" xml:space="preserve"><value>لوحة التحكم</value></data>
+  <data name="NavDevices" xml:space="preserve"><value>الأجهزة</value></data>
+  <data name="NavDoors" xml:space="preserve"><value>الأبواب</value></data>
+  <data name="NavEmployees" xml:space="preserve"><value>الموظفون</value></data>
+  <data name="NavCards" xml:space="preserve"><value>البطاقات</value></data>
+  <data name="NavEvents" xml:space="preserve"><value>الأحداث</value></data>
+  <data name="NavSettings" xml:space="preserve"><value>الإعدادات</value></data>
+  <data name="NavFinance" xml:space="preserve"><value>المالية</value></data>
+  <data name="NavCashFlow" xml:space="preserve"><value>الإيرادات والمصروفات</value></data>
+  <data name="NavPOS" xml:space="preserve"><value>نقطة البيع</value></data>
+  <data name="NavUsers" xml:space="preserve"><value>المستخدمون والصلاحيات</value></data>
+  <!-- Dashboard -->
+  <data name="TotalDevices" xml:space="preserve"><value>إجمالي الأجهزة</value></data>
+  <data name="OnlineDoors" xml:space="preserve"><value>الأبواب المتصلة</value></data>
+  <data name="TodayEvents" xml:space="preserve"><value>أحداث اليوم</value></data>
+  <data name="ActiveAlarms" xml:space="preserve"><value>الإنذارات النشطة</value></data>
+  <data name="DoorStatus" xml:space="preserve"><value>حالة الأبواب</value></data>
+  <data name="RecentEvents" xml:space="preserve"><value>الأحداث الأخيرة</value></data>
+  <data name="Refresh" xml:space="preserve"><value>تحديث</value></data>
+  <!-- Door Status -->
+  <data name="StatusOpen" xml:space="preserve"><value>مفتوح</value></data>
+  <data name="StatusClosed" xml:space="preserve"><value>مغلق</value></data>
+  <data name="StatusAlarm" xml:space="preserve"><value>إنذار</value></data>
+  <data name="StatusFault" xml:space="preserve"><value>عطل</value></data>
+  <!-- Table Headers -->
+  <data name="Time" xml:space="preserve"><value>الوقت</value></data>
+  <data name="Door" xml:space="preserve"><value>الباب</value></data>
+  <data name="Card" xml:space="preserve"><value>البطاقة</value></data>
+  <data name="Event" xml:space="preserve"><value>الحدث</value></data>
+  <!-- Language -->
+  <data name="Language" xml:space="preserve"><value>اللغة</value></data>
+  <!-- Devices Page -->
+  <data name="SearchNetwork" xml:space="preserve"><value>بحث في الشبكة</value></data>
+  <data name="AddDevice" xml:space="preserve"><value>إضافة جهاز</value></data>
+  <data name="SearchPlaceholder" xml:space="preserve"><value>بحث عن جهاز...</value></data>
+  <data name="Online" xml:space="preserve"><value>متصل</value></data>
+  <data name="Offline" xml:space="preserve"><value>غير متصل</value></data>
+  <data name="Total" xml:space="preserve"><value>الإجمالي</value></data>
+  <data name="DeviceName" xml:space="preserve"><value>الاسم</value></data>
+  <data name="Model" xml:space="preserve"><value>الموديل</value></data>
+  <data name="IPAddress" xml:space="preserve"><value>عنوان IP</value></data>
+  <data name="MACAddress" xml:space="preserve"><value>عنوان MAC</value></data>
+  <data name="Port" xml:space="preserve"><value>المنفذ</value></data>
+  <data name="Doors" xml:space="preserve"><value>الأبواب</value></data>
+  <data name="Status" xml:space="preserve"><value>الحالة</value></data>
+  <data name="Actions" xml:space="preserve"><value>إجراءات</value></data>
+  <data name="Edit" xml:space="preserve"><value>تعديل</value></data>
+  <data name="Delete" xml:space="preserve"><value>حذف</value></data>
+  <data name="NoDevices" xml:space="preserve"><value>لم يتم العثور على أجهزة. اضغط "بحث في الشبكة" لاكتشاف الأجهزة.</value></data>
+  <data name="ConfirmDelete" xml:space="preserve"><value>هل أنت متأكد من حذف هذا الجهاز؟</value></data>
+  <!-- Device Actions -->
+  <data name="Connect" xml:space="preserve"><value>اتصال</value></data>
+  <data name="DeviceInfo" xml:space="preserve"><value>معلومات الجهاز</value></data>
+  <data name="OpenDoor" xml:space="preserve"><value>فتح الباب</value></data>
+  <data name="SyncTime" xml:space="preserve"><value>مزامنة الوقت</value></data>
+  <data name="ConnectSuccess" xml:space="preserve"><value>تم الاتصال بالجهاز بنجاح</value></data>
+  <data name="OpenDoorSuccess" xml:space="preserve"><value>تم فتح الباب بنجاح</value></data>
+  <data name="SyncTimeSuccess" xml:space="preserve"><value>تمت مزامنة الوقت بنجاح</value></data>
+  <data name="SelectDoor" xml:space="preserve"><value>اختر الباب</value></data>
+  <!-- Doors Page -->
+  <data name="CloseDoor" xml:space="preserve"><value>إغلاق الباب</value></data>
+  <data name="SetDelay" xml:space="preserve"><value>تعيين التأخير</value></data>
+  <data name="SetPassword" xml:space="preserve"><value>تعيين كلمة المرور</value></data>
+  <data name="CloseDoorSuccess" xml:space="preserve"><value>تم إغلاق الباب بنجاح</value></data>
+  <data name="SetDelaySuccess" xml:space="preserve"><value>تم تحديث تأخير الباب</value></data>
+  <data name="SetPasswordSuccess" xml:space="preserve"><value>تم تحديث كلمة مرور الباب</value></data>
+  <data name="EnterDelay" xml:space="preserve"><value>أدخل التأخير بالثواني (1-99):</value></data>
+  <data name="EnterPassword" xml:space="preserve"><value>أدخل كلمة مرور الباب:</value></data>
+  <data name="DoorNumber" xml:space="preserve"><value>رقم الباب</value></data>
+  <!-- Rename -->
+  <data name="EnterName" xml:space="preserve"><value>أدخل الاسم الجديد:</value></data>
+  <data name="RenameSuccess" xml:space="preserve"><value>تمت إعادة التسمية بنجاح</value></data>
+  <!-- Change IP -->
+  <data name="ChangeIP" xml:space="preserve"><value>تغيير IP</value></data>
+  <data name="EnterIP" xml:space="preserve"><value>أدخل عنوان IP الجديد:</value></data>
+  <data name="ChangeIPSuccess" xml:space="preserve"><value>تم تغيير عنوان IP بنجاح</value></data>
+  <!-- Players Page -->
+  <data name="NavPlayers" xml:space="preserve"><value>اللاعبون</value></data>
+  <data name="AddPlayer" xml:space="preserve"><value>إضافة لاعب</value></data>
+  <data name="AddPlayerSuccess" xml:space="preserve"><value>تم تسجيل اللاعب بنجاح</value></data>
+  <data name="EditPlayerSuccess" xml:space="preserve"><value>تم تحديث اللاعب بنجاح</value></data>
+  <data name="ConfirmDeletePlayer" xml:space="preserve"><value>هل أنت متأكد من حذف هذا اللاعب؟</value></data>
+  <data name="PlayerName" xml:space="preserve"><value>اسم اللاعب</value></data>
+  <data name="CardNo" xml:space="preserve"><value>رقم البطاقة</value></data>
+  <data name="Subscription" xml:space="preserve"><value>الاشتراك</value></data>
+  <data name="Fee" xml:space="preserve"><value>الرسوم</value></data>
+  <data name="Paid" xml:space="preserve"><value>المدفوع</value></data>
+  <data name="Remaining" xml:space="preserve"><value>المتبقي</value></data>
+  <data name="WithCard" xml:space="preserve"><value>لديه بطاقة</value></data>
+  <data name="WithoutCard" xml:space="preserve"><value>بدون بطاقة</value></data>
+  <data name="AssignCard" xml:space="preserve"><value>تعيين بطاقة</value></data>
+  <data name="AssignCardSuccess" xml:space="preserve"><value>تم تعيين البطاقة بنجاح</value></data>
+  <data name="RemoveCard" xml:space="preserve"><value>إزالة البطاقة</value></data>
+  <data name="RemoveCardSuccess" xml:space="preserve"><value>تمت إزالة البطاقة بنجاح</value></data>
+  <data name="ConfirmRemoveCard" xml:space="preserve"><value>هل أنت متأكد من إزالة هذه البطاقة؟</value></data>
+  <data name="SelectCardToRemove" xml:space="preserve"><value>اختر البطاقة للإزالة:</value></data>
+  <data name="ViewCards" xml:space="preserve"><value>عرض البطاقات</value></data>
+  <data name="NoCardsAssigned" xml:space="preserve"><value>لا توجد بطاقات مخصصة لهذا اللاعب.</value></data>
+  <!-- Phase 2: Enhanced Employee -->
+  <data name="ShowAll" xml:space="preserve"><value>عرض الكل</value></data>
+  <data name="ClickShowAll" xml:space="preserve"><value>اضغط "عرض الكل" لتحميل سجلات الموظفين</value></data>
+  <data name="Loading" xml:space="preserve"><value>جاري التحميل...</value></data>
+  <data name="Page" xml:space="preserve"><value>صفحة</value></data>
+  <data name="Phone" xml:space="preserve"><value>الهاتف</value></data>
+  <data name="NationalId" xml:space="preserve"><value>رقم الهوية</value></data>
+  <data name="Height" xml:space="preserve"><value>الطول</value></data>
+  <data name="Weight" xml:space="preserve"><value>الوزن</value></data>
+  <data name="Salary" xml:space="preserve"><value>الراتب</value></data>
+  <data name="Notes" xml:space="preserve"><value>ملاحظات</value></data>
+  <data name="Photo" xml:space="preserve"><value>الصورة</value></data>
+  <data name="SyncToDevice" xml:space="preserve"><value>مزامنة مع الجهاز</value></data>
+  <data name="SyncSuccess" xml:space="preserve"><value>تمت مزامنة البطاقة مع الجهاز بنجاح</value></data>
+  <!-- Dialog Labels -->
+  <data name="EditPlayer" xml:space="preserve"><value>تعديل لاعب</value></data>
+  <data name="NameEn" xml:space="preserve"><value>الاسم (إنجليزي)</value></data>
+  <data name="NameAr" xml:space="preserve"><value>الاسم (عربي)</value></data>
+  <data name="Period" xml:space="preserve"><value>المدة</value></data>
+  <data name="StartDate" xml:space="preserve"><value>تاريخ البدء</value></data>
+  <data name="EndDate" xml:space="preserve"><value>تاريخ الانتهاء</value></data>
+  <data name="HeightCm" xml:space="preserve"><value>الطول (سم)</value></data>
+  <data name="WeightKg" xml:space="preserve"><value>الوزن (كغ)</value></data>
+  <data name="BrowsePhoto" xml:space="preserve"><value>اختيار صورة</value></data>
+  <data name="RemovePhoto" xml:space="preserve"><value>إزالة</value></data>
+  <data name="Cancel" xml:space="preserve"><value>إلغاء</value></data>
+  <data name="OK" xml:space="preserve"><value>موافق</value></data>
+  <data name="IQD" xml:space="preserve"><value>د.ع</value></data>
+  <data name="Month1" xml:space="preserve"><value>شهر واحد</value></data>
+  <data name="Months3" xml:space="preserve"><value>3 أشهر</value></data>
+  <data name="Months6" xml:space="preserve"><value>6 أشهر</value></data>
+  <data name="Months12" xml:space="preserve"><value>12 شهر</value></data>
+  <data name="CustomPeriod" xml:space="preserve"><value>مخصص</value></data>
+  <data name="PlayerNameRequired" xml:space="preserve"><value>اسم اللاعب مطلوب.</value></data>
+  <data name="CardNoRequired" xml:space="preserve"><value>رقم البطاقة مطلوب.</value></data>
+  <data name="ValidationTitle" xml:space="preserve"><value>تحقق</value></data>
+  <data name="SelectPhoto" xml:space="preserve"><value>اختيار صورة اللاعب</value></data>
+  <data name="Submit" xml:space="preserve"><value>تسجيل</value></data>
+  <data name="NameArRequired" xml:space="preserve"><value>الاسم (عربي) مطلوب.</value></data>
+  <data name="PhoneRequired" xml:space="preserve"><value>رقم الهاتف مطلوب.</value></data>
+  <data name="SubscriptionRequired" xml:space="preserve"><value>يرجى اختيار نوع الاشتراك.</value></data>
+  <data name="PeriodRequired" xml:space="preserve"><value>يرجى اختيار مدة الاشتراك.</value></data>
+  <data name="FeeRequired" xml:space="preserve"><value>الرسوم مطلوبة.</value></data>
+  <data name="PhotoRequired" xml:space="preserve"><value>صورة اللاعب مطلوبة.</value></data>
+  <!-- Assign Card Dialog -->
+  <data name="AuthorizeCard" xml:space="preserve"><value>تفويض بطاقة الوصول</value></data>
+  <data name="CardNumber" xml:space="preserve"><value>رقم البطاقة</value></data>
+  <data name="CardPassword" xml:space="preserve"><value>كلمة مرور البطاقة</value></data>
+  <data name="CardMode" xml:space="preserve"><value>وضع البطاقة</value></data>
+  <data name="CardType" xml:space="preserve"><value>نوع البطاقة</value></data>
+  <data name="DoorAccess" xml:space="preserve"><value>صلاحية الأبواب</value></data>
+  <data name="EffectiveTimes" xml:space="preserve"><value>مرات الاستخدام</value></data>
+  <data name="TimePeriod" xml:space="preserve"><value>الفترة الزمنية</value></data>
+  <data name="HolidayAccess" xml:space="preserve"><value>وصول في العطلات</value></data>
+  <data name="ValidUntil" xml:space="preserve"><value>فترة الصلاحية</value></data>
+  <data name="SelectDevices" xml:space="preserve"><value>رفع إلى الأجهزة</value></data>
+  <data name="Ordinary" xml:space="preserve"><value>عادي</value></data>
+  <data name="FirstCardPrivilege" xml:space="preserve"><value>امتياز البطاقة الأولى</value></data>
+  <data name="AlwaysOpenPrivilege" xml:space="preserve"><value>امتياز الفتح الدائم</value></data>
+  <data name="PatrolCheckIn" xml:space="preserve"><value>تسجيل دورية</value></data>
+  <data name="AntiTheftSetting" xml:space="preserve"><value>إعداد مضاد للسرقة</value></data>
+  <data name="Standard" xml:space="preserve"><value>عادية</value></data>
+  <data name="VIP" xml:space="preserve"><value>مميزة</value></data>
+  <data name="Temporary" xml:space="preserve"><value>مؤقتة</value></data>
+  <data name="Unlimited" xml:space="preserve"><value>غير محدود</value></data>
+  <data name="InvalidateImmediately" xml:space="preserve"><value>إبطال فوري</value></data>
+  <data name="CardNumberRequired" xml:space="preserve"><value>رقم البطاقة مطلوب.</value></data>
+  <data name="ValidFromBeforeValidTo" xml:space="preserve"><value>يجب أن يكون تاريخ البدء قبل تاريخ الانتهاء.</value></data>
+  <data name="SelectAtLeastOneDevice" xml:space="preserve"><value>يرجى اختيار جهاز واحد على الأقل.</value></data>
+  <data name="SelectAtLeastOneDoor" xml:space="preserve"><value>يرجى اختيار باب واحد على الأقل.</value></data>
+  <data name="NoDevicesAvailable" xml:space="preserve"><value>لا توجد أجهزة متاحة. أضف الأجهزة أولاً.</value></data>
+  <!-- Duplicate Validation -->
+  <data name="DuplicateCardNo" xml:space="preserve"><value>رقم البطاقة '{0}' مسجل بالفعل للاعب آخر. لا يُسمح بتكرار رقم البطاقة.</value></data>
+  <data name="DuplicatePhone" xml:space="preserve"><value>رقم الهاتف '{0}' مسجل بالفعل للاعب آخر. لا يُسمح بتكرار رقم الهاتف.</value></data>
+  <data name="DuplicateNameWarning" xml:space="preserve"><value>يوجد لاعب بنفس الاسم '{0}'. هل تريد المتابعة والحفظ بنفس الاسم؟</value></data>
+  <data name="Yes" xml:space="preserve"><value>نعم</value></data>
+  <data name="No" xml:space="preserve"><value>لا</value></data>
+  <data name="DeleteReason" xml:space="preserve"><value>سبب الحذف</value></data>
+  <data name="EnterDeleteReason" xml:space="preserve"><value>يرجى إدخال سبب حذف هذا اللاعب:</value></data>
+  <data name="DeleteReasonRequired" xml:space="preserve"><value>سبب الحذف مطلوب.</value></data>
+  <data name="DeletePlayerSuccess" xml:space="preserve"><value>تم حذف اللاعب بنجاح.</value></data>
+  <data name="FreezePlayer" xml:space="preserve"><value>تجميد اللاعب</value></data>
+  <data name="UnfreezePlayer" xml:space="preserve"><value>إلغاء تجميد اللاعب</value></data>
+  <data name="EnterFreezeReason" xml:space="preserve"><value>أدخل سبب تجميد هذا اللاعب:</value></data>
+  <data name="ConfirmUnfreeze" xml:space="preserve"><value>هل أنت متأكد من إلغاء تجميد هذا اللاعب؟ سيتم تمديد تاريخ انتهاء الاشتراك بمدة التجميد.</value></data>
+  <data name="FreezeSuccess" xml:space="preserve"><value>تم تجميد اللاعب بنجاح.</value></data>
+  <data name="UnfreezeSuccess" xml:space="preserve"><value>تم إلغاء تجميد اللاعب بنجاح. تم تمديد فترة الاشتراك.</value></data>
+  <data name="RenewSubscription" xml:space="preserve"><value>تجديد الاشتراك</value></data>
+  <data name="RenewSuccess" xml:space="preserve"><value>تم تجديد الاشتراك بنجاح.</value></data>
+  <!-- Edit Reason -->
+  <data name="EditReason" xml:space="preserve"><value>سبب التعديل</value></data>
+  <data name="EnterEditReason" xml:space="preserve"><value>يرجى إدخال سبب تعديل هذا اللاعب:</value></data>
+  <data name="EditReasonRequired" xml:space="preserve"><value>سبب التعديل مطلوب.</value></data>
+  <!-- Logs Section -->
+  <data name="NavLogs" xml:space="preserve"><value>السجلات</value></data>
+  <data name="LogTimestamp" xml:space="preserve"><value>الوقت</value></data>
+  <data name="LogAction" xml:space="preserve"><value>الإجراء</value></data>
+  <data name="LogEntity" xml:space="preserve"><value>الكيان</value></data>
+  <data name="LogDetails" xml:space="preserve"><value>التفاصيل</value></data>
+  <data name="ClickShowAllLogs" xml:space="preserve"><value>اضغط "عرض الكل" لتحميل سجلات النظام</value></data>
+  <data name="LogYesterday" xml:space="preserve"><value>أمس</value></data>
+  <data name="LogLast3Months" xml:space="preserve"><value>آخر 3 أشهر</value></data>
+  <!-- Deleted Records Section -->
+  <data name="NavDeletedRecords" xml:space="preserve"><value>السجلات المحذوفة</value></data>
+  <data name="DeletedDate" xml:space="preserve"><value>تاريخ الحذف</value></data>
+  <data name="ClickShowAllDeleted" xml:space="preserve"><value>اضغط "عرض الكل" لتحميل السجلات المحذوفة</value></data>
+  <!-- Log Actions -->
+  <data name="ActionCreate" xml:space="preserve"><value>إنشاء</value></data>
+  <data name="ActionUpdate" xml:space="preserve"><value>تعديل</value></data>
+  <data name="ActionDelete" xml:space="preserve"><value>حذف</value></data>
+  <data name="ActionSoftDelete" xml:space="preserve"><value>حذف</value></data>
+  <data name="ActionFreeze" xml:space="preserve"><value>تجميد</value></data>
+  <data name="ActionUnfreeze" xml:space="preserve"><value>إلغاء تجميد</value></data>
+  <data name="ActionRenew" xml:space="preserve"><value>تجديد</value></data>
+  <data name="ActionSyncCard" xml:space="preserve"><value>مزامنة بطاقة</value></data>
+  <!-- Entity Types -->
+  <data name="EntityPlayer" xml:space="preserve"><value>لاعب</value></data>
+  <data name="EntityAccessCard" xml:space="preserve"><value>بطاقة وصول</value></data>
+  <data name="EntityDevice" xml:space="preserve"><value>جهاز</value></data>
+  <!-- Deleted Records -->
+  <data name="DeletedByPrefix" xml:space="preserve"><value>بواسطة</value></data>
+  <data name="DeletedByCol" xml:space="preserve"><value>حُذف بواسطة</value></data>
+  <!-- Login -->
+  <data name="Login" xml:space="preserve"><value>تسجيل الدخول</value></data>
+  <data name="Username" xml:space="preserve"><value>اسم المستخدم</value></data>
+  <data name="LoginButton" xml:space="preserve"><value>تسجيل الدخول</value></data>
+  <data name="LoginFailed" xml:space="preserve"><value>اسم المستخدم أو كلمة المرور غير صحيحة</value></data>
+  <data name="LoggingIn" xml:space="preserve"><value>جاري تسجيل الدخول...</value></data>
+  <data name="LogUser" xml:space="preserve"><value>المستخدم</value></data>
+  <data name="WelcomeBack" xml:space="preserve"><value>مرحباً بعودتك</value></data>
+  <data name="PoweredBy" xml:space="preserve"><value>بواسطة فريق التطوير</value></data>
+  <data name="UsernameRequired" xml:space="preserve"><value>يرجى إدخال اسم المستخدم</value></data>
+  <data name="PasswordRequired" xml:space="preserve"><value>يرجى إدخال كلمة المرور</value></data>
+  <data name="UserNotFound" xml:space="preserve"><value>اسم المستخدم غير موجود</value></data>
+  <data name="WrongPassword" xml:space="preserve"><value>كلمة المرور غير صحيحة</value></data>
+  <data name="AccountDisabled" xml:space="preserve"><value>هذا الحساب معطل</value></data>
+  <data name="Password" xml:space="preserve"><value>كلمة المرور</value></data>
+  <!-- Events & Monitor -->
+  <data name="Device" xml:space="preserve"><value>الجهاز</value></data>
+  <data name="Player" xml:space="preserve"><value>اللاعب</value></data>
+  <data name="EventType" xml:space="preserve"><value>النوع</value></data>
+  <data name="Direction" xml:space="preserve"><value>الاتجاه</value></data>
+  <data name="ClickShowAllEvents" xml:space="preserve"><value>اضغط "عرض الكل" لتحميل سجلات الأحداث</value></data>
+  <data name="NavMonitor" xml:space="preserve"><value>المراقبة</value></data>
+  <data name="MonitorTitle" xml:space="preserve"><value>المراقبة المباشرة</value></data>
+  <data name="StartMonitor" xml:space="preserve"><value>بدء</value></data>
+  <data name="StopMonitor" xml:space="preserve"><value>إيقاف</value></data>
+  <data name="MonitorReady" xml:space="preserve"><value>اضغط بدء لبدء المراقبة المباشرة</value></data>
+  <data name="DownloadLogs" xml:space="preserve"><value>تنزيل السجلات</value></data>
+  <data name="EventCardAction" xml:space="preserve"><value>إجراء بطاقة</value></data>
+  <data name="EventButtonAction" xml:space="preserve"><value>إجراء زر</value></data>
+  <data name="EventSoftwareAction" xml:space="preserve"><value>إجراء برمجي</value></data>
+  <data name="EventDoorSensor" xml:space="preserve"><value>حساس الباب</value></data>
+  <data name="EventAlarm" xml:space="preserve"><value>إنذار</value></data>
+  <data name="EventSystem" xml:space="preserve"><value>نظام</value></data>
+  <data name="Entry" xml:space="preserve"><value>دخول</value></data>
+  <data name="Exit" xml:space="preserve"><value>خروج</value></data>
+  <data name="AllDevices" xml:space="preserve"><value>جميع الأجهزة</value></data>
+  <data name="SelectDevice" xml:space="preserve"><value>اختر جهاز</value></data>
+  <!-- Download Period Dialog -->
+  <data name="SelectPeriod" xml:space="preserve"><value>اختر فترة التنزيل</value></data>
+  <data name="SelectPeriodDesc" xml:space="preserve"><value>اختر المدة الزمنية لتنزيل السجلات من الجهاز:</value></data>
+  <data name="Last1Month" xml:space="preserve"><value>آخر شهر</value></data>
+  <data name="Last3Months" xml:space="preserve"><value>آخر 3 أشهر</value></data>
+  <data name="Last6Months" xml:space="preserve"><value>آخر 6 أشهر</value></data>
+  <data name="Last1Year" xml:space="preserve"><value>آخر سنة</value></data>
+  <data name="Download" xml:space="preserve"><value>تنزيل</value></data>
+  <!-- Card Status -->
+  <data name="CardActive" xml:space="preserve"><value>فعالة</value></data>
+  <data name="CardExpired" xml:space="preserve"><value>منتهية</value></data>
+  <data name="CardFrozen" xml:space="preserve"><value>مجمدة</value></data>
+  <data name="CardUnregistered" xml:space="preserve"><value>غير مسجلة</value></data>
+  <!-- Renew Subscription Enhanced -->
+  <data name="CustomDays" xml:space="preserve"><value>مخصص (أيام)</value></data>
+  <data name="EnterDays" xml:space="preserve"><value>عدد الأيام</value></data>
+  <data name="DaysRequired" xml:space="preserve"><value>عدد الأيام مطلوب.</value></data>
+  <!-- Finance -->
+  <data name="FinTotalRevenue" xml:space="preserve"><value>إجمالي الإيرادات</value></data>
+  <data name="FinTotalExpenses" xml:space="preserve"><value>إجمالي المصروفات</value></data>
+  <data name="FinNetProfit" xml:space="preserve"><value>صافي الربح</value></data>
+  <data name="FinUnpaidBalances" xml:space="preserve"><value>الأرصدة المستحقة</value></data>
+  <data name="FinOutstandingPlayers" xml:space="preserve"><value>اللاعبون المتأخرون</value></data>
+  <data name="FinRecentTransactions" xml:space="preserve"><value>المعاملات الأخيرة</value></data>
+  <data name="FinPayNow" xml:space="preserve"><value>ادفع الآن</value></data>
+  <data name="FinType" xml:space="preserve"><value>النوع</value></data>
+  <data name="FinCategory" xml:space="preserve"><value>الفئة</value></data>
+  <data name="FinAmount" xml:space="preserve"><value>المبلغ</value></data>
+  <data name="FinDescription" xml:space="preserve"><value>الوصف</value></data>
+  <data name="FinPayment" xml:space="preserve"><value>الدفع</value></data>
+  <data name="FinAddExpense" xml:space="preserve"><value>إضافة مصروف</value></data>
+  <data name="FinAddIncome" xml:space="preserve"><value>إضافة دخل</value></data>
+  <data name="FinIncCatSubscription" xml:space="preserve"><value>اشتراك</value></data>
+  <data name="FinIncCatPOSSales" xml:space="preserve"><value>مبيعات</value></data>
+  <data name="FinIncCatOwnerDeposit" xml:space="preserve"><value>إيداع المالك</value></data>
+  <data name="FinIncCatOther" xml:space="preserve"><value>أخرى</value></data>
+  <data name="FinExpCatRent" xml:space="preserve"><value>إيجار</value></data>
+  <data name="FinExpCatElectricity" xml:space="preserve"><value>كهرباء</value></data>
+  <data name="FinExpCatWater" xml:space="preserve"><value>ماء</value></data>
+  <data name="FinExpCatSalaries" xml:space="preserve"><value>رواتب</value></data>
+  <data name="FinExpCatEquipment" xml:space="preserve"><value>معدات</value></data>
+  <data name="FinExpCatMaintenance" xml:space="preserve"><value>صيانة</value></data>
+  <data name="FinExpCatSupplies" xml:space="preserve"><value>مستلزمات</value></data>
+  <data name="FinExpCatMarketing" xml:space="preserve"><value>تسويق</value></data>
+  <data name="FinAll" xml:space="preserve"><value>الكل</value></data>
+  <data name="FinIncome" xml:space="preserve"><value>دخل</value></data>
+  <data name="FinExpense" xml:space="preserve"><value>مصروف</value></data>
+  <data name="FinPeriod" xml:space="preserve"><value>الفترة</value></data>
+  <data name="FinToday" xml:space="preserve"><value>اليوم</value></data>
+  <data name="FinYesterday" xml:space="preserve"><value>أمس</value></data>
+  <data name="FinThisWeek" xml:space="preserve"><value>هذا الأسبوع</value></data>
+  <data name="FinLastWeek" xml:space="preserve"><value>الأسبوع الماضي</value></data>
+  <data name="FinThisMonth" xml:space="preserve"><value>هذا الشهر</value></data>
+  <data name="FinLastMonth" xml:space="preserve"><value>الشهر الماضي</value></data>
+  <data name="FinLast3Months" xml:space="preserve"><value>آخر 3 أشهر</value></data>
+  <data name="FinLast6Months" xml:space="preserve"><value>آخر 6 أشهر</value></data>
+  <data name="FinThisYear" xml:space="preserve"><value>هذه السنة</value></data>
+  <data name="FinSearch" xml:space="preserve"><value>بحث بالاسم أو رقم البطاقة...</value></data>
+  <!-- POS -->
+  <data name="PosAddProduct" xml:space="preserve"><value>إضافة منتج</value></data>
+  <data name="PosCart" xml:space="preserve"><value>السلة</value></data>
+  <data name="PosPayCash" xml:space="preserve"><value>دفع نقدي</value></data>
+  <data name="PosPayCard" xml:space="preserve"><value>دفع رصيد البطاقة</value></data>
+  <data name="PosTopUp" xml:space="preserve"><value>شحن رصيد</value></data>
+  <data name="PosCardBalance" xml:space="preserve"><value>رصيد البطاقة</value></data>
+  <data name="PosPrice" xml:space="preserve"><value>السعر</value></data>
+  <data name="PosStock" xml:space="preserve"><value>المخزون</value></data>
+  <data name="PosPlayerNotFound" xml:space="preserve"><value>لم يتم العثور على لاعب</value></data>
+  <data name="PosSearchPlayerFirst" xml:space="preserve"><value>يرجى البحث عن لاعب أولاً</value></data>
+  <data name="PosSaleSuccess" xml:space="preserve"><value>تمت عملية البيع بنجاح</value></data>
+  <data name="PosInsufficientBalance" xml:space="preserve"><value>الرصيد غير كافٍ</value></data>
+  <data name="PosSuccess" xml:space="preserve"><value>نجاح</value></data>
+  <data name="FilterAll" xml:space="preserve"><value>الكل</value></data>
+  <data name="RptReports" xml:space="preserve"><value>التقارير</value></data>
+  <data name="RptExpiring" xml:space="preserve"><value>ينتهي قريباً</value></data>
+  <data name="RptRenewed" xml:space="preserve"><value>تم التجديد</value></data>
+  <data name="RptFrozen" xml:space="preserve"><value>مجمّد</value></data>
+  <data name="RptExpired" xml:space="preserve"><value>منتهي</value></data>
+  <data name="RptToday" xml:space="preserve"><value>اليوم</value></data>
+  <data name="RptThisWeek" xml:space="preserve"><value>هذا الأسبوع</value></data>
+  <data name="RptLastWeek" xml:space="preserve"><value>الأسبوع الماضي</value></data>
+  <data name="RptThisMonth" xml:space="preserve"><value>هذا الشهر</value></data>
+  <data name="RptLastMonth" xml:space="preserve"><value>الشهر الماضي</value></data>
+  <data name="RptResults" xml:space="preserve"><value>النتائج</value></data>
+  <data name="RptNoResults" xml:space="preserve"><value>لا توجد نتائج</value></data>
+  <data name="RptEndDate" xml:space="preserve"><value>تاريخ الانتهاء</value></data>
+  <data name="RptStartDate" xml:space="preserve"><value>تاريخ البداية</value></data>
+  <data name="RptSubscription" xml:space="preserve"><value>الاشتراك</value></data>
+  <data name="RptPhone" xml:space="preserve"><value>الهاتف</value></data>
+  <data name="PermPermissions" xml:space="preserve"><value>الصلاحيات</value></data>
+  <data name="PermSelectAll" xml:space="preserve"><value>تحديد الكل</value></data>
+  <data name="PermClearAll" xml:space="preserve"><value>مسح الكل</value></data>
+  <data name="PermAdminNote" xml:space="preserve"><value>مستخدمو دور المسؤول يملكون جميع الصلاحيات تلقائياً بغض النظر عن الاختيارات أدناه.</value></data>
+  <data name="PermAccessDenied" xml:space="preserve"><value>تم رفض الوصول</value></data>
+  <data name="PermNoPermission" xml:space="preserve"><value>ليس لديك صلاحية لهذا الإجراء.</value></data>
+
+  <!-- Admin Users Page -->
+  <data name="UsrAddUser" xml:space="preserve"><value>إضافة مستخدم</value></data>
+  <data name="UsrAddNewUser" xml:space="preserve"><value>إضافة مستخدم جديد</value></data>
+  <data name="UsrEditUser" xml:space="preserve"><value>تعديل المستخدم</value></data>
+  <data name="UsrUsername" xml:space="preserve"><value>اسم المستخدم</value></data>
+  <data name="UsrDisplayName" xml:space="preserve"><value>الاسم المعروض</value></data>
+  <data name="UsrRole" xml:space="preserve"><value>الدور</value></data>
+  <data name="UsrPassword" xml:space="preserve"><value>كلمة المرور</value></data>
+  <data name="UsrNewPassword" xml:space="preserve"><value>كلمة مرور جديدة (اتركها فارغة للإبقاء)</value></data>
+  <data name="UsrAccountActive" xml:space="preserve"><value>الحساب نشط</value></data>
+  <data name="UsrSave" xml:space="preserve"><value>حفظ</value></data>
+  <data name="UsrCancel" xml:space="preserve"><value>إلغاء</value></data>
+  <data name="UsrStatus" xml:space="preserve"><value>الحالة</value></data>
+  <data name="UsrActive" xml:space="preserve"><value>نشط</value></data>
+  <data name="UsrDisabled" xml:space="preserve"><value>معطل</value></data>
+  <data name="UsrID" xml:space="preserve"><value>المعرف</value></data>
+  <data name="UsrSubtitle" xml:space="preserve"><value>إدارة حسابات المستخدمين والأدوار</value></data>
+  <data name="UsrLoading" xml:space="preserve"><value>جاري التحميل...</value></data>
+  <data name="UsrUsernameRequired" xml:space="preserve"><value>اسم المستخدم مطلوب.</value></data>
+  <data name="UsrPasswordRequired" xml:space="preserve"><value>كلمة المرور مطلوبة للمستخدمين الجدد.</value></data>
+  <data name="UsrDisplayNameRequired" xml:space="preserve"><value>الاسم المعروض مطلوب.</value></data>
+
+  <!-- Permission Display Names -->
+  <data name="PermAccessMainApp" xml:space="preserve"><value>الوصول للتطبيق الرئيسي</value></data>
+  <data name="PermAccessPOS" xml:space="preserve"><value>الوصول لنقطة البيع</value></data>
+  <data name="PermAccessAdmin" xml:space="preserve"><value>الوصول للوحة الإدارة</value></data>
+  <data name="PermPlayersView" xml:space="preserve"><value>عرض اللاعبين</value></data>
+  <data name="PermPlayersAdd" xml:space="preserve"><value>إضافة لاعبين</value></data>
+  <data name="PermPlayersEdit" xml:space="preserve"><value>تعديل اللاعبين</value></data>
+  <data name="PermPlayersDelete" xml:space="preserve"><value>حذف اللاعبين</value></data>
+  <data name="PermPlayersAssignCard" xml:space="preserve"><value>تعيين بطاقة</value></data>
+  <data name="PermPlayersRemoveCard" xml:space="preserve"><value>إزالة بطاقة</value></data>
+  <data name="PermPlayersFreeze" xml:space="preserve"><value>تجميد لاعب</value></data>
+  <data name="PermPlayersRenew" xml:space="preserve"><value>تجديد الاشتراك</value></data>
+  <data name="PermPlayersReports" xml:space="preserve"><value>تقارير اللاعبين</value></data>
+  <data name="PermDevicesView" xml:space="preserve"><value>عرض الأجهزة</value></data>
+  <data name="PermDevicesAdd" xml:space="preserve"><value>إضافة أجهزة</value></data>
+  <data name="PermDevicesEdit" xml:space="preserve"><value>تعديل الأجهزة</value></data>
+  <data name="PermDevicesDelete" xml:space="preserve"><value>حذف الأجهزة</value></data>
+  <data name="PermDevicesConnect" xml:space="preserve"><value>الاتصال بجهاز</value></data>
+  <data name="PermDoorsView" xml:space="preserve"><value>عرض الأبواب</value></data>
+  <data name="PermDoorsOpenClose" xml:space="preserve"><value>فتح/إغلاق الباب</value></data>
+  <data name="PermDoorsSettings" xml:space="preserve"><value>إعدادات الأبواب</value></data>
+  <data name="PermEventsView" xml:space="preserve"><value>عرض الأحداث</value></data>
+  <data name="PermFinanceView" xml:space="preserve"><value>عرض المالية</value></data>
+  <data name="PermFinanceManage" xml:space="preserve"><value>إدارة المالية</value></data>
+  <data name="PermCashFlowView" xml:space="preserve"><value>عرض التدفق النقدي</value></data>
+  <data name="PermCashFlowManage" xml:space="preserve"><value>إدارة التدفق النقدي</value></data>
+  <data name="PermLogsView" xml:space="preserve"><value>عرض السجلات</value></data>
+  <data name="PermDeletedRecordsView" xml:space="preserve"><value>عرض السجلات المحذوفة</value></data>
+  <data name="PermMonitorView" xml:space="preserve"><value>عرض المراقبة</value></data>
+  <data name="PermAdminManageUsers" xml:space="preserve"><value>إدارة المستخدمين</value></data>
+  <data name="PermAdminManageSettings" xml:space="preserve"><value>إدارة الإعدادات</value></data>
+
+  <!-- Permission Group Names -->
+  <data name="PermGroupAppAccess" xml:space="preserve"><value>الوصول للتطبيقات</value></data>
+  <data name="PermGroupPlayers" xml:space="preserve"><value>اللاعبون</value></data>
+  <data name="PermGroupDevices" xml:space="preserve"><value>الأجهزة</value></data>
+  <data name="PermGroupDoors" xml:space="preserve"><value>الأبواب</value></data>
+  <data name="PermGroupEvents" xml:space="preserve"><value>الأحداث</value></data>
+  <data name="PermGroupFinance" xml:space="preserve"><value>المالية</value></data>
+  <data name="PermGroupCashFlow" xml:space="preserve"><value>التدفق النقدي</value></data>
+  <data name="PermGroupLogs" xml:space="preserve"><value>السجلات</value></data>
+  <data name="PermGroupDeletedRecords" xml:space="preserve"><value>السجلات المحذوفة</value></data>
+  <data name="PermGroupMonitor" xml:space="preserve"><value>المراقبة</value></data>
+  <data name="PermGroupAdmin" xml:space="preserve"><value>لوحة الإدارة</value></data>
+
+  <!-- Change Password -->
+  <data name="CpwChangePassword" xml:space="preserve"><value>تغيير كلمة المرور</value></data>
+  <data name="CpwCurrentPassword" xml:space="preserve"><value>كلمة المرور الحالية</value></data>
+  <data name="CpwNewPassword" xml:space="preserve"><value>كلمة المرور الجديدة</value></data>
+  <data name="CpwConfirmPassword" xml:space="preserve"><value>تأكيد كلمة المرور الجديدة</value></data>
+  <data name="CpwPasswordMismatch" xml:space="preserve"><value>كلمتا المرور غير متطابقتين.</value></data>
+  <data name="CpwMinLength" xml:space="preserve"><value>يجب أن تكون كلمة المرور 4 أحرف على الأقل.</value></data>
+  <data name="CpwPasswordChanged" xml:space="preserve"><value>تم تغيير كلمة المرور بنجاح.</value></data>
+  <data name="CpwDefaultPasswordWarning" xml:space="preserve"><value>أنت تستخدم كلمة المرور الافتراضية. يرجى تغييرها الآن لأمان حسابك.</value></data>
+
+  <!-- Settings -->
+  <data name="SetSaved" xml:space="preserve"><value>تم حفظ الإعدادات بنجاح.</value></data>
+  <data name="SetBrowseLogo" xml:space="preserve"><value>اختيار الشعار</value></data>
+  <data name="SetRemoveLogo" xml:space="preserve"><value>إزالة الشعار</value></data>
+  <data name="SetCompanyName" xml:space="preserve"><value>اسم الشركة</value></data>
+  <data name="SetGymName" xml:space="preserve"><value>اسم النادي / المركز</value></data>
+  <!-- Categories Management -->
+  <data name="NavCategories" xml:space="preserve"><value>الفئات</value></data>
+  <data name="CatTitle" xml:space="preserve"><value>إدارة الفئات</value></data>
+  <data name="CatSubtitle" xml:space="preserve"><value>إدارة القوائم المنسدلة المستخدمة في التطبيق</value></data>
+  <data name="CatType" xml:space="preserve"><value>نوع الفئة</value></data>
+  <data name="CatNameEn" xml:space="preserve"><value>الاسم (إنجليزي)</value></data>
+  <data name="CatNameAr" xml:space="preserve"><value>الاسم (عربي)</value></data>
+  <data name="CatRate" xml:space="preserve"><value>السعر الشهري</value></data>
+  <data name="CatAddNew" xml:space="preserve"><value>إضافة جديد</value></data>
+  <data name="CatEdit" xml:space="preserve"><value>تعديل العنصر</value></data>
+  <data name="CatDelete" xml:space="preserve"><value>حذف</value></data>
+  <!-- Products Management -->
+  <data name="NavProducts" xml:space="preserve"><value>المنتجات</value></data>
+  <data name="PrdTitle" xml:space="preserve"><value>إدارة المنتجات</value></data>
+  <data name="PrdSubtitle" xml:space="preserve"><value>إدارة كتالوج المنتجات والباركود والأسعار</value></data>
+  <data name="PrdName" xml:space="preserve"><value>الاسم (إنجليزي)</value></data>
+  <data name="PrdNameAr" xml:space="preserve"><value>الاسم (عربي)</value></data>
+  <data name="PrdBarcode" xml:space="preserve"><value>الباركود</value></data>
+  <data name="PrdPrice" xml:space="preserve"><value>السعر</value></data>
+  <data name="PrdCategory" xml:space="preserve"><value>الفئة</value></data>
+  <data name="PrdStock" xml:space="preserve"><value>المخزون</value></data>
+  <data name="PrdAddNew" xml:space="preserve"><value>إضافة منتج</value></data>
+  <data name="PrdEdit" xml:space="preserve"><value>تعديل المنتج</value></data>
+  <!-- Suppliers -->
+  <data name="NavSuppliers" xml:space="preserve"><value>الموردين</value></data>
+  <data name="SupTitle" xml:space="preserve"><value>إدارة الموردين</value></data>
+  <data name="SupSubtitle" xml:space="preserve"><value>إدارة موردي المنتجات</value></data>
+  <data name="SupName" xml:space="preserve"><value>اسم المورد</value></data>
+  <data name="SupPhone" xml:space="preserve"><value>الهاتف</value></data>
+  <data name="SupAddress" xml:space="preserve"><value>العنوان</value></data>
+  <data name="SupContact" xml:space="preserve"><value>شخص الاتصال</value></data>
+  <data name="SupAddNew" xml:space="preserve"><value>إضافة مورد</value></data>
+  <data name="SupEdit" xml:space="preserve"><value>تعديل المورد</value></data>
+  <data name="SupBalances" xml:space="preserve"><value>أرصدة الموردين</value></data>
+  <data name="SupOrders" xml:space="preserve"><value>الطلبات</value></data>
+  <!-- Purchase Orders -->
+  <data name="NavPurchaseOrders" xml:space="preserve"><value>طلبات الشراء</value></data>
+  <data name="PoTitle" xml:space="preserve"><value>طلبات الشراء</value></data>
+  <data name="PoSubtitle" xml:space="preserve"><value>تسجيل المشتريات من الموردين لإضافة المخزون</value></data>
+  <data name="PoHistory" xml:space="preserve"><value>سجل الطلبات</value></data>
+  <data name="PoNewOrder" xml:space="preserve"><value>طلب شراء جديد</value></data>
+  <data name="PoSupplier" xml:space="preserve"><value>المورد</value></data>
+  <data name="PoDate" xml:space="preserve"><value>التاريخ</value></data>
+  <data name="PoTotal" xml:space="preserve"><value>الإجمالي</value></data>
+  <data name="PoBy" xml:space="preserve"><value>بواسطة</value></data>
+  <data name="PoAddItem" xml:space="preserve"><value>إضافة عنصر</value></data>
+  <data name="PoNotes" xml:space="preserve"><value>ملاحظات</value></data>
+  <data name="PoSubmit" xml:space="preserve"><value>تقديم الطلب</value></data>
+  <!-- PO Payment -->
+  <data name="PoDiscount" xml:space="preserve"><value>الخصم</value></data>
+  <data name="PoPaid" xml:space="preserve"><value>المدفوع</value></data>
+  <data name="PoRemaining" xml:space="preserve"><value>المتبقي</value></data>
+  <data name="PoStatus" xml:space="preserve"><value>الحالة</value></data>
+  <data name="PoPay" xml:space="preserve"><value>دفع</value></data>
+  <data name="PoPayAmount" xml:space="preserve"><value>مبلغ الدفع</value></data>
+  <!-- POS Barcode/Category -->
+  <data name="PosScan" xml:space="preserve"><value>مسح</value></data>
+  <data name="PosProductNotFound" xml:space="preserve"><value>المنتج غير موجود</value></data>
+  <data name="PosAllCategories" xml:space="preserve"><value>الكل</value></data>
+  <data name="PosReceipt" xml:space="preserve"><value>إيصال البيع</value></data>
+  <data name="PosTodaySales" xml:space="preserve"><value>مبيعات اليوم</value></data>
+  <data name="PosInsufficientStock" xml:space="preserve"><value>المخزون غير كافٍ</value></data>
+  <!-- Stock Movements -->
+  <data name="SmTitle" xml:space="preserve"><value>حركة المخزون</value></data>
+  <data name="SmProduct" xml:space="preserve"><value>المنتج</value></data>
+  <data name="SmType" xml:space="preserve"><value>النوع</value></data>
+  <data name="SmQty" xml:space="preserve"><value>الكمية</value></data>
+  <data name="SmPrice" xml:space="preserve"><value>سعر الوحدة</value></data>
+  <data name="SmRef" xml:space="preserve"><value>المرجع</value></data>
+  <data name="SmSupplier" xml:space="preserve"><value>المورد</value></data>
+  <data name="SmDate" xml:space="preserve"><value>التاريخ</value></data>
+  <data name="SmStockIn" xml:space="preserve"><value>وارد</value></data>
+  <data name="SmStockOut" xml:space="preserve"><value>صادر</value></data>
+  <data name="SmClear" xml:space="preserve"><value>مسح</value></data>
+  <!-- Admin Dashboard -->
+  <data name="NavDash" xml:space="preserve"><value>لوحة التحكم</value></data>
+  <data name="DashTitle" xml:space="preserve"><value>لوحة التحكم</value></data>
+  <data name="DashSubtitle" xml:space="preserve"><value>نظرة عامة على عمليات النادي</value></data>
+  <data name="DashTotalPlayers" xml:space="preserve"><value>إجمالي اللاعبين</value></data>
+  <data name="DashExpiring" xml:space="preserve"><value>تنتهي هذا الأسبوع</value></data>
+  <data name="DashRevenue" xml:space="preserve"><value>إيرادات الشهر</value></data>
+  <data name="DashExpenses" xml:space="preserve"><value>مصروفات الشهر</value></data>
+  <data name="DashProfit" xml:space="preserve"><value>صافي الربح</value></data>
+  <data name="DashUnpaid" xml:space="preserve"><value>أرصدة غير مدفوعة</value></data>
+  <data name="DashSupplierDebt" xml:space="preserve"><value>ديون الموردين</value></data>
+  <data name="DashLowStock" xml:space="preserve"><value>مخزون منخفض</value></data>
+  <data name="DashRecentActivity" xml:space="preserve"><value>النشاط الأخير</value></data>
+  <!-- Audit Log -->
+  <data name="NavAuditLog" xml:space="preserve"><value>سجل التدقيق</value></data>
+  <data name="AuditTitle" xml:space="preserve"><value>سجل التدقيق</value></data>
+  <data name="AuditSubtitle" xml:space="preserve"><value>تتبع جميع أنشطة النظام والتغييرات</value></data>
+  <data name="AuditAction" xml:space="preserve"><value>الإجراء</value></data>
+  <data name="AuditEntity" xml:space="preserve"><value>الكيان</value></data>
+  <data name="AuditDetails" xml:space="preserve"><value>التفاصيل</value></data>
+  <data name="AuditUser" xml:space="preserve"><value>المستخدم</value></data>
+  <data name="AuditTime" xml:space="preserve"><value>الوقت</value></data>
+  <!-- Alerts -->
+  <data name="NavAlerts" xml:space="preserve"><value>التنبيهات</value></data>
+  <data name="AlertTitle" xml:space="preserve"><value>تنبيهات الاشتراكات</value></data>
+  <data name="AlertSubtitle" xml:space="preserve"><value>مراقبة الاشتراكات المنتهية والمجمدة</value></data>
+  <data name="AlertExpiring" xml:space="preserve"><value>تنتهي قريباً</value></data>
+  <data name="AlertExpired" xml:space="preserve"><value>منتهية</value></data>
+  <data name="AlertFrozen" xml:space="preserve"><value>مجمدة</value></data>
+  <data name="AlertFreezeDate" xml:space="preserve"><value>تاريخ التجميد</value></data>
+  <!-- Backup -->
+  <data name="NavBackup" xml:space="preserve"><value>النسخ الاحتياطي</value></data>
+  <data name="BkpTitle" xml:space="preserve"><value>النسخ الاحتياطي والاستعادة</value></data>
+  <data name="BkpSubtitle" xml:space="preserve"><value>إنشاء نسخ احتياطية واستعادة من حفظات سابقة</value></data>
+  <data name="BkpBackup" xml:space="preserve"><value>إنشاء نسخة احتياطية</value></data>
+  <data name="BkpBackupDesc" xml:space="preserve"><value>حفظ نسخة من قاعدة البيانات الحالية إلى ملف</value></data>
+  <data name="BkpCreateBackup" xml:space="preserve"><value>إنشاء نسخة احتياطية</value></data>
+  <data name="BkpRestore" xml:space="preserve"><value>استعادة قاعدة البيانات</value></data>
+  <data name="BkpRestoreDesc" xml:space="preserve"><value>استبدال قاعدة البيانات الحالية بملف نسخة احتياطية (تحذير: سيتم الكتابة فوق جميع البيانات الحالية)</value></data>
+  <data name="BkpRestoreBackup" xml:space="preserve"><value>استعادة من النسخة الاحتياطية</value></data>
+  <!-- Reports -->
+  <data name="NavReports" xml:space="preserve"><value>التقارير</value></data>
+  <data name="RptTitle" xml:space="preserve"><value>التقارير والتصدير</value></data>
+  <data name="RptSubtitle" xml:space="preserve"><value>إنشاء تقارير وتصدير البيانات إلى CSV</value></data>
+  <data name="RptExport" xml:space="preserve"><value>تصدير CSV</value></data>
+  <data name="RptPlayers" xml:space="preserve"><value>اللاعبين</value></data>
+  <data name="RptFinance" xml:space="preserve"><value>المالية</value></data>
+  <data name="RptInventory" xml:space="preserve"><value>المخزون</value></data>
+  <data name="RptRun" xml:space="preserve"><value>تشغيل التقرير</value></data>
+  <!-- Monitor Display (Projector) -->
+  <data name="DispSuccessPass" xml:space="preserve"><value>تم الدخول بنجاح</value></data>
+  <data name="DispExpiredCard" xml:space="preserve"><value>بطاقة منتهية</value></data>
+  <data name="DispFrozenCard" xml:space="preserve"><value>بطاقة مجمدة</value></data>
+  <data name="DispOpenDisplay" xml:space="preserve"><value>شاشة العرض</value></data>
+  <data name="DispCloseDisplay" xml:space="preserve"><value>إغلاق العرض</value></data>
+  <!-- Device Sync All Players -->
+  <data name="DevSyncAllPlayers" xml:space="preserve"><value>رفع جميع اللاعبين</value></data>
+  <data name="DevSyncAllConfirm" xml:space="preserve"><value>سيتم رفع جميع بطاقات اللاعبين النشطة إلى هذا الجهاز. هل تريد المتابعة؟</value></data>
+  <data name="DevSyncAllProgress" xml:space="preserve"><value>جاري مزامنة اللاعبين مع الجهاز...</value></data>
+  <data name="DevSyncAllDone" xml:space="preserve"><value>تم مزامنة جميع اللاعبين مع الجهاز بنجاح.</value></data>
+  <data name="DevSyncAllNoCards" xml:space="preserve"><value>لا توجد بطاقات نشطة للمزامنة.</value></data>
+  <data name="DevSynced" xml:space="preserve"><value>تمت المزامنة</value></data>
+  <data name="DevFailed" xml:space="preserve"><value>فشل</value></data>
+  <data name="MigDataMigration" xml:space="preserve"><value>ترحيل البيانات</value></data>
+  <data name="MigConnectionString" xml:space="preserve"><value>سلسلة الاتصال</value></data>
+  <data name="MigTableName" xml:space="preserve"><value>اسم الجدول</value></data>
+  <data name="MigPreview" xml:space="preserve"><value>معاينة</value></data>
+  <data name="MigImport" xml:space="preserve"><value>استيراد</value></data>
+  <data name="MigConnecting" xml:space="preserve"><value>جاري الاتصال بقاعدة البيانات...</value></data>
+  <data name="MigTotalRows" xml:space="preserve"><value>إجمالي السجلات</value></data>
+  <data name="MigNewPlayers" xml:space="preserve"><value>لاعبون جدد</value></data>
+  <data name="MigDuplicates" xml:space="preserve"><value>بطاقات مكررة (سيتم تخطيها)</value></data>
+  <data name="MigSampleNames" xml:space="preserve"><value>أسماء نموذجية:</value></data>
+  <data name="MigConfirmImport" xml:space="preserve"><value>هل أنت متأكد من الاستيراد؟ سيتم إضافة لاعبين جدد إلى قاعدة البيانات.</value></data>
+  <data name="MigImportComplete" xml:space="preserve"><value>تم الاستيراد بنجاح!</value></data>
+  <data name="MigImported" xml:space="preserve"><value>تم استيراد</value></data>
+  <data name="MigSkipped" xml:space="preserve"><value>تم تخطي (مكرر)</value></data>
+  <data name="MigFailedCount" xml:space="preserve"><value>فشل</value></data>
+  <data name="MigErrors" xml:space="preserve"><value>أخطاء</value></data>
+  <data name="MigError" xml:space="preserve"><value>خطأ</value></data>
+  <data name="MigFillFields" xml:space="preserve"><value>يرجى ملء سلسلة الاتصال واسم الجدول.</value></data>
+  <data name="MigTestConnection" xml:space="preserve"><value>اختبار الاتصال</value></data>
+  <data name="MigTestingConnection" xml:space="preserve"><value>جاري اختبار الاتصال...</value></data>
+  <data name="MigConnectionSuccess" xml:space="preserve"><value>تم الاتصال بنجاح!</value></data>
+  <data name="MigConnectionFailed" xml:space="preserve"><value>فشل الاتصال</value></data>
+  <data name="RcpRenewalReceipt" xml:space="preserve"><value>إيصال تجديد الاشتراك</value></data>
+  <data name="RcpPlayerName" xml:space="preserve"><value>اسم اللاعب</value></data>
+  <data name="RcpSubscriptionType" xml:space="preserve"><value>نوع الاشتراك</value></data>
+  <data name="RcpPeriod" xml:space="preserve"><value>المدة</value></data>
+  <data name="RcpPrint" xml:space="preserve"><value>طباعة</value></data>
+  <data name="RcpMonth" xml:space="preserve"><value>شهر</value></data>
+  <data name="RcpMonths" xml:space="preserve"><value>أشهر</value></data>
+  <data name="RcpDays" xml:space="preserve"><value>يوم</value></data>
+  <data name="BulkOperations" xml:space="preserve"><value>عمليات جماعية</value></data>
+  <data name="BulkSelectOperation" xml:space="preserve"><value>اختر العملية</value></data>
+  <data name="BulkFreeze" xml:space="preserve"><value>تجميد الكل</value></data>
+  <data name="BulkUnfreeze" xml:space="preserve"><value>إلغاء تجميد الكل</value></data>
+  <data name="BulkExtend" xml:space="preserve"><value>تمديد الاشتراكات</value></data>
+  <data name="BulkExtendDays" xml:space="preserve"><value>عدد أيام التمديد</value></data>
+  <data name="BulkExtendDaysRequired" xml:space="preserve"><value>يرجى إدخال عدد أيام صحيح.</value></data>
+  <data name="BulkTarget" xml:space="preserve"><value>تطبيق على</value></data>
+  <data name="BulkAllActive" xml:space="preserve"><value>جميع اللاعبين النشطين</value></data>
+  <data name="BulkExpiring7" xml:space="preserve"><value>تنتهي خلال 7 أيام</value></data>
+  <data name="BulkExpired" xml:space="preserve"><value>اللاعبين المنتهية اشتراكاتهم</value></data>
+  <data name="BulkFrozenPlayers" xml:space="preserve"><value>اللاعبين المجمدين</value></data>
+  <data name="BulkExecute" xml:space="preserve"><value>تنفيذ</value></data>
+  <data name="BulkConfirm" xml:space="preserve"><value>سيؤثر هذا على {0} لاعب. هل أنت متأكد؟</value></data>
+  <data name="BulkNoPlayers" xml:space="preserve"><value>لا يوجد لاعبون يطابقون المعايير المحددة.</value></data>
+  <data name="BulkComplete" xml:space="preserve"><value>تمت العملية الجماعية.</value></data>
+  <data name="BulkSuccessCount" xml:space="preserve"><value>نجح</value></data>
+  <data name="BulkFailedCount" xml:space="preserve"><value>فشل</value></data>
+  <data name="PrfPlayerProfile" xml:space="preserve"><value>ملف اللاعب</value></data>
+  <data name="PrfOverview" xml:space="preserve"><value>نظرة عامة</value></data>
+  <data name="PrfFreezeHistory" xml:space="preserve"><value>سجل التجميد</value></data>
+  <data name="PrfTransactions" xml:space="preserve"><value>المعاملات المالية</value></data>
+  <data name="PrfActivityLog" xml:space="preserve"><value>سجل النشاط</value></data>
+  <data name="PrfAction" xml:space="preserve"><value>الإجراء</value></data>
+  <data name="PrfPerformedBy" xml:space="preserve"><value>بواسطة</value></data>
+  <data name="PrfDetails" xml:space="preserve"><value>التفاصيل</value></data>
+  <data name="PrfFreezeStart" xml:space="preserve"><value>بداية التجميد</value></data>
+  <data name="PrfFreezeEnd" xml:space="preserve"><value>نهاية التجميد</value></data>
+  <data name="PrfNoRecords" xml:space="preserve"><value>لا توجد سجلات.</value></data>
+  <data name="FilterActive" xml:space="preserve"><value>نشط</value></data>
+  <!-- WiFi & Device Validation -->
+  <data name="WifiWarning" xml:space="preserve"><value>شبكة WiFi والإيثرنت على نفس الشبكة الفرعية.
+هذا يسبب تعارض في الشبكة مع جهاز التحكم.
+يرجى فصل WiFi أو تغيير شبكته الفرعية قبل المتابعة.</value></data>
+  <data name="WifiWarningSearch" xml:space="preserve"><value>شبكة WiFi والإيثرنت على نفس الشبكة الفرعية.
+هذا يسبب تعارض عند البحث عن أجهزة التحكم.
+يرجى فصل WiFi أو تغيير شبكته الفرعية قبل البحث.</value></data>
+  <data name="DeviceNotExist" xml:space="preserve"><value>الجهاز '{0}' لم يعد موجوداً.
+ربما تم حذفه. يرجى تحديث القائمة.</value></data>
+  <data name="DeviceUnreachable" xml:space="preserve"><value>الجهاز '{0}' ({1}) غير قابل للوصول.
+يرجى التحقق من كابل الشبكة والتأكد من تشغيل الجهاز.</value></data>
+  <data name="CheckingConnection" xml:space="preserve"><value>جاري فحص اتصال الجهاز...</value></data>
+  <data name="PlayerNotExist" xml:space="preserve"><value>اللاعب '{0}' لم يعد موجوداً.
+ربما تم حذفه. يرجى تحديث القائمة.</value></data>
+  <data name="DevicesOfflineList" xml:space="preserve"><value>الأجهزة التالية غير متصلة بالشبكة. يرجى توصيلها أولاً:</value></data>
+  <data name="DevicesOfflineRenew" xml:space="preserve"><value>سيتم تجديد الاشتراك محلياً، لكن لن يتم مزامنة تحديثات البطاقة مع هذه الأجهزة.</value></data>
+  <data name="VerifyingDevices" xml:space="preserve"><value>جاري التحقق من اتصال الأجهزة...</value></data>
+  <data name="DownloadedRecords" xml:space="preserve"><value>تم تنزيل {0} سجل من {1}.</value></data>
+  <data name="NoRecordsDevice" xml:space="preserve"><value>لم يتم العثور على سجلات في {0} للفترة المحددة.</value></data>
+  <data name="DownloadingLogs" xml:space="preserve"><value>جاري تنزيل السجلات من {0} (آخر {1} شهر)...</value></data>
+  <data name="SyncingCardToDevice" xml:space="preserve"><value>جاري مزامنة البطاقة مع الجهاز {0} من {1}...</value></data>
+  <data name="CardAssignedSynced" xml:space="preserve"><value>تم تعيين البطاقة ومزامنتها مع {0} جهاز(أجهزة).</value></data>
+  <data name="CardAssignedSyncErrors" xml:space="preserve"><value>تم تعيين البطاقة بنجاح ومزامنتها مع {0}/{1} أجهزة.
+
+أخطاء المزامنة في بعض الأجهزة:
+{2}</value></data>
+  <data name="CardRemovedSuccess" xml:space="preserve"><value>تم إزالة البطاقة {0}.</value></data>
+  <data name="CardRemoveConstraint" xml:space="preserve"><value>لا يمكن إزالة البطاقة: قد تكون مرتبطة بسجلات الدخول. يرجى التواصل مع المسؤول.</value></data>
+  <data name="CardNotFoundRemoved" xml:space="preserve"><value>البطاقة {0} غير موجودة. ربما تمت إزالتها بالفعل.</value></data>
+  <data name="PlayerNotFoundDeleted" xml:space="preserve"><value>اللاعب غير موجود. ربما تم حذفه.</value></data>
+  <data name="RenewalCancelled" xml:space="preserve"><value>تم إلغاء التجديد</value></data>
+  <data name="RenewedSuccessfully" xml:space="preserve"><value>تم تجديد الاشتراك بنجاح</value></data>
+  <data name="RenewSyncErrors" xml:space="preserve"><value>تم تجديد الاشتراك بنجاح.
+
+أخطاء مزامنة البطاقة في بعض الأجهزة:
+{0}</value></data>
+  <data name="SyncingCardDevices" xml:space="preserve"><value>جاري مزامنة البطاقة {0} مع الأجهزة...</value></data>
+  <data name="RenewingSubscription" xml:space="preserve"><value>جاري تجديد الاشتراك...</value></data>
+  <data name="PlayerDbInconsistent" xml:space="preserve"><value>بيانات اللاعب في قاعدة البيانات غير متسقة. يرجى المحاولة مرة أخرى.</value></data>
+  <data name="DeviceTimeout" xml:space="preserve"><value>انتهت مهلة الاتصال بالجهاز. يرجى التحقق من اتصال الجهاز.</value></data>
+  <data name="ConcurrencyError" xml:space="preserve"><value>تم تعديل البيانات من قبل مستخدم آخر. يرجى التحديث والمحاولة مرة أخرى.</value></data>
+  <data name="DatabaseError" xml:space="preserve"><value>خطأ في قاعدة البيانات. يرجى المحاولة مرة أخرى.</value></data>
+  <data name="SomeDevicesOffline" xml:space="preserve"><value>بعض الأجهزة غير متصلة</value></data>
+  <data name="UnfreezingPlayer" xml:space="preserve"><value>جاري إلغاء التجميد...</value></data>
+  <data name="FreezingAccount" xml:space="preserve"><value>جاري تجميد الحساب...</value></data>
+  <data name="RemovingCard" xml:space="preserve"><value>جاري إزالة البطاقة {0}...</value></data>
+  <data name="BtnClose" xml:space="preserve"><value>إغلاق</value></data>
+  <data name="DoorOpenFailed" xml:space="preserve"><value>فشل في فتح الباب.</value></data>
+  <data name="DoorCloseFailed" xml:space="preserve"><value>فشل في إغلاق الباب.</value></data>
+  <data name="DoorDelayFailed" xml:space="preserve"><value>فشل في ضبط تأخير الباب.</value></data>
+  <data name="DoorPasswordFailed" xml:space="preserve"><value>فشل في ضبط كلمة مرور الباب.</value></data>
+  <data name="DoorDelayInvalid" xml:space="preserve"><value>قيمة غير صالحة. أدخل من 1 إلى 99 ثانية.</value></data>
+  <data name="OpeningDoor" xml:space="preserve"><value>جاري فتح {0}...</value></data>
+  <data name="ClosingDoor" xml:space="preserve"><value>جاري إغلاق {0}...</value></data>
+  <data name="SettingDelay" xml:space="preserve"><value>جاري ضبط التأخير لـ {0}...</value></data>
+  <data name="SettingPassword" xml:space="preserve"><value>جاري ضبط كلمة المرور لـ {0}...</value></data>
+  <!-- Projector Door Selection -->
+  <data name="DispSelectDoor" xml:space="preserve"><value>اختر الباب للعرض</value></data>
+  <data name="DispSelectDoorDesc" xml:space="preserve"><value>اختر الباب الذي تريد عرض معلوماته على شاشة العرض</value></data>
+  <data name="Confirm" xml:space="preserve"><value>تأكيد</value></data>
+  <data name="DispDoorName" xml:space="preserve"><value>الباب</value></data>
+  <data name="DispNoDoors" xml:space="preserve"><value>لا توجد أبواب. يرجى إضافة أجهزة أولاً.</value></data>
+</root>

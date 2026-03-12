@@ -1,0 +1,360 @@
+<UserControl x:Class="AccessControlPro.Admin.Views.ReportsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="http://schemas.fontawesome.io/icons/"
+             xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers;assembly=AccessControlPro.WPF"
+             Background="{StaticResource BgDarkBrush}">
+
+    <UserControl.Resources>
+        <helpers:BindingProxy x:Key="Proxy" Data="{Binding}"/>
+    </UserControl.Resources>
+
+    <Grid Margin="24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,16">
+            <StackPanel DockPanel.Dock="Left">
+                <TextBlock Text="{Binding Lang.RptTitle}" FontSize="24"
+                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                <TextBlock Text="{Binding Lang.RptSubtitle}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
+            </StackPanel>
+            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}"
+                    HorizontalAlignment="Right" VerticalAlignment="Center"
+                    Padding="16,10" Command="{Binding ExportCsvCommand}" Cursor="Hand">
+                <StackPanel Orientation="Horizontal">
+                    <fa:ImageAwesome Icon="FileTextOutline" Width="14" Height="14"
+                                     Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding Lang.RptExport}" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+        </DockPanel>
+
+        <!-- Report Type Tabs -->
+        <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,12">
+            <Border Margin="0,0,4,0" CornerRadius="10" Padding="14,10" Cursor="Hand"
+                    MouseLeftButtonUp="PlayersTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedReportType}" Value="0">
+                                <Setter Property="Background" Value="#1A44A1A0"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <fa:ImageAwesome Icon="Users" Width="14" Height="14" Foreground="{StaticResource PrimaryLightBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding Lang.RptPlayers}" FontSize="13"
+                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            <Border Margin="4,0" CornerRadius="10" Padding="14,10" Cursor="Hand"
+                    MouseLeftButtonUp="FinanceTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedReportType}" Value="1">
+                                <Setter Property="Background" Value="#1A2ED47A"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <fa:ImageAwesome Icon="LineChart" Width="14" Height="14" Foreground="#2ED47A"
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding Lang.RptFinance}" FontSize="13"
+                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            <Border Margin="4,0,0,0" CornerRadius="10" Padding="14,10" Cursor="Hand"
+                    MouseLeftButtonUp="InventoryTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedReportType}" Value="2">
+                                <Setter Property="Background" Value="#1AFFB946"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <fa:ImageAwesome Icon="Archive" Width="14" Height="14" Foreground="#FFB946"
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding Lang.RptInventory}" FontSize="13"
+                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+
+        <!-- Date Filter + Run -->
+        <Border Grid.Row="2" Style="{StaticResource DashboardCard}" Margin="0,0,0,12" Padding="14,10">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding Lang.RptStartDate}" FontSize="12"
+                           Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <DatePicker SelectedDate="{Binding DateFrom}" Width="140" Margin="0,0,16,0"/>
+                <TextBlock Text="{Binding Lang.RptEndDate}" FontSize="12"
+                           Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <DatePicker SelectedDate="{Binding DateTo}" Width="140" Margin="0,0,16,0"/>
+                <Button Style="{StaticResource PrimaryButton}" Padding="16,8"
+                        Command="{Binding LoadCommand}" Cursor="Hand">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Play" Width="12" Height="12" Foreground="White"
+                                         VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="{Binding Lang.RptRun}" FontSize="12" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                           VerticalAlignment="Center" Margin="16,0,0,0">
+                    <Run Text="{Binding Lang.RptResults, Mode=OneWay}"/>
+                    <Run Text=": "/>
+                    <Run Text="{Binding ResultCount, Mode=OneWay}"/>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- Results -->
+        <Border Grid.Row="3" Style="{StaticResource DashboardCard}">
+            <Grid>
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
+                    <fa:ImageAwesome Icon="Spinner" Width="24" Height="24"
+                                     Foreground="{StaticResource PrimaryLightBrush}"
+                                     SpinDuration="1" Spin="True" HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Players Results (Tab 0) -->
+                <DataGrid ItemsSource="{Binding PlayerResults}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          Background="Transparent" BorderThickness="0"
+                          RowBackground="#0E2A2D" AlternatingRowBackground="#112F32"
+                          Foreground="{StaticResource TextPrimaryBrush}"
+                          GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#15FFFFFF"
+                          HeadersVisibility="Column" SelectionMode="Single" CanUserResizeRows="False"
+                          FontFamily="{StaticResource CairoFont}" FontSize="13" FontWeight="Bold">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedReportType}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#143436"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+                            <Setter Property="FontSize" Value="13"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Padding" Value="14,10"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridColumnHeader">
+                                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                              TextBlock.Foreground="{TemplateBinding Foreground}"
+                                                              TextBlock.FontFamily="{TemplateBinding FontFamily}"
+                                                              TextBlock.FontSize="{TemplateBinding FontSize}"
+                                                              TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Padding" Value="14,8"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridCell">
+                                        <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                            <ContentPresenter VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.CellStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PlayerName, Source={StaticResource Proxy}}"
+                                            Binding="{Binding FullNameEn}" Width="*"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Phone, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Phone}" Width="120"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Subscription, Source={StaticResource Proxy}}"
+                                            Binding="{Binding SubscriptionType}" Width="120"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.RptEndDate, Source={StaticResource Proxy}}"
+                                            Binding="{Binding EndDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="110"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Fee, Source={StaticResource Proxy}}"
+                                            Binding="{Binding SubscriptionFee, StringFormat='{}{0:N0}'}" Width="90"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Paid, Source={StaticResource Proxy}}"
+                                            Binding="{Binding AmountPaid, StringFormat='{}{0:N0}'}" Width="90"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Remaining, Source={StaticResource Proxy}}"
+                                            Binding="{Binding RemainingBalance, StringFormat='{}{0:N0}'}" Width="90"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Finance Results (Tab 1) -->
+                <DataGrid ItemsSource="{Binding FinanceResults}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          Background="Transparent" BorderThickness="0"
+                          RowBackground="#0E2A2D" AlternatingRowBackground="#112F32"
+                          Foreground="{StaticResource TextPrimaryBrush}"
+                          GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#15FFFFFF"
+                          HeadersVisibility="Column" SelectionMode="Single" CanUserResizeRows="False"
+                          FontFamily="{StaticResource CairoFont}" FontSize="13" FontWeight="Bold">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedReportType}" Value="1">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#143436"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+                            <Setter Property="FontSize" Value="13"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Padding" Value="14,10"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridColumnHeader">
+                                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                              TextBlock.Foreground="{TemplateBinding Foreground}"
+                                                              TextBlock.FontFamily="{TemplateBinding FontFamily}"
+                                                              TextBlock.FontSize="{TemplateBinding FontSize}"
+                                                              TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Padding" Value="14,8"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridCell">
+                                        <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                            <ContentPresenter VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.CellStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{Binding Data.Lang.SmDate, Source={StaticResource Proxy}}"
+                                            Binding="{Binding CreatedAt, StringFormat='{}{0:yyyy-MM-dd}'}" Width="110"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.SmType, Source={StaticResource Proxy}}"
+                                            Binding="{Binding TypeLabel}" Width="100"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdCategory, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Category}" Width="120"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdPrice, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Amount, StringFormat='{}{0:N0}'}" Width="100"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.AuditDetails, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Description}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Inventory Results (Tab 2) -->
+                <DataGrid ItemsSource="{Binding InventoryResults}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          Background="Transparent" BorderThickness="0"
+                          RowBackground="#0E2A2D" AlternatingRowBackground="#112F32"
+                          Foreground="{StaticResource TextPrimaryBrush}"
+                          GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#15FFFFFF"
+                          HeadersVisibility="Column" SelectionMode="Single" CanUserResizeRows="False"
+                          FontFamily="{StaticResource CairoFont}" FontSize="13" FontWeight="Bold">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedReportType}" Value="2">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#143436"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+                            <Setter Property="FontSize" Value="13"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Padding" Value="14,10"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridColumnHeader">
+                                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                              TextBlock.Foreground="{TemplateBinding Foreground}"
+                                                              TextBlock.FontFamily="{TemplateBinding FontFamily}"
+                                                              TextBlock.FontSize="{TemplateBinding FontSize}"
+                                                              TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Padding" Value="14,8"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridCell">
+                                        <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                            <ContentPresenter VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.CellStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdName, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Name}" Width="*"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdNameAr, Source={StaticResource Proxy}}"
+                                            Binding="{Binding NameAr}" Width="*"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdBarcode, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Barcode}" Width="120"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdPrice, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Price, StringFormat='{}{0:N0}'}" Width="100"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdCategory, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Category}" Width="120"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdStock, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Stock}" Width="80"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

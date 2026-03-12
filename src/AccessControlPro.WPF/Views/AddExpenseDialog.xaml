@@ -1,0 +1,51 @@
+<Window x:Class="AccessControlPro.WPF.Views.AddExpenseDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers"
+        Title="{Binding FinAddExpense, Source={x:Static helpers:LanguageManager.Instance}}"
+        Width="460" Height="420" WindowStartupLocation="CenterOwner"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize"
+        FlowDirection="{Binding FlowDirection, Source={x:Static helpers:LanguageManager.Instance}}"
+        FontFamily="{StaticResource CairoFont}" FontWeight="Bold">
+    <Border Background="{StaticResource BgDarkBrush}" CornerRadius="16" Padding="28">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.6" Color="Black"/>
+        </Border.Effect>
+        <StackPanel>
+            <TextBlock Text="{Binding FinAddExpense, Source={x:Static helpers:LanguageManager.Instance}}"
+                       FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"
+                       HorizontalAlignment="Center" Margin="0,0,0,20"/>
+
+            <!-- Category -->
+            <TextBlock Text="{Binding FinCategory, Source={x:Static helpers:LanguageManager.Instance}}"
+                       FontSize="13" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,6"/>
+            <ComboBox x:Name="CategoryCombo" Style="{StaticResource DarkComboBox}"
+                      Margin="0,0,0,14" Loaded="CategoryCombo_Loaded"/>
+
+            <!-- Amount -->
+            <TextBlock Text="{Binding FinAmount, Source={x:Static helpers:LanguageManager.Instance}}"
+                       FontSize="13" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,6"/>
+            <TextBox x:Name="AmountBox" Style="{StaticResource DarkTextBox}"
+                     FontSize="15" Padding="12,10" Margin="0,0,0,14"/>
+
+            <!-- Description -->
+            <TextBlock Text="{Binding FinDescription, Source={x:Static helpers:LanguageManager.Instance}}"
+                       FontSize="13" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,6"/>
+            <TextBox x:Name="DescriptionBox" Style="{StaticResource DarkTextBox}"
+                     FontSize="14" Padding="12,10" Height="60"
+                     TextWrapping="Wrap" AcceptsReturn="True" Margin="0,0,0,20"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <Button Style="{StaticResource PrimaryButton}" Padding="28,10"
+                        Click="OkClick" Margin="0,0,12,0">
+                    <TextBlock Text="{Binding OK, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                </Button>
+                <Button Style="{StaticResource SecondaryButton}" Padding="28,10"
+                        Click="CancelClick">
+                    <TextBlock Text="{Binding Cancel, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                </Button>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

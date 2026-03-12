@@ -1,0 +1,8 @@
+[
+  { "Type": "Fitness", "MonthlyRate": 25000 },
+  { "Type": "Kickboxing", "MonthlyRate": 30000 },
+  { "Type": "Swimming", "MonthlyRate": 20000 },
+  { "Type": "CrossFit", "MonthlyRate": 35000 },
+  { "Type": "Yoga", "MonthlyRate": 15000 },
+  { "Type": "Full Access", "MonthlyRate": 50000 }
+]
