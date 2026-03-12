@@ -179,6 +179,7 @@
   <data name="CardType" xml:space="preserve"><value>Card Type</value></data>
   <data name="DoorAccess" xml:space="preserve"><value>Door Access</value></data>
   <data name="EffectiveTimes" xml:space="preserve"><value>Effective Times</value></data>
+  <data name="MaxVisits" xml:space="preserve"><value>Max Visits</value></data>
   <data name="TimePeriod" xml:space="preserve"><value>Time Period</value></data>
   <data name="HolidayAccess" xml:space="preserve"><value>Holiday Access</value></data>
   <data name="ValidUntil" xml:space="preserve"><value>Valid Period</value></data>

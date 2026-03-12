@@ -39,6 +39,7 @@ public partial class AddEmployeeDialog : Window
     public DateTime StartDate => StartDatePicker.SelectedDate ?? DateTime.Today;
     public DateTime EndDate => EndDatePicker.SelectedDate ?? DateTime.Today.AddMonths(1);
     public string Notes => NotesTextBox.Text.Trim();
+    public int MaxVisits => int.TryParse(MaxVisitsTextBox.Text.Trim(), out var v) ? v : 0;
 
     public AddEmployeeDialog(ILookupService? lookupService = null)
     {
@@ -69,6 +70,8 @@ public partial class AddEmployeeDialog : Window
         FeeTextBox.Text = existing.SubscriptionFee > 0 ? existing.SubscriptionFee.ToString() : "";
         PaidTextBox.Text = existing.AmountPaid > 0 ? existing.AmountPaid.ToString() : "";
         NotesTextBox.Text = existing.Notes;
+
+        MaxVisitsTextBox.Text = existing.MaxVisits > 0 ? existing.MaxVisits.ToString() : "0";
 
         _pendingSubscriptionType = existing.SubscriptionType;
         SelectSubscriptionType(existing.SubscriptionType);

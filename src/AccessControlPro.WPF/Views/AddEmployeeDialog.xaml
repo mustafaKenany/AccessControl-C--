@@ -156,6 +156,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -283,10 +284,22 @@
                                VerticalAlignment="Center" Margin="8,0,0,0" FontSize="12"/>
                 </StackPanel>
 
-                <!-- Height / Weight Row -->
-                <TextBlock Grid.Row="11" Grid.Column="0" Text="{Binding Lang.HeightCm}"
+                <!-- Max Visits (0 = unlimited / date-based only) -->
+                <TextBlock Grid.Row="11" Grid.Column="0" Text="{Binding Lang.MaxVisits}"
                            Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
                 <StackPanel Grid.Row="11" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBox x:Name="MaxVisitsTextBox" Width="120"
+                             Style="{StaticResource DarkTextBox}" Text="0"
+                             PreviewTextInput="NumberOnly_PreviewTextInput"
+                             DataObject.Pasting="NumberOnly_Pasting"/>
+                    <TextBlock Text="(0 = unlimited)" Foreground="#5A8A8D"
+                               VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11"/>
+                </StackPanel>
+
+                <!-- Height / Weight Row -->
+                <TextBlock Grid.Row="12" Grid.Column="0" Text="{Binding Lang.HeightCm}"
+                           Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
+                <StackPanel Grid.Row="12" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
                     <TextBox x:Name="HeightTextBox" Width="90"
                              Style="{StaticResource DarkTextBox}"
                              PreviewTextInput="DecimalOnly_PreviewTextInput"
@@ -300,15 +313,15 @@
                 </StackPanel>
 
                 <!-- Notes -->
-                <TextBlock Grid.Row="12" Grid.Column="0" Text="{Binding Lang.Notes}"
+                <TextBlock Grid.Row="13" Grid.Column="0" Text="{Binding Lang.Notes}"
                            Foreground="#9EC5C8" VerticalAlignment="Top" Margin="0,0,0,10" FontSize="13"/>
-                <TextBox x:Name="NotesTextBox" Grid.Row="12" Grid.Column="1"
+                <TextBox x:Name="NotesTextBox" Grid.Row="13" Grid.Column="1"
                          Style="{StaticResource DarkTextBox}" Margin="0,0,0,10"
                          Height="60" TextWrapping="Wrap" AcceptsReturn="True"
                          VerticalScrollBarVisibility="Auto"/>
 
                 <!-- Buttons -->
-                <StackPanel Grid.Row="14" Grid.ColumnSpan="2" Orientation="Horizontal"
+                <StackPanel Grid.Row="15" Grid.ColumnSpan="2" Orientation="Horizontal"
                             HorizontalAlignment="Right" Margin="0,18,0,0">
                     <!-- Cancel Button -->
                     <Button Width="150" Height="44" Margin="0,0,14,0"

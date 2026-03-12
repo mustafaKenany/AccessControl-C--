@@ -184,6 +184,7 @@
   <data name="CardType" xml:space="preserve"><value>نوع البطاقة</value></data>
   <data name="DoorAccess" xml:space="preserve"><value>صلاحية الأبواب</value></data>
   <data name="EffectiveTimes" xml:space="preserve"><value>مرات الاستخدام</value></data>
+  <data name="MaxVisits" xml:space="preserve"><value>الحد الأقصى للزيارات</value></data>
   <data name="TimePeriod" xml:space="preserve"><value>الفترة الزمنية</value></data>
   <data name="HolidayAccess" xml:space="preserve"><value>وصول في العطلات</value></data>
   <data name="ValidUntil" xml:space="preserve"><value>فترة الصلاحية</value></data>

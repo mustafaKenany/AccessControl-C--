@@ -165,7 +165,8 @@ public partial class EmployeesViewModel : ObservableObject
                 AmountPaid = dialog.AmountPaid,
                 StartDate = dialog.StartDate,
                 EndDate = dialog.EndDate,
-                Notes = dialog.Notes
+                Notes = dialog.Notes,
+                MaxVisits = dialog.MaxVisits
             };
 
             await _employeeService.AddEmployeeAsync(dto);
@@ -231,7 +232,8 @@ public partial class EmployeesViewModel : ObservableObject
                 AmountPaid = dialog.AmountPaid,
                 StartDate = dialog.StartDate,
                 EndDate = dialog.EndDate,
-                Notes = dialog.Notes
+                Notes = dialog.Notes,
+                MaxVisits = dialog.MaxVisits
             };
 
             var success = await _employeeService.UpdateEmployeeAsync(dto, reasonDialog.Reason);
@@ -519,6 +521,8 @@ public partial class EmployeesViewModel : ObservableObject
     {
         if (employee == null) return;
 
+        var devices = (await _deviceService.GetAllDevicesAsync()).ToList();
+
         if (employee.IsFrozen)
         {
             // Unfreeze
@@ -530,11 +534,16 @@ public partial class EmployeesViewModel : ObservableObject
 
             if (!confirmed) return;
 
+            // Re-enable on all devices by default for unfreeze
+            List<int>? selectedDeviceIds = devices.Count > 0
+                ? devices.Select(d => d.Id).ToList()
+                : null;
+
             IsLoading = true;
             try
             {
                 StatusMessage = Lang.UnfreezingPlayer;
-                var success = await _employeeService.UnfreezePlayerAsync(employee.Id);
+                var success = await _employeeService.UnfreezePlayerAsync(employee.Id, selectedDeviceIds);
                 if (success)
                 {
                     StatusMessage = Lang.UnfreezeSuccess;
@@ -558,17 +567,19 @@ public partial class EmployeesViewModel : ObservableObject
         }
         else
         {
-            // Freeze - ask for reason using styled dialog
-            var reasonDialog = new FreezeReasonDialog();
+            // Freeze - ask for reason and select devices
+            var reasonDialog = new FreezeReasonDialog(devices);
             reasonDialog.Owner = System.Windows.Application.Current.MainWindow;
             reasonDialog.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner;
             if (reasonDialog.ShowDialog() != true) return;
+
+            var selectedDeviceIds = reasonDialog.SelectedDeviceIds;
 
             IsLoading = true;
             try
             {
                 StatusMessage = Lang.FreezingAccount;
-                var success = await _employeeService.FreezePlayerAsync(employee.Id, reasonDialog.Reason);
+                var success = await _employeeService.FreezePlayerAsync(employee.Id, reasonDialog.Reason, selectedDeviceIds);
                 if (success)
                 {
                     StatusMessage = Lang.FreezeSuccess;
@@ -663,6 +674,8 @@ public partial class EmployeesViewModel : ObservableObject
         {
             StatusMessage = Lang.RenewingSubscription;
 
+            StatusMessage = Lang.RenewingSubscription;
+
             var success = await _employeeService.RenewSubscriptionAsync(
                 employee.Id,
                 dialog.SelectedSubscriptionType,
@@ -671,46 +684,11 @@ public partial class EmployeesViewModel : ObservableObject
                 dialog.NewFee,
                 dialog.NewAmountPaid,
                 dialog.DoorPermissions,
-                dialog.EffectiveTimes);
+                dialog.EffectiveTimes,
+                selectedDeviceIds.Count > 0 ? selectedDeviceIds : null);
 
             if (success)
             {
-                // Re-sync cards to selected devices with updated settings
-                if (selectedDeviceIds.Count > 0)
-                {
-                    int syncedCount = 0;
-                    var syncErrors = new List<string>();
-
-                    var updatedEmployee = await _employeeService.GetEmployeeByIdAsync(employee.Id);
-                    if (updatedEmployee?.Cards != null)
-                    {
-                        foreach (var card in updatedEmployee.Cards)
-                        {
-                            foreach (var deviceId in selectedDeviceIds)
-                            {
-                                try
-                                {
-                                    StatusMessage = string.Format(Lang.SyncingCardDevices, card.CardNumber);
-                                    await _employeeService.SyncCardToDeviceAsync(card.Id, deviceId);
-                                    syncedCount++;
-                                }
-                                catch (Exception ex)
-                                {
-                                    var device = devices.FirstOrDefault(d => d.Id == deviceId);
-                                    syncErrors.Add($"- {device?.Name}: {ex.Message}");
-                                }
-                            }
-                        }
-                    }
-
-                    if (syncErrors.Count > 0)
-                    {
-                        var syncMsg = string.Format(Lang.RenewSyncErrors, string.Join("\n", syncErrors));
-                        CustomMessageBox.Show(syncMsg, Lang.RenewSubscription, MsgType.Warning,
-                            System.Windows.Application.Current.MainWindow);
-                    }
-                }
-
                 await LoadPagedAsync();
                 StatusMessage = "✓ " + Lang.RenewedSuccessfully;
 

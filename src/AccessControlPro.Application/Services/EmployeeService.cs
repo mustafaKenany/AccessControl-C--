@@ -100,7 +100,9 @@ public class EmployeeService : IEmployeeService
             AmountPaid = dto.AmountPaid,
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
-            Notes = dto.Notes
+            Notes = dto.Notes,
+            MaxVisits = dto.MaxVisits,
+            UsedVisits = 0
         };
         await _employeeRepository.AddAsync(employee);
 
@@ -218,6 +220,11 @@ public class EmployeeService : IEmployeeService
             changesEn.Add("Photo changed");
             changesAr.Add("تم تغيير الصورة");
         }
+        if (employee.MaxVisits != dto.MaxVisits)
+        {
+            changesEn.Add($"MaxVisits: {employee.MaxVisits} → {dto.MaxVisits}");
+            changesAr.Add($"الحد الأقصى للزيارات: {employee.MaxVisits} → {dto.MaxVisits}");
+        }
 
         employee.FullNameEn = dto.FullNameEn;
         employee.FullNameAr = dto.FullNameAr;
@@ -232,6 +239,7 @@ public class EmployeeService : IEmployeeService
         employee.StartDate = dto.StartDate;
         employee.EndDate = dto.EndDate;
         employee.Notes = dto.Notes;
+        employee.MaxVisits = dto.MaxVisits;
         await _employeeRepository.UpdateAsync(employee);
 
         // Build audit message: auto-detected changes + user reason
@@ -457,6 +465,7 @@ public class EmployeeService : IEmployeeService
         employee.AmountPaid = amountPaid;
         employee.IsFrozen = false;
         employee.FreezeStartDate = null;
+        employee.UsedVisits = 0; // Reset visit count on renewal
         await _employeeRepository.UpdateAsync(employee);
 
         // Update all cards with new door permissions, effective times, and validity
@@ -506,6 +515,12 @@ public class EmployeeService : IEmployeeService
             $"Renewed subscription for {employee.FullNameEn} from {oldEndDate:yyyy-MM-dd} to {employee.EndDate:yyyy-MM-dd}. Amount: {amountPaid}",
             $"تم تجديد اشتراك {employee.FullNameAr} من {oldEndDate:yyyy-MM-dd} إلى {employee.EndDate:yyyy-MM-dd}. المبلغ: {amountPaid}",
             _currentUser.Username);
+
+        // Re-sync cards to hardware with new ValidTo date and updated permissions
+        // Re-read employee to get the updated cards (with new ValidTo)
+        employee = await _employeeRepository.GetByIdWithCardsAsync(id);
+        if (employee != null)
+            await ReEnableCardsOnHardware(employee, deviceIds);
 
         return true;
     }

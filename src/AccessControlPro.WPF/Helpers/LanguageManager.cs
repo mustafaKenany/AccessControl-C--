@@ -198,6 +198,7 @@ public class LanguageManager : INotifyPropertyChanged
     public string CardType => GetString("CardType");
     public string DoorAccess => GetString("DoorAccess");
     public string EffectiveTimes => GetString("EffectiveTimes");
+    public string MaxVisits => GetString("MaxVisits");
     public string TimePeriod => GetString("TimePeriod");
     public string HolidayAccess => GetString("HolidayAccess");
     public string ValidUntil => GetString("ValidUntil");
@@ -946,6 +947,7 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(CardType));
         OnPropertyChanged(nameof(DoorAccess));
         OnPropertyChanged(nameof(EffectiveTimes));
+        OnPropertyChanged(nameof(MaxVisits));
         OnPropertyChanged(nameof(TimePeriod));
         OnPropertyChanged(nameof(HolidayAccess));
         OnPropertyChanged(nameof(ValidUntil));

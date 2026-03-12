@@ -19,6 +19,7 @@ public partial class MonitorViewModel : ObservableObject
     private readonly IAccessCardRepository _cardRepository;
     private readonly IAccessEventService _eventService;
     private readonly IDoorService _doorService;
+    private readonly IEmployeeService _employeeService;
 
     public LanguageManager Lang => LanguageManager.Instance;
 
@@ -50,7 +51,8 @@ public partial class MonitorViewModel : ObservableObject
         IDoorRepository doorRepository,
         IAccessCardRepository cardRepository,
         IAccessEventService eventService,
-        IDoorService doorService)
+        IDoorService doorService,
+        IEmployeeService employeeService)
     {
         _sdk = sdk;
         _deviceRepository = deviceRepository;
@@ -58,6 +60,7 @@ public partial class MonitorViewModel : ObservableObject
         _cardRepository = cardRepository;
         _eventService = eventService;
         _doorService = doorService;
+        _employeeService = employeeService;
     }
 
     [RelayCommand]
@@ -198,6 +201,19 @@ public partial class MonitorViewModel : ObservableObject
             if (doorId > 0)
             {
                 await _eventService.SaveEventAsync(doorId, cardId, evt.RecordType, evt.EventCode, evt.EventDate, details);
+            }
+
+            // Increment visit count for successful card entry events
+            if (evt.EventCode == 1 && !string.IsNullOrEmpty(evt.CardNumber))
+            {
+                try
+                {
+                    await _employeeService.IncrementVisitAsync(evt.CardNumber);
+                }
+                catch (Exception visitEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[MonitorViewModel] Visit increment error: {visitEx.Message}");
+                }
             }
 
             // Update UI on dispatcher thread

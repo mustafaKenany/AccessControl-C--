@@ -60,7 +60,7 @@ public class ExpiryMonitorService : IExpiryMonitorService
     public async Task<ExpiryCheckResult> CheckAndExpireAsync()
     {
         var result = new ExpiryCheckResult();
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now; // Use local time — employee dates use DateTime.Today
 
         try
         {
