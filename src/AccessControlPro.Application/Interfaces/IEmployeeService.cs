@@ -13,7 +13,11 @@ public interface IEmployeeService
     Task<bool> AssignCardAsync(int employeeId, AccessCardDto cardDto);
     Task<bool> RemoveCardAsync(int cardId);
     Task<bool> SyncCardToDeviceAsync(int cardId, int deviceId);
+    Task<(int synced, int failed, int total, List<string> errors)> SyncCardToAllDevicesAsync(int cardId);
     Task<(int synced, int failed, int total)> SyncAllCardsToDeviceAsync(int deviceId, IProgress<(int current, int total, string cardNumber)>? progress = null);
+    Task<(int synced, int failed, int total)> SyncAllCardsToAllDevicesAsync(IProgress<(int current, int total, string cardNumber)>? progress = null);
+    Task<(int synced, int failed, int total, List<string> errors)> RemoveCardFromAllDevicesAsync(int cardId);
+    Task IncrementVisitAsync(string cardNumber);
     Task<int> GetCountAsync();
     Task<bool> IsCardNoDuplicateAsync(string cardNo, int? excludeId = null);
     Task<bool> IsPhoneDuplicateAsync(string phone, int? excludeId = null);

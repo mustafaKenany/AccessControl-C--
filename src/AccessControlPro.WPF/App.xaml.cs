@@ -22,6 +22,7 @@ public partial class App : System.Windows.Application
     private static Mutex? _singleInstanceMutex;
     private readonly ServiceProvider _serviceProvider;
     private DispatcherTimer? _cleanupTimer;
+    private DispatcherTimer? _expiryMonitorTimer;
     private static readonly string CrashLogPath = Path.Combine(AppContext.BaseDirectory, "crash_log.txt");
 
     public App()
@@ -128,6 +129,7 @@ public partial class App : System.Windows.Application
         services.AddScoped<IFinanceService, FinanceService>();
         services.AddScoped<ICashFlowService, CashFlowService>();
         services.AddScoped<IMigrationService, MigrationService>();
+        services.AddScoped<IExpiryMonitorService, ExpiryMonitorService>();
         // POS moved to separate AccessControlPro.POS app
 
         // ViewModels
@@ -295,6 +297,28 @@ public partial class App : System.Windows.Application
                 }
             };
             _cleanupTimer.Start();
+
+            // Start expiry monitor — checks every 2 minutes for expired players
+            _expiryMonitorTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(2) };
+            _expiryMonitorTimer.Tick += async (_, _) =>
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var monitor = scope.ServiceProvider.GetRequiredService<IExpiryMonitorService>();
+                    var result = await Task.Run(() => monitor.CheckAndExpireAsync());
+                    if (result.DateExpired > 0 || result.VisitExpired > 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[ExpiryMonitor] Expired: {result.DateExpired} date-based, {result.VisitExpired} visit-based, {result.Errors} errors");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    WriteCrashLog("ExpiryMonitorTimer", ex);
+                }
+            };
+            _expiryMonitorTimer.Start();
         }
         catch (Exception ex)
         {
@@ -310,6 +334,8 @@ public partial class App : System.Windows.Application
     {
         _cleanupTimer?.Stop();
         _cleanupTimer = null;
+        _expiryMonitorTimer?.Stop();
+        _expiryMonitorTimer = null;
 
         // Stop SDK monitoring and shutdown to prevent background thread crashes
         try

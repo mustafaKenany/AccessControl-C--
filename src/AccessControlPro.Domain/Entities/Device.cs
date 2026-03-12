@@ -19,4 +19,5 @@ public class Device
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<Door> Doors { get; set; } = new List<Door>();
+    public ICollection<CardDeviceSync> CardSyncs { get; set; } = new List<CardDeviceSync>();
 }

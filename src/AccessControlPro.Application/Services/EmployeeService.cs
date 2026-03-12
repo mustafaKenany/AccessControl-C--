@@ -18,6 +18,7 @@ public class EmployeeService : IEmployeeService
     private readonly IDeletedEmployeeRepository _deletedEmployeeRepository;
     private readonly IFreezeHistoryRepository _freezeHistoryRepository;
     private readonly ITransactionRepository _transactionRepository;
+    private readonly ICardDeviceSyncRepository _cardDeviceSyncRepository;
     private readonly CurrentUserService _currentUser;
     private readonly ISessionLogger _sessionLogger;
 
@@ -30,6 +31,7 @@ public class EmployeeService : IEmployeeService
         IDeletedEmployeeRepository deletedEmployeeRepository,
         IFreezeHistoryRepository freezeHistoryRepository,
         ITransactionRepository transactionRepository,
+        ICardDeviceSyncRepository cardDeviceSyncRepository,
         CurrentUserService currentUser,
         ISessionLogger sessionLogger)
     {
@@ -41,6 +43,7 @@ public class EmployeeService : IEmployeeService
         _deletedEmployeeRepository = deletedEmployeeRepository;
         _freezeHistoryRepository = freezeHistoryRepository;
         _transactionRepository = transactionRepository;
+        _cardDeviceSyncRepository = cardDeviceSyncRepository;
         _currentUser = currentUser;
         _sessionLogger = sessionLogger;
     }
@@ -732,6 +735,10 @@ public class EmployeeService : IEmployeeService
 
             card.IsSyncedToDevice = true;
             await _cardRepository.UpdateAsync(card);
+
+            // Track per-device sync status
+            await _cardDeviceSyncRepository.UpsertAsync(cardId, deviceId, true);
+
             await LogAuditAsync("SyncCard", "AccessCard", cardId,
                 $"Synced card {card.CardNumber} to device {device.Name} ({device.IP})",
                 $"تم مزامنة بطاقة {card.CardNumber} مع جهاز {device.Name} ({device.IP})");
@@ -746,6 +753,9 @@ public class EmployeeService : IEmployeeService
         }
         catch (Exception ex)
         {
+            // Track failed sync
+            await _cardDeviceSyncRepository.UpsertAsync(cardId, deviceId, false, ex.Message);
+
             // Log error to session file
             await _sessionLogger.LogErrorAsync("SYNC_CARD", "AccessCard", cardId,
                 $"Failed to sync card {card.CardNumber} to device {device.Name}: {ex.Message}",
@@ -830,6 +840,191 @@ public class EmployeeService : IEmployeeService
         return (synced, failed, allCards.Count);
     }
 
+    public async Task<(int synced, int failed, int total, List<string> errors)> SyncCardToAllDevicesAsync(int cardId)
+    {
+        var card = await _cardRepository.GetByIdAsync(cardId);
+        if (card == null)
+            throw new InvalidOperationException($"Card with ID {cardId} not found.");
+
+        var devices = (await _deviceRepository.GetAllAsync()).ToList();
+        if (devices.Count == 0)
+            return (0, 0, 0, new List<string> { "No devices found." });
+
+        _sdk.Initialize();
+        int synced = 0, failed = 0;
+        var errors = new List<string>();
+
+        var permitTime = card.ValidTo > DateTime.MinValue
+            ? card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss")
+            : DateTime.UtcNow.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
+
+        foreach (var device in devices)
+        {
+            try
+            {
+                _sdk.AddAccessCard(
+                    BuildDeviceInfo(device),
+                    card.CardNumber,
+                    card.CardPassword,
+                    card.OpenMode,
+                    card.DoorPermissions,
+                    permitTime,
+                    card.EffectiveTimes,
+                    card.TimePeriodIndex,
+                    card.HolidayEnabled);
+
+                await _cardDeviceSyncRepository.UpsertAsync(cardId, device.Id, true);
+                synced++;
+            }
+            catch (Exception ex)
+            {
+                await _cardDeviceSyncRepository.UpsertAsync(cardId, device.Id, false, ex.Message);
+                errors.Add($"{device.Name} ({device.IP}): {ex.Message}");
+                failed++;
+            }
+        }
+
+        card.IsSyncedToDevice = synced > 0;
+        await _cardRepository.UpdateAsync(card);
+
+        await LogAuditAsync("SyncCardAllDevices", "AccessCard", cardId,
+            $"Synced card {card.CardNumber} to {synced}/{devices.Count} devices. Failed: {failed}",
+            $"تم مزامنة بطاقة {card.CardNumber} مع {synced}/{devices.Count} جهاز. فشل: {failed}");
+
+        return (synced, failed, devices.Count, errors);
+    }
+
+    public async Task<(int synced, int failed, int total)> SyncAllCardsToAllDevicesAsync(
+        IProgress<(int current, int total, string cardNumber)>? progress = null)
+    {
+        var devices = (await _deviceRepository.GetAllAsync()).ToList();
+        if (devices.Count == 0) return (0, 0, 0);
+
+        var allCards = (await _cardRepository.GetAllWithEmployeeAsync())
+            .Where(c => c.IsActive && c.Employee != null)
+            .ToList();
+
+        if (allCards.Count == 0) return (0, 0, 0);
+
+        _sdk.Initialize();
+        int synced = 0, failed = 0;
+        int totalOps = allCards.Count * devices.Count;
+        int current = 0;
+
+        foreach (var card in allCards)
+        {
+            var permitTime = card.ValidTo > DateTime.MinValue
+                ? card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss")
+                : DateTime.UtcNow.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
+
+            foreach (var device in devices)
+            {
+                current++;
+                progress?.Report((current, totalOps, card.CardNumber));
+
+                try
+                {
+                    _sdk.AddAccessCard(
+                        BuildDeviceInfo(device),
+                        card.CardNumber,
+                        card.CardPassword,
+                        card.OpenMode,
+                        card.DoorPermissions,
+                        permitTime,
+                        card.EffectiveTimes,
+                        card.TimePeriodIndex,
+                        card.HolidayEnabled);
+
+                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, true);
+                    synced++;
+                }
+                catch (Exception ex)
+                {
+                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, false, ex.Message);
+                    failed++;
+                }
+            }
+
+            card.IsSyncedToDevice = true;
+            await _cardRepository.UpdateAsync(card);
+        }
+
+        await LogAuditAsync("SyncAllCardsAllDevices", "System", null,
+            $"Bulk synced {synced}/{totalOps} card-device pairs ({allCards.Count} cards × {devices.Count} devices). Failed: {failed}",
+            $"تم مزامنة {synced}/{totalOps} بطاقة-جهاز ({allCards.Count} بطاقة × {devices.Count} جهاز). فشل: {failed}");
+
+        return (synced, failed, totalOps);
+    }
+
+    public async Task<(int synced, int failed, int total, List<string> errors)> RemoveCardFromAllDevicesAsync(int cardId)
+    {
+        var card = await _cardRepository.GetByIdAsync(cardId);
+        if (card == null)
+            throw new InvalidOperationException($"Card with ID {cardId} not found.");
+
+        var devices = (await _deviceRepository.GetAllAsync()).ToList();
+        if (devices.Count == 0)
+            return (0, 0, 0, new List<string>());
+
+        _sdk.Initialize();
+        int synced = 0, failed = 0;
+        var errors = new List<string>();
+
+        foreach (var device in devices)
+        {
+            try
+            {
+                // SDK has no delete function — expire the card by setting date far in past
+                _sdk.AddAccessCard(
+                    BuildDeviceInfo(device),
+                    card.CardNumber,
+                    card.CardPassword,
+                    card.OpenMode,
+                    card.DoorPermissions,
+                    "2000-01-01 00:00:00",
+                    card.EffectiveTimes,
+                    card.TimePeriodIndex,
+                    card.HolidayEnabled);
+                synced++;
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"{device.Name} ({device.IP}): {ex.Message}");
+                failed++;
+            }
+        }
+
+        // Clean up sync tracking records
+        await _cardDeviceSyncRepository.DeleteByCardIdAsync(cardId);
+
+        card.IsSyncedToDevice = false;
+        await _cardRepository.UpdateAsync(card);
+
+        return (synced, failed, devices.Count, errors);
+    }
+
+    public async Task IncrementVisitAsync(string cardNumber)
+    {
+        var card = await _cardRepository.GetByCardNumberAsync(cardNumber);
+        if (card?.Employee == null) return;
+
+        var employee = card.Employee;
+        if (employee.MaxVisits <= 0) return; // Date-based only, no visit tracking
+
+        employee.UsedVisits++;
+        await _employeeRepository.UpdateAsync(employee);
+
+        // Check if visits exhausted
+        if (employee.UsedVisits >= employee.MaxVisits)
+        {
+            // Auto-expire: disable card on all devices
+            await DisableCardsOnHardware(employee);
+            await LogAuditAsync("VisitLimitReached", "Employee", employee.Id,
+                $"Player {employee.FullNameEn} reached visit limit ({employee.UsedVisits}/{employee.MaxVisits}). Cards disabled on all devices.",
+                $"اللاعب {employee.FullNameAr} وصل حد الزيارات ({employee.UsedVisits}/{employee.MaxVisits}). تم تعطيل البطاقات.");
+        }
+    }
+
     public async Task<int> GetCountAsync()
         => await _employeeRepository.GetCountAsync();
 
@@ -869,7 +1064,7 @@ public class EmployeeService : IEmployeeService
         if (syncedCards == null || syncedCards.Count == 0) return;
 
         _sdk.Initialize();
-        var devices = await _deviceRepository.GetAllAsync();
+        var devices = (await _deviceRepository.GetAllAsync()).ToList();
 
         foreach (var card in syncedCards)
         {
@@ -887,9 +1082,12 @@ public class EmployeeService : IEmployeeService
                         card.EffectiveTimes,
                         card.TimePeriodIndex,
                         card.HolidayEnabled);
+
+                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, true);
                 }
                 catch (Exception ex)
                 {
+                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, false, ex.Message);
                     System.Diagnostics.Debug.WriteLine($"[EmployeeService] Failed to disable card {card.CardNumber} on device {device.IP}: {ex.Message}");
                 }
             }
@@ -902,12 +1100,11 @@ public class EmployeeService : IEmployeeService
         if (syncedCards == null || syncedCards.Count == 0) return;
 
         _sdk.Initialize();
-        var devices = await _deviceRepository.GetAllAsync();
+        var devices = (await _deviceRepository.GetAllAsync()).ToList();
         var newPermitTime = employee.EndDate.ToString("yyyy-MM-dd HH:mm:ss");
 
         foreach (var card in syncedCards)
         {
-            // Update card validity in database to match extended EndDate
             card.ValidTo = employee.EndDate;
             await _cardRepository.UpdateAsync(card);
 
@@ -925,9 +1122,12 @@ public class EmployeeService : IEmployeeService
                         card.EffectiveTimes,
                         card.TimePeriodIndex,
                         card.HolidayEnabled);
+
+                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, true);
                 }
                 catch (Exception ex)
                 {
+                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, false, ex.Message);
                     System.Diagnostics.Debug.WriteLine($"[EmployeeService] Failed to re-enable card {card.CardNumber} on device {device.IP}: {ex.Message}");
                 }
             }
@@ -991,6 +1191,8 @@ public class EmployeeService : IEmployeeService
         IsFrozen = e.IsFrozen,
         FreezeStartDate = e.FreezeStartDate,
         CardBalance = e.CardBalance,
+        MaxVisits = e.MaxVisits,
+        UsedVisits = e.UsedVisits,
         CardCount = e.AccessCards?.Count ?? 0,
         CreatedAt = e.CreatedAt,
         Cards = (e.AccessCards ?? []).Select(c => new AccessCardDto

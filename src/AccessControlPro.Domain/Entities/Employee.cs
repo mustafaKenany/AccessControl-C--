@@ -19,6 +19,11 @@ public class Employee
     public bool IsFrozen { get; set; }
     public DateTime? FreezeStartDate { get; set; }
     public decimal CardBalance { get; set; }
+
+    /// <summary>Visit-count subscription: max allowed visits (0 = unlimited/date-based only).</summary>
+    public int MaxVisits { get; set; }
+    /// <summary>Visit-count subscription: visits used so far.</summary>
+    public int UsedVisits { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>

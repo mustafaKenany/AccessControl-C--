@@ -20,4 +20,5 @@ public class AccessCard
 
     public Employee Employee { get; set; } = null!;
     public ICollection<AccessEvent> AccessEvents { get; set; } = new List<AccessEvent>();
+    public ICollection<CardDeviceSync> DeviceSyncs { get; set; } = new List<CardDeviceSync>();
 }

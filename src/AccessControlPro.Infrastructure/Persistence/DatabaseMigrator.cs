@@ -324,6 +324,33 @@ public static class DatabaseMigrator
 
             @"IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_PurchaseOrders_Discount_NonNegative')
               ALTER TABLE PurchaseOrders ADD CONSTRAINT CK_PurchaseOrders_Discount_NonNegative CHECK (Discount >= 0);",
+
+            // v3.0: CardDeviceSyncs table — tracks which cards are synced to which devices
+            @"IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CardDeviceSyncs')
+              CREATE TABLE CardDeviceSyncs (
+                  Id int IDENTITY(1,1) PRIMARY KEY,
+                  AccessCardId int NOT NULL,
+                  DeviceId int NOT NULL,
+                  IsSynced bit NOT NULL DEFAULT 0,
+                  SyncedAt datetime2 NULL,
+                  LastError nvarchar(500) NULL,
+                  CONSTRAINT FK_CardDeviceSyncs_AccessCards FOREIGN KEY (AccessCardId) REFERENCES AccessCards(Id) ON DELETE CASCADE,
+                  CONSTRAINT FK_CardDeviceSyncs_Devices FOREIGN KEY (DeviceId) REFERENCES Devices(Id) ON DELETE CASCADE,
+                  CONSTRAINT UQ_CardDeviceSyncs_Card_Device UNIQUE (AccessCardId, DeviceId)
+              );",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CardDeviceSyncs_DeviceId' AND object_id = OBJECT_ID('CardDeviceSyncs'))
+              CREATE INDEX IX_CardDeviceSyncs_DeviceId ON CardDeviceSyncs(DeviceId);",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CardDeviceSyncs_AccessCardId' AND object_id = OBJECT_ID('CardDeviceSyncs'))
+              CREATE INDEX IX_CardDeviceSyncs_AccessCardId ON CardDeviceSyncs(AccessCardId);",
+
+            // v3.0: Visit-count subscription fields on Employees
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Employees') AND name = 'MaxVisits')
+              ALTER TABLE Employees ADD MaxVisits int NOT NULL DEFAULT 0;",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Employees') AND name = 'UsedVisits')
+              ALTER TABLE Employees ADD UsedVisits int NOT NULL DEFAULT 0;",
         };
 
         var failedMigrations = new List<string>();
