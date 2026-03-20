@@ -1,0 +1,123 @@
+@page "/backup"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject AccessControlPro.Web.Data.DbHelper Db
+@rendermode InteractiveServer
+
+@if (!Session.IsAuthenticated || !Session.IsOwner)
+{
+    <p>Redirecting...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1><i class="fas fa-database"></i> @L("Backup Status", "حالة النسخ الاحتياطي")</h1>
+    </div>
+
+    <div class="content-card" style="text-align: center; padding: 3rem;">
+        <div style="font-size: 3rem; margin-bottom: 1rem; color: var(--accent);">&#x1f4be;</div>
+        <h3 style="color: var(--text-primary); margin-bottom: 0.5rem;">
+            @L("Cloud Backup Status", "حالة النسخ الاحتياطي السحابي")
+        </h3>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+            @L("Backup status is synced from the gym PC application.",
+               "يتم مزامنة حالة النسخ الاحتياطي من تطبيق الحاسب في النادي.")
+        </p>
+
+        @if (_lastSync.HasValue)
+        {
+            <div class="stats-grid" style="max-width: 500px; margin: 0 auto;">
+                <div class="stat-card accent">
+                    <div class="stat-number" style="font-size: 1.2rem;">@_lastSync.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                    <div class="stat-label">@L("Last Sync", "آخر مزامنة")</div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="stat-card warning" style="max-width: 400px; margin: 0 auto;">
+                <div class="stat-number" style="font-size: 1rem;">@L("No sync recorded yet", "لم يتم تسجيل أي مزامنة بعد")</div>
+                <div class="stat-label">@L("Last Sync", "آخر مزامنة")</div>
+            </div>
+        }
+    </div>
+
+    @if (_syncLogs.Any())
+    {
+        <div class="content-card" style="margin-top: 1.5rem;">
+            <h3>@L("Sync History", "سجل المزامنة")</h3>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>@L("Date/Time", "التاريخ/الوقت")</th>
+                            <th>@L("Type", "النوع")</th>
+                            <th>@L("Status", "الحالة")</th>
+                            <th>@L("Details", "التفاصيل")</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in _syncLogs)
+                        {
+                            var statusClass = log.Status.ToLower() == "success" ? "badge-active" :
+                                              log.Status.ToLower() == "failed" ? "badge-expired" : "badge-expiring";
+                            <tr>
+                                <td>@log.SyncedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@log.SyncType</td>
+                                <td><span class="badge @statusClass">@log.Status</span></td>
+                                <td>@log.Details</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private DateTime? _lastSync;
+    private List<SyncLogRow> _syncLogs = new();
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || !Session.IsOwner)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+
+            // Last sync timestamp
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT MAX(""SyncedAt"") FROM ""CloudSyncLogs""", conn))
+            {
+                var result = await cmd.ExecuteScalarAsync();
+                if (result != null && result != DBNull.Value)
+                    _lastSync = Convert.ToDateTime(result);
+            }
+
+            // Recent sync logs
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Id"", COALESCE(""SyncType"",''), COALESCE(""Status"",''), COALESCE(""Details"",''), ""SyncedAt""
+                  FROM ""CloudSyncLogs"" ORDER BY ""SyncedAt"" DESC LIMIT 50", conn))
+            {
+                using var r = await cmd.ExecuteReaderAsync();
+                _syncLogs = new List<SyncLogRow>();
+                while (await r.ReadAsync())
+                {
+                    _syncLogs.Add(new SyncLogRow(
+                        r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetDateTime(4)));
+                }
+            }
+        }
+        catch { }
+    }
+
+    private record SyncLogRow(int Id, string SyncType, string Status, string Details, DateTime SyncedAt);
+}

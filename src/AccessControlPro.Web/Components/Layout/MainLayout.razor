@@ -2,28 +2,60 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 
-<div class="app-container">
+<div class="app-container" dir="@SessionState.Dir">
     @if (Session.IsAuthenticated)
     {
         <nav class="sidebar">
             <div class="sidebar-brand">
                 <h3>HM-GymManagement</h3>
-                <span class="user-role">@Session.DisplayName (@Session.Role)</span>
+                <span class="user-role">@Session.DisplayName (@(L("Owner","مالك") ))</span>
             </div>
             <div class="nav-links">
                 @if (Session.IsOwner)
                 {
-                    <a href="/" class="nav-link @ActiveClass("/")">Dashboard</a>
-                    <a href="/players" class="nav-link @ActiveClass("/players")">Players</a>
-                    <a href="/events" class="nav-link @ActiveClass("/events")">Events</a>
-                    <a href="/finance" class="nav-link @ActiveClass("/finance")">Finance</a>
+                    <a href="/dashboard" class="nav-link @ActiveClass("dashboard")">
+                        <i class="fas fa-chart-line"></i> @L("Dashboard", "لوحة التحكم")
+                    </a>
+                    <a href="/players" class="nav-link @ActiveClass("players")">
+                        <i class="fas fa-users"></i> @L("Players", "اللاعبون")
+                    </a>
+                    <a href="/events" class="nav-link @ActiveClass("events")">
+                        <i class="fas fa-clock"></i> @L("Events", "الأحداث")
+                    </a>
+                    <a href="/finance" class="nav-link @ActiveClass("finance")">
+                        <i class="fas fa-wallet"></i> @L("Finance", "المالية")
+                    </a>
+                    <a href="/devices" class="nav-link @ActiveClass("devices")">
+                        <i class="fas fa-server"></i> @L("Devices", "الأجهزة")
+                    </a>
+                    <a href="/logs" class="nav-link @ActiveClass("logs")">
+                        <i class="fas fa-list"></i> @L("Logs", "السجلات")
+                    </a>
+                    <a href="/deleted" class="nav-link @ActiveClass("deleted")">
+                        <i class="fas fa-trash"></i> @L("Deleted Records", "المحذوفات")
+                    </a>
+                    <a href="/backup" class="nav-link @ActiveClass("backup")">
+                        <i class="fas fa-database"></i> @L("Backup Status", "النسخ الاحتياطي")
+                    </a>
+                    <a href="/users" class="nav-link @ActiveClass("users")">
+                        <i class="fas fa-user-shield"></i> @L("Users", "المستخدمون")
+                    </a>
                 }
                 else
                 {
-                    <a href="/my" class="nav-link @ActiveClass("/my")">My Subscription</a>
-                    <a href="/my/visits" class="nav-link @ActiveClass("/my/visits")">Visit History</a>
+                    <a href="/my" class="nav-link @ActiveClass("my")">
+                        <i class="fas fa-id-card"></i> @L("My Subscription", "اشتراكي")
+                    </a>
+                    <a href="/my/visits" class="nav-link @ActiveClass("my/visits")">
+                        <i class="fas fa-clock"></i> @L("Visit History", "سجل الزيارات")
+                    </a>
                 }
-                <a href="/logout" class="nav-link logout">Logout</a>
+                <a href="javascript:void(0)" class="nav-link lang-toggle" @onclick="ToggleLang">
+                    <i class="fas fa-globe"></i> @(SessionState.IsArabic ? "EN" : "عربي")
+                </a>
+                <a href="/logout" class="nav-link logout">
+                    <i class="fas fa-sign-out-alt"></i> @L("Logout", "تسجيل الخروج")
+                </a>
             </div>
         </nav>
         <main class="main-content">
@@ -37,10 +69,18 @@
 </div>
 
 @code {
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+
     private string ActiveClass(string href)
     {
         var uri = Nav.ToBaseRelativePath(Nav.Uri).TrimEnd('/');
         var target = href.TrimStart('/').TrimEnd('/');
         return string.Equals(uri, target, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    }
+
+    private void ToggleLang()
+    {
+        SessionState.ToggleLanguage();
+        StateHasChanged();
     }
 }

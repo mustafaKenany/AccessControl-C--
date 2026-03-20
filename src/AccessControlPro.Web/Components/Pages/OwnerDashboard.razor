@@ -1,7 +1,7 @@
 @page "/dashboard"
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
-@inject AccessControlPro.Web.Data.CloudDbContext Db
+@inject AccessControlPro.Web.Data.DbHelper Db
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsOwner)
@@ -11,56 +11,70 @@
 else
 {
     <div class="page-header">
-        <h1>Dashboard</h1>
-        <span class="last-sync">Last refresh: @DateTime.Now.ToString("HH:mm")</span>
+        <h1><i class="fas fa-chart-line"></i> @L("Dashboard", "لوحة التحكم")</h1>
+        <span class="last-sync">@L("Last refresh", "آخر تحديث"): @DateTime.Now.ToString("HH:mm")</span>
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card">
+        <div class="stat-card teal">
             <div class="stat-number">@_totalPlayers</div>
-            <div class="stat-label">Total Players</div>
+            <div class="stat-label">@L("Total Players", "إجمالي اللاعبين")</div>
         </div>
-        <div class="stat-card accent">
+        <div class="stat-card green">
             <div class="stat-number">@_activePlayers</div>
-            <div class="stat-label">Active</div>
+            <div class="stat-label">@L("Active Players", "اللاعبون النشطون")</div>
         </div>
-        <div class="stat-card warning">
+        <div class="stat-card orange">
             <div class="stat-number">@_expiringPlayers</div>
-            <div class="stat-label">Expiring (7 days)</div>
+            <div class="stat-label">@L("Expiring Soon (7 days)", "ينتهي قريباً (7 أيام)")</div>
         </div>
-        <div class="stat-card danger">
+        <div class="stat-card red">
             <div class="stat-number">@_expiredPlayers</div>
-            <div class="stat-label">Expired</div>
+            <div class="stat-label">@L("Expired", "منتهي")</div>
         </div>
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-number">@_todayEntries</div>
-            <div class="stat-label">Today's Entries</div>
+        <div class="stat-card blue">
+            <div class="stat-number">@_frozenPlayers</div>
+            <div class="stat-label">@L("Frozen", "مجمد")</div>
         </div>
-        <div class="stat-card accent">
+        <div class="stat-card purple">
+            <div class="stat-number">@_todayEntries</div>
+            <div class="stat-label">@L("Today's Entries", "دخول اليوم")</div>
+        </div>
+        <div class="stat-card green">
             <div class="stat-number">@_monthRevenue.ToString("N0")</div>
-            <div class="stat-label">Revenue This Month</div>
+            <div class="stat-label">@L("Monthly Revenue", "إيرادات الشهر")</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-number">@_outstanding.ToString("N0")</div>
+            <div class="stat-label">@L("Outstanding Balance", "المبالغ المتبقية")</div>
         </div>
     </div>
 
     <div class="content-grid">
         <div class="content-card">
-            <h3>Recent Events</h3>
+            <h3>@L("Recent Events", "الأحداث الأخيرة")</h3>
             @if (_recentEvents.Any())
             {
                 <table class="data-table">
                     <thead>
-                        <tr><th>Time</th><th>Card</th><th>Event</th></tr>
+                        <tr>
+                            <th>@L("Time", "الوقت")</th>
+                            <th>@L("Player", "اللاعب")</th>
+                            <th>@L("Door", "الباب")</th>
+                            <th>@L("Event", "الحدث")</th>
+                        </tr>
                     </thead>
                     <tbody>
                         @foreach (var ev in _recentEvents)
                         {
                             <tr>
-                                <td>@ev.Timestamp.ToLocalTime().ToString("MM/dd HH:mm")</td>
-                                <td>@(ev.CardId?.ToString() ?? "-")</td>
-                                <td>@ev.EventCode</td>
+                                <td>@ev.EventDate.ToLocalTime().ToString("MM/dd HH:mm")</td>
+                                <td>@GetPlayerName(ev.CardId)</td>
+                                <td>@GetDoorName(ev.DoorId)</td>
+                                <td>@GetEventName(ev.EventCode)</td>
                             </tr>
                         }
                     </tbody>
@@ -68,24 +82,28 @@ else
             }
             else
             {
-                <p class="no-data">No recent events</p>
+                <p class="no-data">@L("No recent events", "لا توجد أحداث حديثة")</p>
             }
         </div>
 
         <div class="content-card">
-            <h3>Expiring Soon</h3>
+            <h3>@L("Expiring Soon", "ينتهي قريباً")</h3>
             @if (_expiringList.Any())
             {
                 <table class="data-table">
                     <thead>
-                        <tr><th>Player</th><th>Expires</th><th>Days Left</th></tr>
+                        <tr>
+                            <th>@L("Player", "اللاعب")</th>
+                            <th>@L("Expires", "ينتهي")</th>
+                            <th>@L("Days Left", "الأيام المتبقية")</th>
+                        </tr>
                     </thead>
                     <tbody>
                         @foreach (var p in _expiringList)
                         {
                             var days = (p.EndDate - DateTime.UtcNow).Days;
                             <tr>
-                                <td>@p.FullNameEn</td>
+                                <td>@(SessionState.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn)</td>
                                 <td>@p.EndDate.ToString("yyyy-MM-dd")</td>
                                 <td class="@(days <= 3 ? "text-danger" : "text-warning")">@days</td>
                             </tr>
@@ -95,17 +113,21 @@ else
             }
             else
             {
-                <p class="no-data">No expiring subscriptions</p>
+                <p class="no-data">@L("No expiring subscriptions", "لا توجد اشتراكات تنتهي قريباً")</p>
             }
         </div>
     </div>
 }
 
 @code {
-    private int _totalPlayers, _activePlayers, _expiringPlayers, _expiredPlayers, _todayEntries;
-    private decimal _monthRevenue;
-    private List<AccessControlPro.Domain.Entities.AccessEvent> _recentEvents = new();
-    private List<AccessControlPro.Domain.Entities.Employee> _expiringList = new();
+    private int _totalPlayers, _activePlayers, _expiringPlayers, _expiredPlayers, _frozenPlayers, _todayEntries;
+    private decimal _monthRevenue, _outstanding;
+    private List<EventRow> _recentEvents = new();
+    private List<PlayerRow> _expiringList = new();
+    private Dictionary<int, string> _doorNames = new();
+    private Dictionary<int, string> _playerByCard = new();
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -118,37 +140,154 @@ else
         await LoadDataAsync();
     }
 
+    private string GetDoorName(int doorId)
+        => _doorNames.TryGetValue(doorId, out var name) ? name : $"Door {doorId}";
+
+    private string GetPlayerName(int? cardId)
+    {
+        if (cardId == null) return "-";
+        return _playerByCard.TryGetValue(cardId.Value, out var name) ? name : cardId.Value.ToString();
+    }
+
+    private string GetEventName(int code) => code switch
+    {
+        1 => L("Card Open", "فتح بالبطاقة"),
+        2 => L("Button Open", "فتح بالزر"),
+        3 => L("Remote Open", "فتح عن بعد"),
+        _ => code.ToString()
+    };
+
     private async Task LoadDataAsync()
     {
         try
         {
             var now = DateTime.UtcNow;
-            var players = await Db.Players.ToListAsync();
-
-            _totalPlayers = players.Count;
-            _activePlayers = players.Count(p => p.EndDate > now && !p.IsFrozen);
-            _expiringPlayers = players.Count(p => p.EndDate > now && p.EndDate <= now.AddDays(7) && !p.IsFrozen);
-            _expiredPlayers = players.Count(p => p.EndDate <= now);
-
-            var todayStart = DateTime.UtcNow.Date;
-            _todayEntries = await Db.AccessEvents.CountAsync(e => e.Timestamp >= todayStart);
-
+            var todayStart = now.Date;
+            var weekFromNow = now.AddDays(7);
             var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-            _monthRevenue = await Db.Transactions
-                .Where(t => t.CreatedAt >= monthStart && t.Type == Domain.Enums.TransactionType.Income)
-                .SumAsync(t => t.Amount);
 
-            _recentEvents = await Db.AccessEvents
-                .OrderByDescending(e => e.Timestamp)
-                .Take(10)
-                .ToListAsync();
+            using var conn = await Db.GetConnectionAsync();
 
-            _expiringList = players
-                .Where(p => p.EndDate > now && p.EndDate <= now.AddDays(7) && !p.IsFrozen)
-                .OrderBy(p => p.EndDate)
-                .Take(10)
-                .ToList();
+            // Player stats including frozen
+            using (var cmd = new Npgsql.NpgsqlCommand(@"
+                SELECT
+                    COUNT(*),
+                    COUNT(*) FILTER (WHERE ""EndDate"" > @now AND ""IsFrozen"" = FALSE),
+                    COUNT(*) FILTER (WHERE ""EndDate"" > @now AND ""EndDate"" <= @week AND ""IsFrozen"" = FALSE),
+                    COUNT(*) FILTER (WHERE ""EndDate"" <= @now AND ""IsFrozen"" = FALSE),
+                    COUNT(*) FILTER (WHERE ""IsFrozen"" = TRUE)
+                FROM ""Players"" WHERE ""IsDeleted"" = FALSE", conn))
+            {
+                cmd.Parameters.AddWithValue("now", now);
+                cmd.Parameters.AddWithValue("week", weekFromNow);
+                using var r = await cmd.ExecuteReaderAsync();
+                if (await r.ReadAsync())
+                {
+                    _totalPlayers = r.GetInt32(0);
+                    _activePlayers = r.GetInt32(1);
+                    _expiringPlayers = r.GetInt32(2);
+                    _expiredPlayers = r.GetInt32(3);
+                    _frozenPlayers = r.GetInt32(4);
+                }
+            }
+
+            // Today entries
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT COUNT(*) FROM ""AccessEvents"" WHERE ""EventDate"" >= @today", conn))
+            {
+                cmd.Parameters.AddWithValue("today", todayStart);
+                _todayEntries = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+            }
+
+            // Month revenue
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT COALESCE(SUM(""Amount""), 0) FROM ""Transactions"" WHERE ""TransactionDate"" >= @ms AND ""Type"" = 0", conn))
+            {
+                cmd.Parameters.AddWithValue("ms", monthStart);
+                _monthRevenue = Convert.ToDecimal(await cmd.ExecuteScalarAsync());
+            }
+
+            // Outstanding balance
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT COALESCE(SUM(""SubscriptionFee"" - ""AmountPaid""), 0)
+                  FROM ""Players"" WHERE ""IsDeleted"" = FALSE AND ""SubscriptionFee"" > ""AmountPaid""", conn))
+            {
+                _outstanding = Convert.ToDecimal(await cmd.ExecuteScalarAsync());
+            }
+
+            // Door names
+            using (var cmd = new Npgsql.NpgsqlCommand(@"SELECT ""Id"", COALESCE(""Name"",'') FROM ""Doors""", conn))
+            {
+                using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync())
+                    _doorNames[r.GetInt32(0)] = r.GetString(1);
+            }
+
+            // Player name by card
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""CardNo"", ""FullNameEn"", ""FullNameAr""
+                  FROM ""Players"" WHERE ""IsDeleted"" = FALSE AND ""CardNo"" IS NOT NULL AND ""CardNo"" != ''", conn))
+            {
+                using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync())
+                {
+                    var cardNo = r.GetString(0);
+                    if (int.TryParse(cardNo, out var cid))
+                    {
+                        var nameEn = r.GetString(1);
+                        var nameAr = r.GetString(2);
+                        _playerByCard[cid] = SessionState.IsArabic && !string.IsNullOrEmpty(nameAr) ? nameAr : nameEn;
+                    }
+                }
+            }
+
+            // Recent events
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Id"", ""DoorId"", ""CardId"", ""EventCode"", ""EventDate"", COALESCE(""Details"",'')
+                  FROM ""AccessEvents"" ORDER BY ""EventDate"" DESC LIMIT 10", conn))
+            {
+                using var r = await cmd.ExecuteReaderAsync();
+                _recentEvents = new List<EventRow>();
+                while (await r.ReadAsync())
+                {
+                    _recentEvents.Add(new EventRow(
+                        r.GetInt32(0), r.GetInt32(1),
+                        r.IsDBNull(2) ? null : r.GetInt32(2),
+                        r.GetInt32(3), r.GetDateTime(4), r.GetString(5)));
+                }
+            }
+
+            // Expiring players
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Id"", ""FullNameEn"", ""FullNameAr"", COALESCE(""CardNo"",''), COALESCE(""Phone"",''),
+                         COALESCE(""SubscriptionType"",''), ""StartDate"", ""EndDate"",
+                         COALESCE(""SubscriptionFee"",0), COALESCE(""AmountPaid"",0),
+                         COALESCE(""MaxVisits"",0), COALESCE(""UsedVisits"",0), ""IsFrozen"", ""FreezeStartDate""
+                  FROM ""Players""
+                  WHERE ""IsDeleted"" = FALSE AND ""IsFrozen"" = FALSE
+                    AND ""EndDate"" > @now AND ""EndDate"" <= @week
+                  ORDER BY ""EndDate"" LIMIT 10", conn))
+            {
+                cmd.Parameters.AddWithValue("now", now);
+                cmd.Parameters.AddWithValue("week", weekFromNow);
+                using var r = await cmd.ExecuteReaderAsync();
+                _expiringList = new List<PlayerRow>();
+                while (await r.ReadAsync())
+                {
+                    _expiringList.Add(ReadPlayerRow(r));
+                }
+            }
         }
-        catch { /* cloud DB may not be available yet */ }
+        catch { }
+    }
+
+    private static PlayerRow ReadPlayerRow(Npgsql.NpgsqlDataReader r)
+    {
+        return new PlayerRow(
+            r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4),
+            r.GetString(5), r.GetDateTime(6), r.GetDateTime(7),
+            r.GetDecimal(8), r.GetDecimal(9),
+            r.GetInt32(10), r.GetInt32(11), r.GetBoolean(12),
+            r.IsDBNull(13) ? null : r.GetDateTime(13));
     }
 }

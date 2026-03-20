@@ -1,38 +1,33 @@
 using AccessControlPro.Web.Components;
 using AccessControlPro.Web.Data;
 using AccessControlPro.Web.Services;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add Blazor services
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// PostgreSQL CloudDbContext
 var cloudConn = builder.Configuration.GetConnectionString("CloudConnection")
-    ?? "Host=localhost;Database=gymcloud;Username=postgres;Password=postgres";
-builder.Services.AddDbContext<CloudDbContext>(options =>
-    options.UseNpgsql(cloudConn));
+    ?? "Host=localhost;Database=gymcloud;Username=postgres;Password=GymCloud2026";
 
-// Auth + session services
+builder.Services.AddSingleton(new DbHelper(cloudConn));
 builder.Services.AddSingleton<WebAuthService>();
 builder.Services.AddScoped<SessionState>();
 
+builder.WebHost.UseUrls("http://0.0.0.0:5000");
+
 var app = builder.Build();
 
-// Auto-create database tables on startup
-using (var scope = app.Services.CreateScope())
+// Initialize database tables
+try
 {
-    try
-    {
-        var db = scope.ServiceProvider.GetRequiredService<CloudDbContext>();
-        await db.Database.EnsureCreatedAsync();
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Database init warning: {ex.Message}");
-    }
+    var db = app.Services.GetRequiredService<DbHelper>();
+    await db.InitializeDatabaseAsync();
+    Console.WriteLine("Database initialized successfully.");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Database init error: {ex.Message}");
 }
 
 if (!app.Environment.IsDevelopment())

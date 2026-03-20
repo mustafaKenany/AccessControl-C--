@@ -1,0 +1,166 @@
+@page "/deleted"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject AccessControlPro.Web.Data.DbHelper Db
+@rendermode InteractiveServer
+
+@if (!Session.IsAuthenticated || !Session.IsOwner)
+{
+    <p>Redirecting...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1><i class="fas fa-trash"></i> @L("Deleted Records", "المحذوفات")</h1>
+        <span class="last-sync">@L("Total", "الإجمالي"): @_totalCount</span>
+    </div>
+
+    <div class="search-bar">
+        <input type="text" @bind="_search" @bind:event="oninput" @onkeyup="OnSearch"
+               class="form-input" placeholder="@L("Search by name, phone, or card...", "ابحث بالاسم أو الهاتف أو البطاقة...")" />
+    </div>
+
+    <div class="content-card">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>@L("Original ID", "المعرف الأصلي")</th>
+                        <th>@L("Name (EN)", "الاسم (إنجليزي)")</th>
+                        <th>@L("Name (AR)", "الاسم (عربي)")</th>
+                        <th>@L("Card No", "رقم البطاقة")</th>
+                        <th>@L("Phone", "الهاتف")</th>
+                        <th>@L("Delete Reason", "سبب الحذف")</th>
+                        <th>@L("Deleted By", "حُذف بواسطة")</th>
+                        <th>@L("Deleted At", "تاريخ الحذف")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in _deleted)
+                    {
+                        <tr>
+                            <td>@d.OriginalId</td>
+                            <td>@d.FullNameEn</td>
+                            <td dir="rtl">@d.FullNameAr</td>
+                            <td>@d.CardNo</td>
+                            <td>@d.Phone</td>
+                            <td>@d.DeleteReason</td>
+                            <td>@d.DeletedBy</td>
+                            <td>@d.DeletedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (!_deleted.Any())
+        {
+            <p class="no-data">@L("No deleted records found", "لم يتم العثور على سجلات محذوفة")</p>
+        }
+
+        @if (_totalCount > 0)
+        {
+            <div class="pagination">
+                <button class="btn-outline btn-sm" disabled="@(_page <= 1)" @onclick="PrevPage">
+                    <i class="fas fa-chevron-left"></i> @L("Previous", "السابق")
+                </button>
+                <span class="page-info">
+                    @L("Page", "صفحة") @_page / @TotalPages (@_totalCount @L("records", "سجل"))
+                </span>
+                <button class="btn-outline btn-sm" disabled="@(!_hasMore)" @onclick="NextPage">
+                    @L("Next", "التالي") <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private string _search = "";
+    private List<DeletedRow> _deleted = new();
+
+    private int _page = 1;
+    private const int PageSize = 20;
+    private int _totalCount;
+    private bool _hasMore => _page * PageSize < _totalCount;
+    private int TotalPages => _totalCount == 0 ? 1 : (int)Math.Ceiling((double)_totalCount / PageSize);
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || !Session.IsOwner)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        await LoadDeletedAsync();
+    }
+
+    private async Task LoadDeletedAsync()
+    {
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+
+            var searchWhere = "";
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                searchWhere = @" WHERE (LOWER(""FullNameEn"") LIKE @q OR ""FullNameAr"" LIKE @q OR ""Phone"" LIKE @q OR ""CardNo"" LIKE @q)";
+            }
+
+            // Count
+            using (var countCmd = new Npgsql.NpgsqlCommand(
+                $@"SELECT COUNT(*) FROM ""DeletedEmployees""{searchWhere}", conn))
+            {
+                if (!string.IsNullOrWhiteSpace(_search))
+                    countCmd.Parameters.AddWithValue("q", $"%{_search.Trim().ToLower()}%");
+                _totalCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
+            }
+
+            // Data
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                $@"SELECT ""Id"", COALESCE(""OriginalId"",0), COALESCE(""FullNameEn"",''), COALESCE(""FullNameAr"",''),
+                         COALESCE(""CardNo"",''), COALESCE(""Phone"",''), COALESCE(""DeleteReason"",''),
+                         COALESCE(""DeletedBy"",''), ""DeletedAt""
+                  FROM ""DeletedEmployees""{searchWhere}
+                  ORDER BY ""DeletedAt"" DESC LIMIT @limit OFFSET @offset", conn))
+            {
+                if (!string.IsNullOrWhiteSpace(_search))
+                    cmd.Parameters.AddWithValue("q", $"%{_search.Trim().ToLower()}%");
+                cmd.Parameters.AddWithValue("limit", PageSize);
+                cmd.Parameters.AddWithValue("offset", (_page - 1) * PageSize);
+
+                using var r = await cmd.ExecuteReaderAsync();
+                _deleted = new List<DeletedRow>();
+                while (await r.ReadAsync())
+                {
+                    _deleted.Add(new DeletedRow(
+                        r.GetInt32(0), r.GetInt32(1), r.GetString(2), r.GetString(3),
+                        r.GetString(4), r.GetString(5), r.GetString(6), r.GetString(7), r.GetDateTime(8)));
+                }
+            }
+        }
+        catch { }
+    }
+
+    private async Task OnSearch()
+    {
+        _page = 1;
+        await LoadDeletedAsync();
+    }
+
+    private async Task NextPage()
+    {
+        if (_hasMore) { _page++; await LoadDeletedAsync(); }
+    }
+
+    private async Task PrevPage()
+    {
+        if (_page > 1) { _page--; await LoadDeletedAsync(); }
+    }
+
+    private record DeletedRow(int Id, int OriginalId, string FullNameEn, string FullNameAr,
+        string CardNo, string Phone, string DeleteReason, string DeletedBy, DateTime DeletedAt);
+}

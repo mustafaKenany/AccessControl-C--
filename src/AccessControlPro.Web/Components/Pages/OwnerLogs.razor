@@ -1,4 +1,4 @@
-@page "/finance"
+@page "/logs"
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.DbHelper Db
@@ -11,26 +11,8 @@
 else
 {
     <div class="page-header">
-        <h1><i class="fas fa-wallet"></i> @L("Finance", "المالية")</h1>
-    </div>
-
-    <div class="stats-grid">
-        <div class="stat-card green">
-            <div class="stat-number">@_periodIncome.ToString("N2")</div>
-            <div class="stat-label">@L("Total Revenue", "إجمالي الإيرادات")</div>
-        </div>
-        <div class="stat-card red">
-            <div class="stat-number">@_periodExpense.ToString("N2")</div>
-            <div class="stat-label">@L("Total Expenses", "إجمالي المصروفات")</div>
-        </div>
-        <div class="stat-card @(_periodProfit >= 0 ? "teal" : "red")">
-            <div class="stat-number">@_periodProfit.ToString("N2")</div>
-            <div class="stat-label">@L("Net Profit", "صافي الربح")</div>
-        </div>
-        <div class="stat-card orange">
-            <div class="stat-number">@_outstanding.ToString("N2")</div>
-            <div class="stat-label">@L("Outstanding", "المتبقي")</div>
-        </div>
+        <h1><i class="fas fa-list"></i> @L("Audit Logs", "سجلات التدقيق")</h1>
+        <span class="last-sync">@L("Total", "الإجمالي"): @_totalCount</span>
     </div>
 
     <div class="filter-group">
@@ -60,42 +42,44 @@ else
         </button>
     </div>
 
+    <div class="filter-bar">
+        <input type="text" @bind="_search" @bind:event="oninput" @onkeyup="OnSearch"
+               class="form-input" style="max-width: 300px;"
+               placeholder="@L("Search...", "بحث...")" />
+    </div>
+
     <div class="content-card">
-        <h3>@L("Transactions", "المعاملات") (@_totalCount)</h3>
         <div class="table-responsive">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>@L("Date", "التاريخ")</th>
-                        <th>@L("Type", "النوع")</th>
-                        <th>@L("Category", "الفئة")</th>
-                        <th>@L("Amount", "المبلغ")</th>
-                        <th>@L("Description", "الوصف")</th>
-                        <th>@L("Recorded By", "بواسطة")</th>
+                        <th>@L("Date/Time", "التاريخ/الوقت")</th>
+                        <th>@L("Action", "الإجراء")</th>
+                        <th>@L("Entity Type", "نوع الكيان")</th>
+                        <th>@L("Entity ID", "معرف الكيان")</th>
+                        <th>@L("Details", "التفاصيل")</th>
+                        <th>@L("Performed By", "بواسطة")</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var t in _transactions)
+                    @foreach (var log in _logs)
                     {
-                        var typeLabel = t.Type == 0 ? L("Income", "إيراد") : L("Expense", "مصروف");
-                        var typeClass = t.Type == 0 ? "badge-active" : "badge-expired";
-                        var amountClass = t.Type == 0 ? "text-success" : "text-danger";
                         <tr>
-                            <td>@t.TransactionDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-                            <td><span class="badge @typeClass">@typeLabel</span></td>
-                            <td>@t.Category</td>
-                            <td class="@amountClass">@t.Amount.ToString("N2")</td>
-                            <td>@t.Description</td>
-                            <td>@t.RecordedBy</td>
+                            <td>@log.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td><span class="badge @GetActionBadge(log.Action)">@log.Action</span></td>
+                            <td>@log.EntityType</td>
+                            <td>@log.EntityId</td>
+                            <td>@(SessionState.IsArabic && !string.IsNullOrEmpty(log.DetailsAr) ? log.DetailsAr : log.Details)</td>
+                            <td>@log.PerformedBy</td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
 
-        @if (!_transactions.Any())
+        @if (!_logs.Any())
         {
-            <p class="no-data">@L("No transactions found", "لم يتم العثور على معاملات")</p>
+            <p class="no-data">@L("No audit logs found", "لم يتم العثور على سجلات تدقيق")</p>
         }
 
         @if (_totalCount > 0)
@@ -117,8 +101,8 @@ else
 
 @code {
     private string _period = "thismonth";
-    private decimal _periodIncome, _periodExpense, _periodProfit, _outstanding;
-    private List<TransactionRow> _transactions = new();
+    private string _search = "";
+    private List<AuditLogRow> _logs = new();
 
     private int _page = 1;
     private const int PageSize = 20;
@@ -136,7 +120,7 @@ else
             return;
         }
 
-        await LoadDataAsync();
+        await LoadLogsAsync();
     }
 
     private (DateTime start, DateTime end) GetDateRange()
@@ -162,10 +146,10 @@ else
     {
         _period = period;
         _page = 1;
-        await LoadDataAsync();
+        await LoadLogsAsync();
     }
 
-    private async Task LoadDataAsync()
+    private async Task LoadLogsAsync()
     {
         try
         {
@@ -174,40 +158,11 @@ else
 
             using var conn = await Db.GetConnectionAsync();
 
-            // Outstanding balance (always all-time)
-            using (var cmd = new Npgsql.NpgsqlCommand(
-                @"SELECT COALESCE(SUM(""SubscriptionFee"" - ""AmountPaid""), 0)
-                  FROM ""Players"" WHERE ""IsDeleted"" = FALSE AND ""SubscriptionFee"" > ""AmountPaid""", conn))
-            {
-                _outstanding = Convert.ToDecimal(await cmd.ExecuteScalarAsync());
-            }
-
-            // Period totals
-            var whereClause = isAll ? "" : @" WHERE ""TransactionDate"" >= @from AND ""TransactionDate"" < @to";
-            using (var cmd = new Npgsql.NpgsqlCommand(
-                $@"SELECT
-                    COALESCE(SUM(CASE WHEN ""Type"" = 0 THEN ""Amount"" ELSE 0 END), 0),
-                    COALESCE(SUM(CASE WHEN ""Type"" = 1 THEN ""Amount"" ELSE 0 END), 0)
-                  FROM ""Transactions""{whereClause}", conn))
-            {
-                if (!isAll)
-                {
-                    cmd.Parameters.AddWithValue("from", from);
-                    cmd.Parameters.AddWithValue("to", to);
-                }
-                using var r = await cmd.ExecuteReaderAsync();
-                if (await r.ReadAsync())
-                {
-                    _periodIncome = r.GetDecimal(0);
-                    _periodExpense = r.GetDecimal(1);
-                }
-            }
-            _periodProfit = _periodIncome - _periodExpense;
+            var dateWhere = isAll ? "" : @" WHERE ""Timestamp"" >= @from AND ""Timestamp"" < @to";
 
             // Count
-            var txWhere = isAll ? "" : @" WHERE ""TransactionDate"" >= @from AND ""TransactionDate"" < @to";
             using (var countCmd = new Npgsql.NpgsqlCommand(
-                $@"SELECT COUNT(*) FROM ""Transactions""{txWhere}", conn))
+                $@"SELECT COUNT(*) FROM ""AuditLogs""{dateWhere}", conn))
             {
                 if (!isAll)
                 {
@@ -217,42 +172,72 @@ else
                 _totalCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
             }
 
-            // Transactions (paginated)
-            var txWhere2 = isAll ? "" : @" WHERE ""TransactionDate"" >= @from2 AND ""TransactionDate"" < @to2";
+            // Data
             using (var cmd = new Npgsql.NpgsqlCommand(
-                $@"SELECT ""Id"", ""Type"", COALESCE(""Category"",''), ""Amount"", COALESCE(""Description"",''),
-                         ""TransactionDate"", COALESCE(""RecordedBy"",'')
-                  FROM ""Transactions""{txWhere2}
-                  ORDER BY ""TransactionDate"" DESC LIMIT @limit OFFSET @offset", conn))
+                $@"SELECT ""Id"", COALESCE(""Action"",''), COALESCE(""EntityType"",''), COALESCE(""EntityId"",0),
+                         COALESCE(""Details"",''), COALESCE(""DetailsAr"",''), COALESCE(""PerformedBy"",''), ""Timestamp""
+                  FROM ""AuditLogs""{dateWhere}
+                  ORDER BY ""Timestamp"" DESC LIMIT @limit OFFSET @offset", conn))
             {
                 if (!isAll)
                 {
-                    cmd.Parameters.AddWithValue("from2", from);
-                    cmd.Parameters.AddWithValue("to2", to);
+                    cmd.Parameters.AddWithValue("from", from);
+                    cmd.Parameters.AddWithValue("to", to);
                 }
                 cmd.Parameters.AddWithValue("limit", PageSize);
                 cmd.Parameters.AddWithValue("offset", (_page - 1) * PageSize);
 
                 using var r = await cmd.ExecuteReaderAsync();
-                _transactions = new List<TransactionRow>();
+                _logs = new List<AuditLogRow>();
                 while (await r.ReadAsync())
                 {
-                    _transactions.Add(new TransactionRow(
-                        r.GetInt32(0), r.GetInt32(1), r.GetString(2), r.GetDecimal(3),
-                        r.GetString(4), r.GetDateTime(5), r.GetString(6)));
+                    _logs.Add(new AuditLogRow(
+                        r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetInt32(3),
+                        r.GetString(4), r.GetString(5), r.GetString(6), r.GetDateTime(7)));
                 }
+            }
+
+            // Apply client-side search
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                var q = _search.Trim().ToLower();
+                _logs = _logs.Where(l =>
+                    l.Action.ToLower().Contains(q) ||
+                    l.EntityType.ToLower().Contains(q) ||
+                    l.Details.ToLower().Contains(q) ||
+                    l.DetailsAr.Contains(q) ||
+                    l.PerformedBy.ToLower().Contains(q)
+                ).ToList();
             }
         }
         catch { }
     }
 
+    private async Task OnSearch()
+    {
+        _page = 1;
+        await LoadLogsAsync();
+    }
+
     private async Task NextPage()
     {
-        if (_hasMore) { _page++; await LoadDataAsync(); }
+        if (_hasMore) { _page++; await LoadLogsAsync(); }
     }
 
     private async Task PrevPage()
     {
-        if (_page > 1) { _page--; await LoadDataAsync(); }
+        if (_page > 1) { _page--; await LoadLogsAsync(); }
     }
+
+    private string GetActionBadge(string action)
+    {
+        var a = action.ToUpper();
+        if (a.Contains("DELETE") || a.Contains("REMOVE")) return "badge-expired";
+        if (a.Contains("CREATE") || a.Contains("ADD")) return "badge-active";
+        if (a.Contains("FREEZE")) return "badge-frozen";
+        return "badge-expiring";
+    }
+
+    private record AuditLogRow(int Id, string Action, string EntityType, int EntityId,
+        string Details, string DetailsAr, string PerformedBy, DateTime Timestamp);
 }

@@ -1,7 +1,7 @@
 @page "/my/visits"
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
-@inject AccessControlPro.Web.Data.CloudDbContext Db
+@inject AccessControlPro.Web.Data.DbHelper Db
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsPlayer)
@@ -11,43 +11,94 @@
 else
 {
     <div class="page-header">
-        <h1>My Visit History</h1>
+        <h1><i class="fas fa-clock"></i> @L("My Visit History", "سجل زياراتي")</h1>
+        <span class="last-sync">@L("Total Visits", "إجمالي الزيارات"): @_totalCount</span>
     </div>
 
+    @if (_totalCount > 0)
+    {
+        <div class="stats-grid" style="margin-bottom: 1.5rem;">
+            <div class="stat-card teal">
+                <div class="stat-number">@_totalCount</div>
+                <div class="stat-label">@L("Total Entries", "إجمالي الدخول")</div>
+            </div>
+            <div class="stat-card blue">
+                <div class="stat-number">@_thisMonthCount</div>
+                <div class="stat-label">@L("This Month", "هذا الشهر")</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="stat-number">@_thisWeekCount</div>
+                <div class="stat-label">@L("This Week", "هذا الأسبوع")</div>
+            </div>
+        </div>
+    }
+
     <div class="content-card">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Door</th>
-                    <th>Event</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var ev in _events)
-                {
-                    var local = ev.Timestamp.ToLocalTime();
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
                     <tr>
-                        <td>@local.ToString("yyyy-MM-dd")</td>
-                        <td>@local.ToString("HH:mm:ss")</td>
-                        <td>@GetDoorName(ev.DoorId)</td>
-                        <td>@ev.EventCode</td>
+                        <th>@L("Date", "التاريخ")</th>
+                        <th>@L("Time", "الوقت")</th>
+                        <th>@L("Door", "الباب")</th>
+                        <th>@L("Event Type", "نوع الحدث")</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var ev in _events)
+                    {
+                        var local = ev.EventDate.ToLocalTime();
+                        <tr>
+                            <td>@local.ToString("yyyy-MM-dd")</td>
+                            <td>@local.ToString("HH:mm:ss")</td>
+                            <td>@GetDoorName(ev.DoorId)</td>
+                            <td>
+                                <span class="badge badge-active">
+                                    @GetEventTypeName(ev.EventCode)
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         @if (!_events.Any())
         {
-            <p class="no-data">No visit history found</p>
+            <p class="no-data">@L("No visit history found", "لم يتم العثور على سجل زيارات")</p>
+        }
+
+        @if (_totalCount > 0)
+        {
+            <div class="pagination">
+                <button class="btn-outline btn-sm" disabled="@(_page <= 1)" @onclick="PrevPage">
+                    <i class="fas fa-chevron-left"></i> @L("Previous", "السابق")
+                </button>
+                <span class="page-info">
+                    @L("Page", "صفحة") @_page / @TotalPages (@_totalCount @L("records", "سجل"))
+                </span>
+                <button class="btn-outline btn-sm" disabled="@(!_hasMore)" @onclick="NextPage">
+                    @L("Next", "التالي") <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
         }
     </div>
 }
 
 @code {
-    private List<AccessControlPro.Domain.Entities.AccessEvent> _events = new();
+    private List<EventRow> _events = new();
     private Dictionary<int, string> _doorNames = new();
+    private int _thisMonthCount;
+    private int _thisWeekCount;
+    private int _cardId;
+
+    private int _page = 1;
+    private const int PageSize = 20;
+    private int _totalCount;
+    private bool _hasMore => _page * PageSize < _totalCount;
+    private int TotalPages => _totalCount == 0 ? 1 : (int)Math.Ceiling((double)_totalCount / PageSize);
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -59,30 +110,116 @@ else
 
         try
         {
-            // Load door names for display
-            var doors = await Db.Doors.ToListAsync();
-            _doorNames = doors.ToDictionary(d => d.Id, d => d.Name);
+            using var conn = await Db.GetConnectionAsync();
 
-            // Get player's card IDs
-            var cardIds = await Db.AccessCards
-                .Where(c => c.EmployeeId == Session.UserId)
-                .Select(c => c.Id)
-                .ToListAsync();
-
-            if (cardIds.Any())
+            // Load door names
+            using (var cmd = new Npgsql.NpgsqlCommand(@"SELECT ""Id"", COALESCE(""Name"",'') FROM ""Doors""", conn))
             {
-                _events = await Db.AccessEvents
-                    .Where(e => e.CardId.HasValue && cardIds.Contains(e.CardId.Value))
-                    .OrderByDescending(e => e.Timestamp)
-                    .Take(200)
-                    .ToListAsync();
+                using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync())
+                    _doorNames[r.GetInt32(0)] = r.GetString(1);
+            }
+
+            // Get player's card number
+            string cardNo = "";
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT COALESCE(""CardNo"",'') FROM ""Players"" WHERE ""Id"" = @id", conn))
+            {
+                cmd.Parameters.AddWithValue("id", Session.UserId);
+                var result = await cmd.ExecuteScalarAsync();
+                cardNo = result?.ToString() ?? "";
+            }
+
+            if (!string.IsNullOrEmpty(cardNo) && int.TryParse(cardNo, out _cardId))
+            {
+                // Get stats
+                var now = DateTime.UtcNow;
+                var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var weekStart = now.Date.AddDays(-(int)now.DayOfWeek);
+
+                using (var cmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT COUNT(*) FROM ""AccessEvents"" WHERE ""CardId"" = @cid AND ""EventDate"" >= @ms", conn))
+                {
+                    cmd.Parameters.AddWithValue("cid", _cardId);
+                    cmd.Parameters.AddWithValue("ms", monthStart);
+                    _thisMonthCount = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+
+                using (var cmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT COUNT(*) FROM ""AccessEvents"" WHERE ""CardId"" = @cid AND ""EventDate"" >= @ws", conn))
+                {
+                    cmd.Parameters.AddWithValue("cid", _cardId);
+                    cmd.Parameters.AddWithValue("ws", weekStart);
+                    _thisWeekCount = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+
+                await LoadVisitsAsync();
             }
         }
         catch { }
     }
 
+    private async Task LoadVisitsAsync()
+    {
+        if (_cardId == 0) return;
+
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+
+            // Count
+            using (var countCmd = new Npgsql.NpgsqlCommand(
+                @"SELECT COUNT(*) FROM ""AccessEvents"" WHERE ""CardId"" = @cid", conn))
+            {
+                countCmd.Parameters.AddWithValue("cid", _cardId);
+                _totalCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
+            }
+
+            // Data
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Id"", ""DoorId"", ""CardId"", ""EventCode"", ""EventDate"", COALESCE(""Details"",'')
+                  FROM ""AccessEvents""
+                  WHERE ""CardId"" = @cid
+                  ORDER BY ""EventDate"" DESC LIMIT @limit OFFSET @offset", conn))
+            {
+                cmd.Parameters.AddWithValue("cid", _cardId);
+                cmd.Parameters.AddWithValue("limit", PageSize);
+                cmd.Parameters.AddWithValue("offset", (_page - 1) * PageSize);
+
+                using var r = await cmd.ExecuteReaderAsync();
+                _events = new List<EventRow>();
+                while (await r.ReadAsync())
+                {
+                    _events.Add(new EventRow(
+                        r.GetInt32(0), r.GetInt32(1),
+                        r.IsDBNull(2) ? null : r.GetInt32(2),
+                        r.GetInt32(3), r.GetDateTime(4), r.GetString(5)));
+                }
+            }
+        }
+        catch { }
+    }
+
+    private async Task NextPage()
+    {
+        if (_hasMore) { _page++; await LoadVisitsAsync(); }
+    }
+
+    private async Task PrevPage()
+    {
+        if (_page > 1) { _page--; await LoadVisitsAsync(); }
+    }
+
     private string GetDoorName(int doorId)
     {
-        return _doorNames.TryGetValue(doorId, out var name) ? name : $"Door {doorId}";
+        return _doorNames.TryGetValue(doorId, out var name) && !string.IsNullOrEmpty(name) ? name : $"Door {doorId}";
     }
+
+    private string GetEventTypeName(int code) => code switch
+    {
+        1 => L("Card Entry", "دخول بالبطاقة"),
+        2 => L("Button Open", "فتح بالزر"),
+        3 => L("Remote Open", "فتح عن بعد"),
+        _ => $"Event {code}"
+    };
 }

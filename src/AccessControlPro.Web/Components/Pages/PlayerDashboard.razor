@@ -1,7 +1,7 @@
 @page "/my"
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
-@inject AccessControlPro.Web.Data.CloudDbContext Db
+@inject AccessControlPro.Web.Data.DbHelper Db
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsPlayer)
@@ -11,62 +11,96 @@
 else if (_player != null)
 {
     <div class="page-header">
-        <h1>My Subscription</h1>
+        <h1>@L("My Subscription", "اشتراكي")</h1>
     </div>
 
     <div class="player-card">
         <div class="player-header">
+            <div class="player-avatar-large">
+                @(string.IsNullOrEmpty(_player.FullNameEn) ? "?" : _player.FullNameEn[0].ToString().ToUpper())
+            </div>
             <h2>@_player.FullNameEn</h2>
             @if (!string.IsNullOrEmpty(_player.FullNameAr))
             {
                 <h3 dir="rtl">@_player.FullNameAr</h3>
             }
-            <span class="badge @StatusClass large">@Status</span>
+            <span class="badge @StatusClass large" style="font-size: 1.1rem; padding: 0.5rem 1.5rem;">@StatusLabel</span>
         </div>
 
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-number">@_player.SubscriptionType</div>
-                <div class="stat-label">Subscription Type</div>
+                <div class="stat-label">@L("Subscription Type", "نوع الاشتراك")</div>
             </div>
-            <div class="stat-card @(DaysLeft <= 7 ? "danger" : "accent")">
-                <div class="stat-number">@DaysLeft</div>
-                <div class="stat-label">Days Remaining</div>
+            <div class="stat-card @(DaysLeft <= 7 ? "danger" : DaysLeft <= 14 ? "warning" : "accent")">
+                <div class="stat-number">@(DaysLeft > 0 ? DaysLeft.ToString() : L("Expired", "منتهي"))</div>
+                <div class="stat-label">@L("Days Remaining", "الأيام المتبقية")</div>
             </div>
             @if (_player.MaxVisits > 0)
             {
                 <div class="stat-card @(VisitsRemaining <= 5 ? "warning" : "")">
                     <div class="stat-number">@VisitsRemaining</div>
-                    <div class="stat-label">Visits Remaining</div>
+                    <div class="stat-label">@L("Visits Remaining", "الزيارات المتبقية")</div>
                 </div>
             }
         </div>
 
+        @if (_player.MaxVisits > 0)
+        {
+            <div class="content-card" style="margin-top: 1rem;">
+                <h3>@L("Visits Progress", "تقدم الزيارات")</h3>
+                <div class="progress-bar-container" style="height: 24px; margin-bottom: 0.5rem;">
+                    <div class="progress-bar-fill @(VisitPercent >= 90 ? "progress-danger" : VisitPercent >= 70 ? "progress-warning" : "")"
+                         style="width: @VisitPercent%; height: 100%;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; color: var(--text-secondary); font-size: 0.85rem;">
+                    <span>@L("Used", "مستخدم"): @_player.UsedVisits</span>
+                    <span>@L("Max", "الحد الأقصى"): @_player.MaxVisits</span>
+                </div>
+            </div>
+        }
+
         <div class="info-grid">
             <div class="info-item">
-                <span class="info-label">Start Date</span>
+                <span class="info-label">@L("Start Date", "تاريخ البداية")</span>
                 <span class="info-value">@_player.StartDate.ToString("yyyy-MM-dd")</span>
             </div>
             <div class="info-item">
-                <span class="info-label">End Date</span>
+                <span class="info-label">@L("End Date", "تاريخ النهاية")</span>
                 <span class="info-value">@_player.EndDate.ToString("yyyy-MM-dd")</span>
             </div>
             <div class="info-item">
-                <span class="info-label">Card Number</span>
+                <span class="info-label">@L("Card Number", "رقم البطاقة")</span>
                 <span class="info-value">@_player.CardNo</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">@L("Phone", "الهاتف")</span>
+                <span class="info-value">@_player.Phone</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">@L("Subscription Fee", "رسوم الاشتراك")</span>
+                <span class="info-value">@_player.Fee.ToString("N2")</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">@L("Amount Paid", "المبلغ المدفوع")</span>
+                <span class="info-value text-success">@_player.Paid.ToString("N2")</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">@L("Remaining Balance", "المبلغ المتبقي")</span>
+                <span class="info-value @(Remaining > 0 ? "text-danger" : "text-success")">@Remaining.ToString("N2")</span>
             </div>
             @if (_player.MaxVisits > 0)
             {
                 <div class="info-item">
-                    <span class="info-label">Visits Used</span>
+                    <span class="info-label">@L("Visits", "الزيارات")</span>
                     <span class="info-value">@_player.UsedVisits / @_player.MaxVisits</span>
                 </div>
             }
             @if (_player.IsFrozen && _player.FreezeStartDate.HasValue)
             {
                 <div class="info-item">
-                    <span class="info-label">Frozen Since</span>
-                    <span class="info-value">@_player.FreezeStartDate.Value.ToString("yyyy-MM-dd")</span>
+                    <span class="info-label">@L("Frozen Since", "مجمد منذ")</span>
+                    <span class="info-value text-warning">@_player.FreezeStartDate.Value.ToString("yyyy-MM-dd")</span>
                 </div>
             }
         </div>
@@ -74,15 +108,24 @@ else if (_player != null)
 }
 else
 {
-    <p class="no-data">Player data not found</p>
+    <p class="no-data">@L("Player data not found", "لم يتم العثور على بيانات اللاعب")</p>
 }
 
 @code {
-    private AccessControlPro.Domain.Entities.Employee? _player;
+    private PlayerRow? _player;
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
     private string Status => _player == null ? "" :
         _player.IsFrozen ? "Frozen" :
         _player.EndDate <= DateTime.UtcNow ? "Expired" : "Active";
+
+    private string StatusLabel => Status switch
+    {
+        "Active" => L("Active", "نشط"),
+        "Frozen" => L("Frozen", "مجمد"),
+        _ => L("Expired", "منتهي")
+    };
 
     private string StatusClass => Status == "Active" ? "badge-active" :
         Status == "Frozen" ? "badge-frozen" : "badge-expired";
@@ -92,6 +135,11 @@ else
 
     private int VisitsRemaining => _player == null ? 0 :
         Math.Max(0, _player.MaxVisits - _player.UsedVisits);
+
+    private int VisitPercent => _player == null || _player.MaxVisits == 0 ? 0 :
+        Math.Min(100, _player.UsedVisits * 100 / _player.MaxVisits);
+
+    private decimal Remaining => _player == null ? 0 : _player.Fee - _player.Paid;
 
     protected override async Task OnInitializedAsync()
     {
@@ -103,7 +151,25 @@ else
 
         try
         {
-            _player = await Db.Players.FirstOrDefaultAsync(p => p.Id == Session.UserId);
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Id"", ""FullNameEn"", ""FullNameAr"", COALESCE(""CardNo"",''), COALESCE(""Phone"",''),
+                         COALESCE(""SubscriptionType"",''), ""StartDate"", ""EndDate"",
+                         COALESCE(""SubscriptionFee"",0), COALESCE(""AmountPaid"",0),
+                         COALESCE(""MaxVisits"",0), COALESCE(""UsedVisits"",0), ""IsFrozen"", ""FreezeStartDate""
+                  FROM ""Players"" WHERE ""Id"" = @id AND ""IsDeleted"" = FALSE", conn);
+            cmd.Parameters.AddWithValue("id", Session.UserId);
+
+            using var r = await cmd.ExecuteReaderAsync();
+            if (await r.ReadAsync())
+            {
+                _player = new PlayerRow(
+                    r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4),
+                    r.GetString(5), r.GetDateTime(6), r.GetDateTime(7),
+                    r.GetDecimal(8), r.GetDecimal(9),
+                    r.GetInt32(10), r.GetInt32(11), r.GetBoolean(12),
+                    r.IsDBNull(13) ? null : r.GetDateTime(13));
+            }
         }
         catch { }
     }

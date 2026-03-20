@@ -1,0 +1,111 @@
+@page "/devices"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject AccessControlPro.Web.Data.DbHelper Db
+@rendermode InteractiveServer
+
+@if (!Session.IsAuthenticated || !Session.IsOwner)
+{
+    <p>Redirecting...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1><i class="fas fa-server"></i> @L("Devices", "الأجهزة")</h1>
+        <span class="last-sync">@L("Total", "الإجمالي"): @_devices.Count</span>
+    </div>
+
+    <div class="stats-grid">
+        @foreach (var dev in _devices)
+        {
+            <div class="stat-card" style="text-align: left; padding: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <h4 style="color: var(--accent); margin: 0; font-size: 1rem;">@dev.Name</h4>
+                </div>
+                <div class="device-info-grid">
+                    <div class="device-info-row">
+                        <span class="device-info-label">@L("Serial Number", "الرقم التسلسلي")</span>
+                        <span class="device-info-value">@(string.IsNullOrEmpty(dev.SerialNumber) ? "-" : dev.SerialNumber)</span>
+                    </div>
+                    <div class="device-info-row">
+                        <span class="device-info-label">@L("IP Address", "عنوان IP")</span>
+                        <span class="device-info-value">@(string.IsNullOrEmpty(dev.IP) ? "-" : dev.IP)</span>
+                    </div>
+                    <div class="device-info-row">
+                        <span class="device-info-label">@L("Doors", "الأبواب")</span>
+                        <span class="device-info-value">@GetDoorCount(dev.Id)</span>
+                    </div>
+                    @if (_doorsByDevice.ContainsKey(dev.Id) && _doorsByDevice[dev.Id].Any())
+                    {
+                        <div class="device-info-row">
+                            <span class="device-info-label">@L("Door Names", "أسماء الأبواب")</span>
+                            <span class="device-info-value">@string.Join(", ", _doorsByDevice[dev.Id].Select(d => d.Name))</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (!_devices.Any())
+    {
+        <div class="content-card">
+            <p class="no-data">@L("No devices found", "لم يتم العثور على أجهزة")</p>
+        </div>
+    }
+}
+
+@code {
+    private List<DeviceRow> _devices = new();
+    private Dictionary<int, List<DoorRow>> _doorsByDevice = new();
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || !Session.IsOwner)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+
+            // Load devices
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Id"", COALESCE(""Name"",''), COALESCE(""SerialNumber"",''), COALESCE(""IP"",'')
+                  FROM ""Devices"" ORDER BY ""Name""", conn))
+            {
+                using var r = await cmd.ExecuteReaderAsync();
+                _devices = new List<DeviceRow>();
+                while (await r.ReadAsync())
+                {
+                    _devices.Add(new DeviceRow(r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3)));
+                }
+            }
+
+            // Load doors grouped by device
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT d.""Id"", COALESCE(d.""Name"",''), d.""DoorNumber"", d.""DeviceId"", COALESCE(dev.""Name"",'')
+                  FROM ""Doors"" d LEFT JOIN ""Devices"" dev ON d.""DeviceId"" = dev.""Id""
+                  ORDER BY d.""DeviceId"", d.""DoorNumber""", conn))
+            {
+                using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync())
+                {
+                    var deviceId = r.GetInt32(3);
+                    var door = new DoorRow(r.GetInt32(0), r.GetString(1), r.GetInt32(2), r.GetString(4));
+                    if (!_doorsByDevice.ContainsKey(deviceId))
+                        _doorsByDevice[deviceId] = new List<DoorRow>();
+                    _doorsByDevice[deviceId].Add(door);
+                }
+            }
+        }
+        catch { }
+    }
+
+    private int GetDoorCount(int deviceId)
+        => _doorsByDevice.TryGetValue(deviceId, out var doors) ? doors.Count : 0;
+}

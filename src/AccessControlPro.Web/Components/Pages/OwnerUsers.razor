@@ -1,0 +1,475 @@
+@page "/users"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject AccessControlPro.Web.Data.DbHelper Db
+@rendermode InteractiveServer
+
+@if (!Session.IsAuthenticated || !Session.IsOwner)
+{
+    <p>Redirecting...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1><i class="fas fa-user-shield"></i> @L("User Management", "إدارة المستخدمين")</h1>
+        <span class="last-sync">@L("Total", "الإجمالي"): @_users.Count</span>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_successMsg))
+    {
+        <div class="success-msg">@_successMsg</div>
+    }
+    @if (!string.IsNullOrEmpty(_errorMsg))
+    {
+        <div class="error-msg">@_errorMsg</div>
+    }
+
+    <!-- Create New User Form -->
+    <div class="content-card">
+        <h3><i class="fas fa-user-plus"></i> @L("Create New User", "إنشاء مستخدم جديد")</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>@L("Username", "اسم المستخدم")</label>
+                <input type="text" @bind="_newUsername" class="form-input"
+                       placeholder="@L("Enter username", "أدخل اسم المستخدم")" />
+            </div>
+            <div class="form-group">
+                <label>@L("Display Name", "الاسم المعروض")</label>
+                <input type="text" @bind="_newDisplayName" class="form-input"
+                       placeholder="@L("Enter display name", "أدخل الاسم المعروض")" />
+            </div>
+            <div class="form-group">
+                <label>@L("Password", "كلمة المرور")</label>
+                <input type="password" @bind="_newPassword" class="form-input"
+                       placeholder="@L("Enter password (min 6 chars)", "أدخل كلمة المرور (6 أحرف على الأقل)")" />
+            </div>
+            <div class="form-group">
+                <label>@L("Role", "الدور")</label>
+                <select @bind="_newRole" class="form-select">
+                    <option value="Admin">@L("Admin", "مدير")</option>
+                    <option value="User">@L("User", "مستخدم")</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>@L("Permissions", "الصلاحيات")</label>
+            <div class="permissions-grid">
+                @foreach (var perm in _allPermissions)
+                {
+                    var isChecked = _newPermissions.Contains(perm.Key);
+                    <div class="permission-item">
+                        <input type="checkbox" id="new_@perm.Key" checked="@isChecked"
+                               @onchange="(e) => ToggleNewPermission(perm.Key, (bool)(e.Value ?? false))" />
+                        <label for="new_@perm.Key">@L(perm.Value.en, perm.Value.ar)</label>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn-accent" @onclick="CreateUserAsync" disabled="@_loading">
+                <i class="fas fa-plus"></i> @L("Create User", "إنشاء مستخدم")
+            </button>
+        </div>
+    </div>
+
+    <!-- Existing Users -->
+    <div class="content-card" style="margin-top: 1.5rem;">
+        <h3><i class="fas fa-users"></i> @L("Existing Users", "المستخدمون الحاليون")</h3>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>@L("Username", "اسم المستخدم")</th>
+                        <th>@L("Display Name", "الاسم المعروض")</th>
+                        <th>@L("Role", "الدور")</th>
+                        <th>@L("Status", "الحالة")</th>
+                        <th>@L("Permissions", "الصلاحيات")</th>
+                        <th>@L("Actions", "الإجراءات")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in _users)
+                    {
+                        var isEditing = _editingUserId == user.Id;
+                        <tr>
+                            <td>@user.Username</td>
+                            <td>
+                                @if (isEditing)
+                                {
+                                    <input type="text" @bind="_editDisplayName" class="form-input" style="max-width: 200px;" />
+                                }
+                                else
+                                {
+                                    @user.DisplayName
+                                }
+                            </td>
+                            <td>
+                                @if (isEditing)
+                                {
+                                    <select @bind="_editRole" class="form-select" style="max-width: 120px;">
+                                        <option value="Admin">@L("Admin", "مدير")</option>
+                                        <option value="User">@L("User", "مستخدم")</option>
+                                        <option value="Owner">@L("Owner", "مالك")</option>
+                                    </select>
+                                }
+                                else
+                                {
+                                    <span class="badge @(user.Role == "Owner" ? "badge-active" : user.Role == "Admin" ? "badge-frozen" : "badge-expiring")">
+                                        @user.Role
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                @if (isEditing)
+                                {
+                                    <select @bind="_editIsActive" class="form-select" style="max-width: 120px;">
+                                        <option value="true">@L("Active", "نشط")</option>
+                                        <option value="false">@L("Inactive", "غير نشط")</option>
+                                    </select>
+                                }
+                                else
+                                {
+                                    <span class="badge @(user.IsActive ? "badge-active" : "badge-expired")">
+                                        @(user.IsActive ? L("Active", "نشط") : L("Inactive", "غير نشط"))
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                @if (isEditing)
+                                {
+                                    <div class="permissions-grid" style="font-size: 0.8rem;">
+                                        @foreach (var perm in _allPermissions)
+                                        {
+                                            var isChecked = _editPermissions.Contains(perm.Key);
+                                            <div class="permission-item">
+                                                <input type="checkbox" id="edit_@perm.Key" checked="@isChecked"
+                                                       @onchange="(e) => ToggleEditPermission(perm.Key, (bool)(e.Value ?? false))" />
+                                                <label for="edit_@perm.Key">@L(perm.Value.en, perm.Value.ar)</label>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    @if (!string.IsNullOrEmpty(user.Permissions))
+                                    {
+                                        <span style="font-size: 0.8rem; color: var(--text-secondary);">
+                                            @FormatPermissions(user.Permissions)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color: var(--text-secondary); font-size: 0.8rem;">-</span>
+                                    }
+                                }
+                            </td>
+                            <td>
+                                @if (isEditing)
+                                {
+                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                        <button class="btn-accent btn-sm" @onclick="SaveEditAsync">
+                                            <i class="fas fa-check"></i> @L("Save", "حفظ")
+                                        </button>
+                                        <button class="btn-outline btn-sm" @onclick="CancelEdit">
+                                            <i class="fas fa-times"></i> @L("Cancel", "إلغاء")
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                        <button class="btn-outline btn-sm" @onclick="() => StartEdit(user)">
+                                            <i class="fas fa-edit"></i> @L("Edit", "تعديل")
+                                        </button>
+                                        <button class="btn-outline btn-sm" @onclick="() => StartResetPassword(user.Id)">
+                                            <i class="fas fa-key"></i> @L("Reset Password", "إعادة تعيين كلمة المرور")
+                                        </button>
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                        @if (_resetPasswordUserId == user.Id)
+                        {
+                            <tr>
+                                <td colspan="6">
+                                    <div style="display: flex; gap: 0.75rem; align-items: flex-end; padding: 0.5rem;">
+                                        <div class="form-group" style="margin-bottom: 0; flex: 1; max-width: 300px;">
+                                            <label>@L("New Password", "كلمة المرور الجديدة")</label>
+                                            <input type="password" @bind="_resetPassword" class="form-input"
+                                                   placeholder="@L("Enter new password", "أدخل كلمة المرور الجديدة")" />
+                                        </div>
+                                        <button class="btn-accent btn-sm" @onclick="ResetPasswordAsync">
+                                            <i class="fas fa-save"></i> @L("Reset", "إعادة تعيين")
+                                        </button>
+                                        <button class="btn-outline btn-sm" @onclick="() => _resetPasswordUserId = 0">
+                                            <i class="fas fa-times"></i> @L("Cancel", "إلغاء")
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (!_users.Any())
+        {
+            <p class="no-data">@L("No users found", "لم يتم العثور على مستخدمين")</p>
+        }
+    </div>
+}
+
+@code {
+    private List<UserRow> _users = new();
+    private bool _loading;
+    private string _successMsg = "";
+    private string _errorMsg = "";
+
+    // Create form
+    private string _newUsername = "";
+    private string _newPassword = "";
+    private string _newDisplayName = "";
+    private string _newRole = "User";
+    private HashSet<string> _newPermissions = new();
+
+    // Edit
+    private int _editingUserId;
+    private string _editDisplayName = "";
+    private string _editRole = "";
+    private string _editIsActive = "true";
+    private HashSet<string> _editPermissions = new();
+
+    // Reset password
+    private int _resetPasswordUserId;
+    private string _resetPassword = "";
+
+    private readonly Dictionary<string, (string en, string ar)> _allPermissions = new()
+    {
+        ["ManagePlayers"] = ("Manage Players", "إدارة اللاعبين"),
+        ["ManageCards"] = ("Manage Cards", "إدارة البطاقات"),
+        ["ManageDevices"] = ("Manage Devices", "إدارة الأجهزة"),
+        ["ViewEvents"] = ("View Events", "عرض الأحداث"),
+        ["ManageFinance"] = ("Manage Finance", "إدارة المالية"),
+        ["ViewReports"] = ("View Reports", "عرض التقارير"),
+        ["ManageUsers"] = ("Manage Users", "إدارة المستخدمين"),
+        ["ManageSettings"] = ("Manage Settings", "إدارة الإعدادات"),
+        ["DeleteRecords"] = ("Delete Records", "حذف السجلات"),
+        ["BackupRestore"] = ("Backup & Restore", "النسخ والاستعادة")
+    };
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || !Session.IsOwner)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Id"", ""Username"", COALESCE(""DisplayName"",''), COALESCE(""Role"",'User'),
+                         ""IsActive"", COALESCE(""Permissions"",'')
+                  FROM ""Users"" ORDER BY ""Id""", conn);
+            using var r = await cmd.ExecuteReaderAsync();
+            _users = new List<UserRow>();
+            while (await r.ReadAsync())
+            {
+                _users.Add(new UserRow(
+                    r.GetInt32(0), r.GetString(1), r.GetString(2),
+                    r.GetString(3), r.GetBoolean(4), r.GetString(5)));
+            }
+        }
+        catch { }
+    }
+
+    private async Task CreateUserAsync()
+    {
+        _errorMsg = "";
+        _successMsg = "";
+
+        if (string.IsNullOrWhiteSpace(_newUsername) || string.IsNullOrWhiteSpace(_newPassword))
+        {
+            _errorMsg = L("Username and password are required.", "اسم المستخدم وكلمة المرور مطلوبان.");
+            return;
+        }
+
+        if (_newPassword.Length < 6)
+        {
+            _errorMsg = L("Password must be at least 6 characters.", "كلمة المرور يجب أن تكون 6 أحرف على الأقل.");
+            return;
+        }
+
+        _loading = true;
+        try
+        {
+            var hash = BCrypt.Net.BCrypt.HashPassword(_newPassword);
+            var permissions = string.Join(",", _newPermissions);
+
+            using var conn = await Db.GetConnectionAsync();
+
+            // Check if username exists
+            using (var checkCmd = new Npgsql.NpgsqlCommand(
+                @"SELECT COUNT(*) FROM ""Users"" WHERE ""Username"" = @u", conn))
+            {
+                checkCmd.Parameters.AddWithValue("u", _newUsername.Trim());
+                var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
+                if (exists)
+                {
+                    _errorMsg = L("Username already exists.", "اسم المستخدم موجود بالفعل.");
+                    return;
+                }
+            }
+
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"INSERT INTO ""Users"" (""Username"", ""PasswordHash"", ""DisplayName"", ""Role"", ""IsActive"", ""Permissions"")
+                  VALUES (@u, @h, @d, @r, TRUE, @p)", conn);
+            cmd.Parameters.AddWithValue("u", _newUsername.Trim());
+            cmd.Parameters.AddWithValue("h", hash);
+            cmd.Parameters.AddWithValue("d", _newDisplayName.Trim());
+            cmd.Parameters.AddWithValue("r", _newRole);
+            cmd.Parameters.AddWithValue("p", permissions);
+            await cmd.ExecuteNonQueryAsync();
+
+            _successMsg = L("User created successfully.", "تم إنشاء المستخدم بنجاح.");
+            _newUsername = "";
+            _newPassword = "";
+            _newDisplayName = "";
+            _newRole = "User";
+            _newPermissions.Clear();
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMsg = $"{L("Error creating user", "خطأ في إنشاء المستخدم")}: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void StartEdit(UserRow user)
+    {
+        _editingUserId = user.Id;
+        _editDisplayName = user.DisplayName;
+        _editRole = user.Role;
+        _editIsActive = user.IsActive.ToString().ToLower();
+        _editPermissions = string.IsNullOrEmpty(user.Permissions)
+            ? new HashSet<string>()
+            : user.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+        _resetPasswordUserId = 0;
+        _errorMsg = "";
+        _successMsg = "";
+    }
+
+    private void CancelEdit()
+    {
+        _editingUserId = 0;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        _errorMsg = "";
+        _successMsg = "";
+
+        try
+        {
+            var permissions = string.Join(",", _editPermissions);
+            var isActive = _editIsActive == "true";
+
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"UPDATE ""Users"" SET ""DisplayName"" = @d, ""Role"" = @r, ""IsActive"" = @a, ""Permissions"" = @p
+                  WHERE ""Id"" = @id", conn);
+            cmd.Parameters.AddWithValue("d", _editDisplayName.Trim());
+            cmd.Parameters.AddWithValue("r", _editRole);
+            cmd.Parameters.AddWithValue("a", isActive);
+            cmd.Parameters.AddWithValue("p", permissions);
+            cmd.Parameters.AddWithValue("id", _editingUserId);
+            await cmd.ExecuteNonQueryAsync();
+
+            _successMsg = L("User updated successfully.", "تم تحديث المستخدم بنجاح.");
+            _editingUserId = 0;
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMsg = $"{L("Error updating user", "خطأ في تحديث المستخدم")}: {ex.Message}";
+        }
+    }
+
+    private void StartResetPassword(int userId)
+    {
+        _resetPasswordUserId = userId;
+        _resetPassword = "";
+        _editingUserId = 0;
+        _errorMsg = "";
+        _successMsg = "";
+    }
+
+    private async Task ResetPasswordAsync()
+    {
+        _errorMsg = "";
+        _successMsg = "";
+
+        if (string.IsNullOrWhiteSpace(_resetPassword) || _resetPassword.Length < 6)
+        {
+            _errorMsg = L("Password must be at least 6 characters.", "كلمة المرور يجب أن تكون 6 أحرف على الأقل.");
+            return;
+        }
+
+        try
+        {
+            var hash = BCrypt.Net.BCrypt.HashPassword(_resetPassword);
+
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"UPDATE ""Users"" SET ""PasswordHash"" = @h WHERE ""Id"" = @id", conn);
+            cmd.Parameters.AddWithValue("h", hash);
+            cmd.Parameters.AddWithValue("id", _resetPasswordUserId);
+            await cmd.ExecuteNonQueryAsync();
+
+            _successMsg = L("Password reset successfully.", "تم إعادة تعيين كلمة المرور بنجاح.");
+            _resetPasswordUserId = 0;
+            _resetPassword = "";
+        }
+        catch (Exception ex)
+        {
+            _errorMsg = $"{L("Error resetting password", "خطأ في إعادة تعيين كلمة المرور")}: {ex.Message}";
+        }
+    }
+
+    private void ToggleNewPermission(string perm, bool isChecked)
+    {
+        if (isChecked) _newPermissions.Add(perm);
+        else _newPermissions.Remove(perm);
+    }
+
+    private void ToggleEditPermission(string perm, bool isChecked)
+    {
+        if (isChecked) _editPermissions.Add(perm);
+        else _editPermissions.Remove(perm);
+    }
+
+    private string FormatPermissions(string permissions)
+    {
+        if (string.IsNullOrEmpty(permissions)) return "-";
+        var perms = permissions.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        var labels = perms.Select(p =>
+            _allPermissions.TryGetValue(p, out var val) ? L(val.en, val.ar) : p
+        );
+        return string.Join(", ", labels);
+    }
+
+    private record UserRow(int Id, string Username, string DisplayName, string Role, bool IsActive, string Permissions);
+}

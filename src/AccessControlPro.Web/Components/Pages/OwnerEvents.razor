@@ -1,7 +1,7 @@
 @page "/events"
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
-@inject AccessControlPro.Web.Data.CloudDbContext Db
+@inject AccessControlPro.Web.Data.DbHelper Db
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsOwner)
@@ -11,59 +11,115 @@
 else
 {
     <div class="page-header">
-        <h1>Access Events</h1>
+        <h1><i class="fas fa-clock"></i> @L("Access Events", "أحداث الوصول")</h1>
+        <span class="last-sync">@L("Total", "الإجمالي"): @_totalCount</span>
+    </div>
+
+    <div class="filter-group">
+        <button class="filter-btn @(_period == "today" ? "active" : "")" @onclick='() => SetPeriod("today")'>
+            @L("Today", "اليوم")
+        </button>
+        <button class="filter-btn @(_period == "yesterday" ? "active" : "")" @onclick='() => SetPeriod("yesterday")'>
+            @L("Yesterday", "أمس")
+        </button>
+        <button class="filter-btn @(_period == "thisweek" ? "active" : "")" @onclick='() => SetPeriod("thisweek")'>
+            @L("This Week", "هذا الأسبوع")
+        </button>
+        <button class="filter-btn @(_period == "thismonth" ? "active" : "")" @onclick='() => SetPeriod("thismonth")'>
+            @L("This Month", "هذا الشهر")
+        </button>
+        <button class="filter-btn @(_period == "lastmonth" ? "active" : "")" @onclick='() => SetPeriod("lastmonth")'>
+            @L("Last Month", "الشهر الماضي")
+        </button>
+        <button class="filter-btn @(_period == "last3months" ? "active" : "")" @onclick='() => SetPeriod("last3months")'>
+            @L("Last 3 Months", "آخر 3 أشهر")
+        </button>
+        <button class="filter-btn @(_period == "lastyear" ? "active" : "")" @onclick='() => SetPeriod("lastyear")'>
+            @L("Last Year", "العام الماضي")
+        </button>
+        <button class="filter-btn @(_period == "all" ? "active" : "")" @onclick='() => SetPeriod("all")'>
+            @L("All", "الكل")
+        </button>
     </div>
 
     <div class="filter-bar">
-        <div class="form-group inline">
-            <label>From</label>
-            <input type="date" @bind="_dateFrom" class="form-input" />
-        </div>
-        <div class="form-group inline">
-            <label>To</label>
-            <input type="date" @bind="_dateTo" class="form-input" />
-        </div>
-        <button class="btn-accent" @onclick="LoadEventsAsync">Filter</button>
+        <input type="text" @bind="_search" @bind:event="oninput" @onkeyup="OnSearch"
+               class="form-input" style="max-width: 300px;"
+               placeholder="@L("Search card/player...", "بحث بطاقة/لاعب...")" />
     </div>
 
     <div class="content-card">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Date/Time</th>
-                    <th>Door</th>
-                    <th>Card ID</th>
-                    <th>Event Type</th>
-                    <th>Event Code</th>
-                    <th>Details</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var ev in _events)
-                {
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
                     <tr>
-                        <td>@ev.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
-                        <td>@ev.DoorId</td>
-                        <td>@(ev.CardId?.ToString() ?? "-")</td>
-                        <td>@ev.EventType</td>
-                        <td>@ev.EventCode</td>
-                        <td>@ev.Details</td>
+                        <th>@L("Date/Time", "التاريخ/الوقت")</th>
+                        <th>@L("Device", "الجهاز")</th>
+                        <th>@L("Door", "الباب")</th>
+                        <th>@L("Card No", "رقم البطاقة")</th>
+                        <th>@L("Player", "اللاعب")</th>
+                        <th>@L("Event Type", "نوع الحدث")</th>
+                        <th>@L("Details", "التفاصيل")</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var ev in _events)
+                    {
+                        <tr>
+                            <td>@ev.EventDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>@GetDeviceName(ev.DoorId)</td>
+                            <td>@GetDoorName(ev.DoorId)</td>
+                            <td>@(ev.CardId?.ToString() ?? "-")</td>
+                            <td>@GetPlayerName(ev.CardId)</td>
+                            <td>
+                                <span class="badge @GetEventBadgeClass(ev.EventCode)">
+                                    @GetEventTypeName(ev.EventCode)
+                                </span>
+                            </td>
+                            <td>@ev.Details</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         @if (!_events.Any())
         {
-            <p class="no-data">No events found for the selected period</p>
+            <p class="no-data">@L("No events found for the selected period", "لم يتم العثور على أحداث للفترة المحددة")</p>
+        }
+
+        @if (_totalCount > 0)
+        {
+            <div class="pagination">
+                <button class="btn-outline btn-sm" disabled="@(_page <= 1)" @onclick="PrevPage">
+                    <i class="fas fa-chevron-left"></i> @L("Previous", "السابق")
+                </button>
+                <span class="page-info">
+                    @L("Page", "صفحة") @_page / @TotalPages (@_totalCount @L("records", "سجل"))
+                </span>
+                <button class="btn-outline btn-sm" disabled="@(!_hasMore)" @onclick="NextPage">
+                    @L("Next", "التالي") <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
         }
     </div>
 }
 
 @code {
-    private DateTime _dateFrom = DateTime.Today.AddDays(-7);
-    private DateTime _dateTo = DateTime.Today;
-    private List<AccessControlPro.Domain.Entities.AccessEvent> _events = new();
+    private string _period = "today";
+    private string _search = "";
+    private List<EventRow> _events = new();
+    private Dictionary<int, string> _doorNames = new();
+    private Dictionary<int, string> _deviceByDoor = new();
+    private Dictionary<int, string> _playerByCard = new();
+
+    private int _page = 1;
+    private const int PageSize = 20;
+    private int _totalCount;
+    private bool _hasMore => _page * PageSize < _totalCount;
+    private int TotalPages => _totalCount == 0 ? 1 : (int)Math.Ceiling((double)_totalCount / PageSize);
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -73,22 +129,179 @@ else
             return;
         }
 
+        await LoadLookupsAsync();
         await LoadEventsAsync();
+    }
+
+    private (DateTime start, DateTime end) GetDateRange()
+    {
+        var now = DateTime.UtcNow;
+        var today = now.Date;
+        return _period switch
+        {
+            "today" => (today, now),
+            "yesterday" => (today.AddDays(-1), today),
+            "thisweek" => (today.AddDays(-(int)today.DayOfWeek), now),
+            "thismonth" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), now),
+            "lastmonth" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-1),
+                            new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc)),
+            "last3months" => (today.AddMonths(-3), now),
+            "lastyear" => (today.AddYears(-1), now),
+            "all" => (DateTime.MinValue, now),
+            _ => (today, now)
+        };
+    }
+
+    private async Task SetPeriod(string period)
+    {
+        _period = period;
+        _page = 1;
+        await LoadEventsAsync();
+    }
+
+    private async Task LoadLookupsAsync()
+    {
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT d.""Id"", COALESCE(d.""Name"",''), COALESCE(dev.""Name"",'')
+                  FROM ""Doors"" d LEFT JOIN ""Devices"" dev ON d.""DeviceId"" = dev.""Id""", conn))
+            {
+                using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync())
+                {
+                    _doorNames[r.GetInt32(0)] = r.GetString(1);
+                    _deviceByDoor[r.GetInt32(0)] = r.GetString(2);
+                }
+            }
+
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""CardNo"", ""FullNameEn"", ""FullNameAr""
+                  FROM ""Players"" WHERE ""IsDeleted"" = FALSE AND ""CardNo"" IS NOT NULL AND ""CardNo"" != ''", conn))
+            {
+                using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync())
+                {
+                    var cardNo = r.GetString(0);
+                    if (int.TryParse(cardNo, out var cid))
+                    {
+                        var nameEn = r.GetString(1);
+                        var nameAr = r.GetString(2);
+                        _playerByCard[cid] = SessionState.IsArabic && !string.IsNullOrEmpty(nameAr) ? nameAr : nameEn;
+                    }
+                }
+            }
+        }
+        catch { }
     }
 
     private async Task LoadEventsAsync()
     {
         try
         {
-            var from = DateTime.SpecifyKind(_dateFrom, DateTimeKind.Utc);
-            var to = DateTime.SpecifyKind(_dateTo.AddDays(1), DateTimeKind.Utc);
+            var (from, to) = GetDateRange();
+            var isAll = _period == "all";
 
-            _events = await Db.AccessEvents
-                .Where(e => e.Timestamp >= from && e.Timestamp < to)
-                .OrderByDescending(e => e.Timestamp)
-                .Take(500)
-                .ToListAsync();
+            using var conn = await Db.GetConnectionAsync();
+
+            var dateWhere = isAll ? "" : @" WHERE ""EventDate"" >= @from AND ""EventDate"" < @to";
+
+            // Count
+            using (var countCmd = new Npgsql.NpgsqlCommand(
+                $@"SELECT COUNT(*) FROM ""AccessEvents""{dateWhere}", conn))
+            {
+                if (!isAll)
+                {
+                    countCmd.Parameters.AddWithValue("from", from);
+                    countCmd.Parameters.AddWithValue("to", to);
+                }
+                _totalCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
+            }
+
+            // Data
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                $@"SELECT ""Id"", ""DoorId"", ""CardId"", ""EventCode"", ""EventDate"", COALESCE(""Details"",'')
+                  FROM ""AccessEvents""{dateWhere}
+                  ORDER BY ""EventDate"" DESC LIMIT @limit OFFSET @offset", conn))
+            {
+                if (!isAll)
+                {
+                    cmd.Parameters.AddWithValue("from", from);
+                    cmd.Parameters.AddWithValue("to", to);
+                }
+                cmd.Parameters.AddWithValue("limit", PageSize);
+                cmd.Parameters.AddWithValue("offset", (_page - 1) * PageSize);
+
+                using var r = await cmd.ExecuteReaderAsync();
+                _events = new List<EventRow>();
+                while (await r.ReadAsync())
+                {
+                    _events.Add(new EventRow(
+                        r.GetInt32(0), r.GetInt32(1),
+                        r.IsDBNull(2) ? null : r.GetInt32(2),
+                        r.GetInt32(3), r.GetDateTime(4), r.GetString(5)));
+                }
+            }
+
+            // Apply client-side search filter
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                var q = _search.Trim().ToLower();
+                _events = _events.Where(ev =>
+                    (ev.CardId?.ToString() ?? "").Contains(q) ||
+                    GetPlayerName(ev.CardId).ToLower().Contains(q) ||
+                    GetDoorName(ev.DoorId).ToLower().Contains(q)
+                ).ToList();
+            }
         }
         catch { }
     }
+
+    private async Task OnSearch()
+    {
+        _page = 1;
+        await LoadEventsAsync();
+    }
+
+    private async Task NextPage()
+    {
+        if (_hasMore) { _page++; await LoadEventsAsync(); }
+    }
+
+    private async Task PrevPage()
+    {
+        if (_page > 1) { _page--; await LoadEventsAsync(); }
+    }
+
+    private string GetDoorName(int doorId)
+        => _doorNames.TryGetValue(doorId, out var name) && !string.IsNullOrEmpty(name) ? name : $"Door {doorId}";
+
+    private string GetDeviceName(int doorId)
+        => _deviceByDoor.TryGetValue(doorId, out var name) && !string.IsNullOrEmpty(name) ? name : "-";
+
+    private string GetPlayerName(int? cardId)
+    {
+        if (cardId == null) return "-";
+        return _playerByCard.TryGetValue(cardId.Value, out var name) ? name : "-";
+    }
+
+    private string GetEventTypeName(int code) => code switch
+    {
+        1 => L("Card Open", "فتح بالبطاقة"),
+        2 => L("Button Open", "فتح بالزر"),
+        3 => L("Remote Open", "فتح عن بعد"),
+        4 => L("Alarm", "إنذار"),
+        5 => L("Door Open", "فتح الباب"),
+        6 => L("Door Close", "إغلاق الباب"),
+        _ => $"Code {code}"
+    };
+
+    private string GetEventBadgeClass(int code) => code switch
+    {
+        1 => "badge-active",
+        4 => "badge-expired",
+        _ => "badge-frozen"
+    };
 }

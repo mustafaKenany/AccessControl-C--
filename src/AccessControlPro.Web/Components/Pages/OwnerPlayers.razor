@@ -1,7 +1,7 @@
 @page "/players"
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
-@inject AccessControlPro.Web.Data.CloudDbContext Db
+@inject AccessControlPro.Web.Data.DbHelper Db
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsOwner)
@@ -11,59 +11,170 @@
 else
 {
     <div class="page-header">
-        <h1>Players</h1>
+        <h1><i class="fas fa-users"></i> @L("Players", "اللاعبون")</h1>
+        <span class="last-sync">@L("Total", "الإجمالي"): @_totalCount</span>
     </div>
 
-    <div class="search-bar">
+    <div class="search-bar" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
         <input type="text" @bind="_search" @bind:event="oninput" @onkeyup="OnSearch"
-               class="form-input" placeholder="Search by name, phone, or card..." />
+               class="form-input" placeholder="@L("Search by name, phone, or card...", "ابحث بالاسم أو الهاتف أو البطاقة...")" />
+        <div class="filter-buttons">
+            <button class="filter-btn @(_filter == "All" ? "active" : "")" @onclick='() => SetFilter("All")'>@L("All", "الكل")</button>
+            <button class="filter-btn @(_filter == "Active" ? "active" : "")" @onclick='() => SetFilter("Active")'>@L("Active", "نشط")</button>
+            <button class="filter-btn @(_filter == "Expiring" ? "active" : "")" @onclick='() => SetFilter("Expiring")'>@L("Expiring", "ينتهي قريباً")</button>
+            <button class="filter-btn @(_filter == "Expired" ? "active" : "")" @onclick='() => SetFilter("Expired")'>@L("Expired", "منتهي")</button>
+            <button class="filter-btn @(_filter == "Frozen" ? "active" : "")" @onclick='() => SetFilter("Frozen")'>@L("Frozen", "مجمد")</button>
+        </div>
     </div>
 
     <div class="content-card">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Card</th>
-                    <th>Phone</th>
-                    <th>Subscription</th>
-                    <th>End Date</th>
-                    <th>Status</th>
-                    <th>Visits</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var p in _filtered)
-                {
-                    var now = DateTime.UtcNow;
-                    var status = p.IsFrozen ? "Frozen" : p.EndDate <= now ? "Expired" : "Active";
-                    var statusClass = status == "Active" ? "badge-active" : status == "Frozen" ? "badge-frozen" : "badge-expired";
-                    var visitsText = p.MaxVisits > 0 ? $"{p.UsedVisits}/{p.MaxVisits}" : "Unlimited";
-
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
                     <tr>
-                        <td>@p.FullNameEn</td>
-                        <td>@p.CardNo</td>
-                        <td>@p.Phone</td>
-                        <td>@p.SubscriptionType</td>
-                        <td>@p.EndDate.ToString("yyyy-MM-dd")</td>
-                        <td><span class="badge @statusClass">@status</span></td>
-                        <td>@visitsText</td>
+                        <th>@L("Photo", "الصورة")</th>
+                        <th>@L("Name", "الاسم")</th>
+                        <th>@L("Card", "البطاقة")</th>
+                        <th>@L("Phone", "الهاتف")</th>
+                        <th>@L("Subscription", "الاشتراك")</th>
+                        <th>@L("Start", "البداية")</th>
+                        <th>@L("End", "النهاية")</th>
+                        <th>@L("Fee", "الرسوم")</th>
+                        <th>@L("Paid", "المدفوع")</th>
+                        <th>@L("Remaining", "المتبقي")</th>
+                        <th>@L("Visits", "الزيارات")</th>
+                        <th>@L("Status", "الحالة")</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var p in _players)
+                    {
+                        var now = DateTime.UtcNow;
+                        var daysLeft = (p.EndDate - now).Days;
+                        var status = p.IsFrozen ? "Frozen" :
+                                     p.EndDate <= now ? "Expired" :
+                                     daysLeft <= 7 ? "Expiring" : "Active";
+                        var statusClass = status == "Active" ? "badge-active" :
+                                          status == "Frozen" ? "badge-frozen" :
+                                          status == "Expiring" ? "badge-expiring" : "badge-expired";
+                        var statusLabel = status switch {
+                            "Active" => L("Active", "نشط"),
+                            "Frozen" => L("Frozen", "مجمد"),
+                            "Expiring" => L("Expiring", "ينتهي قريباً"),
+                            _ => L("Expired", "منتهي")
+                        };
+                        var visitsText = p.MaxVisits > 0 ? $"{p.UsedVisits}/{p.MaxVisits}" : L("Unlimited", "غير محدود");
+                        var remaining = p.Fee - p.Paid;
+                        var name = SessionState.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn;
+                        var nameSecondary = SessionState.IsArabic ? p.FullNameEn : p.FullNameAr;
 
-        @if (!_filtered.Any())
+                        <tr class="player-row @(_expandedId == p.Id ? "expanded" : "")" @onclick="() => ToggleExpand(p.Id)">
+                            <td>
+                                <div class="player-avatar">
+                                    @(string.IsNullOrEmpty(p.FullNameEn) ? "?" : p.FullNameEn[0].ToString().ToUpper())
+                                </div>
+                            </td>
+                            <td>
+                                <div class="player-name-cell">
+                                    <span class="name-primary">@name</span>
+                                    @if (!string.IsNullOrEmpty(nameSecondary))
+                                    {
+                                        <span class="name-secondary">@nameSecondary</span>
+                                    }
+                                </div>
+                            </td>
+                            <td>@p.CardNo</td>
+                            <td>@p.Phone</td>
+                            <td>@p.SubscriptionType</td>
+                            <td>@p.StartDate.ToString("yyyy-MM-dd")</td>
+                            <td>@p.EndDate.ToString("yyyy-MM-dd")</td>
+                            <td>@p.Fee.ToString("N0")</td>
+                            <td>@p.Paid.ToString("N0")</td>
+                            <td class="@(remaining > 0 ? "text-danger" : "text-success")">@remaining.ToString("N0")</td>
+                            <td>@visitsText</td>
+                            <td><span class="badge @statusClass">@statusLabel</span></td>
+                        </tr>
+                        @if (_expandedId == p.Id)
+                        {
+                            <tr class="detail-row">
+                                <td colspan="12">
+                                    <div class="player-detail">
+                                        <div class="detail-grid">
+                                            <div class="detail-item">
+                                                <span class="detail-label">@L("Full Name (EN)", "الاسم الكامل (إنجليزي)")</span>
+                                                <span class="detail-value">@p.FullNameEn</span>
+                                            </div>
+                                            <div class="detail-item">
+                                                <span class="detail-label">@L("Full Name (AR)", "الاسم الكامل (عربي)")</span>
+                                                <span class="detail-value" dir="rtl">@p.FullNameAr</span>
+                                            </div>
+                                            <div class="detail-item">
+                                                <span class="detail-label">@L("Days Remaining", "الأيام المتبقية")</span>
+                                                <span class="detail-value @(daysLeft <= 7 ? "text-warning" : daysLeft <= 0 ? "text-danger" : "")">
+                                                    @(daysLeft > 0 ? daysLeft.ToString() : L("Expired", "منتهي"))
+                                                </span>
+                                            </div>
+                                            @if (p.MaxVisits > 0)
+                                            {
+                                                <div class="detail-item">
+                                                    <span class="detail-label">@L("Visits Progress", "تقدم الزيارات")</span>
+                                                    <div class="progress-bar-container">
+                                                        <div class="progress-bar-fill" style="width: @(p.MaxVisits > 0 ? Math.Min(100, p.UsedVisits * 100 / p.MaxVisits) : 0)%"></div>
+                                                    </div>
+                                                    <span class="detail-value">@p.UsedVisits / @p.MaxVisits</span>
+                                                </div>
+                                            }
+                                            @if (p.IsFrozen && p.FreezeStartDate.HasValue)
+                                            {
+                                                <div class="detail-item">
+                                                    <span class="detail-label">@L("Frozen Since", "مجمد منذ")</span>
+                                                    <span class="detail-value text-warning">@p.FreezeStartDate.Value.ToString("yyyy-MM-dd")</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (!_players.Any())
         {
-            <p class="no-data">No players found</p>
+            <p class="no-data">@L("No players found", "لم يتم العثور على لاعبين")</p>
+        }
+
+        @if (_totalCount > 0)
+        {
+            <div class="pagination">
+                <button class="btn-outline btn-sm" disabled="@(_page <= 1)" @onclick="PrevPage">
+                    <i class="fas fa-chevron-left"></i> @L("Previous", "السابق")
+                </button>
+                <span class="page-info">
+                    @L("Page", "صفحة") @_page / @TotalPages (@_totalCount @L("records", "سجل"))
+                </span>
+                <button class="btn-outline btn-sm" disabled="@(!_hasMore)" @onclick="NextPage">
+                    @L("Next", "التالي") <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
         }
     </div>
 }
 
 @code {
     private string _search = "";
-    private List<AccessControlPro.Domain.Entities.Employee> _allPlayers = new();
-    private List<AccessControlPro.Domain.Entities.Employee> _filtered = new();
+    private string _filter = "All";
+    private int? _expandedId;
+    private List<PlayerRow> _players = new();
+    private int _page = 1;
+    private const int PageSize = 20;
+    private int _totalCount;
+    private bool _hasMore => _page * PageSize < _totalCount;
+    private int TotalPages => _totalCount == 0 ? 1 : (int)Math.Ceiling((double)_totalCount / PageSize);
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -73,28 +184,109 @@ else
             return;
         }
 
+        await LoadPlayersAsync();
+    }
+
+    private async Task LoadPlayersAsync()
+    {
         try
         {
-            _allPlayers = await Db.Players.OrderBy(p => p.FullNameEn).ToListAsync();
-            _filtered = _allPlayers;
+            using var conn = await Db.GetConnectionAsync();
+
+            // Build WHERE clause based on filter
+            var now = DateTime.UtcNow;
+            var weekFromNow = now.AddDays(7);
+            var whereBase = @"""IsDeleted"" = FALSE";
+            var extraWhere = _filter switch
+            {
+                "Active" => @" AND ""IsFrozen"" = FALSE AND ""EndDate"" > @now",
+                "Expiring" => @" AND ""IsFrozen"" = FALSE AND ""EndDate"" > @now AND ""EndDate"" <= @week",
+                "Expired" => @" AND ""IsFrozen"" = FALSE AND ""EndDate"" <= @now",
+                "Frozen" => @" AND ""IsFrozen"" = TRUE",
+                _ => ""
+            };
+
+            var searchWhere = "";
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                searchWhere = @" AND (LOWER(""FullNameEn"") LIKE @q OR ""FullNameAr"" LIKE @q OR ""Phone"" LIKE @q OR ""CardNo"" LIKE @q)";
+            }
+
+            var fullWhere = $"WHERE {whereBase}{extraWhere}{searchWhere}";
+
+            // Count
+            using (var countCmd = new Npgsql.NpgsqlCommand(
+                $@"SELECT COUNT(*) FROM ""Players"" {fullWhere}", conn))
+            {
+                if (_filter is "Active" or "Expiring" or "Expired")
+                    countCmd.Parameters.AddWithValue("now", now);
+                if (_filter == "Expiring")
+                    countCmd.Parameters.AddWithValue("week", weekFromNow);
+                if (!string.IsNullOrWhiteSpace(_search))
+                    countCmd.Parameters.AddWithValue("q", $"%{_search.Trim().ToLower()}%");
+
+                _totalCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
+            }
+
+            // Data
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                $@"SELECT ""Id"", ""FullNameEn"", ""FullNameAr"", COALESCE(""CardNo"",''), COALESCE(""Phone"",''),
+                         COALESCE(""SubscriptionType"",''), ""StartDate"", ""EndDate"",
+                         COALESCE(""SubscriptionFee"",0), COALESCE(""AmountPaid"",0),
+                         COALESCE(""MaxVisits"",0), COALESCE(""UsedVisits"",0), ""IsFrozen"", ""FreezeStartDate""
+                  FROM ""Players"" {fullWhere}
+                  ORDER BY ""Id"" DESC LIMIT @limit OFFSET @offset", conn))
+            {
+                if (_filter is "Active" or "Expiring" or "Expired")
+                    cmd.Parameters.AddWithValue("now", now);
+                if (_filter == "Expiring")
+                    cmd.Parameters.AddWithValue("week", weekFromNow);
+                if (!string.IsNullOrWhiteSpace(_search))
+                    cmd.Parameters.AddWithValue("q", $"%{_search.Trim().ToLower()}%");
+                cmd.Parameters.AddWithValue("limit", PageSize);
+                cmd.Parameters.AddWithValue("offset", (_page - 1) * PageSize);
+
+                using var r = await cmd.ExecuteReaderAsync();
+                _players = new List<PlayerRow>();
+                while (await r.ReadAsync())
+                {
+                    _players.Add(new PlayerRow(
+                        r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4),
+                        r.GetString(5), r.GetDateTime(6), r.GetDateTime(7),
+                        r.GetDecimal(8), r.GetDecimal(9),
+                        r.GetInt32(10), r.GetInt32(11), r.GetBoolean(12),
+                        r.IsDBNull(13) ? null : r.GetDateTime(13)));
+                }
+            }
         }
         catch { }
     }
 
-    private void OnSearch()
+    private void ToggleExpand(int id)
     {
-        if (string.IsNullOrWhiteSpace(_search))
-        {
-            _filtered = _allPlayers;
-            return;
-        }
+        _expandedId = _expandedId == id ? null : id;
+    }
 
-        var q = _search.Trim().ToLower();
-        _filtered = _allPlayers.Where(p =>
-            p.FullNameEn.ToLower().Contains(q) ||
-            p.FullNameAr.Contains(q) ||
-            p.Phone.Contains(q) ||
-            p.CardNo.Contains(q)
-        ).ToList();
+    private async Task SetFilter(string filter)
+    {
+        _filter = filter;
+        _page = 1;
+        await LoadPlayersAsync();
+    }
+
+    private async Task OnSearch()
+    {
+        _page = 1;
+        await LoadPlayersAsync();
+    }
+
+    private async Task NextPage()
+    {
+        if (_hasMore) { _page++; await LoadPlayersAsync(); }
+    }
+
+    private async Task PrevPage()
+    {
+        if (_page > 1) { _page--; await LoadPlayersAsync(); }
     }
 }

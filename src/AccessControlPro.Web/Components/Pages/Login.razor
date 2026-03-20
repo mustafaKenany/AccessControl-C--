@@ -7,11 +7,21 @@
 <div class="login-container">
     <div class="login-card">
         <h2 class="login-title">HM-GymManagement</h2>
-        <p class="login-subtitle">Cloud Portal</p>
+        <p class="login-subtitle">@L("Cloud Portal", "البوابة السحابية")</p>
+
+        <div style="text-align: center; margin-bottom: 1rem;">
+            <button class="filter-btn" style="font-size: 0.8rem;" @onclick="ToggleLang">
+                @(SessionState.IsArabic ? "English" : "عربي")
+            </button>
+        </div>
 
         <div class="login-tabs">
-            <button class="tab-btn @(_isOwnerMode ? "active" : "")" @onclick="() => _isOwnerMode = true">Owner Login</button>
-            <button class="tab-btn @(!_isOwnerMode ? "active" : "")" @onclick="() => _isOwnerMode = false">Player Login</button>
+            <button class="tab-btn @(_isOwnerMode ? "active" : "")" @onclick="() => _isOwnerMode = true">
+                @L("Owner Login", "دخول المالك")
+            </button>
+            <button class="tab-btn @(!_isOwnerMode ? "active" : "")" @onclick="() => _isOwnerMode = false">
+                @L("Player Login", "دخول اللاعب")
+            </button>
         </div>
 
         @if (!string.IsNullOrEmpty(_error))
@@ -22,24 +32,28 @@
         @if (_isOwnerMode)
         {
             <div class="form-group">
-                <label>Username</label>
-                <input type="text" @bind="_username" class="form-input" placeholder="Enter username" />
+                <label>@L("Username", "اسم المستخدم")</label>
+                <input type="text" @bind="_username" @bind:event="oninput" class="form-input"
+                       placeholder="@L("Enter username", "أدخل اسم المستخدم")" />
             </div>
             <div class="form-group">
-                <label>Password</label>
-                <input type="password" @bind="_password" class="form-input" placeholder="Enter password"
+                <label>@L("Password", "كلمة المرور")</label>
+                <input type="password" @bind="_password" @bind:event="oninput" class="form-input"
+                       placeholder="@L("Enter password", "أدخل كلمة المرور")"
                        @onkeydown="HandleKeyDown" />
             </div>
         }
         else
         {
             <div class="form-group">
-                <label>Phone Number</label>
-                <input type="tel" @bind="_phone" class="form-input" placeholder="Enter phone number" />
+                <label>@L("Phone Number", "رقم الهاتف")</label>
+                <input type="tel" @bind="_phone" @bind:event="oninput" class="form-input"
+                       placeholder="@L("Enter phone number", "أدخل رقم الهاتف")" />
             </div>
             <div class="form-group">
-                <label>Last 4 Digits of Card</label>
-                <input type="text" @bind="_cardLast4" class="form-input" placeholder="e.g. 1234" maxlength="4"
+                <label>@L("Last 4 Digits of Card", "آخر 4 أرقام من البطاقة")</label>
+                <input type="text" @bind="_cardLast4" @bind:event="oninput" class="form-input"
+                       placeholder="@L("e.g. 1234", "مثال 1234")" maxlength="4"
                        @onkeydown="HandleKeyDown" />
             </div>
         }
@@ -47,11 +61,11 @@
         <button class="login-btn" @onclick="DoLogin" disabled="@_loading">
             @if (_loading)
             {
-                <span>Logging in...</span>
+                <span>@L("Logging in...", "جاري تسجيل الدخول...")</span>
             }
             else
             {
-                <span>Login</span>
+                <span>@L("Login", "تسجيل الدخول")</span>
             }
         </button>
     </div>
@@ -65,11 +79,29 @@
     private string _cardLast4 = "";
     private string _error = "";
     private bool _loading;
+    private bool _loginSuccess;
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
     protected override void OnInitialized()
     {
         if (Session.IsAuthenticated)
-            Nav.NavigateTo("/");
+            Nav.NavigateTo(Session.IsOwner ? "/dashboard" : "/my");
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (_loginSuccess && Session.IsAuthenticated)
+        {
+            _loginSuccess = false;
+            Nav.NavigateTo(Session.IsOwner ? "/dashboard" : "/my");
+        }
+    }
+
+    private void ToggleLang()
+    {
+        SessionState.ToggleLanguage();
+        StateHasChanged();
     }
 
     private async Task HandleKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
@@ -95,7 +127,8 @@
             if (result.IsAuthenticated)
             {
                 Session.Login(result);
-                Nav.NavigateTo("/");
+                _loginSuccess = true;
+                StateHasChanged();
             }
             else
             {
@@ -104,7 +137,7 @@
         }
         catch (Exception ex)
         {
-            _error = $"Connection error: {ex.Message}";
+            _error = $"{L("Connection error", "خطأ في الاتصال")}: {ex.Message}";
         }
         finally
         {

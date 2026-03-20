@@ -1,80 +1,129 @@
-using AccessControlPro.Domain.Entities;
+using System.Collections.Concurrent;
 using AccessControlPro.Web.Data;
-using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace AccessControlPro.Web.Services;
 
 public class WebAuthService
 {
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly DbHelper _db;
 
-    public WebAuthService(IServiceScopeFactory scopeFactory)
+    // Rate limiting: track failed login attempts per identifier
+    private static readonly ConcurrentDictionary<string, (int attempts, DateTime lastAttempt)> _loginAttempts = new();
+    private const int MaxAttempts = 5;
+    private const int BlockMinutes = 15;
+
+    public WebAuthService(DbHelper db)
     {
-        _scopeFactory = scopeFactory;
+        _db = db;
     }
 
-    /// <summary>
-    /// Owner login using username + password (BCrypt verified against Users table).
-    /// </summary>
+    private bool IsBlocked(string identifier)
+    {
+        if (_loginAttempts.TryGetValue(identifier, out var entry))
+        {
+            if (entry.attempts >= MaxAttempts && (DateTime.UtcNow - entry.lastAttempt).TotalMinutes < BlockMinutes)
+                return true;
+            if ((DateTime.UtcNow - entry.lastAttempt).TotalMinutes >= BlockMinutes)
+                _loginAttempts.TryRemove(identifier, out _);
+        }
+        return false;
+    }
+
+    private void RecordFailedAttempt(string identifier)
+    {
+        _loginAttempts.AddOrUpdate(
+            identifier,
+            (1, DateTime.UtcNow),
+            (_, existing) => (existing.attempts + 1, DateTime.UtcNow));
+    }
+
+    private void ClearAttempts(string identifier)
+    {
+        _loginAttempts.TryRemove(identifier, out _);
+    }
+
     public async Task<AuthResult> OwnerLoginAsync(string username, string password)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             return AuthResult.Failed("Username and password are required.");
 
-        using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<CloudDbContext>();
+        var identifier = $"owner:{username.Trim().ToLower()}";
+        if (IsBlocked(identifier))
+            return AuthResult.Failed("Too many failed attempts. Please try again in 15 minutes.");
 
-        var user = await db.Users
-            .FirstOrDefaultAsync(u => u.Username == username && u.IsActive);
+        using var conn = await _db.GetConnectionAsync();
+        using var cmd = new NpgsqlCommand(
+            @"SELECT ""Id"", ""Username"", ""PasswordHash"", ""DisplayName"", ""Role""
+              FROM ""Users"" WHERE ""Username"" = @u AND ""IsActive"" = TRUE", conn);
+        cmd.Parameters.AddWithValue("u", username);
 
-        if (user == null)
+        using var reader = await cmd.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
+        {
+            RecordFailedAttempt(identifier);
             return AuthResult.Failed("Invalid username or password.");
+        }
 
+        var hash = reader.GetString(2);
         try
         {
-            if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+            if (!BCrypt.Net.BCrypt.Verify(password, hash))
+            {
+                RecordFailedAttempt(identifier);
                 return AuthResult.Failed("Invalid username or password.");
+            }
         }
         catch
         {
+            RecordFailedAttempt(identifier);
             return AuthResult.Failed("Invalid username or password.");
         }
 
-        return AuthResult.Success(user.DisplayName, "Owner", user.Id);
+        ClearAttempts(identifier);
+        return AuthResult.Success(
+            reader.IsDBNull(3) ? reader.GetString(1) : reader.GetString(3),
+            reader.IsDBNull(4) ? "Owner" : reader.GetString(4),
+            reader.GetInt32(0));
     }
 
-    /// <summary>
-    /// Player login using phone number + last 4 digits of card number.
-    /// </summary>
     public async Task<AuthResult> PlayerLoginAsync(string phone, string cardLast4)
     {
         if (string.IsNullOrWhiteSpace(phone) || string.IsNullOrWhiteSpace(cardLast4))
             return AuthResult.Failed("Phone and card digits are required.");
 
-        using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<CloudDbContext>();
+        var identifier = $"player:{phone.Trim()}";
+        if (IsBlocked(identifier))
+            return AuthResult.Failed("Too many failed attempts. Please try again in 15 minutes.");
 
-        var player = await db.Players
-            .FirstOrDefaultAsync(p => p.Phone == phone);
+        using var conn = await _db.GetConnectionAsync();
+        using var cmd = new NpgsqlCommand(
+            @"SELECT ""Id"", ""FullNameEn"", ""FullNameAr"", ""CardNo""
+              FROM ""Players"" WHERE ""Phone"" = @p AND ""IsDeleted"" = FALSE", conn);
+        cmd.Parameters.AddWithValue("p", phone);
 
-        if (player == null)
+        using var reader = await cmd.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
+        {
+            RecordFailedAttempt(identifier);
             return AuthResult.Failed("Player not found. Check your phone number.");
+        }
 
-        // Verify last 4 digits of card number
-        var card = await db.AccessCards
-            .FirstOrDefaultAsync(c => c.EmployeeId == player.Id && c.IsActive);
-
-        if (card == null)
-            return AuthResult.Failed("No active card found for this player.");
-
-        var last4 = card.CardNumber.Length >= 4
-            ? card.CardNumber[^4..]
-            : card.CardNumber;
-
-        if (!string.Equals(last4, cardLast4.Trim(), StringComparison.OrdinalIgnoreCase))
+        var cardNo = reader.IsDBNull(3) ? "" : reader.GetString(3);
+        if (string.IsNullOrEmpty(cardNo) || !cardNo.EndsWith(cardLast4))
+        {
+            RecordFailedAttempt(identifier);
             return AuthResult.Failed("Invalid card digits.");
+        }
 
-        return AuthResult.Success(player.FullNameEn, "Player", player.Id);
+        var nameEn = reader.IsDBNull(1) ? "" : reader.GetString(1);
+        var nameAr = reader.IsDBNull(2) ? "" : reader.GetString(2);
+
+        ClearAttempts(identifier);
+        return AuthResult.Success(
+            !string.IsNullOrEmpty(nameEn) ? nameEn : nameAr,
+            "Player",
+            reader.GetInt32(0));
     }
 }
 
@@ -82,7 +131,7 @@ public class AuthResult
 {
     public bool IsAuthenticated { get; set; }
     public string DisplayName { get; set; } = "";
-    public string Role { get; set; } = ""; // "Owner" or "Player"
+    public string Role { get; set; } = "";
     public int UserId { get; set; }
     public string Error { get; set; } = "";
 
