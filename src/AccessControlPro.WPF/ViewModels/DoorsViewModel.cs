@@ -57,7 +57,17 @@ public partial class DoorsViewModel : ObservableObject
     {
         if (_isInitialized) return;
         _isInitialized = true;
-        await LoadDoorsAsync();
+        ActivityLogger.LogNavigation("Doors");
+        try
+        {
+            await LoadDoorsAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DoorsViewModel] InitializeAsync error: {ex}");
+            Views.CustomMessageBox.Show($"Error loading doors: {ex.Message}", "Error",
+                Views.MsgType.Error, System.Windows.Application.Current.MainWindow);
+        }
     }
 
     partial void OnSearchTextChanged(string value)
@@ -129,6 +139,7 @@ public partial class DoorsViewModel : ObservableObject
         if (door == null) return;
         if (!await ValidateDoorDeviceReadyAsync(door, Lang.OpenDoor)) return;
 
+        ActivityLogger.LogAction("Doors", "OpenDoor", door.Name);
         IsLoading = true;
         try
         {
@@ -165,6 +176,7 @@ public partial class DoorsViewModel : ObservableObject
         if (door == null) return;
         if (!await ValidateDoorDeviceReadyAsync(door, Lang.CloseDoor)) return;
 
+        ActivityLogger.LogAction("Doors", "CloseDoor", door.Name);
         IsLoading = true;
         try
         {
@@ -214,6 +226,7 @@ public partial class DoorsViewModel : ObservableObject
                 return;
             }
 
+            ActivityLogger.LogAction("Doors", "SetDelay", $"{door.Name}: {seconds}s");
             IsLoading = true;
             StatusMessage = string.Format(Lang.SettingDelay, door.Name);
             var success = await _doorService.SetDoorDelayAsync(door.Id, seconds);
@@ -255,6 +268,7 @@ public partial class DoorsViewModel : ObservableObject
 
             if (string.IsNullOrWhiteSpace(input)) return;
 
+            ActivityLogger.LogAction("Doors", "SetPassword", door.Name);
             IsLoading = true;
             StatusMessage = string.Format(Lang.SettingPassword, door.Name);
             var success = await _doorService.SetDoorPasswordAsync(door.Id, input);
@@ -292,12 +306,51 @@ public partial class DoorsViewModel : ObservableObject
 
         if (string.IsNullOrWhiteSpace(input) || input == door.Name) return;
 
+        ActivityLogger.LogAction("Doors", "RenameDoor", $"{door.Name} -> {input}");
         var success = await _doorService.RenameDoorAsync(door.Id, input);
         if (success)
         {
             await LoadDoorsAsync();
             CustomMessageBox.Show($"{Lang.RenameSuccess}\n{input}", Lang.Edit,
                 MsgType.Success, System.Windows.Application.Current.MainWindow);
+        }
+    }
+
+    [RelayCommand]
+    private async Task SetScheduleAsync(DoorDto? door)
+    {
+        if (door == null) return;
+
+        var dialog = new SetDoorScheduleDialog(door)
+        {
+            Owner = System.Windows.Application.Current.MainWindow,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            ActivityLogger.LogAction("Doors", "SetSchedule", door.Name);
+            IsLoading = true;
+            try
+            {
+                var success = await _doorService.UpdateDoorScheduleAsync(
+                    door.Id, dialog.StartTime, dialog.EndTime, dialog.Is24Hours, dialog.WorkingDaysResult);
+                if (success)
+                {
+                    await LoadDoorsAsync();
+                    CustomMessageBox.Show($"{Lang.SetSchedule}\n{door.Name}", Lang.SetSchedule,
+                        MsgType.Success, System.Windows.Application.Current.MainWindow);
+                }
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(ex.Message, Lang.SetSchedule,
+                    MsgType.Error, System.Windows.Application.Current.MainWindow);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
         }
     }
 

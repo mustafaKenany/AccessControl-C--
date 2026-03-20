@@ -51,6 +51,9 @@ public partial class AddEmployeeDialog : Window
         StartDatePicker.SelectedDate = DateTime.Today;
         UpdateRemaining();
 
+        // MaxVisits is always hidden in Add/Edit dialog — set via Assign Card instead
+        // MaxVisitsTextBox defaults to "0" in XAML
+
         if (_lookupService != null)
             _ = LoadPlansFromDbAsync();
     }
@@ -604,11 +607,15 @@ public partial class AddEmployeeDialog : Window
     {
         var errors = new List<string>();
 
-        if (string.IsNullOrWhiteSpace(NameEnTextBox.Text))
-            errors.Add(Lang.PlayerNameRequired);
-
-        if (string.IsNullOrWhiteSpace(NameArTextBox.Text))
-            errors.Add(Lang.NameArRequired);
+        // At least one name (EN or AR) is required; if only one is filled, copy it to the other
+        var hasEn = !string.IsNullOrWhiteSpace(NameEnTextBox.Text);
+        var hasAr = !string.IsNullOrWhiteSpace(NameArTextBox.Text);
+        if (!hasEn && !hasAr)
+            errors.Add(Lang.AtLeastOneNameRequired);
+        else if (hasEn && !hasAr)
+            NameArTextBox.Text = NameEnTextBox.Text.Trim();
+        else if (hasAr && !hasEn)
+            NameEnTextBox.Text = NameArTextBox.Text.Trim();
 
         if (string.IsNullOrWhiteSpace(CardNoTextBox.Text))
             errors.Add(Lang.CardNoRequired);

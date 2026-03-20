@@ -63,6 +63,7 @@ public partial class DevicesViewModel : ObservableObject
     {
         if (_isInitialized) return;
         _isInitialized = true;
+        ActivityLogger.LogNavigation("Devices");
         await LoadDevicesAsync();
     }
 
@@ -88,6 +89,15 @@ public partial class DevicesViewModel : ObservableObject
             return;
         }
 
+        // Single Device mode: block if already have 1 device
+        if (Helpers.DeviceModeHelper.IsSingleDevice && _allDevices.Count >= 1)
+        {
+            CustomMessageBox.Show(
+                "Single Device Mode: Only 1 device is allowed.\n\nTo add a different device, delete the existing one first.\nOr change to Multi Device mode in settings.",
+                "Device Limit", MsgType.Warning, System.Windows.Application.Current.MainWindow);
+            return;
+        }
+
         IsLoading = true;
         StatusMessage = "Searching network...";
         try
@@ -95,6 +105,21 @@ public partial class DevicesViewModel : ObservableObject
             var found = await _deviceService.SearchNetworkAsync();
             if (found != null)
             {
+                // Single Device mode: verify only 1 device on network
+                if (Helpers.DeviceModeHelper.IsSingleDevice)
+                {
+                    // Check if there are other devices already in DB
+                    var existingDevices = _allDevices.Where(d => d.SerialNumber != found.SerialNumber).ToList();
+                    if (existingDevices.Count > 0)
+                    {
+                        CustomMessageBox.Show(
+                            $"Single Device Mode: Another device already exists ({existingDevices[0].Name}).\n\nOnly 1 device is allowed to prevent fraud.\nDelete the existing device first or switch to Multi Device mode.",
+                            "Device Limit", MsgType.Warning, System.Windows.Application.Current.MainWindow);
+                        IsLoading = false;
+                        return;
+                    }
+                }
+
                 // Check if device already exists by serial number
                 var existing = _allDevices.FirstOrDefault(d =>
                     d.SerialNumber == found.SerialNumber);
@@ -102,6 +127,7 @@ public partial class DevicesViewModel : ObservableObject
                 if (existing == null)
                 {
                     await _deviceService.AddDeviceAsync(found);
+                    ActivityLogger.LogAction("Devices", "AddDevice", $"{found.IP} ({found.SerialNumber})");
                     StatusMessage = $"Found: {found.IP} ({found.SerialNumber})";
                 }
                 else
@@ -139,7 +165,7 @@ public partial class DevicesViewModel : ObservableObject
         if (!await ValidateDeviceReadyAsync(device, Lang.Connect)) return;
         try
         {
-            StatusMessage = $"Connecting to {device.IP}...";
+            StatusMessage = $"Connecting to {device!.IP}...";
             var success = await _deviceService.ConnectDeviceAsync(device.Id);
             if (success)
             {
@@ -170,7 +196,7 @@ public partial class DevicesViewModel : ObservableObject
         try
         {
             StatusMessage = "Reading device info...";
-            var info = await _deviceService.GetDeviceInfoAsync(device.Id);
+            var info = await _deviceService.GetDeviceInfoAsync(device!.Id);
             StatusMessage = "Device info retrieved";
             var displayInfo = string.IsNullOrWhiteSpace(info) ? "No info returned from device." : info;
             CustomMessageBox.Show($"{device.Name} ({device.IP})\nSN: {device.SerialNumber}\n\n{displayInfo}",
@@ -191,7 +217,7 @@ public partial class DevicesViewModel : ObservableObject
         try
         {
             int doorToOpen;
-            if (device.DoorCount <= 1)
+            if (device!.DoorCount <= 1)
             {
                 doorToOpen = 1;
             }
@@ -216,6 +242,8 @@ public partial class DevicesViewModel : ObservableObject
                 }
             }
 
+            ActivityLogger.LogAction("Devices", "OpenDoor", $"{device!.Name} door {doorToOpen}");
+            IsLoading = true;
             StatusMessage = "Opening door...";
             bool success;
             if (doorToOpen == 0)
@@ -248,16 +276,22 @@ public partial class DevicesViewModel : ObservableObject
             CustomMessageBox.Show($"Failed to open door: {ex.Message}", Lang.OpenDoor,
                 MsgType.Error, System.Windows.Application.Current.MainWindow);
         }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     [RelayCommand]
     private async Task SyncTimeAsync(DeviceDto? device)
     {
         if (!await ValidateDeviceReadyAsync(device, Lang.SyncTime)) return;
+        IsLoading = true;
         try
         {
+            ActivityLogger.LogAction("Devices", "SyncTime", $"{device!.Name} ({device.IP})");
             StatusMessage = "Syncing time...";
-            var success = await _deviceService.SyncTimeAsync(device.Id);
+            var success = await _deviceService.SyncTimeAsync(device!.Id);
             if (success)
             {
                 StatusMessage = Lang.SyncTimeSuccess;
@@ -277,6 +311,54 @@ public partial class DevicesViewModel : ObservableObject
             CustomMessageBox.Show($"Failed to sync time: {ex.Message}", Lang.SyncTime,
                 MsgType.Error, System.Windows.Application.Current.MainWindow);
         }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task FactoryResetAsync(DeviceDto? device)
+    {
+        if (!await ValidateDeviceReadyAsync(device, "Factory Reset")) return;
+
+        var confirmed = Views.CustomMessageBox.Confirm(
+            $"WARNING: This will erase ALL data on device '{device!.Name}' ({device.IP}) and restore factory defaults.\n\nAll cards, settings, and records on this device will be permanently deleted.\n\nAre you sure?",
+            "Factory Reset",
+            Views.MsgType.Warning,
+            System.Windows.Application.Current.MainWindow);
+        if (!confirmed) return;
+
+        var doubleConfirm = Views.CustomMessageBox.Confirm(
+            $"FINAL CONFIRMATION:\n\nDevice: {device.Name} ({device.IP})\n\nThis action CANNOT be undone. Continue?",
+            "Factory Reset",
+            Views.MsgType.Warning,
+            System.Windows.Application.Current.MainWindow);
+        if (!doubleConfirm) return;
+
+        IsLoading = true;
+        try
+        {
+            ActivityLogger.LogAction("Devices", "FactoryReset", $"{device.Name} ({device.IP})");
+            StatusMessage = "Factory resetting device...";
+            await _deviceService.FactoryResetAsync(device.Id);
+            StatusMessage = "Factory reset complete";
+            Views.CustomMessageBox.Show(
+                $"Device '{device.Name}' has been reset to factory defaults.\nAll cards and settings erased.\nRe-assign cards to this device.",
+                "Factory Reset", Views.MsgType.Success,
+                System.Windows.Application.Current.MainWindow);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Factory reset failed";
+            Views.CustomMessageBox.Show($"Factory reset failed: {ex.Message}",
+                "Factory Reset", Views.MsgType.Error,
+                System.Windows.Application.Current.MainWindow);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     [RelayCommand]
@@ -285,7 +367,7 @@ public partial class DevicesViewModel : ObservableObject
         if (!await ValidateDeviceReadyAsync(device, Lang.ChangeIP)) return;
 
         var dialog = new Views.NetworkSettingsDialog(
-            device.IP, device.SubnetMask, device.Gateway);
+            device!.IP, device.SubnetMask, device.Gateway);
         dialog.Owner = System.Windows.Application.Current.MainWindow;
 
         if (dialog.ShowDialog() != true) return;
@@ -297,8 +379,10 @@ public partial class DevicesViewModel : ObservableObject
         // Skip if nothing changed
         if (newIP == device.IP && newSubnet == device.SubnetMask && newGateway == device.Gateway) return;
 
+        IsLoading = true;
         try
         {
+            ActivityLogger.LogAction("Devices", "ChangeIP", $"{device.Name}: {device.IP} -> {newIP}");
             StatusMessage = $"Changing network settings to {newIP}...";
             var success = await _deviceService.ChangeIPAsync(device.Id, newIP, newSubnet, newGateway);
             if (success)
@@ -320,6 +404,10 @@ public partial class DevicesViewModel : ObservableObject
             StatusMessage = "Failed to change IP";
             CustomMessageBox.Show($"Failed to change network settings: {ex.Message}", Lang.ChangeIP,
                 MsgType.Error, System.Windows.Application.Current.MainWindow);
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 
@@ -354,8 +442,24 @@ public partial class DevicesViewModel : ObservableObject
 
         if (confirmed)
         {
-            await _deviceService.DeleteDeviceAsync(device.Id);
-            await LoadDevicesAsync();
+            IsLoading = true;
+            try
+            {
+                ActivityLogger.LogAction("Devices", "DeleteDevice", $"{device.Name} ({device.IP})");
+                StatusMessage = $"Deleting {device.Name}...";
+                await _deviceService.DeleteDeviceAsync(device.Id);
+                await LoadDevicesAsync();
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = "Delete failed";
+                CustomMessageBox.Show($"Failed to delete device: {ex.Message}", Lang.Delete,
+                    MsgType.Error, System.Windows.Application.Current.MainWindow);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
         }
     }
 
@@ -375,7 +479,7 @@ public partial class DevicesViewModel : ObservableObject
         try
         {
             IsLoading = true;
-            StatusMessage = string.Format(Lang.DownloadingLogs, device.Name, months);
+            StatusMessage = string.Format(Lang.DownloadingLogs, device!.Name, months);
 
             var count = await Task.Run(() => _eventService.FetchAndSaveRecordsAsync(device.Id, cutoffDate));
 
@@ -436,7 +540,7 @@ public partial class DevicesViewModel : ObservableObject
             });
 
             var (synced, failed, total) = await Task.Run(() =>
-                _employeeService.SyncAllCardsToDeviceAsync(device.Id, progress));
+                _employeeService.SyncAllCardsToDeviceAsync(device!.Id, progress));
 
             if (total == 0)
             {

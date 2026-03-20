@@ -13,4 +13,5 @@ public interface IAccessEventRepository
     Task<int> GetActiveAlarmCountAsync();
     Task<(IEnumerable<AccessEvent> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, DateTime? from = null, DateTime? to = null, int? doorId = null, string? search = null, RecordType? eventType = null, int? deviceId = null);
     Task<int> DeleteOlderThanAsync(DateTime cutoff);
+    Task NullifyCardIdForCardsAsync(IEnumerable<int> cardIds);
 }

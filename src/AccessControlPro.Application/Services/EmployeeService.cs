@@ -1,4 +1,5 @@
 using AccessControlPro.Application.DTOs;
+using AccessControlPro.Application.Helpers;
 using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Domain.Entities;
 using AccessControlPro.Domain.Enums;
@@ -19,8 +20,10 @@ public class EmployeeService : IEmployeeService
     private readonly IFreezeHistoryRepository _freezeHistoryRepository;
     private readonly ITransactionRepository _transactionRepository;
     private readonly ICardDeviceSyncRepository _cardDeviceSyncRepository;
+    private readonly IAccessEventRepository _accessEventRepository;
     private readonly CurrentUserService _currentUser;
     private readonly ISessionLogger _sessionLogger;
+    private readonly DeviceOperationHelper _opHelper;
 
     public EmployeeService(
         IEmployeeRepository employeeRepository,
@@ -32,8 +35,10 @@ public class EmployeeService : IEmployeeService
         IFreezeHistoryRepository freezeHistoryRepository,
         ITransactionRepository transactionRepository,
         ICardDeviceSyncRepository cardDeviceSyncRepository,
+        IAccessEventRepository accessEventRepository,
         CurrentUserService currentUser,
-        ISessionLogger sessionLogger)
+        ISessionLogger sessionLogger,
+        DeviceOperationHelper opHelper)
     {
         _employeeRepository = employeeRepository;
         _cardRepository = cardRepository;
@@ -44,8 +49,10 @@ public class EmployeeService : IEmployeeService
         _freezeHistoryRepository = freezeHistoryRepository;
         _transactionRepository = transactionRepository;
         _cardDeviceSyncRepository = cardDeviceSyncRepository;
+        _accessEventRepository = accessEventRepository;
         _currentUser = currentUser;
         _sessionLogger = sessionLogger;
+        _opHelper = opHelper;
     }
 
     public async Task<IEnumerable<EmployeeDto>> GetAllEmployeesAsync()
@@ -69,8 +76,13 @@ public class EmployeeService : IEmployeeService
     public async Task AddEmployeeAsync(EmployeeDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);
+        // At least one name (EN or AR) is required; if one is empty, copy the other
+        if (string.IsNullOrWhiteSpace(dto.FullNameEn) && string.IsNullOrWhiteSpace(dto.FullNameAr))
+            throw new ArgumentException("At least one name (English or Arabic) is required.");
         if (string.IsNullOrWhiteSpace(dto.FullNameEn))
-            throw new ArgumentException("English name is required.");
+            dto.FullNameEn = dto.FullNameAr;
+        if (string.IsNullOrWhiteSpace(dto.FullNameAr))
+            dto.FullNameAr = dto.FullNameEn;
         if (string.IsNullOrWhiteSpace(dto.CardNo))
             throw new ArgumentException("Card number is required.");
         if (dto.SubscriptionFee < 0)
@@ -150,6 +162,14 @@ public class EmployeeService : IEmployeeService
             if (existingPhone != null && existingPhone.Id != dto.Id)
                 throw new InvalidOperationException($"DUPLICATE_PHONE:{dto.Phone}");
         }
+
+        // At least one name required; copy if one is empty
+        if (string.IsNullOrWhiteSpace(dto.FullNameEn) && string.IsNullOrWhiteSpace(dto.FullNameAr))
+            throw new ArgumentException("At least one name (English or Arabic) is required.");
+        if (string.IsNullOrWhiteSpace(dto.FullNameEn))
+            dto.FullNameEn = dto.FullNameAr;
+        if (string.IsNullOrWhiteSpace(dto.FullNameAr))
+            dto.FullNameAr = dto.FullNameEn;
 
         // Detect which fields actually changed
         var changesEn = new List<string>();
@@ -300,7 +320,7 @@ public class EmployeeService : IEmployeeService
 
         try
         {
-            // Archive to DeletedEmployees table (financial data preserved)
+            // Step 1: Archive to DeletedEmployees table (preserves all player data)
             var archived = new DeletedEmployee
             {
                 OriginalId = employee.Id,
@@ -324,52 +344,63 @@ public class EmployeeService : IEmployeeService
             };
             await _deletedEmployeeRepository.AddAsync(archived);
 
-            await LogAuditAsync("SoftDelete", "Player", id,
-                $"Soft-deleted player: {employee.FullNameEn} ({employee.CardNo}). Reason: {reason}",
-                $"تم حذف لاعب: {employee.FullNameAr} ({employee.CardNo}). السبب: {reason}");
+            // Step 2: Try to remove cards from hardware (best-effort — don't block delete if device offline)
+            string? hardwareWarning = null;
+            var cards = employee.AccessCards?.ToList() ?? new List<AccessCard>();
+            if (cards.Count > 0)
+            {
+                try
+                {
+                    await DisableCardsOnHardware(employee);
+                }
+                catch (Exception hwEx)
+                {
+                    hardwareWarning = hwEx.Message;
+                    await _sessionLogger.LogErrorAsync("SOFT_DELETE", "Player", id,
+                        $"Card removal from hardware failed (player will still be deleted): {hwEx.Message}",
+                        _currentUser.Username);
+                }
 
-            // Log to session file
+                // Step 3: Clear FK references before deleting employee
+                var cardIds = cards.Select(c => c.Id).ToList();
+                await _accessEventRepository.NullifyCardIdForCardsAsync(cardIds);
+
+                foreach (var card in cards)
+                {
+                    await _cardDeviceSyncRepository.DeleteByCardIdAsync(card.Id);
+                }
+            }
+
+            // Step 4: Nullify Transactions.RelatedEmployeeId (preserves financial records)
+            await _transactionRepository.NullifyEmployeeIdAsync(id);
+
+            // Step 5: Audit + session log
+            var logNote = hardwareWarning != null ? " [Hardware: card not removed from device]" : "";
+            await LogAuditAsync("SoftDelete", "Player", id,
+                $"Soft-deleted player: {employee.FullNameEn} ({employee.CardNo}). Reason: {reason}{logNote}",
+                $"تم حذف لاعب: {employee.FullNameAr} ({employee.CardNo}). السبب: {reason}{logNote}");
+
             await _sessionLogger.LogOperationAsync("SOFT_DELETE", "Player", id,
-                $"Soft-deleted player: {employee.FullNameEn} ({employee.CardNo}). Reason: {reason}",
-                $"تم حذف لاعب: {employee.FullNameAr} ({employee.CardNo}). السبب: {reason}",
+                $"Soft-deleted player: {employee.FullNameEn} ({employee.CardNo}). Reason: {reason}{logNote}",
+                $"تم حذف لاعب: {employee.FullNameAr} ({employee.CardNo}). السبب: {reason}{logNote}",
                 _currentUser.Username);
 
-            // Delete from active table - cascade will handle related records via FK constraints
-            // If cascade delete is not configured, transactions will be preserved with NULL EmployeeId
+            // Step 6: Delete employee from active table
             await _employeeRepository.DeleteAsync(id);
+
+            // Return warning info if hardware removal failed
+            if (hardwareWarning != null)
+                throw new InvalidOperationException(
+                    $"PARTIAL_SUCCESS:Player deleted from system successfully, but card could not be removed from hardware device. Please remove card manually from device settings.");
+
             return true;
         }
         catch (Exception ex)
         {
-            // Extract the actual SQL exception message to detect constraint violations
-            var errorMsg = ex.Message;
-            var innerException = ex.InnerException?.Message ?? "";
-
-            // Check for foreign key constraint violations (the actual error from database)
-            if (errorMsg.Contains("constraint") || errorMsg.Contains("REFERENCE") ||
-                innerException.Contains("constraint") || innerException.Contains("REFERENCE") ||
-                innerException.Contains("FK_Transactions"))
-            {
-                // Log the error for debugging
-                await _sessionLogger.LogErrorAsync("SOFT_DELETE", "Player", id,
-                    $"Failed - player has associated records. Error: {innerException}",
-                    _currentUser.Username);
-
-                throw new InvalidOperationException(
-                    $"Cannot delete player '{employee.FullNameEn}': This player has associated transaction records. " +
-                    "The system preserves financial history. Error: foreign key constraint violation.",
-                    ex);
-            }
-
-            // Log the error for debugging
             await _sessionLogger.LogErrorAsync("SOFT_DELETE", "Player", id,
                 $"Failed to soft-delete player. Error: {ex.Message}",
                 _currentUser.Username);
-
-            // Re-throw with consistent message that includes "constraint" keyword for UI detection
-            throw new InvalidOperationException(
-                $"Failed to delete player: {employee.FullNameEn}. Error: {ex.Message} [constraint violation]",
-                ex);
+            throw;
         }
     }
 
@@ -378,6 +409,21 @@ public class EmployeeService : IEmployeeService
         var employee = await _employeeRepository.GetByIdWithCardsAsync(id);
         if (employee == null || employee.IsFrozen) return false;
 
+        // Step 1: Disable cards on hardware FIRST (best-effort — don't block freeze if device offline)
+        string? hardwareWarning = null;
+        try
+        {
+            await DisableCardsOnHardware(employee, deviceIds);
+        }
+        catch (Exception hwEx)
+        {
+            hardwareWarning = hwEx.Message;
+            await _sessionLogger.LogErrorAsync("FREEZE", "Player", id,
+                $"Card disable on hardware failed (player will still be frozen in DB): {hwEx.Message}",
+                _currentUser.Username);
+        }
+
+        // Step 2: Update DB (freeze always happens — hardware might just be offline)
         employee.IsFrozen = true;
         employee.FreezeStartDate = DateTime.UtcNow;
         await _employeeRepository.UpdateAsync(employee);
@@ -390,18 +436,21 @@ public class EmployeeService : IEmployeeService
         };
         await _freezeHistoryRepository.AddAsync(freeze);
 
-        // Disable all synced cards on selected hardware devices (overwrite with expired date)
-        await DisableCardsOnHardware(employee, deviceIds);
-
+        var logNote = hardwareWarning != null ? " [Hardware: card not disabled on device]" : "";
         await LogAuditAsync("Freeze", "Player", id,
-            $"Froze player: {employee.FullNameEn} ({employee.CardNo}). Reason: {reason}",
-            $"تم تجميد لاعب: {employee.FullNameAr} ({employee.CardNo}). السبب: {reason}");
+            $"Froze player: {employee.FullNameEn} ({employee.CardNo}). Reason: {reason}{logNote}",
+            $"تم تجميد لاعب: {employee.FullNameAr} ({employee.CardNo}). السبب: {reason}{logNote}");
 
         // Log to session file
         await _sessionLogger.LogOperationAsync("FREEZE", "Player", id,
-            $"Froze player: {employee.FullNameEn} ({employee.CardNo}). Reason: {reason}",
-            $"تم تجميد لاعب: {employee.FullNameAr} ({employee.CardNo}). السبب: {reason}",
+            $"Froze player: {employee.FullNameEn} ({employee.CardNo}). Reason: {reason}{logNote}",
+            $"تم تجميد لاعب: {employee.FullNameAr} ({employee.CardNo}). السبب: {reason}{logNote}",
             _currentUser.Username);
+
+        // Surface hardware warning via PARTIAL_SUCCESS so ViewModel can display it
+        if (hardwareWarning != null)
+            throw new InvalidOperationException(
+                $"PARTIAL_SUCCESS:Player frozen in system successfully, but card could not be disabled on hardware device. Please check device connectivity.");
 
         return true;
     }
@@ -414,8 +463,55 @@ public class EmployeeService : IEmployeeService
         var freezeDays = (int)Math.Ceiling((DateTime.UtcNow - employee.FreezeStartDate.Value).TotalDays);
         if (freezeDays < 1) freezeDays = 1;
 
-        // Extend subscription EndDate by freeze duration
-        employee.EndDate = employee.EndDate.AddDays(freezeDays);
+        // Calculate new EndDate — give back frozen days
+        var newEndDate = employee.EndDate.AddDays(freezeDays);
+
+        // Check if subscription is still valid after extension
+        bool subscriptionExpired = newEndDate < DateTime.Now;
+        bool visitsExhausted = employee.MaxVisits > 0 && employee.UsedVisits >= employee.MaxVisits;
+
+        // Step 1: Re-enable cards on hardware FIRST (only if subscription is still valid)
+        string? hardwareWarning = null;
+        if (!subscriptionExpired && !visitsExhausted)
+        {
+            try
+            {
+                // Calculate remaining effectiveTimes for hardware
+                int remainingEffectiveTimes = 65535; // default unlimited
+                if (employee.MaxVisits > 0)
+                {
+                    var remainingVisits = employee.MaxVisits - employee.UsedVisits;
+                    remainingEffectiveTimes = remainingVisits;
+                    if (remainingEffectiveTimes < 1) remainingEffectiveTimes = 1;
+                }
+
+                await ReEnableCardsOnHardware(employee, deviceIds, newEndDate, remainingEffectiveTimes);
+            }
+            catch (Exception hwEx)
+            {
+                hardwareWarning = hwEx.Message;
+                await _sessionLogger.LogErrorAsync("UNFREEZE", "Player", id,
+                    $"Card re-enable on hardware failed (player will still be unfrozen in DB): {hwEx.Message}",
+                    _currentUser.Username);
+            }
+        }
+        else if (subscriptionExpired)
+        {
+            hardwareWarning = "Subscription already expired — card not re-enabled on hardware";
+            await _sessionLogger.LogErrorAsync("UNFREEZE", "Player", id,
+                $"Subscription expired (EndDate={newEndDate:yyyy-MM-dd}). Card not re-enabled.",
+                _currentUser.Username);
+        }
+        else if (visitsExhausted)
+        {
+            hardwareWarning = "No visits remaining — card not re-enabled on hardware";
+            await _sessionLogger.LogErrorAsync("UNFREEZE", "Player", id,
+                $"No visits remaining ({employee.UsedVisits}/{employee.MaxVisits}). Card not re-enabled.",
+                _currentUser.Username);
+        }
+
+        // Step 2: Update DB (unfreeze always happens — hardware might just be offline)
+        employee.EndDate = newEndDate;
         employee.IsFrozen = false;
         employee.FreezeStartDate = null;
         await _employeeRepository.UpdateAsync(employee);
@@ -429,18 +525,21 @@ public class EmployeeService : IEmployeeService
             await _freezeHistoryRepository.UpdateAsync(activeFreeze);
         }
 
-        // Re-register all synced cards on selected hardware devices with extended EndDate
-        await ReEnableCardsOnHardware(employee, deviceIds);
-
+        var logNote = hardwareWarning != null ? " [Hardware: card not re-enabled on device]" : "";
         await LogAuditAsync("Unfreeze", "Player", id,
-            $"Unfroze player: {employee.FullNameEn} ({employee.CardNo}). Freeze duration: {freezeDays} days. EndDate extended to {employee.EndDate:yyyy-MM-dd}",
-            $"تم إلغاء تجميد لاعب: {employee.FullNameAr} ({employee.CardNo}). مدة التجميد: {freezeDays} يوم. تاريخ الانتهاء الجديد: {employee.EndDate:yyyy-MM-dd}");
+            $"Unfroze player: {employee.FullNameEn} ({employee.CardNo}). Freeze duration: {freezeDays} days. EndDate extended to {employee.EndDate:yyyy-MM-dd}{logNote}",
+            $"تم إلغاء تجميد لاعب: {employee.FullNameAr} ({employee.CardNo}). مدة التجميد: {freezeDays} يوم. تاريخ الانتهاء الجديد: {employee.EndDate:yyyy-MM-dd}{logNote}");
 
         // Log to session file
         await _sessionLogger.LogOperationAsync("UNFREEZE", "Player", id,
-            $"Unfroze player: {employee.FullNameEn} ({employee.CardNo}). Freeze duration: {freezeDays} days",
-            $"تم إلغاء تجميد لاعب: {employee.FullNameAr} ({employee.CardNo}). مدة التجميد: {freezeDays} يوم",
+            $"Unfroze player: {employee.FullNameEn} ({employee.CardNo}). Freeze duration: {freezeDays} days{logNote}",
+            $"تم إلغاء تجميد لاعب: {employee.FullNameAr} ({employee.CardNo}). مدة التجميد: {freezeDays} يوم{logNote}",
             _currentUser.Username);
+
+        // Surface hardware warning via PARTIAL_SUCCESS so ViewModel can display it
+        if (hardwareWarning != null)
+            throw new InvalidOperationException(
+                $"PARTIAL_SUCCESS:Player unfrozen in system successfully, but card could not be re-enabled on hardware device. Please check device connectivity.");
 
         return true;
     }
@@ -454,13 +553,79 @@ public class EmployeeService : IEmployeeService
         var oldType = employee.SubscriptionType;
         var oldEndDate = employee.EndDate;
 
-        employee.SubscriptionType = subscriptionType;
-        employee.StartDate = DateTime.Today;
-        employee.EndDate = customDays > 0
+        // Calculate new dates (don't persist yet — hardware goes first)
+        var newStartDate = DateTime.Today;
+        var newEndDate = customDays > 0
             ? DateTime.Today.AddDays(customDays)
             : DateTime.Today.AddMonths(months);
-        if (employee.EndDate <= employee.StartDate)
+        if (newEndDate <= newStartDate)
             throw new ArgumentException("End date must be after start date.");
+
+        // EffectiveTimes comes directly from Renew dialog
+        // Update employee.MaxVisits = EffectiveTimes (stored as-is from dialog)
+        var hwEffectiveTimes = effectiveTimes;
+        if (hwEffectiveTimes > 0 && hwEffectiveTimes < 65535)
+        {
+            employee.MaxVisits = hwEffectiveTimes;
+            employee.UsedVisits = 0; // Reset visit counter on renewal
+        }
+        else
+        {
+            employee.MaxVisits = 0;
+            employee.UsedVisits = 0;
+        }
+
+        var newPermitTime = newEndDate.ToString("yyyy-MM-dd HH:mm:ss");
+
+        // Step 1: Sync cards to hardware FIRST with new dates and permissions
+        string? hardwareWarning = null;
+        var cards = employee.AccessCards?.Where(c => c.IsActive).ToList() ?? new List<AccessCard>();
+        if (cards.Count > 0)
+        {
+            var devices = await ResolveDevicesAsync(deviceIds);
+            if (devices.Count > 0)
+            {
+                foreach (var card in cards)
+                {
+                    var deviceTuples = devices.Select(d => (BuildDeviceInfo(d), d.Name, d.IP, d.Id));
+
+                    var result = await _opHelper.ExecuteOnDevicesSequentialAsync(deviceTuples, deviceInfo =>
+                    {
+                        _sdk.AddAccessCard(
+                            deviceInfo,
+                            card.CardNumber,
+                            card.CardPassword,
+                            card.OpenMode,
+                            doorPermissions,
+                            newPermitTime,
+                            hwEffectiveTimes,
+                            card.TimePeriodIndex,
+                            card.HolidayEnabled);
+                    });
+
+                    foreach (var s in result.Succeeded)
+                        await _cardDeviceSyncRepository.UpsertAsync(card.Id, s.DeviceId, true);
+
+                    foreach (var f in result.Failed)
+                    {
+                        await _cardDeviceSyncRepository.UpsertAsync(card.Id, f.DeviceId, false, f.Error);
+                        hardwareWarning ??= $"Some devices could not be updated: {f.Error}";
+                    }
+                }
+            }
+        }
+
+        if (hardwareWarning != null)
+        {
+            await _sessionLogger.LogErrorAsync("RENEW", "Player", id,
+                $"Card sync to hardware partially failed during renewal: {hardwareWarning}",
+                _currentUser.Username);
+        }
+
+        // Step 2: Update DB with new subscription dates, fees, and card settings
+        employee.SubscriptionType = subscriptionType;
+        employee.StartDate = newStartDate;
+        employee.EndDate = newEndDate;
         employee.SubscriptionFee = fee;
         employee.AmountPaid = amountPaid;
         employee.IsFrozen = false;
@@ -468,15 +633,15 @@ public class EmployeeService : IEmployeeService
         employee.UsedVisits = 0; // Reset visit count on renewal
         await _employeeRepository.UpdateAsync(employee);
 
-        // Update all cards with new door permissions, effective times, and validity
+        // Update all cards in DB
         if (employee.AccessCards != null)
         {
             foreach (var card in employee.AccessCards)
             {
                 card.DoorPermissions = doorPermissions;
-                card.EffectiveTimes = effectiveTimes;
-                card.ValidFrom = employee.StartDate;
-                card.ValidTo = employee.EndDate;
+                card.EffectiveTimes = hwEffectiveTimes;
+                card.ValidFrom = newStartDate;
+                card.ValidTo = newEndDate;
                 card.IsActive = true;
                 await _cardRepository.UpdateAsync(card);
             }
@@ -499,28 +664,28 @@ public class EmployeeService : IEmployeeService
 
         var periodLabel = customDays > 0 ? $"{customDays} days" : $"{months} months";
         var periodLabelAr = customDays > 0 ? $"{customDays} يوم" : $"{months} شهر";
+        var logNote = hardwareWarning != null ? " [Hardware: partial sync failure]" : "";
 
         await LogAuditAsync("Renew", "Player", id,
             $"Renewed subscription for {employee.FullNameEn} ({employee.CardNo}). " +
             $"Type: {oldType} → {subscriptionType}. " +
             $"Period: {periodLabel}. Fee: {fee}. Paid: {amountPaid}. " +
-            $"Old EndDate: {oldEndDate:yyyy-MM-dd} → New EndDate: {employee.EndDate:yyyy-MM-dd}",
+            $"Old EndDate: {oldEndDate:yyyy-MM-dd} → New EndDate: {employee.EndDate:yyyy-MM-dd}{logNote}",
             $"تم تجديد اشتراك {employee.FullNameAr} ({employee.CardNo}). " +
             $"النوع: {oldType} → {subscriptionType}. " +
             $"المدة: {periodLabelAr}. الرسوم: {fee}. المدفوع: {amountPaid}. " +
-            $"تاريخ الانتهاء القديم: {oldEndDate:yyyy-MM-dd} → الجديد: {employee.EndDate:yyyy-MM-dd}");
+            $"تاريخ الانتهاء القديم: {oldEndDate:yyyy-MM-dd} → الجديد: {employee.EndDate:yyyy-MM-dd}{logNote}");
 
         // Log to session file
         await _sessionLogger.LogOperationAsync("RENEW", "Player", id,
-            $"Renewed subscription for {employee.FullNameEn} from {oldEndDate:yyyy-MM-dd} to {employee.EndDate:yyyy-MM-dd}. Amount: {amountPaid}",
-            $"تم تجديد اشتراك {employee.FullNameAr} من {oldEndDate:yyyy-MM-dd} إلى {employee.EndDate:yyyy-MM-dd}. المبلغ: {amountPaid}",
+            $"Renewed subscription for {employee.FullNameEn} from {oldEndDate:yyyy-MM-dd} to {employee.EndDate:yyyy-MM-dd}. Amount: {amountPaid}{logNote}",
+            $"تم تجديد اشتراك {employee.FullNameAr} من {oldEndDate:yyyy-MM-dd} إلى {employee.EndDate:yyyy-MM-dd}. المبلغ: {amountPaid}{logNote}",
             _currentUser.Username);
 
-        // Re-sync cards to hardware with new ValidTo date and updated permissions
-        // Re-read employee to get the updated cards (with new ValidTo)
-        employee = await _employeeRepository.GetByIdWithCardsAsync(id);
-        if (employee != null)
-            await ReEnableCardsOnHardware(employee, deviceIds);
+        // Surface hardware warning via PARTIAL_SUCCESS so ViewModel can display it
+        if (hardwareWarning != null)
+            throw new InvalidOperationException(
+                $"PARTIAL_SUCCESS:Subscription renewed in system successfully, but some hardware devices could not be updated. Cards will be synced when devices come back online.");
 
         return true;
     }
@@ -646,9 +811,61 @@ public class EmployeeService : IEmployeeService
         var employee = await _employeeRepository.GetByIdWithCardsAsync(employeeId);
         if (employee == null) return false;
 
+        // Capture old card info for re-assignment audit logging
+        var oldActiveCard = employee.AccessCards?.FirstOrDefault(c => c.IsActive);
+        string? oldCardNo = oldActiveCard?.CardNumber;
+        int oldUsedVisits = employee.UsedVisits;
+        int oldMaxVisits = employee.MaxVisits;
+        bool isReassignment = oldActiveCard != null;
+
         var existingCard = await _cardRepository.GetByCardNumberAsync(cardDto.CardNumber);
         if (existingCard != null)
-            throw new InvalidOperationException($"Card number '{cardDto.CardNumber}' is already assigned.");
+        {
+            if (existingCard.EmployeeId == employeeId)
+            {
+                // Same player — update card settings and re-sync to devices
+                existingCard.CardPassword = cardDto.CardPassword;
+                existingCard.CardType = cardDto.CardType;
+                existingCard.OpenMode = cardDto.OpenMode;
+                existingCard.DoorPermissions = cardDto.DoorPermissions;
+                existingCard.EffectiveTimes = cardDto.EffectiveTimes;
+                existingCard.TimePeriodIndex = cardDto.TimePeriodIndex;
+                existingCard.HolidayEnabled = cardDto.HolidayEnabled;
+                existingCard.ValidFrom = cardDto.ValidFrom;
+                existingCard.ValidTo = cardDto.ValidTo;
+                existingCard.IsActive = true;
+                await _cardRepository.UpdateAsync(existingCard);
+
+                // Log re-assignment if this was a re-assign of the same card
+                if (isReassignment)
+                {
+                    await _sessionLogger.LogOperationAsync("REASSIGN_CARD", "Player", employee.Id,
+                        $"Card re-assigned. Old: {oldCardNo} (used {oldUsedVisits}/{oldMaxVisits}). New effectiveTimes: {cardDto.EffectiveTimes}",
+                        $"إعادة تعيين البطاقة. القديمة: {oldCardNo} (مستخدم {oldUsedVisits}/{oldMaxVisits}). مرات جديدة: {cardDto.EffectiveTimes}",
+                        _currentUser.Username);
+                }
+
+                return true;
+            }
+            throw new InvalidOperationException($"Card number '{cardDto.CardNumber}' is already assigned to another player.");
+        }
+
+        // EffectiveTimes comes directly from Assign Card dialog
+        // Update employee.MaxVisits = EffectiveTimes (stored as-is from dialog)
+        var hwEffectiveTimes = cardDto.EffectiveTimes;
+        if (hwEffectiveTimes > 0 && hwEffectiveTimes < 65535)
+        {
+            employee.MaxVisits = hwEffectiveTimes;
+            employee.UsedVisits = 0; // Reset visit counter on new card assignment
+            await _employeeRepository.UpdateAsync(employee);
+        }
+        else
+        {
+            // Unlimited — clear MaxVisits
+            employee.MaxVisits = 0;
+            employee.UsedVisits = 0;
+            await _employeeRepository.UpdateAsync(employee);
+        }
 
         var card = new AccessCard
         {
@@ -658,7 +875,7 @@ public class EmployeeService : IEmployeeService
             CardType = cardDto.CardType,
             OpenMode = cardDto.OpenMode,
             DoorPermissions = cardDto.DoorPermissions,
-            EffectiveTimes = cardDto.EffectiveTimes,
+            EffectiveTimes = hwEffectiveTimes,
             TimePeriodIndex = cardDto.TimePeriodIndex,
             HolidayEnabled = cardDto.HolidayEnabled,
             IsActive = cardDto.IsActive,
@@ -681,10 +898,20 @@ public class EmployeeService : IEmployeeService
             $"تم تعيين بطاقة {cardDto.CardNumber} إلى {employee.FullNameAr}");
 
         // Log to session file
-        await _sessionLogger.LogOperationAsync("ASSIGN_CARD", "AccessCard", card.Id,
-            $"Assigned card {cardDto.CardNumber} to player {employee.FullNameEn}",
-            $"تم تعيين بطاقة {cardDto.CardNumber} للاعب {employee.FullNameAr}",
-            _currentUser.Username);
+        if (isReassignment)
+        {
+            await _sessionLogger.LogOperationAsync("REASSIGN_CARD", "Player", employee.Id,
+                $"Card re-assigned. Old: {oldCardNo} (used {oldUsedVisits}/{oldMaxVisits}). New effectiveTimes: {cardDto.EffectiveTimes}",
+                $"إعادة تعيين البطاقة. القديمة: {oldCardNo} (مستخدم {oldUsedVisits}/{oldMaxVisits}). مرات جديدة: {cardDto.EffectiveTimes}",
+                _currentUser.Username);
+        }
+        else
+        {
+            await _sessionLogger.LogOperationAsync("ASSIGN_CARD", "AccessCard", card.Id,
+                $"Assigned card {cardDto.CardNumber} to player {employee.FullNameEn}",
+                $"تم تعيين بطاقة {cardDto.CardNumber} للاعب {employee.FullNameAr}",
+                _currentUser.Username);
+        }
 
         return true;
     }
@@ -718,25 +945,22 @@ public class EmployeeService : IEmployeeService
         if (device == null)
             throw new InvalidOperationException($"Device with ID {deviceId} not found in database.");
 
-        try
+        // Use card's ValidTo if it's in the future, otherwise use employee's EndDate, otherwise 10 years
+        DateTime validEnd = card.ValidTo;
+        if (validEnd < DateTime.Now)
         {
-            _sdk.Initialize();
+            var emp = await _employeeRepository.GetByIdWithCardsAsync(card.EmployeeId);
+            validEnd = emp?.EndDate ?? DateTime.MinValue;
+        }
+        var permitTime = validEnd > DateTime.Now
+            ? validEnd.ToString("yyyy-MM-dd HH:mm:ss")
+            : DateTime.Now.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
 
-            var deviceInfo = new DeviceInfo
-            {
-                IP = device.IP,
-                MAC = device.MAC,
-                SerialNumber = device.SerialNumber,
-                TCPPort = device.TCPPort,
-                Password = device.Password,
-                Gateway = device.Gateway,
-                SubnetMask = device.SubnetMask
-            };
+        var deviceInfo = BuildDeviceInfo(device);
 
-            var permitTime = card.ValidTo > DateTime.MinValue ?
-                card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss") :
-                DateTime.UtcNow.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
-
+        // Ping first, then execute SDK with lock (PauseMonitoring → SDK → ResumeMonitoring)
+        var (success, error) = await _opHelper.PingThenExecuteAsync(device.IP, device.Name, () =>
+        {
             _sdk.AddAccessCard(
                 deviceInfo,
                 card.CardNumber,
@@ -747,59 +971,32 @@ public class EmployeeService : IEmployeeService
                 card.EffectiveTimes,
                 card.TimePeriodIndex,
                 card.HolidayEnabled);
+        });
 
-            card.IsSyncedToDevice = true;
-            await _cardRepository.UpdateAsync(card);
-
-            // Track per-device sync status
-            await _cardDeviceSyncRepository.UpsertAsync(cardId, deviceId, true);
-
-            await LogAuditAsync("SyncCard", "AccessCard", cardId,
-                $"Synced card {card.CardNumber} to device {device.Name} ({device.IP})",
-                $"تم مزامنة بطاقة {card.CardNumber} مع جهاز {device.Name} ({device.IP})");
-
-            // Log to session file
-            await _sessionLogger.LogOperationAsync("SYNC_CARD", "AccessCard", cardId,
-                $"Successfully synced card {card.CardNumber} to device {device.Name}",
-                $"تمت مزامنة بطاقة {card.CardNumber} مع جهاز {device.Name} بنجاح",
-                _currentUser.Username);
-
-            return true;
-        }
-        catch (Exception ex)
+        if (!success)
         {
-            // Track failed sync
-            await _cardDeviceSyncRepository.UpsertAsync(cardId, deviceId, false, ex.Message);
-
-            // Log error to session file
+            await _cardDeviceSyncRepository.UpsertAsync(cardId, deviceId, false, error);
             await _sessionLogger.LogErrorAsync("SYNC_CARD", "AccessCard", cardId,
-                $"Failed to sync card {card.CardNumber} to device {device.Name}: {ex.Message}",
+                $"Failed to sync card {card.CardNumber} to device {device.Name}: {error}",
                 _currentUser.Username);
-
-            var errorMsg = ex.Message;
-
-            // Check if player exists in database but not in hardware
-            if (errorMsg.Contains("card") || errorMsg.Contains("not found") || errorMsg.Contains("Communication"))
-            {
-                throw new InvalidOperationException(
-                    $"Failed to sync card {card.CardNumber} to device {device.Name}. " +
-                    $"The player may be deleted from the device or device is unreachable. " +
-                    $"Error: {errorMsg}");
-            }
-
-            // Device unreachable
-            if (errorMsg.Contains("timeout") || errorMsg.Contains("Timeout") ||
-                errorMsg.Contains("connect") || errorMsg.Contains("Connect"))
-            {
-                throw new InvalidOperationException(
-                    $"Cannot reach device {device.Name} at {device.IP}:{device.TCPPort}. " +
-                    $"Please check if the device is connected to the network.");
-            }
-
-            // Generic error
-            throw new InvalidOperationException(
-                $"Error syncing card {card.CardNumber} to device {device.Name}: {errorMsg}", ex);
+            throw new InvalidOperationException(error);
         }
+
+        // SDK succeeded — now update DB
+        card.IsSyncedToDevice = true;
+        await _cardRepository.UpdateAsync(card);
+        await _cardDeviceSyncRepository.UpsertAsync(cardId, deviceId, true);
+
+        await LogAuditAsync("SyncCard", "AccessCard", cardId,
+            $"Synced card {card.CardNumber} to device {device.Name} ({device.IP})",
+            $"تم مزامنة بطاقة {card.CardNumber} مع جهاز {device.Name} ({device.IP})");
+
+        await _sessionLogger.LogOperationAsync("SYNC_CARD", "AccessCard", cardId,
+            $"Successfully synced card {card.CardNumber} to device {device.Name}",
+            $"تمت مزامنة بطاقة {card.CardNumber} مع جهاز {device.Name} بنجاح",
+            _currentUser.Username);
+
+        return true;
     }
 
     public async Task<(int synced, int failed, int total)> SyncAllCardsToDeviceAsync(
@@ -825,7 +1022,9 @@ public class EmployeeService : IEmployeeService
 
             try
             {
-                var permitTime = card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss");
+                var permitTime = card.ValidTo > DateTime.Now
+                    ? card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss")
+                    : DateTime.Now.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
                 _sdk.AddAccessCard(
                     deviceInfo,
                     card.CardNumber,
@@ -865,48 +1064,44 @@ public class EmployeeService : IEmployeeService
         if (devices.Count == 0)
             return (0, 0, 0, new List<string> { "No devices found." });
 
-        _sdk.Initialize();
-        int synced = 0, failed = 0;
-        var errors = new List<string>();
-
-        var permitTime = card.ValidTo > DateTime.MinValue
+        var permitTime = card.ValidTo > DateTime.Now
             ? card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss")
-            : DateTime.UtcNow.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
+            : DateTime.Now.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
 
-        foreach (var device in devices)
+        // Build device tuples for sequential execution with ping-first pattern
+        var deviceTuples = devices.Select(d => (BuildDeviceInfo(d), d.Name, d.IP, d.Id));
+
+        var result = await _opHelper.ExecuteOnDevicesSequentialAsync(deviceTuples, deviceInfo =>
         {
-            try
-            {
-                _sdk.AddAccessCard(
-                    BuildDeviceInfo(device),
-                    card.CardNumber,
-                    card.CardPassword,
-                    card.OpenMode,
-                    card.DoorPermissions,
-                    permitTime,
-                    card.EffectiveTimes,
-                    card.TimePeriodIndex,
-                    card.HolidayEnabled);
+            _sdk.AddAccessCard(
+                deviceInfo,
+                card.CardNumber,
+                card.CardPassword,
+                card.OpenMode,
+                card.DoorPermissions,
+                permitTime,
+                card.EffectiveTimes,
+                card.TimePeriodIndex,
+                card.HolidayEnabled);
+        });
 
-                await _cardDeviceSyncRepository.UpsertAsync(cardId, device.Id, true);
-                synced++;
-            }
-            catch (Exception ex)
-            {
-                await _cardDeviceSyncRepository.UpsertAsync(cardId, device.Id, false, ex.Message);
-                errors.Add($"{device.Name} ({device.IP}): {ex.Message}");
-                failed++;
-            }
-        }
+        // Update DB sync status only for devices that succeeded
+        foreach (var succeeded in result.Succeeded)
+            await _cardDeviceSyncRepository.UpsertAsync(cardId, succeeded.DeviceId, true);
 
-        card.IsSyncedToDevice = synced > 0;
+        foreach (var failed in result.Failed)
+            await _cardDeviceSyncRepository.UpsertAsync(cardId, failed.DeviceId, false, failed.Error);
+
+        // Only mark card as synced if at least one device succeeded
+        card.IsSyncedToDevice = result.SuccessCount > 0;
         await _cardRepository.UpdateAsync(card);
 
         await LogAuditAsync("SyncCardAllDevices", "AccessCard", cardId,
-            $"Synced card {card.CardNumber} to {synced}/{devices.Count} devices. Failed: {failed}",
-            $"تم مزامنة بطاقة {card.CardNumber} مع {synced}/{devices.Count} جهاز. فشل: {failed}");
+            $"Synced card {card.CardNumber} to {result.SuccessCount}/{devices.Count} devices. Failed: {result.FailedCount}",
+            $"تم مزامنة بطاقة {card.CardNumber} مع {result.SuccessCount}/{devices.Count} جهاز. فشل: {result.FailedCount}");
 
-        return (synced, failed, devices.Count, errors);
+        var errors = result.Failed.Select(f => $"{f.Name} ({f.IP}): {f.Error}").ToList();
+        return (result.SuccessCount, result.FailedCount, devices.Count, errors);
     }
 
     public async Task<(int synced, int failed, int total)> SyncAllCardsToDevicesAsync(
@@ -921,46 +1116,46 @@ public class EmployeeService : IEmployeeService
 
         if (allCards.Count == 0) return (0, 0, 0);
 
-        _sdk.Initialize();
         int synced = 0, failed = 0;
         int totalOps = allCards.Count * devices.Count;
         int current = 0;
 
+        // Sequential: for each card, ping-then-execute on each device
         foreach (var card in allCards)
         {
-            var permitTime = card.ValidTo > DateTime.MinValue
+            var permitTime = card.ValidTo > DateTime.Now
                 ? card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss")
-                : DateTime.UtcNow.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
+                : DateTime.Now.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
 
-            foreach (var device in devices)
+            var deviceTuples = devices.Select(d => (BuildDeviceInfo(d), d.Name, d.IP, d.Id));
+
+            var cardResult = await _opHelper.ExecuteOnDevicesSequentialAsync(deviceTuples, deviceInfo =>
             {
-                current++;
-                progress?.Report((current, totalOps, card.CardNumber));
+                _sdk.AddAccessCard(
+                    deviceInfo,
+                    card.CardNumber,
+                    card.CardPassword,
+                    card.OpenMode,
+                    card.DoorPermissions,
+                    permitTime,
+                    card.EffectiveTimes,
+                    card.TimePeriodIndex,
+                    card.HolidayEnabled);
+            });
 
-                try
-                {
-                    _sdk.AddAccessCard(
-                        BuildDeviceInfo(device),
-                        card.CardNumber,
-                        card.CardPassword,
-                        card.OpenMode,
-                        card.DoorPermissions,
-                        permitTime,
-                        card.EffectiveTimes,
-                        card.TimePeriodIndex,
-                        card.HolidayEnabled);
+            // Update sync tracking per device
+            foreach (var s in cardResult.Succeeded)
+                await _cardDeviceSyncRepository.UpsertAsync(card.Id, s.DeviceId, true);
+            foreach (var f in cardResult.Failed)
+                await _cardDeviceSyncRepository.UpsertAsync(card.Id, f.DeviceId, false, f.Error);
 
-                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, true);
-                    synced++;
-                }
-                catch (Exception ex)
-                {
-                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, false, ex.Message);
-                    failed++;
-                }
-            }
+            synced += cardResult.SuccessCount;
+            failed += cardResult.FailedCount;
+            current += devices.Count;
+            progress?.Report((current, totalOps, card.CardNumber));
 
-            card.IsSyncedToDevice = true;
+            // Only mark card synced if at least one device succeeded
+            card.IsSyncedToDevice = cardResult.SuccessCount > 0;
             await _cardRepository.UpdateAsync(card);
         }
 
@@ -981,41 +1176,45 @@ public class EmployeeService : IEmployeeService
         if (devices.Count == 0)
             return (0, 0, 0, new List<string>());
 
-        _sdk.Initialize();
-        int synced = 0, failed = 0;
-        var errors = new List<string>();
+        var expireDate = DateTime.Now.AddMinutes(1).ToString("yyyy-MM-dd HH:mm:ss");
 
-        foreach (var device in devices)
+        // Build device tuples and execute sequentially with ping-first pattern
+        var deviceTuples = devices.Select(d => (BuildDeviceInfo(d), d.Name, d.IP, d.Id));
+
+        var result = await _opHelper.ExecuteOnDevicesSequentialAsync(deviceTuples, deviceInfo =>
         {
-            try
-            {
-                // SDK has no delete function — expire the card by setting date far in past
-                _sdk.AddAccessCard(
-                    BuildDeviceInfo(device),
-                    card.CardNumber,
-                    card.CardPassword,
-                    card.OpenMode,
-                    card.DoorPermissions,
-                    "2000-01-01 00:00:00",
-                    card.EffectiveTimes,
-                    card.TimePeriodIndex,
-                    card.HolidayEnabled);
-                synced++;
-            }
-            catch (Exception ex)
-            {
-                errors.Add($"{device.Name} ({device.IP}): {ex.Message}");
-                failed++;
-            }
+            _sdk.AddAccessCard(
+                deviceInfo,
+                card.CardNumber,
+                card.CardPassword,
+                card.OpenMode,
+                card.DoorPermissions,
+                expireDate,
+                1,
+                card.TimePeriodIndex,
+                card.HolidayEnabled);
+        });
+
+        // Only clean up sync records for devices that succeeded
+        foreach (var s in result.Succeeded)
+            await _cardDeviceSyncRepository.UpsertAsync(cardId, s.DeviceId, false, "Card removed from device");
+
+        // Mark card as not synced only if all devices succeeded
+        if (result.AllSucceeded)
+        {
+            await _cardDeviceSyncRepository.DeleteByCardIdAsync(cardId);
+            card.IsSyncedToDevice = false;
+            await _cardRepository.UpdateAsync(card);
+        }
+        else if (result.SuccessCount > 0)
+        {
+            // Partial success — card still synced on failed devices
+            card.IsSyncedToDevice = result.FailedCount > 0;
+            await _cardRepository.UpdateAsync(card);
         }
 
-        // Clean up sync tracking records
-        await _cardDeviceSyncRepository.DeleteByCardIdAsync(cardId);
-
-        card.IsSyncedToDevice = false;
-        await _cardRepository.UpdateAsync(card);
-
-        return (synced, failed, devices.Count, errors);
+        var errors = result.Failed.Select(f => $"{f.Name} ({f.IP}): {f.Error}").ToList();
+        return (result.SuccessCount, result.FailedCount, devices.Count, errors);
     }
 
     public async Task IncrementVisitAsync(string cardNumber)
@@ -1024,20 +1223,59 @@ public class EmployeeService : IEmployeeService
         if (card?.Employee == null) return;
 
         var employee = card.Employee;
-        if (employee.MaxVisits <= 0) return; // Date-based only, no visit tracking
+        if (employee.MaxVisits <= 0) return;
 
         employee.UsedVisits++;
         await _employeeRepository.UpdateAsync(employee);
 
-        // Check if visits exhausted
         if (employee.UsedVisits >= employee.MaxVisits)
         {
-            // Auto-expire: disable card on all devices
-            await DisableCardsOnHardware(employee);
+            // Hardware handles expiry via effectiveTimes counter — no SDK disable needed
             await LogAuditAsync("VisitLimitReached", "Employee", employee.Id,
-                $"Player {employee.FullNameEn} reached visit limit ({employee.UsedVisits}/{employee.MaxVisits}). Cards disabled on all devices.",
-                $"اللاعب {employee.FullNameAr} وصل حد الزيارات ({employee.UsedVisits}/{employee.MaxVisits}). تم تعطيل البطاقات.");
+                $"Player {employee.FullNameEn} reached visit limit ({employee.UsedVisits}/{employee.MaxVisits}).",
+                $"اللاعب {employee.FullNameAr} وصل حد الزيارات ({employee.UsedVisits}/{employee.MaxVisits}).");
         }
+    }
+
+    public async Task<(bool isValid, string reason)> ValidateCardOnSwipeAsync(string cardNumber, bool isEntry = true)
+    {
+        var card = await _cardRepository.GetByCardNumberAsync(cardNumber);
+        if (card == null)
+            return (false, "Card not registered");
+
+        if (!card.IsActive)
+            return (false, "Card is deactivated");
+
+        var employee = card.Employee;
+        if (employee == null)
+            return (false, "No player linked to card");
+
+        if (employee.IsFrozen)
+        {
+            return (false, $"Player is frozen since {employee.FreezeStartDate:yyyy-MM-dd}");
+        }
+
+        // Check date-based expiry
+        if (employee.EndDate < DateTime.Now)
+        {
+            return (false, $"Subscription expired ({employee.EndDate:yyyy-MM-dd})");
+        }
+
+        // Check visit-count expiry — count ALL swipes (entry AND exit)
+        if (employee.MaxVisits > 0)
+        {
+            employee.UsedVisits++;
+            await _employeeRepository.UpdateAsync(employee);
+
+            if (employee.UsedVisits >= employee.MaxVisits)
+            {
+                return (false, $"Visit limit reached ({employee.UsedVisits}/{employee.MaxVisits})");
+            }
+
+            return (true, $"Visit {employee.UsedVisits}/{employee.MaxVisits}");
+        }
+
+        return (true, "Valid");
     }
 
     public async Task<int> GetCountAsync()
@@ -1086,77 +1324,94 @@ public class EmployeeService : IEmployeeService
 
     private async Task DisableCardsOnHardware(Employee employee, IEnumerable<int>? deviceIds = null)
     {
-        var syncedCards = employee.AccessCards?.Where(c => c.IsActive && c.IsSyncedToDevice).ToList();
-        if (syncedCards == null || syncedCards.Count == 0) return;
+        var cards = employee.AccessCards?.Where(c => c.IsActive).ToList();
+        if (cards == null || cards.Count == 0) return;
 
-        _sdk.Initialize();
         var devices = await ResolveDevicesAsync(deviceIds);
+        if (devices.Count == 0) return;
 
-        foreach (var card in syncedCards)
+        foreach (var card in cards)
         {
-            foreach (var device in devices)
-            {
-                try
-                {
-                    _sdk.AddAccessCard(
-                        BuildDeviceInfo(device),
-                        card.CardNumber,
-                        card.CardPassword,
-                        card.OpenMode,
-                        card.DoorPermissions,
-                        "2000-01-01 00:00:00",
-                        card.EffectiveTimes,
-                        card.TimePeriodIndex,
-                        card.HolidayEnabled);
+            // Single attempt only — no retries. Hardware effectiveTimes countdown handles expiry.
+            var pastDate = DateTime.Now.AddMinutes(-1).ToString("yyyy-MM-dd HH:mm:ss");
 
-                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, true);
-                }
-                catch (Exception ex)
-                {
-                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, false, ex.Message);
-                    System.Diagnostics.Debug.WriteLine($"[EmployeeService] Failed to disable card {card.CardNumber} on device {device.IP}: {ex.Message}");
-                }
-            }
+            var deviceTuples = devices.Select(d => (BuildDeviceInfo(d), d.Name, d.IP, d.Id));
+
+            var result = await _opHelper.ExecuteOnDevicesSequentialAsync(deviceTuples, deviceInfo =>
+            {
+                _sdk.AddAccessCard(
+                    deviceInfo,
+                    card.CardNumber, card.CardPassword,
+                    card.OpenMode, card.DoorPermissions,
+                    pastDate, 1,
+                    card.TimePeriodIndex, card.HolidayEnabled);
+            });
+
+            foreach (var s in result.Succeeded)
+                LogDisableResult(card.CardNumber, devices.FirstOrDefault(d => d.Id == s.DeviceId)?.SerialNumber ?? s.DeviceId.ToString(), pastDate, "SUCCESS");
+            foreach (var f in result.Failed)
+                LogDisableResult(card.CardNumber, devices.FirstOrDefault(d => d.Id == f.DeviceId)?.SerialNumber ?? f.DeviceId.ToString(), pastDate, $"FAILED: {f.Error}");
         }
     }
 
-    private async Task ReEnableCardsOnHardware(Employee employee, IEnumerable<int>? deviceIds = null)
+    private static readonly string DisableLogPath = Path.Combine(AppContext.BaseDirectory, "card_disable_log.txt");
+
+    private static void LogDisableResult(string cardNo, string deviceSN, string date, string result)
+    {
+        try
+        {
+            var msg = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Card={cardNo} Device={deviceSN} Date={date} → {result}\n";
+            File.AppendAllText(DisableLogPath, msg);
+        }
+        catch { }
+    }
+
+    private async Task ReEnableCardsOnHardware(Employee employee, IEnumerable<int>? deviceIds = null, DateTime? newEndDate = null, int? effectiveTimes = null)
     {
         var syncedCards = employee.AccessCards?.Where(c => c.IsActive && c.IsSyncedToDevice).ToList();
         if (syncedCards == null || syncedCards.Count == 0) return;
 
-        _sdk.Initialize();
         var devices = await ResolveDevicesAsync(deviceIds);
-        var newPermitTime = employee.EndDate.ToString("yyyy-MM-dd HH:mm:ss");
+        if (devices.Count == 0) return;
+
+        // Use the provided newEndDate if given (for unfreeze with extended date), otherwise use employee.EndDate
+        var permitEnd = newEndDate ?? employee.EndDate;
+        var newPermitTime = permitEnd.ToString("yyyy-MM-dd HH:mm:ss");
 
         foreach (var card in syncedCards)
         {
-            card.ValidTo = employee.EndDate;
+            // Update card's ValidTo in DB to match the new permit time
+            card.ValidTo = permitEnd;
+            // Update card's EffectiveTimes if a custom value was provided (e.g. remaining visits on unfreeze)
+            var hwEffectiveTimes = effectiveTimes ?? card.EffectiveTimes;
+            if (effectiveTimes.HasValue)
+            {
+                card.EffectiveTimes = hwEffectiveTimes;
+            }
             await _cardRepository.UpdateAsync(card);
 
-            foreach (var device in devices)
-            {
-                try
-                {
-                    _sdk.AddAccessCard(
-                        BuildDeviceInfo(device),
-                        card.CardNumber,
-                        card.CardPassword,
-                        card.OpenMode,
-                        card.DoorPermissions,
-                        newPermitTime,
-                        card.EffectiveTimes,
-                        card.TimePeriodIndex,
-                        card.HolidayEnabled);
+            // Ping each device first, then execute SDK sequentially (uses _opHelper lock)
+            var deviceTuples = devices.Select(d => (BuildDeviceInfo(d), d.Name, d.IP, d.Id));
 
-                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, true);
-                }
-                catch (Exception ex)
-                {
-                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, false, ex.Message);
-                    System.Diagnostics.Debug.WriteLine($"[EmployeeService] Failed to re-enable card {card.CardNumber} on device {device.IP}: {ex.Message}");
-                }
-            }
+            var result = await _opHelper.ExecuteOnDevicesSequentialAsync(deviceTuples, deviceInfo =>
+            {
+                _sdk.AddAccessCard(
+                    deviceInfo,
+                    card.CardNumber,
+                    card.CardPassword,
+                    card.OpenMode,
+                    card.DoorPermissions,
+                    newPermitTime,
+                    hwEffectiveTimes,
+                    card.TimePeriodIndex,
+                    card.HolidayEnabled);
+            });
+
+            foreach (var s in result.Succeeded)
+                await _cardDeviceSyncRepository.UpsertAsync(card.Id, s.DeviceId, true);
+
+            foreach (var f in result.Failed)
+                await _cardDeviceSyncRepository.UpsertAsync(card.Id, f.DeviceId, false, f.Error);
         }
     }
 

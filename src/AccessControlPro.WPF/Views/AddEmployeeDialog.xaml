@@ -284,10 +284,12 @@
                                VerticalAlignment="Center" Margin="8,0,0,0" FontSize="12"/>
                 </StackPanel>
 
-                <!-- Max Visits (0 = unlimited / date-based only) -->
-                <TextBlock Grid.Row="11" Grid.Column="0" Text="{Binding Lang.MaxVisits}"
-                           Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
-                <StackPanel Grid.Row="11" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                <!-- Max Visits — always hidden in Add/Edit dialog (set via Assign Card instead) -->
+                <TextBlock x:Name="MaxVisitsLabel" Grid.Row="11" Grid.Column="0" Text="{Binding Lang.MaxVisits}"
+                           Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"
+                           Visibility="Collapsed"/>
+                <StackPanel x:Name="MaxVisitsRow" Grid.Row="11" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10"
+                            Visibility="Collapsed">
                     <TextBox x:Name="MaxVisitsTextBox" Width="120"
                              Style="{StaticResource DarkTextBox}" Text="0"
                              PreviewTextInput="NumberOnly_PreviewTextInput"

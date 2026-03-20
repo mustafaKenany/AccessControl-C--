@@ -21,6 +21,11 @@ public interface IEmployeeService
     /// <summary>Remove/expire card on selected devices. Pass null for ALL devices.</summary>
     Task<(int synced, int failed, int total, List<string> errors)> RemoveCardFromDevicesAsync(int cardId, IEnumerable<int>? deviceIds = null);
     Task IncrementVisitAsync(string cardNumber);
+    /// <summary>
+    /// Real-time card validation on swipe: checks expiry + visits, increments visit count,
+    /// and disables card on all devices in parallel if expired. Called from real-time monitor.
+    /// </summary>
+    Task<(bool isValid, string reason)> ValidateCardOnSwipeAsync(string cardNumber, bool isEntry = true);
     Task<int> GetCountAsync();
     Task<bool> IsCardNoDuplicateAsync(string cardNo, int? excludeId = null);
     Task<bool> IsPhoneDuplicateAsync(string phone, int? excludeId = null);

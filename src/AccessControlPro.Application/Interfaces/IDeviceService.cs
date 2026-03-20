@@ -14,6 +14,7 @@ public interface IDeviceService
     Task<bool> RemoteOpenDoorAsync(int deviceId, int doorNumber);
     Task<bool> RemoteOpenAllDoorsAsync(int deviceId);
     Task<bool> SyncTimeAsync(int deviceId);
+    Task FactoryResetAsync(int deviceId);
     Task<bool> RenameDeviceAsync(int deviceId, string newName);
     Task<bool> ChangeIPAsync(int deviceId, string newIP, string subnet, string gateway);
 }

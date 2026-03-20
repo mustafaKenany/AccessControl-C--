@@ -85,6 +85,14 @@ public class TransactionRepository : ITransactionRepository
             .ToListAsync();
     }
 
+    public async Task NullifyEmployeeIdAsync(int employeeId)
+    {
+        await using var db = _factory.CreateDbContext();
+        await db.Database.ExecuteSqlRawAsync(
+            "UPDATE Transactions SET RelatedEmployeeId = NULL WHERE RelatedEmployeeId = {0}",
+            employeeId);
+    }
+
     private static readonly Dictionary<string, string> _enToAr = new()
     {
         ["Subscription"] = "اشتراك", ["POS Sales"] = "مبيعات",

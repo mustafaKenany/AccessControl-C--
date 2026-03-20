@@ -598,6 +598,20 @@
   <data name="DispSuccessPass" xml:space="preserve"><value>تم الدخول بنجاح</value></data>
   <data name="DispExpiredCard" xml:space="preserve"><value>بطاقة منتهية</value></data>
   <data name="DispFrozenCard" xml:space="preserve"><value>بطاقة مجمدة</value></data>
+  <data name="DispNotRegistered" xml:space="preserve"><value>غير مسجل</value></data>
+  <data name="DispActive" xml:space="preserve"><value>نشط</value></data>
+  <data name="DispEntry" xml:space="preserve"><value>دخول</value></data>
+  <data name="DispExit" xml:space="preserve"><value>خروج</value></data>
+  <data name="DispCardOpen" xml:space="preserve"><value>فتح بالبطاقة</value></data>
+  <data name="DispPasswordOpen" xml:space="preserve"><value>فتح بالرقم السري</value></data>
+  <data name="DispCardPassword" xml:space="preserve"><value>بطاقة + رقم سري</value></data>
+  <data name="DispCardRepeat" xml:space="preserve"><value>تكرار بطاقة</value></data>
+  <data name="DispInvalidCard" xml:space="preserve"><value>بطاقة غير صالحة</value></data>
+  <data name="DispButtonOpen" xml:space="preserve"><value>فتح بالزر</value></data>
+  <data name="DispRemoteOpen" xml:space="preserve"><value>فتح عن بعد</value></data>
+  <data name="DispRemoteClose" xml:space="preserve"><value>إغلاق عن بعد</value></data>
+  <data name="DispDoorOpened" xml:space="preserve"><value>الباب مفتوح</value></data>
+  <data name="DispDoorClosed" xml:space="preserve"><value>الباب مغلق</value></data>
   <data name="DispOpenDisplay" xml:space="preserve"><value>شاشة العرض</value></data>
   <data name="DispCloseDisplay" xml:space="preserve"><value>إغلاق العرض</value></data>
   <!-- Device Sync All Players -->
@@ -730,4 +744,38 @@
   <data name="Confirm" xml:space="preserve"><value>تأكيد</value></data>
   <data name="DispDoorName" xml:space="preserve"><value>الباب</value></data>
   <data name="DispNoDoors" xml:space="preserve"><value>لا توجد أبواب. يرجى إضافة أجهزة أولاً.</value></data>
+  <!-- QR Pass -->
+  <data name="QrNavTitle" xml:space="preserve"><value>تصريح يومي QR</value></data>
+  <data name="QrCreatePass" xml:space="preserve"><value>إنشاء تصريح QR</value></data>
+  <data name="QrPlayerName" xml:space="preserve"><value>اسم الزائر</value></data>
+  <data name="QrValidDays" xml:space="preserve"><value>أيام الصلاحية</value></data>
+  <data name="QrMaxUses" xml:space="preserve"><value>الحد الأقصى للاستخدام</value></data>
+  <data name="QrValidTo" xml:space="preserve"><value>صالح حتى</value></data>
+  <data name="QrActiveOnly" xml:space="preserve"><value>النشطة فقط</value></data>
+  <data name="QrActiveToday" xml:space="preserve"><value>النشطة اليوم</value></data>
+  <data name="QrScanMode" xml:space="preserve"><value>وضع المسح</value></data>
+  <data name="QrScanReady" xml:space="preserve"><value>جاهز للمسح</value></data>
+  <data name="QrScanInstruction" xml:space="preserve"><value>امسح رمز QR بقارئ الباركود للتحقق من الدخول</value></data>
+  <data name="QrPassCreated" xml:space="preserve"><value>تم إنشاء تصريح QR بنجاح</value></data>
+  <data name="QrPassDeactivated" xml:space="preserve"><value>تم إلغاء تنشيط تصريح QR</value></data>
+  <data name="QrConfirmDeactivate" xml:space="preserve"><value>هل تريد إلغاء تنشيط هذا التصريح؟</value></data>
+  <data name="QrDeactivate" xml:space="preserve"><value>إلغاء التنشيط</value></data>
+  <data name="QrCodeTitle" xml:space="preserve"><value>رمز QR</value></data>
+  <data name="QrPrint" xml:space="preserve"><value>طباعة</value></data>
+  <!-- Door Schedule -->
+  <data name="WorkingHours" xml:space="preserve"><value>ساعات العمل</value></data>
+  <data name="WorkingDays" xml:space="preserve"><value>أيام العمل</value></data>
+  <data name="Is24Hours" xml:space="preserve"><value>24 ساعة</value></data>
+  <data name="StartTime" xml:space="preserve"><value>وقت البداية</value></data>
+  <data name="EndTime" xml:space="preserve"><value>وقت النهاية</value></data>
+  <data name="SetSchedule" xml:space="preserve"><value>تعيين الجدول</value></data>
+  <data name="Monday" xml:space="preserve"><value>الاثنين</value></data>
+  <data name="Tuesday" xml:space="preserve"><value>الثلاثاء</value></data>
+  <data name="Wednesday" xml:space="preserve"><value>الأربعاء</value></data>
+  <data name="Thursday" xml:space="preserve"><value>الخميس</value></data>
+  <data name="Friday" xml:space="preserve"><value>الجمعة</value></data>
+  <data name="Saturday" xml:space="preserve"><value>السبت</value></data>
+  <data name="Sunday" xml:space="preserve"><value>الأحد</value></data>
+  <!-- Validation -->
+  <data name="AtLeastOneNameRequired" xml:space="preserve"><value>يجب إدخال اسم واحد على الأقل (إنجليزي أو عربي).</value></data>
 </root>

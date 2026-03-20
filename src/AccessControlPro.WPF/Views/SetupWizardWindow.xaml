@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:fa="http://schemas.fontawesome.io/icons/"
         Title="Setup Wizard"
-        Width="680" Height="620"
+        Width="680" Height="680"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -51,7 +51,9 @@
             </Grid>
 
             <!-- ═══ Content Area ═══ -->
-            <Grid Grid.Row="1" Margin="32,20,32,0">
+            <ScrollViewer Grid.Row="1" Margin="32,20,32,0" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+            <Grid>
 
                 <!-- ── Step 1: Welcome ── -->
                 <StackPanel x:Name="Step1_Welcome" VerticalAlignment="Center">
@@ -106,6 +108,45 @@
                                              Text="+961 XX XXX XXX"/>
                                 </StackPanel>
                             </Grid>
+
+                            <!-- Developer Logo Upload -->
+                            <StackPanel Margin="0,10,0,0">
+                                <TextBlock Text="Company Logo:" FontSize="11" Foreground="#7A8A9A" Margin="0,0,0,4"/>
+                                <DockPanel>
+                                    <Button x:Name="BrowseDevLogoButton" DockPanel.Dock="Right"
+                                            Click="BrowseDevLogo_Click"
+                                            Background="#2A3A4A" Foreground="White" BorderThickness="0" Cursor="Hand"
+                                            Padding="12,6" Margin="8,0,0,0" VerticalAlignment="Center">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                        CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#3A4A5A"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                        <StackPanel Orientation="Horizontal">
+                                            <fa:FontAwesome Icon="FolderOpen" FontSize="12" Foreground="#4FC3F7" Margin="0,0,6,0"
+                                                            VerticalAlignment="Center"/>
+                                            <TextBlock Text="Browse" FontSize="11" Foreground="White"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Border Background="#1E2D3D" CornerRadius="6" Padding="6" Height="48">
+                                        <DockPanel>
+                                            <Image x:Name="DevLogoPreview" Width="36" Height="36"
+                                                   Stretch="Uniform" DockPanel.Dock="Left" Margin="0,0,8,0"/>
+                                            <TextBlock x:Name="DevLogoFileName" Text="No logo selected"
+                                                       FontSize="11" Foreground="#7A8A9A"
+                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        </DockPanel>
+                                    </Border>
+                                </DockPanel>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -223,12 +264,179 @@
                                  BorderBrush="#2A3A4A" BorderThickness="1" Padding="10,8" Margin="0,0,0,12"/>
 
                         <TextBlock Text="Default Language:" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,4"/>
-                        <ComboBox x:Name="LanguageCombo" FontSize="14" Background="#1E2D3D" Foreground="White"
-                                  BorderBrush="#2A3A4A" BorderThickness="1" Padding="8,6" Margin="0,0,0,12"
-                                  SelectedIndex="0">
+                        <ComboBox x:Name="LanguageCombo" FontSize="14" FontFamily="Cairo"
+                                  Background="#0E2E30" Foreground="White" BorderBrush="#44A1A0"
+                                  Padding="8,6" Margin="0,0,0,12" SelectedIndex="0">
+                            <ComboBox.Resources>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#0E2E30"/>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#44A1A0"/>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White"/>
+                                <Style TargetType="ComboBoxItem">
+                                    <Setter Property="Background" Value="#0E2E30"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="FontFamily" Value="Cairo"/>
+                                    <Setter Property="Padding" Value="8,6"/>
+                                </Style>
+                            </ComboBox.Resources>
+                            <ComboBox.Template>
+                                <ControlTemplate TargetType="ComboBox">
+                                    <Grid>
+                                        <ToggleButton x:Name="toggleButton"
+                                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                                      Focusable="False" ClickMode="Press">
+                                            <ToggleButton.Template>
+                                                <ControlTemplate TargetType="ToggleButton">
+                                                    <Border x:Name="border" Background="#0E2E30"
+                                                            BorderBrush="#44A1A0" BorderThickness="1">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition/>
+                                                                <ColumnDefinition Width="28"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Border Grid.Column="1" Background="#0A2224" BorderThickness="1,0,0,0" BorderBrush="#44A1A0">
+                                                                <Path Fill="#44A1A0" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                      Data="M 0 0 L 5 5 L 10 0 Z"/>
+                                                            </Border>
+                                                        </Grid>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="border" Property="BorderBrush" Value="#55B2B1"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </ToggleButton.Template>
+                                        </ToggleButton>
+                                        <ContentPresenter IsHitTestVisible="False"
+                                                          Content="{TemplateBinding SelectionBoxItem}"
+                                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                          HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                          Margin="10,6,28,6"/>
+                                        <Popup x:Name="PART_Popup" AllowsTransparency="True"
+                                               IsOpen="{TemplateBinding IsDropDownOpen}"
+                                               Placement="Bottom" PopupAnimation="Slide">
+                                            <Grid MinWidth="{TemplateBinding ActualWidth}"
+                                                  MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                                <Border Background="#0E2E30" BorderBrush="#44A1A0"
+                                                        BorderThickness="1" Padding="0,4">
+                                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                                        <StackPanel IsItemsHost="True"/>
+                                                    </ScrollViewer>
+                                                </Border>
+                                            </Grid>
+                                        </Popup>
+                                    </Grid>
+                                </ControlTemplate>
+                            </ComboBox.Template>
                             <ComboBoxItem Content="English" Tag="en"/>
                             <ComboBoxItem Content="العربية (Arabic)" Tag="ar"/>
                         </ComboBox>
+
+                        <TextBlock Text="Device Mode:" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="DeviceModeCombo" FontSize="14" FontFamily="Cairo"
+                                  Background="#0E2E30" Foreground="White" BorderBrush="#44A1A0"
+                                  Padding="8,6" Margin="0,0,0,12" SelectedIndex="0">
+                            <ComboBox.Resources>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#0E2E30"/>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#44A1A0"/>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White"/>
+                                <Style TargetType="ComboBoxItem">
+                                    <Setter Property="Background" Value="#0E2E30"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="FontFamily" Value="Cairo"/>
+                                    <Setter Property="Padding" Value="8,6"/>
+                                </Style>
+                            </ComboBox.Resources>
+                            <ComboBox.Template>
+                                <ControlTemplate TargetType="ComboBox">
+                                    <Grid>
+                                        <ToggleButton x:Name="toggleButton"
+                                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                                      Focusable="False" ClickMode="Press">
+                                            <ToggleButton.Template>
+                                                <ControlTemplate TargetType="ToggleButton">
+                                                    <Border x:Name="border" Background="#0E2E30"
+                                                            BorderBrush="#44A1A0" BorderThickness="1">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition/>
+                                                                <ColumnDefinition Width="28"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Border Grid.Column="1" Background="#0A2224" BorderThickness="1,0,0,0" BorderBrush="#44A1A0">
+                                                                <Path Fill="#44A1A0" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                      Data="M 0 0 L 5 5 L 10 0 Z"/>
+                                                            </Border>
+                                                        </Grid>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="border" Property="BorderBrush" Value="#55B2B1"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </ToggleButton.Template>
+                                        </ToggleButton>
+                                        <ContentPresenter IsHitTestVisible="False"
+                                                          Content="{TemplateBinding SelectionBoxItem}"
+                                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                          HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                          Margin="10,6,28,6"/>
+                                        <Popup x:Name="PART_Popup" AllowsTransparency="True"
+                                               IsOpen="{TemplateBinding IsDropDownOpen}"
+                                               Placement="Bottom" PopupAnimation="Slide">
+                                            <Grid MinWidth="{TemplateBinding ActualWidth}"
+                                                  MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                                <Border Background="#0E2E30" BorderBrush="#44A1A0"
+                                                        BorderThickness="1" Padding="0,4">
+                                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                                        <StackPanel IsItemsHost="True"/>
+                                                    </ScrollViewer>
+                                                </Border>
+                                            </Grid>
+                                        </Popup>
+                                    </Grid>
+                                </ControlTemplate>
+                            </ComboBox.Template>
+                            <ComboBoxItem Content="Single Device (supports visit counting)" Tag="Single"/>
+                            <ComboBoxItem Content="Multi Device (date-based only)" Tag="Multi"/>
+                        </ComboBox>
+
+                        <!-- Gym Logo Upload -->
+                        <TextBlock Text="Gym Logo:" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,4"/>
+                        <DockPanel Margin="0,0,0,8">
+                            <Button x:Name="BrowseGymLogoButton" DockPanel.Dock="Right"
+                                    Click="BrowseGymLogo_Click"
+                                    Background="#2A3A4A" Foreground="White" BorderThickness="0" Cursor="Hand"
+                                    Padding="12,6" Margin="8,0,0,0" VerticalAlignment="Center">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#3A4A5A"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                                <StackPanel Orientation="Horizontal">
+                                    <fa:FontAwesome Icon="FolderOpen" FontSize="12" Foreground="#4FC3F7" Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"/>
+                                    <TextBlock Text="Browse" FontSize="11" Foreground="White"/>
+                                </StackPanel>
+                            </Button>
+                            <Border Background="#1E2D3D" CornerRadius="6" Padding="6" Height="48">
+                                <DockPanel>
+                                    <Image x:Name="GymLogoPreview" Width="36" Height="36"
+                                           Stretch="Uniform" DockPanel.Dock="Left" Margin="0,0,8,0"/>
+                                    <TextBlock x:Name="GymLogoFileName" Text="No logo selected"
+                                               FontSize="11" Foreground="#7A8A9A"
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                </DockPanel>
+                            </Border>
+                        </DockPanel>
                     </StackPanel>
                 </StackPanel>
 
@@ -317,6 +525,7 @@
                                Foreground="#7A8A9A" HorizontalAlignment="Center"/>
                 </StackPanel>
             </Grid>
+            </ScrollViewer>
 
             <!-- ═══ Bottom Buttons ═══ -->
             <Border Grid.Row="2" Padding="24,16">

@@ -12,6 +12,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.Name).HasMaxLength(200);
         builder.Property(p => p.NameAr).HasMaxLength(200);
         builder.Property(p => p.Category).HasMaxLength(100);
+        builder.Property(p => p.Barcode).HasMaxLength(100);
         builder.Property(p => p.Price).HasPrecision(18, 2);
 
         builder.HasIndex(p => p.IsActive);

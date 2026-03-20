@@ -43,6 +43,7 @@ public partial class DashboardViewModel : ObservableObject
     {
         if (_isInitialized) return;
         _isInitialized = true;
+        ActivityLogger.LogNavigation("Dashboard");
         await LoadDashboardAsync();
     }
 

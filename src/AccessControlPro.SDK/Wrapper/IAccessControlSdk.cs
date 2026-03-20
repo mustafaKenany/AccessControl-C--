@@ -16,6 +16,8 @@ public interface IAccessControlSdk
     void SetDoorDelay(DeviceInfo device, int doorNumber, int delaySeconds);
     void SetOpeningHours(DeviceInfo device, int timeNum, string timePieces);
     void AddAccessCard(DeviceInfo device, string cardNo, string cardPassword, int openMode, string openLock, string permitTime, int effectiveTimes = 1, int timePeriodIndex = 0, bool holidayEnabled = false);
+    void WriteCardViaConnectMain(DeviceInfo device, string cardNo, string cardPassword, int openMode, string openLock, string permitTime, int effectiveTimes = 1, int timePeriodIndex = 0, bool holidayEnabled = false);
+    void DeleteCardViaConnectMain(DeviceInfo device, string cardNo);
     void SetDoorPassword(DeviceInfo device, string password);
     string GetDeviceInfo(DeviceInfo device);
     int GetRecords(DeviceInfo device, int recordType);
@@ -25,4 +27,6 @@ public interface IAccessControlSdk
     string GetFireAlarmStatus(DeviceInfo device);
     void StartMonitoring(List<DeviceInfo> devices, Action<MonitorEvent> onEvent);
     void StopMonitoring();
+    void PauseMonitoring();
+    void ResumeMonitoring();
 }

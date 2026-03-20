@@ -60,6 +60,7 @@ public partial class EventsViewModel : ObservableObject
 
     public async Task LoadDevicesAsync()
     {
+        ActivityLogger.LogNavigation("Events");
         DeviceFilters.Clear();
         DeviceFilters.Add(new DeviceFilterItem(Lang.FinAll, null));
         var devices = await _deviceService.GetAllDevicesAsync();
@@ -152,6 +153,7 @@ public partial class EventsViewModel : ObservableObject
 
     private async Task LoadPagedAsync()
     {
+        ActivityLogger.LogAction("Events", "Load", $"page={CurrentPage} period={SelectedPeriodIndex} type={SelectedEventTypeIndex}");
         IsLoading = true;
         try
         {

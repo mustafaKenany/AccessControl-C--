@@ -112,6 +112,9 @@ public partial class App : System.Windows.Application
         // Singleton - current logged-in user
         services.AddSingleton<CurrentUserService>();
 
+        // SDK operation helper (singleton — shared lock for all SDK operations)
+        services.AddSingleton<Application.Helpers.DeviceOperationHelper>();
+
         // License
         services.AddSingleton<ILicenseService, LicenseService>();
 
@@ -130,10 +133,13 @@ public partial class App : System.Windows.Application
         services.AddScoped<ICashFlowService, CashFlowService>();
         services.AddScoped<IMigrationService, MigrationService>();
         services.AddScoped<IExpiryMonitorService, ExpiryMonitorService>();
+        services.AddScoped<IQrPassService, QrPassService>();
+        services.AddScoped<Domain.Interfaces.IMonitorLockService, AccessControlPro.Infrastructure.Persistence.MonitorLockService>();
         // POS moved to separate AccessControlPro.POS app
 
         // ViewModels
         services.AddTransient<MainViewModel>();
+        services.AddTransient<QrPassViewModel>();
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<DevicesViewModel>();
         services.AddTransient<DoorsViewModel>();
@@ -141,7 +147,7 @@ public partial class App : System.Windows.Application
         services.AddTransient<EventsViewModel>();
         services.AddTransient<LogsViewModel>();
         services.AddTransient<DeletedRecordsViewModel>();
-        services.AddTransient<MonitorViewModel>();
+        services.AddSingleton<MonitorViewModel>();
         services.AddTransient<FinanceViewModel>();
         services.AddTransient<CashFlowViewModel>();
         // PosViewModel moved to AccessControlPro.POS
@@ -151,11 +157,33 @@ public partial class App : System.Windows.Application
         services.AddTransient<LoginWindow>();
     }
 
+    private static readonly string StartupLogPath = Path.Combine(AppContext.BaseDirectory, "startup_log.txt");
+
+    private static void StartupLog(string msg)
+    {
+        try { File.AppendAllText(StartupLogPath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n"); }
+        catch { }
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        StartupLog("=== APP STARTING ===");
+
+        // ── Disable WiFi to prevent routing conflicts with SDK ──
+        try
+        {
+            StartupLog("Disabling WiFi...");
+            Helpers.WifiManager.DisableWifi();
+            StartupLog("WiFi disabled OK");
+        }
+        catch (Exception ex)
+        {
+            StartupLog($"WiFi disable failed (non-critical): {ex.Message}");
+        }
 
         // ── Single-instance guard: kill any stale processes from previous runs ──
+        StartupLog("Killing old instances...");
         KillOtherInstances();
         _singleInstanceMutex = new Mutex(true, "AccessControlPro_SingleInstance", out bool isNew);
         if (!isNew)
@@ -167,6 +195,7 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        StartupLog("Checking setup wizard...");
         // ── First-run setup wizard ──
         if (!SetupWizardWindow.IsSetupComplete())
         {
@@ -183,6 +212,7 @@ public partial class App : System.Windows.Application
 
         try
         {
+            StartupLog("Migrating database...");
             // Auto-create/migrate database on startup
             using (var scope = _serviceProvider.CreateScope())
             {
@@ -219,8 +249,12 @@ public partial class App : System.Windows.Application
 
         try
         {
+            StartupLog("DB migration OK. Loading login...");
             // Prevent auto-shutdown when LoginWindow closes (it's the only window at that point)
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+            // Load saved language preference (from setup wizard or previous session)
+            Helpers.LanguageManager.Instance.LoadSavedLanguage();
 
             // ── License check: must activate before login ──
             var licenseService = _serviceProvider.GetRequiredService<ILicenseService>();
@@ -254,16 +288,56 @@ public partial class App : System.Windows.Application
             var authService = loginScope.ServiceProvider.GetRequiredService<IAuthService>();
             var settingsService = loginScope.ServiceProvider.GetRequiredService<IAppSettingsService>();
             var currentUser = _serviceProvider.GetRequiredService<CurrentUserService>();
-            var loginWindow = new LoginWindow(
-                authService, currentUser, settingsService,
-                appName: "HM-GymManagement",
-                appIcon: FontAwesome.WPF.FontAwesomeIcon.Shield,
-                gradientStart: System.Windows.Media.Color.FromRgb(0x24, 0x7B, 0x7B),
-                gradientEnd: System.Windows.Media.Color.FromRgb(0x44, 0xA1, 0xA0));
-            if (loginWindow.ShowDialog() != true)
+
+            bool autoLoggedIn = false;
+
+            // Check for pending operation — auto-login using saved username
+            if (PendingOperationHelper.HasPending())
             {
-                Shutdown();
-                return;
+                var pendingOp = PendingOperationHelper.Load();
+                if (pendingOp != null && !string.IsNullOrEmpty(pendingOp.Username))
+                {
+                    StartupLog($"Auto-login for pending operation: {pendingOp.Username}");
+                    try
+                    {
+                        var user = Task.Run(() => authService.GetUserByUsernameAsync(pendingOp.Username)).GetAwaiter().GetResult();
+                        if (user != null && user.IsActive)
+                        {
+                            currentUser.Username = user.Username;
+                            currentUser.DisplayName = user.DisplayName;
+                            currentUser.Role = user.Role;
+                            currentUser.SetPermissions(user.Permissions);
+                            autoLoggedIn = true;
+                            StartupLog("Auto-login successful");
+                        }
+                        else
+                        {
+                            StartupLog("Auto-login failed: user not found or inactive");
+                            PendingOperationHelper.Clear();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        StartupLog($"Auto-login error: {ex.Message}");
+                        PendingOperationHelper.Clear();
+                    }
+                }
+            }
+
+            // Normal login flow if auto-login didn't happen
+            if (!autoLoggedIn)
+            {
+                var loginWindow = new LoginWindow(
+                    authService, currentUser, settingsService,
+                    appName: "HM-GymManagement",
+                    appIcon: FontAwesome.WPF.FontAwesomeIcon.Shield,
+                    gradientStart: System.Windows.Media.Color.FromRgb(0x24, 0x7B, 0x7B),
+                    gradientEnd: System.Windows.Media.Color.FromRgb(0x44, 0xA1, 0xA0));
+                if (loginWindow.ShowDialog() != true)
+                {
+                    Shutdown();
+                    return;
+                }
             }
 
             // Check main app access permission
@@ -272,6 +346,7 @@ public partial class App : System.Windows.Application
                 CustomMessageBox.Show(
                     "Access denied. You do not have permission to use this application.",
                     "Access Denied", MsgType.Warning);
+                PendingOperationHelper.Clear();
                 Shutdown();
                 return;
             }
@@ -280,6 +355,12 @@ public partial class App : System.Windows.Application
             MainWindow = mainWindow;
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             mainWindow.Show();
+
+            // Execute pending operation after restart (fresh SDK session)
+            if (PendingOperationHelper.HasPending())
+            {
+                _ = ExecutePendingOperationAsync();
+            }
 
             // Start hourly auto-cleanup of old events (older than 6 months)
             _cleanupTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(1) };
@@ -298,8 +379,8 @@ public partial class App : System.Windows.Application
             };
             _cleanupTimer.Start();
 
-            // Start expiry monitor — checks every 2 minutes for expired players
-            _expiryMonitorTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(2) };
+            // Start expiry monitor — checks every 10 seconds for expired players (parallel + lightweight)
+            _expiryMonitorTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
             _expiryMonitorTimer.Tick += async (_, _) =>
             {
                 try
@@ -330,6 +411,82 @@ public partial class App : System.Windows.Application
         }
     }
 
+    private async Task ExecutePendingOperationAsync()
+    {
+        var op = PendingOperationHelper.Load();
+        if (op == null) { PendingOperationHelper.Clear(); return; }
+
+        try
+        {
+            StartupLog($"Executing pending operation: {op.Type} for player {op.PlayerId}");
+
+            // Small delay to let main window fully initialize
+            await Task.Delay(2000);
+
+            using var scope = _serviceProvider.CreateScope();
+            var employeeService = scope.ServiceProvider.GetRequiredService<IEmployeeService>();
+
+            switch (op.Type)
+            {
+                case "Renew":
+                    await employeeService.RenewSubscriptionAsync(
+                        op.PlayerId,
+                        op.SubscriptionType ?? "",
+                        op.Months,
+                        op.CustomDays,
+                        op.Fee,
+                        op.AmountPaid,
+                        op.DoorPermissions ?? "",
+                        op.EffectiveTimes,
+                        op.DeviceIds);
+                    break;
+
+                case "MonitorRestart":
+                    // App was restarted to clear SDK state after monitoring — nothing else to do
+                    StartupLog("MonitorRestart: SDK state refreshed");
+                    break;
+
+                default:
+                    StartupLog($"Unknown pending operation type: {op.Type}");
+                    break;
+            }
+
+            StartupLog($"Pending operation {op.Type} completed successfully");
+
+            // MonitorRestart doesn't need a success dialog — the restart itself was the goal
+            if (op.Type != "MonitorRestart")
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    CustomMessageBox.Show(
+                        $"Card synced to device successfully after restart!\n(Player ID: {op.PlayerId})",
+                        op.Type, MsgType.Success,
+                        MainWindow);
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            StartupLog($"Pending operation failed: {ex.Message}");
+
+            var errorMsg = ex.Message;
+            if (errorMsg.Contains("PARTIAL_SUCCESS:"))
+                errorMsg = errorMsg.Replace("PARTIAL_SUCCESS:", "");
+
+            Dispatcher.Invoke(() =>
+            {
+                CustomMessageBox.Show(
+                    $"Auto-retry after restart failed:\n{errorMsg}",
+                    "Error", MsgType.Error,
+                    MainWindow);
+            });
+        }
+        finally
+        {
+            PendingOperationHelper.Clear();
+        }
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
         _cleanupTimer?.Stop();
@@ -348,6 +505,33 @@ public partial class App : System.Windows.Application
             }
         }
         catch { /* ignore shutdown errors */ }
+
+        // Kill any lingering CardSync subprocesses
+        try
+        {
+            foreach (var proc in Process.GetProcessesByName("AccessControlPro.CardSync"))
+            {
+                try { proc.Kill(); } catch { }
+            }
+        }
+        catch { }
+
+        // Force close all TCP connections to device port 8000
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "netsh",
+                Arguments = "interface ip delete arpcache",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            Process.Start(psi)?.WaitForExit(3000);
+        }
+        catch { }
+
+        // Re-enable WiFi on app exit
+        try { Helpers.WifiManager.EnableWifi(); } catch { }
 
         _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();

@@ -23,4 +23,5 @@ public interface IAuthService
     Task ResetPasswordAsync(int userId, string newPassword);
     Task ChangePasswordAsync(string username, string currentPassword, string newPassword);
     bool IsDefaultPassword(string passwordHash);
+    Task<AppUser?> GetUserByUsernameAsync(string username);
 }

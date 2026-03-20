@@ -96,4 +96,14 @@ public class AccessEventRepository : IAccessEventRepository
             .Where(e => e.Timestamp < cutoff)
             .ExecuteDeleteAsync();
     }
+
+    public async Task NullifyCardIdForCardsAsync(IEnumerable<int> cardIds)
+    {
+        var ids = cardIds.ToList();
+        if (ids.Count == 0) return;
+        await using var db = _factory.CreateDbContext();
+        var idList = string.Join(",", ids);
+        await db.Database.ExecuteSqlRawAsync(
+            $"UPDATE AccessEvents SET CardId = NULL WHERE CardId IN ({idList})");
+    }
 }

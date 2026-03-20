@@ -24,7 +24,7 @@ public class ActionLocalizedConverter : IValueConverter
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        => throw new NotImplementedException();
+        => Binding.DoNothing;
 }
 
 public class DetailsLocalizedConverter : IMultiValueConverter
@@ -37,7 +37,7 @@ public class DetailsLocalizedConverter : IMultiValueConverter
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
-        => throw new NotImplementedException();
+        => Array.Empty<object>();
 }
 
 public class EntityTypeLocalizedConverter : IValueConverter
@@ -56,5 +56,5 @@ public class EntityTypeLocalizedConverter : IValueConverter
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        => throw new NotImplementedException();
+        => Binding.DoNothing;
 }

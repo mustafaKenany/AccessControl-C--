@@ -152,4 +152,10 @@ public class AuthService : IAuthService
     {
         return BCrypt.Net.BCrypt.Verify("123456", passwordHash);
     }
+
+    public async Task<AppUser?> GetUserByUsernameAsync(string username)
+    {
+        if (string.IsNullOrWhiteSpace(username)) return null;
+        return await _userRepository.GetByUsernameAsync(username.Trim().ToLowerInvariant());
+    }
 }

@@ -7,6 +7,7 @@ public interface IProductRepository
     Task<IEnumerable<Product>> GetAllActiveAsync();
     Task<IEnumerable<Product>> GetAllAsync();
     Task<Product?> GetByIdAsync(int id);
+    Task<IEnumerable<Product>> GetByIdsAsync(IEnumerable<int> ids);
     Task<Product?> GetByBarcodeAsync(string barcode);
     Task AddAsync(Product product);
     Task UpdateAsync(Product product);

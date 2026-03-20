@@ -24,16 +24,19 @@ public class FinanceService : IFinanceService
 
     public async Task<FinanceSummaryDto> GetSummaryAsync(DateTime? from = null, DateTime? to = null, string? search = null)
     {
-        var totalRevenue = await _transactionRepo.GetTotalByTypeAsync(TransactionType.Income, from, to);
-        var totalExpenses = await _transactionRepo.GetTotalByTypeAsync(TransactionType.Expense, from, to);
+        // Parallel fetch — all 4 queries are independent (each gets its own DbContext)
+        var revenueTask = _transactionRepo.GetTotalByTypeAsync(TransactionType.Income, from, to);
+        var expensesTask = _transactionRepo.GetTotalByTypeAsync(TransactionType.Expense, from, to);
+        var recentTask = _transactionRepo.GetPagedAsync(1, 20, null, from, to, search);
+        var playersTask = _employeeRepo.GetOutstandingBalancesAsync();
 
-        // Use paged query for recent transactions (supports date + search filtering)
-        var (recentItems, _) = await _transactionRepo.GetPagedAsync(1, 20, null, from, to, search);
+        await Task.WhenAll(revenueTask, expensesTask, recentTask, playersTask);
 
-        // Outstanding balances: players where AmountPaid < SubscriptionFee
-        var allPlayers = await _employeeRepo.GetAllWithCardsAsync();
-        var outstanding = allPlayers
-            .Where(e => e.SubscriptionFee > e.AmountPaid)
+        var totalRevenue = await revenueTask;
+        var totalExpenses = await expensesTask;
+        var (recentItems, _) = await recentTask;
+        var outstandingPlayers = await playersTask;
+        var outstanding = outstandingPlayers
             .Select(e => new OutstandingPlayerDto
             {
                 Id = e.Id,

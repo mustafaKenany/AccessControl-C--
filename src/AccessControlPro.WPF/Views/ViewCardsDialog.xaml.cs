@@ -62,7 +62,7 @@ public class BoolToBrushConverter : IValueConverter
         => value is true ? _trueBrush : _falseBrush;
 
     public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        => throw new NotImplementedException();
+        => Binding.DoNothing;
 }
 
 public class BoolToStringConverter : IValueConverter
@@ -80,5 +80,5 @@ public class BoolToStringConverter : IValueConverter
         => value is true ? _trueText : _falseText;
 
     public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        => throw new NotImplementedException();
+        => Binding.DoNothing;
 }

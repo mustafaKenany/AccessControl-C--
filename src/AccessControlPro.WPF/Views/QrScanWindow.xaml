@@ -1,0 +1,95 @@
+<Window x:Class="AccessControlPro.WPF.Views.QrScanWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="http://schemas.fontawesome.io/icons/"
+        xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers"
+        Title="QR Scan Mode"
+        Width="500" Height="400"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent"
+        FlowDirection="{Binding FlowDirection, Source={x:Static helpers:LanguageManager.Instance}}"
+        FontFamily="{StaticResource CairoFont}" FontWeight="Bold"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <Border Background="{StaticResource BgDarkBrush}" CornerRadius="12" Padding="24">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="0" Opacity="0.5" Color="Black"/>
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                <fa:ImageAwesome Icon="Camera" Width="22" Height="22"
+                                 Foreground="{StaticResource PrimaryBrush}"
+                                 VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBlock Text="{Binding QrScanMode, Source={x:Static helpers:LanguageManager.Instance}}"
+                           FontSize="18" FontWeight="Bold"
+                           Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+
+                <!-- Close button -->
+                <Button HorizontalAlignment="Right" Margin="20,0,0,0"
+                        Click="CloseClick" Cursor="Hand"
+                        Background="Transparent" BorderThickness="0">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bg" Background="Transparent" CornerRadius="8"
+                                    Width="32" Height="32">
+                                <fa:ImageAwesome Icon="Times" Width="12" Height="12"
+                                                 Foreground="{StaticResource TextMutedBrush}"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bg" Property="Background" Value="#40F7685B"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </StackPanel>
+
+            <!-- Center status area -->
+            <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <fa:ImageAwesome x:Name="StatusIcon" Icon="Qrcode" Width="64" Height="64"
+                                 Foreground="{StaticResource PrimaryBrush}" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="StatusText"
+                           Text="{Binding QrScanReady, Source={x:Static helpers:LanguageManager.Instance}}"
+                           FontSize="16" FontWeight="Bold"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           HorizontalAlignment="Center" Margin="0,16,0,4"/>
+                <TextBlock x:Name="DetailText"
+                           Text="{Binding QrScanInstruction, Source={x:Static helpers:LanguageManager.Instance}}"
+                           FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Device selector -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
+                <TextBlock Text="{Binding SelectDevice, Source={x:Static helpers:LanguageManager.Instance}}"
+                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"
+                           VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox x:Name="DeviceCombo" Style="{StaticResource DarkComboBox}"
+                          Width="250" DisplayMemberPath="Name"/>
+            </StackPanel>
+
+            <!-- Bottom bar -->
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock x:Name="ScanCountText" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           VerticalAlignment="Center" Margin="0,0,16,0"/>
+                <Button Content="{Binding Cancel, Source={x:Static helpers:LanguageManager.Instance}}"
+                        Style="{StaticResource DarkButton}" Click="CloseClick"
+                        Width="100"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

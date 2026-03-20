@@ -6,6 +6,7 @@ public class AppSettings
     public string CompanyName { get; set; } = "";
     public string GymName { get; set; } = "";
     public string LogoPath { get; set; } = "";
+    public string DevLogoPath { get; set; } = "";
     public string Phone { get; set; } = "";
     public string Address { get; set; } = "";
 }

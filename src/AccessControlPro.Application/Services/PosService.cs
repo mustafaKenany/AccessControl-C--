@@ -126,16 +126,17 @@ public class PosService : IPosService
 
         var totalAmount = items.Sum(i => i.Total);
 
-        // Pre-validate ALL stock before any deduction
-        var productMap = new Dictionary<int, Product>();
+        // Pre-validate ALL stock before any deduction — single batch query instead of N queries
+        var productIds = items.Select(i => i.ProductId).Distinct();
+        var products = await _productRepo.GetByIdsAsync(productIds);
+        var productMap = products.ToDictionary(p => p.Id);
+
         foreach (var item in items)
         {
-            var product = await _productRepo.GetByIdAsync(item.ProductId);
-            if (product == null)
+            if (!productMap.TryGetValue(item.ProductId, out var product))
                 throw new InvalidOperationException($"Product '{item.ProductName}' no longer exists.");
             if (product.Stock < item.Quantity)
                 throw new InvalidOperationException($"Insufficient stock for '{item.ProductName}'. Available: {product.Stock}, Requested: {item.Quantity}");
-            productMap[item.ProductId] = product;
         }
 
         // If paying by card balance, check sufficient funds

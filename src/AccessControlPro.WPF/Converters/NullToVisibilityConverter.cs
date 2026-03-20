@@ -12,7 +12,5 @@ public class NullToVisibilityConverter : IValueConverter
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
-    }
+        => Binding.DoNothing;
 }

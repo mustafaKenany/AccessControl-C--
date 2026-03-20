@@ -25,6 +25,8 @@ public class AppDbContext : DbContext
     public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<CardDeviceSync> CardDeviceSyncs => Set<CardDeviceSync>();
+    public DbSet<QrPass> QrPasses => Set<QrPass>();
+    public DbSet<MonitorLock> MonitorLocks => Set<MonitorLock>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

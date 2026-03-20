@@ -6,7 +6,6 @@ using AccessControlPro.WPF.Helpers;
 using AccessControlPro.WPF.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace AccessControlPro.WPF.ViewModels;
 
@@ -21,7 +20,8 @@ public partial class MainViewModel : ObservableObject
     private readonly DeletedRecordsViewModel _deletedRecordsViewModel;
     private readonly FinanceViewModel _financeViewModel;
     private readonly CashFlowViewModel _cashFlowViewModel;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly QrPassViewModel _qrPassViewModel;
+    private readonly MonitorViewModel _monitorViewModel;
     private readonly CurrentUserService _currentUser;
 
     [ObservableProperty]
@@ -44,6 +44,7 @@ public partial class MainViewModel : ObservableObject
     public bool CanViewLogs => _currentUser.HasPermission(AppPermission.LogsView);
     public bool CanViewDeletedRecords => _currentUser.HasPermission(AppPermission.DeletedRecordsView);
     public bool CanViewMonitor => _currentUser.HasPermission(AppPermission.MonitorView);
+    public bool CanViewQrPass => _currentUser.HasPermission(AppPermission.PlayersView);
 
     public MainViewModel(
         DashboardViewModel dashboardViewModel,
@@ -55,7 +56,8 @@ public partial class MainViewModel : ObservableObject
         DeletedRecordsViewModel deletedRecordsViewModel,
         FinanceViewModel financeViewModel,
         CashFlowViewModel cashFlowViewModel,
-        IServiceProvider serviceProvider,
+        QrPassViewModel qrPassViewModel,
+        MonitorViewModel monitorViewModel,
         CurrentUserService currentUser)
     {
         _dashboardViewModel = dashboardViewModel;
@@ -67,7 +69,8 @@ public partial class MainViewModel : ObservableObject
         _deletedRecordsViewModel = deletedRecordsViewModel;
         _financeViewModel = financeViewModel;
         _cashFlowViewModel = cashFlowViewModel;
-        _serviceProvider = serviceProvider;
+        _qrPassViewModel = qrPassViewModel;
+        _monitorViewModel = monitorViewModel;
         _currentUser = currentUser;
         CurrentView = dashboardViewModel;
         _ = _dashboardViewModel.InitializeAsync();
@@ -93,12 +96,18 @@ public partial class MainViewModel : ObservableObject
             "CashFlow" => CanViewCashFlow,
             "Logs" => CanViewLogs,
             "DeletedRecords" => CanViewDeletedRecords,
+            "QrPass" => CanViewQrPass,
             _ => true // Dashboard always allowed
         };
 
         if (!allowed) return;
 
+        // Auto-stop monitoring when navigating to any page to avoid TCP conflicts during card ops
+        if (_monitorViewModel.IsMonitoring)
+            await _monitorViewModel.StopMonitoringCommand.ExecuteAsync(null);
+
         CurrentPage = page;
+        ActivityLogger.LogNavigation(page);
 
         CurrentView = page switch
         {
@@ -111,6 +120,7 @@ public partial class MainViewModel : ObservableObject
             "DeletedRecords" => _deletedRecordsViewModel,
             "Finance" => _financeViewModel,
             "CashFlow" => _cashFlowViewModel,
+            "QrPass" => _qrPassViewModel,
             _ => CurrentView
         };
 
@@ -135,6 +145,9 @@ public partial class MainViewModel : ObservableObject
             case "CashFlow":
                 await _cashFlowViewModel.InitializeAsync();
                 break;
+            case "QrPass":
+                await _qrPassViewModel.InitializeAsync();
+                break;
         }
     }
 
@@ -142,8 +155,7 @@ public partial class MainViewModel : ObservableObject
     private void OpenMonitor()
     {
         if (!CanViewMonitor) return;
-        var monitorVm = _serviceProvider.GetRequiredService<MonitorViewModel>();
-        var monitorWindow = new MonitorWindow(monitorVm);
+        var monitorWindow = new MonitorWindow(_monitorViewModel);
 
         // Try to place on secondary monitor using Win32 API
         var monitors = GetMonitorRects();

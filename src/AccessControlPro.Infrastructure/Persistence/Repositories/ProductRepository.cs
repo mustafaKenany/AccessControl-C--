@@ -28,6 +28,13 @@ public class ProductRepository : IProductRepository
         return await db.Products.FindAsync(id);
     }
 
+    public async Task<IEnumerable<Product>> GetByIdsAsync(IEnumerable<int> ids)
+    {
+        await using var db = _factory.CreateDbContext();
+        var idList = ids.ToList();
+        return await db.Products.Where(p => idList.Contains(p.Id)).ToListAsync();
+    }
+
     public async Task<Product?> GetByBarcodeAsync(string barcode)
     {
         await using var db = _factory.CreateDbContext();

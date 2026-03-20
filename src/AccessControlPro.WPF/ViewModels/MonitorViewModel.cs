@@ -5,6 +5,7 @@ using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Domain.Interfaces;
 using AccessControlPro.SDK.Models;
 using AccessControlPro.SDK.Wrapper;
+using AccessControlPro.Application.Services;
 using AccessControlPro.WPF.Helpers;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -20,6 +21,10 @@ public partial class MonitorViewModel : ObservableObject
     private readonly IAccessEventService _eventService;
     private readonly IDoorService _doorService;
     private readonly IEmployeeService _employeeService;
+    private readonly IMonitorLockService _monitorLockService;
+    private readonly CurrentUserService _currentUser;
+    private readonly Application.Helpers.DeviceOperationHelper _opHelper;
+    private System.Windows.Threading.DispatcherTimer? _heartbeatTimer;
 
     public LanguageManager Lang => LanguageManager.Instance;
 
@@ -52,7 +57,10 @@ public partial class MonitorViewModel : ObservableObject
         IAccessCardRepository cardRepository,
         IAccessEventService eventService,
         IDoorService doorService,
-        IEmployeeService employeeService)
+        IEmployeeService employeeService,
+        IMonitorLockService monitorLockService,
+        CurrentUserService currentUser,
+        Application.Helpers.DeviceOperationHelper opHelper)
     {
         _sdk = sdk;
         _deviceRepository = deviceRepository;
@@ -61,19 +69,61 @@ public partial class MonitorViewModel : ObservableObject
         _eventService = eventService;
         _doorService = doorService;
         _employeeService = employeeService;
+        _monitorLockService = monitorLockService;
+        _currentUser = currentUser;
+        _opHelper = opHelper;
     }
 
     [RelayCommand]
     private async Task StartMonitoringAsync()
     {
         if (IsMonitoring) return;
+        ActivityLogger.LogAction("Monitor", "StartMonitoring");
 
         try
         {
-            var devices = (await _deviceRepository.GetAllAsync()).Where(d => d.IsOnline).ToList();
+            // Check if another PC already has the monitor running
+            StatusMessage = "Checking monitor lock...";
+            var (acquired, holder) = await _monitorLockService.TryAcquireAsync();
+            if (!acquired)
+            {
+                StatusMessage = $"Monitor is already running on: {holder}";
+                Views.CustomMessageBox.Show(
+                    $"Real-Time Monitor is already running on another PC:\n\n{holder}\n\nOnly one monitor can run at a time.",
+                    "Monitor Locked", Views.MsgType.Warning,
+                    System.Windows.Application.Current.MainWindow);
+                return;
+            }
+
+            StatusMessage = "Checking device connectivity...";
+            var allDevices = (await _deviceRepository.GetAllAsync()).ToList();
+            if (allDevices.Count == 0)
+            {
+                StatusMessage = "No devices configured";
+                return;
+            }
+
+            // Ping all devices in parallel to find which are actually reachable
+            var pingTasks = allDevices.Select(async d =>
+            {
+                try
+                {
+                    using var ping = new System.Net.NetworkInformation.Ping();
+                    var reply = await ping.SendPingAsync(d.IP, 2000);
+                    return (Device: d, IsReachable: reply.Status == System.Net.NetworkInformation.IPStatus.Success);
+                }
+                catch
+                {
+                    return (Device: d, IsReachable: false);
+                }
+            });
+
+            var results = await Task.WhenAll(pingTasks);
+            var devices = results.Where(r => r.IsReachable).Select(r => r.Device).ToList();
+
             if (devices.Count == 0)
             {
-                StatusMessage = "No online devices found";
+                StatusMessage = $"No online devices found (checked {allDevices.Count} device(s))";
                 return;
             }
 
@@ -89,29 +139,89 @@ public partial class MonitorViewModel : ObservableObject
                 SubnetMask = d.SubnetMask
             }).ToList();
 
+            // Track monitoring state so DeviceOperationHelper can restart after SDK reset
+            _opHelper.SetMonitoringState(deviceInfos, OnMonitorEvent);
             _sdk.StartMonitoring(deviceInfos, OnMonitorEvent);
             ConnectedDevices = devices.Count;
             IsMonitoring = true;
             StatusMessage = $"Monitoring {devices.Count} device(s)...";
+
+            // Heartbeat timer — keeps the DB lock alive every 10 seconds
+            _heartbeatTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(10)
+            };
+            _heartbeatTimer.Tick += async (_, _) =>
+            {
+                try { await _monitorLockService.HeartbeatAsync(); }
+                catch { /* ignore heartbeat errors */ }
+            };
+            _heartbeatTimer.Start();
         }
         catch (Exception ex)
         {
+            await _monitorLockService.ReleaseAsync();
             StatusMessage = $"Error: {ex.Message}";
         }
     }
 
     [RelayCommand]
-    private void StopMonitoring()
+    private async Task StopMonitoringAsync()
     {
+        // Only restart if monitoring was actually running
+        bool wasMonitoring = IsMonitoring;
+
+        ActivityLogger.LogAction("Monitor", "StopMonitoring");
+        _opHelper.SetMonitoringState(null, null); // Clear monitoring state
         _sdk.StopMonitoring();
+        _heartbeatTimer?.Stop();
+        _heartbeatTimer = null;
+        await _monitorLockService.ReleaseAsync();
         IsMonitoring = false;
         ConnectedDevices = 0;
         StatusMessage = "Stopped";
+
+        // Restart app to get fresh SDK state after monitoring session
+        if (wasMonitoring)
+        {
+            // Close the projector display window before restarting
+            CloseDisplay();
+
+            // Save auto-login marker for seamless restart
+            var pending = new Helpers.PendingOperationHelper.PendingOperation
+            {
+                Type = "MonitorRestart",
+                Username = _currentUser?.Username ?? "admin"
+            };
+            Helpers.PendingOperationHelper.Save(pending);
+
+            // Show restart message before restarting
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                Views.CustomMessageBox.Show(
+                    LanguageManager.Instance.IsArabic
+                        ? "سيتم إعادة تشغيل التطبيق لتحديث اتصال الأجهزة..."
+                        : "Application will restart to refresh device connection...",
+                    LanguageManager.Instance.IsArabic ? "إعادة تشغيل" : "Restarting",
+                    Views.MsgType.Info,
+                    System.Windows.Application.Current.MainWindow);
+            });
+
+            // Brief delay to ensure message is visible before restart
+            await Task.Delay(1000);
+
+            // Restart app to get fresh SDK state
+            var exePath = Environment.ProcessPath;
+            if (exePath != null)
+                System.Diagnostics.Process.Start(exePath);
+            Environment.Exit(0);
+        }
     }
 
     [RelayCommand]
     private async Task ToggleDisplayAsync()
     {
+        ActivityLogger.LogAction("Monitor", "ToggleDisplay", _displayWindow is { IsLoaded: true } ? "close" : "open");
         if (_displayWindow is { IsLoaded: true })
         {
             _displayWindow.Close();
@@ -184,17 +294,84 @@ public partial class MonitorViewModel : ObservableObject
             int? cardId = null;
             string playerName = "";
             Domain.Entities.AccessCard? cardEntity = null;
+
+            // Determine if this is an ENTRY event (only entries count as visits)
+            bool isEntryEvent = door != null
+                ? !door.Name.Contains("خروج") && !door.Name.ToLower().Contains("exit")
+                : evt.ReaderType == 1;
+
+            // Step 1: Validate card FIRST (increments visits on every swipe)
+            bool validationDenied = false;
+            string validationReason = "";
             if (!string.IsNullOrEmpty(evt.CardNumber))
             {
+                try
+                {
+                    var (isValid, reason) = await _employeeService.ValidateCardOnSwipeAsync(evt.CardNumber, true);
+                    validationDenied = !isValid;
+                    validationReason = reason;
+                    if (!isValid)
+                        System.Diagnostics.Debug.WriteLine($"[Monitor] Card {evt.CardNumber} DENIED: {reason}");
+                }
+                catch (Exception valEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Monitor] Validation error: {valEx.Message}");
+                }
+
+                // Step 2: Re-read card entity AFTER validation (UsedVisits now updated)
                 cardEntity = await _cardRepository.GetByCardNumberAsync(evt.CardNumber);
                 if (cardEntity != null)
                 {
                     cardId = cardEntity.Id;
-                    playerName = cardEntity.Employee?.FullNameEn ?? "";
+                    var emp = cardEntity.Employee;
+                    if (emp != null)
+                        playerName = $"{emp.FullNameEn} | {emp.FullNameAr}";
                 }
             }
 
-            string direction = evt.ReaderType == 1 ? "Entry" : "Exit";
+            var lang = LanguageManager.Instance;
+
+            // Direction = door name (e.g. "دخول"/"خروج") — matches door label exactly as user expects
+            string direction = door?.Name ?? (evt.ReaderType == 1 ? lang.DispEntry : lang.DispExit);
+            bool isEntry = door != null
+                ? !door.Name.Contains("خروج") && !door.Name.ToLower().Contains("exit")
+                : evt.ReaderType == 1;
+
+            // Card status: from validation result + employee state (AFTER visit increment)
+            string cardStatus;
+            string cardStatusKey;
+            if (cardEntity == null)
+            {
+                cardStatus = lang.DispNotRegistered;
+                cardStatusKey = "NotRegistered";
+            }
+            else if (cardEntity.Employee == null)
+            {
+                cardStatus = lang.DispNotRegistered;
+                cardStatusKey = "NotRegistered";
+            }
+            else if (cardEntity.Employee.IsFrozen)
+            {
+                cardStatus = lang.CardFrozen;
+                cardStatusKey = "Frozen";
+            }
+            else if (validationDenied ||
+                     cardEntity.Employee.EndDate < DateTime.Now ||
+                     (cardEntity.Employee.MaxVisits > 0 && cardEntity.Employee.UsedVisits >= cardEntity.Employee.MaxVisits))
+            {
+                cardStatus = lang.CardExpired;
+                cardStatusKey = "Expired";
+            }
+            else
+            {
+                // Show visit counter for all events in Single Device mode
+                if (DeviceModeHelper.IsSingleDevice && cardEntity.Employee.MaxVisits > 0)
+                    cardStatus = $"{lang.CardActive} ({cardEntity.Employee.UsedVisits}/{cardEntity.Employee.MaxVisits})";
+                else
+                    cardStatus = lang.CardActive;
+                cardStatusKey = "Active";
+            }
+
             string details = $"{direction} | SN:{evt.DeviceSN}";
 
             // Save to DB
@@ -203,29 +380,23 @@ public partial class MonitorViewModel : ObservableObject
                 await _eventService.SaveEventAsync(doorId, cardId, evt.RecordType, evt.EventCode, evt.EventDate, details);
             }
 
-            // Increment visit count for successful card entry events
-            if (evt.EventCode == 1 && !string.IsNullOrEmpty(evt.CardNumber))
-            {
-                try
-                {
-                    await _employeeService.IncrementVisitAsync(evt.CardNumber);
-                }
-                catch (Exception visitEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[MonitorViewModel] Visit increment error: {visitEx.Message}");
-                }
-            }
+            // Build device + door display name
+            var deviceName = door?.Device?.Name ?? evt.DeviceSN;
+            var doorName = door?.Name ?? $"Door {evt.DoorNumber}";
 
             // Update UI on dispatcher thread
             var dto = new AccessEventDto
             {
-                DeviceName = evt.DeviceSN,
-                DoorName = door?.Name ?? $"Door {evt.DoorNumber}",
+                DeviceName = deviceName,
+                DoorName = doorName,
                 CardNumber = evt.CardNumber,
                 PlayerName = playerName,
                 EventType = ((Domain.Enums.RecordType)evt.RecordType).ToString(),
                 EventDescription = GetEventDescription(evt.EventCode),
                 Direction = direction,
+                IsEntry = isEntry,
+                CardStatus = cardStatus,
+                CardStatusKey = cardStatusKey,
                 Timestamp = evt.EventDate
             };
 
@@ -239,12 +410,11 @@ public partial class MonitorViewModel : ObservableObject
                 if (_displayWindow is { IsLoaded: true } && !string.IsNullOrEmpty(evt.CardNumber)
                     && _selectedDisplayDoors.Any(d => d.DeviceSN == evt.DeviceSN && d.DoorNumber == evt.DoorNumber))
                 {
-                    // Show the matching door name on the display
                     var matchedDoor = _selectedDisplayDoors.First(d => d.DeviceSN == evt.DeviceSN && d.DoorNumber == evt.DoorNumber);
-                    _displayWindow.SetDoorName(matchedDoor.DoorName);
+                    _displayWindow.SetDoorName($"{deviceName} - {matchedDoor.DoorName}");
 
                     if (cardEntity?.Employee != null)
-                        _displayWindow.ShowCardEvent(cardEntity.Employee, cardEntity, evt.CardNumber);
+                        _displayWindow.ShowCardEvent(cardEntity.Employee, cardEntity, evt.CardNumber, direction, validationDenied);
                     else
                         _displayWindow.ShowUnregistered();
                 }
@@ -260,23 +430,23 @@ public partial class MonitorViewModel : ObservableObject
         }
     }
 
-    private static string GetEventDescription(int code) => code switch
+    private static string GetEventDescription(int code)
     {
-        1 => "Card Open",
-        2 => "Password Open",
-        3 => "Card + Password",
-        4 => "Card Repeat",
-        5 => "Card Expired",
-        6 => "Invalid Card",
-        10 => "Button Open",
-        20 => "Remote Open",
-        21 => "Remote Close",
-        30 => "Door Opened",
-        31 => "Door Closed",
-        40 => "Fire Alarm",
-        41 => "Police Alarm",
-        50 => "System Startup",
-        51 => "System Restart",
-        _ => $"Event {code}"
-    };
+        var lang = LanguageManager.Instance;
+        return code switch
+        {
+            1 => lang.DispCardOpen,
+            2 => lang.DispPasswordOpen,
+            3 => lang.DispCardPassword,
+            4 => lang.DispCardRepeat,
+            5 => lang.DispExpiredCard,
+            6 => lang.DispInvalidCard,
+            10 => lang.DispButtonOpen,
+            20 => lang.DispRemoteOpen,
+            21 => lang.DispRemoteClose,
+            30 => lang.DispDoorOpened,
+            31 => lang.DispDoorClosed,
+            _ => $"Event {code}"
+        };
+    }
 }

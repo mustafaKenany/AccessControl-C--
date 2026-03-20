@@ -27,6 +27,7 @@ public partial class PlayerProfileDialog : Window
         try
         {
             var profile = await _employeeService.GetPlayerProfileAsync(_employeeId);
+            if (profile?.Player == null) { Close(); return; }
             var p = profile.Player;
 
             // Header

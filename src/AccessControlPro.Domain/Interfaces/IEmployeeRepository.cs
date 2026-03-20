@@ -18,4 +18,5 @@ public interface IEmployeeRepository
     Task<IEnumerable<Employee>> GetByStartDateRangeAsync(DateTime from, DateTime to);
     Task<IEnumerable<Employee>> GetFrozenAsync();
     Task<IEnumerable<Employee>> GetExpiredAsync();
+    Task<IEnumerable<Employee>> GetOutstandingBalancesAsync();
 }

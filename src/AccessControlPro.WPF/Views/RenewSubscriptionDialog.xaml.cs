@@ -76,6 +76,12 @@ public partial class RenewSubscriptionDialog : Window
         SelectSubscriptionType(employee.SubscriptionType);
         UpdateRemaining();
 
+        if (DeviceModeHelper.IsMultiDevice)
+        {
+            EffectiveTimesLabel.Visibility = Visibility.Collapsed;
+            EffectiveTimesCombo.Visibility = Visibility.Collapsed;
+        }
+
         if (_lookupService != null)
             _ = LoadPlansFromDbAsync();
     }
@@ -151,11 +157,28 @@ public partial class RenewSubscriptionDialog : Window
     private void PopulateEffectiveTimes()
     {
         EffectiveTimesCombo.Items.Clear();
-        EffectiveTimesCombo.Items.Add(new ComboBoxItem { Content = $"{Lang.Unlimited} (65535)", Tag = 65535 });
-        EffectiveTimesCombo.Items.Add(new ComboBoxItem { Content = $"{Lang.InvalidateImmediately} (0)", Tag = 0 });
-        for (int i = 1; i <= 1000; i++)
-            EffectiveTimesCombo.Items.Add(new ComboBoxItem { Content = i.ToString(), Tag = i });
-        EffectiveTimesCombo.SelectedIndex = 0;
+
+        // Preset effective times values — must match AssignCardDialog exactly
+        var presetValues = new[] { 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 400, 500 };
+
+        foreach (var val in presetValues)
+        {
+            EffectiveTimesCombo.Items.Add(new ComboBoxItem
+            {
+                Content = val.ToString(),
+                Tag = val
+            });
+        }
+
+        // Unlimited option
+        EffectiveTimesCombo.Items.Add(new ComboBoxItem
+        {
+            Content = $"{Lang.Unlimited} (65535)",
+            Tag = 65535
+        });
+
+        // Select Unlimited by default
+        EffectiveTimesCombo.SelectedIndex = EffectiveTimesCombo.Items.Count - 1;
     }
 
     private void PopulateDevices()

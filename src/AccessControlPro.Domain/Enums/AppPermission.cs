@@ -21,6 +21,7 @@ public static class AppPermission
     public const string PlayersFreeze = "Players.Freeze";
     public const string PlayersRenew = "Players.Renew";
     public const string PlayersReports = "Players.Reports";
+    public const string PlayersReassignCard = "Players.ReassignCard";
 
     // Devices
     public const string DevicesView = "Devices.View";
@@ -65,7 +66,7 @@ public static class AppPermission
     [
         AccessMainApp, AccessPOS, AccessAdmin,
         PlayersView, PlayersAdd, PlayersEdit, PlayersDelete,
-        PlayersAssignCard, PlayersRemoveCard, PlayersFreeze, PlayersRenew, PlayersReports,
+        PlayersAssignCard, PlayersRemoveCard, PlayersReassignCard, PlayersFreeze, PlayersRenew, PlayersReports,
         DevicesView, DevicesAdd, DevicesEdit, DevicesDelete, DevicesConnect,
         DoorsView, DoorsOpenClose, DoorsSettings,
         EventsView,
@@ -95,7 +96,7 @@ public static class AppPermission
     public static readonly (string GroupKey, string[] Permissions)[] Groups =
     [
         ("AppAccess", [AccessMainApp, AccessPOS, AccessAdmin]),
-        ("Players", [PlayersView, PlayersAdd, PlayersEdit, PlayersDelete, PlayersAssignCard, PlayersRemoveCard, PlayersFreeze, PlayersRenew, PlayersReports]),
+        ("Players", [PlayersView, PlayersAdd, PlayersEdit, PlayersDelete, PlayersAssignCard, PlayersRemoveCard, PlayersReassignCard, PlayersFreeze, PlayersRenew, PlayersReports]),
         ("Devices", [DevicesView, DevicesAdd, DevicesEdit, DevicesDelete, DevicesConnect]),
         ("Doors", [DoorsView, DoorsOpenClose, DoorsSettings]),
         ("Events", [EventsView]),

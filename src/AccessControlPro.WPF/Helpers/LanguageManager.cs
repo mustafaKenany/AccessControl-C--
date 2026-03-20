@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Resources;
 using System.Windows;
 
@@ -653,6 +654,20 @@ public class LanguageManager : INotifyPropertyChanged
     public string DispSuccessPass => GetString("DispSuccessPass");
     public string DispExpiredCard => GetString("DispExpiredCard");
     public string DispFrozenCard => GetString("DispFrozenCard");
+    public string DispNotRegistered => GetString("DispNotRegistered");
+    public string DispActive => GetString("DispActive");
+    public string DispEntry => GetString("DispEntry");
+    public string DispExit => GetString("DispExit");
+    public string DispCardOpen => GetString("DispCardOpen");
+    public string DispPasswordOpen => GetString("DispPasswordOpen");
+    public string DispCardPassword => GetString("DispCardPassword");
+    public string DispCardRepeat => GetString("DispCardRepeat");
+    public string DispInvalidCard => GetString("DispInvalidCard");
+    public string DispButtonOpen => GetString("DispButtonOpen");
+    public string DispRemoteOpen => GetString("DispRemoteOpen");
+    public string DispRemoteClose => GetString("DispRemoteClose");
+    public string DispDoorOpened => GetString("DispDoorOpened");
+    public string DispDoorClosed => GetString("DispDoorClosed");
     public string DispOpenDisplay => GetString("DispOpenDisplay");
     public string DispCloseDisplay => GetString("DispCloseDisplay");
 
@@ -790,6 +805,43 @@ public class LanguageManager : INotifyPropertyChanged
     public string PrfNoRecords => GetString("PrfNoRecords");
     public string FilterActive => GetString("FilterActive");
 
+    // QR Pass
+    public string QrNavTitle => GetString("QrNavTitle");
+    public string QrCreatePass => GetString("QrCreatePass");
+    public string QrPlayerName => GetString("QrPlayerName");
+    public string QrValidDays => GetString("QrValidDays");
+    public string QrMaxUses => GetString("QrMaxUses");
+    public string QrValidTo => GetString("QrValidTo");
+    public string QrActiveOnly => GetString("QrActiveOnly");
+    public string QrActiveToday => GetString("QrActiveToday");
+    public string QrScanMode => GetString("QrScanMode");
+    public string QrScanReady => GetString("QrScanReady");
+    public string QrScanInstruction => GetString("QrScanInstruction");
+    public string QrPassCreated => GetString("QrPassCreated");
+    public string QrPassDeactivated => GetString("QrPassDeactivated");
+    public string QrConfirmDeactivate => GetString("QrConfirmDeactivate");
+    public string QrDeactivate => GetString("QrDeactivate");
+    public string QrCodeTitle => GetString("QrCodeTitle");
+    public string QrPrint => GetString("QrPrint");
+
+    // Door Schedule
+    public string WorkingHours => GetString("WorkingHours");
+    public string WorkingDays => GetString("WorkingDays");
+    public string Is24Hours => GetString("Is24Hours");
+    public string StartTime => GetString("StartTime");
+    public string EndTime => GetString("EndTime");
+    public string SetSchedule => GetString("SetSchedule");
+    public string Monday => GetString("Monday");
+    public string Tuesday => GetString("Tuesday");
+    public string Wednesday => GetString("Wednesday");
+    public string Thursday => GetString("Thursday");
+    public string Friday => GetString("Friday");
+    public string Saturday => GetString("Saturday");
+    public string Sunday => GetString("Sunday");
+
+    // Validation
+    public string AtLeastOneNameRequired => GetString("AtLeastOneNameRequired");
+
     private string GetString(string name)
     {
         return _resourceManager.GetString(name, _currentCulture) ?? name;
@@ -803,6 +855,25 @@ public class LanguageManager : INotifyPropertyChanged
             SetLanguage("ar");
     }
 
+    private static readonly string LangFilePath = Path.Combine(AppContext.BaseDirectory, ".language");
+
+    /// <summary>
+    /// Loads the saved language preference from disk. Call on app startup before login.
+    /// </summary>
+    public void LoadSavedLanguage()
+    {
+        try
+        {
+            if (File.Exists(LangFilePath))
+            {
+                var saved = File.ReadAllText(LangFilePath).Trim();
+                if (saved == "ar" || saved == "en")
+                    SetLanguage(saved);
+            }
+        }
+        catch { }
+    }
+
     public void SetLanguage(string cultureCode)
     {
         _currentCulture = new CultureInfo(cultureCode);
@@ -811,6 +882,10 @@ public class LanguageManager : INotifyPropertyChanged
 
         IsArabic = cultureCode.StartsWith("ar");
         FlowDirection = IsArabic ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+
+        // Persist language choice to disk
+        try { File.WriteAllText(LangFilePath, cultureCode.StartsWith("ar") ? "ar" : "en"); }
+        catch { }
 
         // Notify all string properties changed
         OnPropertyChanged(nameof(AppTitle));
@@ -1305,6 +1380,20 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(DispSuccessPass));
         OnPropertyChanged(nameof(DispExpiredCard));
         OnPropertyChanged(nameof(DispFrozenCard));
+        OnPropertyChanged(nameof(DispNotRegistered));
+        OnPropertyChanged(nameof(DispActive));
+        OnPropertyChanged(nameof(DispEntry));
+        OnPropertyChanged(nameof(DispExit));
+        OnPropertyChanged(nameof(DispCardOpen));
+        OnPropertyChanged(nameof(DispPasswordOpen));
+        OnPropertyChanged(nameof(DispCardPassword));
+        OnPropertyChanged(nameof(DispCardRepeat));
+        OnPropertyChanged(nameof(DispInvalidCard));
+        OnPropertyChanged(nameof(DispButtonOpen));
+        OnPropertyChanged(nameof(DispRemoteOpen));
+        OnPropertyChanged(nameof(DispRemoteClose));
+        OnPropertyChanged(nameof(DispDoorOpened));
+        OnPropertyChanged(nameof(DispDoorClosed));
         OnPropertyChanged(nameof(DispOpenDisplay));
         OnPropertyChanged(nameof(DispCloseDisplay));
         // Projector Door Selection
@@ -1431,6 +1520,39 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(PrfFreezeEnd));
         OnPropertyChanged(nameof(PrfNoRecords));
         OnPropertyChanged(nameof(FilterActive));
+        // QR Pass
+        OnPropertyChanged(nameof(QrNavTitle));
+        OnPropertyChanged(nameof(QrCreatePass));
+        OnPropertyChanged(nameof(QrPlayerName));
+        OnPropertyChanged(nameof(QrValidDays));
+        OnPropertyChanged(nameof(QrMaxUses));
+        OnPropertyChanged(nameof(QrValidTo));
+        OnPropertyChanged(nameof(QrActiveOnly));
+        OnPropertyChanged(nameof(QrActiveToday));
+        OnPropertyChanged(nameof(QrScanMode));
+        OnPropertyChanged(nameof(QrScanReady));
+        OnPropertyChanged(nameof(QrScanInstruction));
+        OnPropertyChanged(nameof(QrPassCreated));
+        OnPropertyChanged(nameof(QrPassDeactivated));
+        OnPropertyChanged(nameof(QrConfirmDeactivate));
+        OnPropertyChanged(nameof(QrDeactivate));
+        OnPropertyChanged(nameof(QrCodeTitle));
+        OnPropertyChanged(nameof(QrPrint));
+        // Door Schedule
+        OnPropertyChanged(nameof(WorkingHours));
+        OnPropertyChanged(nameof(WorkingDays));
+        OnPropertyChanged(nameof(Is24Hours));
+        OnPropertyChanged(nameof(StartTime));
+        OnPropertyChanged(nameof(EndTime));
+        OnPropertyChanged(nameof(SetSchedule));
+        OnPropertyChanged(nameof(Monday));
+        OnPropertyChanged(nameof(Tuesday));
+        OnPropertyChanged(nameof(Wednesday));
+        OnPropertyChanged(nameof(Thursday));
+        OnPropertyChanged(nameof(Friday));
+        OnPropertyChanged(nameof(Saturday));
+        OnPropertyChanged(nameof(Sunday));
+        OnPropertyChanged(nameof(AtLeastOneNameRequired));
     }
 
     private void OnPropertyChanged(string propertyName)

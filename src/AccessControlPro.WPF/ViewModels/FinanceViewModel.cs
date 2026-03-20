@@ -43,6 +43,7 @@ public partial class FinanceViewModel : ObservableObject
     {
         if (_isInitialized) return;
         _isInitialized = true;
+        ActivityLogger.LogNavigation("Finance");
         await LoadAsync();
     }
 
@@ -110,6 +111,7 @@ public partial class FinanceViewModel : ObservableObject
 
     private async Task LoadAsync()
     {
+        ActivityLogger.LogAction("Finance", "Load", $"period={SelectedPeriodIndex}");
         IsLoading = true;
         try
         {

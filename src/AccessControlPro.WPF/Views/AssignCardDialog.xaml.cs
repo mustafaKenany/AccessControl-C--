@@ -29,15 +29,8 @@ public partial class AssignCardDialog : Window
         }
     }
 
-    public int EffectiveTimes
-    {
-        get
-        {
-            if (EffectiveTimesCombo.SelectedItem is ComboBoxItem item && item.Tag is int val)
-                return val;
-            return 65535;
-        }
-    }
+    private int _effectiveTimes = 65535;
+    public int EffectiveTimes => _effectiveTimes;
 
     public int TimePeriodIndex => 1;
     public bool HolidayEnabled => HolidayCheck.IsChecked == true;
@@ -70,18 +63,83 @@ public partial class AssignCardDialog : Window
         ValidFromText.Text = employee.StartDate.ToString("yyyy-MM-dd");
         ValidToText.Text = employee.EndDate.ToString("yyyy-MM-dd");
 
-        PopulateEffectiveTimes();
+        PopulateEffectiveTimes(employee.MaxVisits);
         PopulateDevices();
+
+        if (DeviceModeHelper.IsMultiDevice)
+        {
+            EffectiveTimesLabel.Visibility = Visibility.Collapsed;
+            EffectiveTimesCombo.Visibility = Visibility.Collapsed;
+        }
     }
 
-    private void PopulateEffectiveTimes()
+    private void PopulateEffectiveTimes(int maxVisits)
     {
         EffectiveTimesCombo.Items.Clear();
-        EffectiveTimesCombo.Items.Add(new ComboBoxItem { Content = $"{Lang.Unlimited} (65535)", Tag = 65535 });
-        EffectiveTimesCombo.Items.Add(new ComboBoxItem { Content = $"{Lang.InvalidateImmediately} (0)", Tag = 0 });
-        for (int i = 1; i <= 1000; i++)
-            EffectiveTimesCombo.Items.Add(new ComboBoxItem { Content = i.ToString(), Tag = i });
-        EffectiveTimesCombo.SelectedIndex = 0;
+
+        // Preset effective times values
+        var presetValues = new[] { 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 400, 500 };
+
+        foreach (var val in presetValues)
+        {
+            EffectiveTimesCombo.Items.Add(new ComboBoxItem
+            {
+                Content = val.ToString(),
+                Tag = val
+            });
+        }
+
+        // Unlimited option
+        EffectiveTimesCombo.Items.Add(new ComboBoxItem
+        {
+            Content = $"{Lang.Unlimited} (65535)",
+            Tag = 65535
+        });
+
+        // Select current value if maxVisits matches a preset, otherwise select Unlimited
+        if (maxVisits > 0)
+        {
+            var effectiveTimesValue = maxVisits;
+            bool found = false;
+            for (int i = 0; i < EffectiveTimesCombo.Items.Count; i++)
+            {
+                if (EffectiveTimesCombo.Items[i] is ComboBoxItem item && item.Tag is int tag && tag == effectiveTimesValue)
+                {
+                    EffectiveTimesCombo.SelectedIndex = i;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                // Add the current value as a custom option and select it
+                var customItem = new ComboBoxItem { Content = effectiveTimesValue.ToString(), Tag = effectiveTimesValue };
+                EffectiveTimesCombo.Items.Insert(0, customItem);
+                EffectiveTimesCombo.SelectedIndex = 0;
+            }
+        }
+        else
+        {
+            // Select Unlimited by default
+            EffectiveTimesCombo.SelectedIndex = EffectiveTimesCombo.Items.Count - 1;
+        }
+
+        EffectiveTimesCombo.SelectionChanged += EffectiveTimesCombo_SelectionChanged;
+        UpdateEffectiveTimes();
+        EffectiveTimesCombo.IsEnabled = true;
+    }
+
+    private void EffectiveTimesCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        UpdateEffectiveTimes();
+    }
+
+    private void UpdateEffectiveTimes()
+    {
+        if (EffectiveTimesCombo.SelectedItem is ComboBoxItem selected && selected.Tag is int val)
+            _effectiveTimes = val;
+        else
+            _effectiveTimes = 65535;
     }
 
     private void PopulateDevices()

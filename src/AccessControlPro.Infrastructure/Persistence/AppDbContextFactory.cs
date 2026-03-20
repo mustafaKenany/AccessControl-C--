@@ -8,7 +8,10 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     public AppDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseSqlServer("Server=localhost;Database=AccessControlPro;User Id=sa;Password=123;TrustServerCertificate=True;");
+        // Design-time only — used by EF migrations tooling, never in production
+        var connString = Environment.GetEnvironmentVariable("ACP_DESIGN_CONNECTION")
+            ?? "Server=localhost;Database=AccessControlPro;Integrated Security=True;TrustServerCertificate=True;";
+        optionsBuilder.UseSqlServer(connString);
         return new AppDbContext(optionsBuilder.Options);
     }
 }

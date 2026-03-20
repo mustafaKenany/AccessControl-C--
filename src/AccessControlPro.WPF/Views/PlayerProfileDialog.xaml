@@ -52,7 +52,7 @@
                                     Background="#1A44A1A0" Margin="0,0,14,0" VerticalAlignment="Center"
                                     ClipToBounds="True">
                                 <Grid>
-                                    <Image x:Name="PlayerPhoto" Stretch="UniformToFill"
+                                    <Image x:Name="PlayerPhoto" Stretch="Uniform"
                                            Source="{Binding PhotoImageSource}" Visibility="Collapsed"/>
                                     <fa:ImageAwesome Icon="UserCircle" Width="22" Height="22" x:Name="DefaultIcon"
                                                      Foreground="{StaticResource PrimaryLightBrush}"
@@ -141,7 +141,7 @@
                                 <Border Width="160" Height="180" CornerRadius="8" Background="{StaticResource BgInputBrush}"
                                         Margin="5,0,0,0" ClipToBounds="True">
                                     <Grid>
-                                        <Image x:Name="OverviewPhoto" Stretch="UniformToFill"
+                                        <Image x:Name="OverviewPhoto" Stretch="Uniform"
                                                Source="{Binding PhotoImageSource}" Visibility="Collapsed"/>
                                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     x:Name="NoPhotoContainer">

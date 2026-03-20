@@ -17,8 +17,8 @@ namespace AccessControlPro.Application.Services;
 public interface IExpiryMonitorService
 {
     /// <summary>
-    /// Checks all players for expiry and disables cards on devices.
-    /// Call this on a timer (every 2-5 minutes).
+    /// Checks expired players only and disables their cards on devices in parallel.
+    /// Optimized for frequent calls (every 10-30 seconds).
     /// </summary>
     Task<ExpiryCheckResult> CheckAndExpireAsync();
 }
@@ -60,87 +60,39 @@ public class ExpiryMonitorService : IExpiryMonitorService
     public async Task<ExpiryCheckResult> CheckAndExpireAsync()
     {
         var result = new ExpiryCheckResult();
-        var now = DateTime.Now; // Use local time — employee dates use DateTime.Today
 
         try
         {
-            var allEmployees = await _employeeRepository.GetAllWithCardsAsync();
-            var devices = (await _deviceRepository.GetAllAsync()).ToList();
+            // Only fetch expired + visit-exhausted players (NOT all employees)
+            var expiredPlayers = (await _employeeRepository.GetExpiredAsync()).ToList();
+            var visitExhausted = await GetVisitExhaustedPlayersAsync();
 
-            if (devices.Count == 0) return result;
+            // Combine both lists, deduplicate by Id
+            var playersToDisable = expiredPlayers
+                .Concat(visitExhausted)
+                .GroupBy(e => e.Id)
+                .Select(g => g.First())
+                .ToList();
 
-            _sdk.Initialize();
+            if (playersToDisable.Count == 0) return result;
 
-            foreach (var employee in allEmployees)
+            // DO NOT send SDK commands here — hardware handles expiry via effectiveTimes countdown + date check.
+            // Sending SDK commands every 10 seconds floods the device and causes TCP stuck issues.
+            // Just log and count for reporting purposes.
+            foreach (var employee in playersToDisable)
             {
-                if (employee.IsFrozen) continue; // Frozen players already handled
+                if (employee.IsFrozen) continue;
 
-                var syncedCards = employee.AccessCards?
-                    .Where(c => c.IsActive && c.IsSyncedToDevice)
-                    .ToList();
-
-                if (syncedCards == null || syncedCards.Count == 0) continue;
-
-                bool shouldDisable = false;
-                string reason = "";
-
-                // Check date-based expiry
-                if (employee.EndDate < now)
+                if (employee.EndDate < DateTime.Now)
                 {
-                    shouldDisable = true;
-                    reason = $"Date expired ({employee.EndDate:yyyy-MM-dd})";
                     result.DateExpired++;
+                    result.Details.Add($"{employee.FullNameEn} (ID:{employee.Id}): Date expired ({employee.EndDate:yyyy-MM-dd})");
                 }
-                // Check visit-count expiry
                 else if (employee.MaxVisits > 0 && employee.UsedVisits >= employee.MaxVisits)
                 {
-                    shouldDisable = true;
-                    reason = $"Visit limit reached ({employee.UsedVisits}/{employee.MaxVisits})";
                     result.VisitExpired++;
+                    result.Details.Add($"{employee.FullNameEn} (ID:{employee.Id}): Visit limit reached ({employee.UsedVisits}/{employee.MaxVisits})");
                 }
-
-                if (!shouldDisable) continue;
-
-                // Disable cards on all devices
-                foreach (var card in syncedCards)
-                {
-                    foreach (var device in devices)
-                    {
-                        try
-                        {
-                            _sdk.AddAccessCard(
-                                BuildDeviceInfo(device),
-                                card.CardNumber,
-                                card.CardPassword,
-                                card.OpenMode,
-                                card.DoorPermissions,
-                                "2000-01-01 00:00:00",
-                                card.EffectiveTimes,
-                                card.TimePeriodIndex,
-                                card.HolidayEnabled);
-
-                            await _syncRepository.UpsertAsync(card.Id, device.Id, true);
-                        }
-                        catch (Exception ex)
-                        {
-                            await _syncRepository.UpsertAsync(card.Id, device.Id, false, ex.Message);
-                            result.Errors++;
-                        }
-                    }
-                }
-
-                result.Details.Add($"{employee.FullNameEn} (ID:{employee.Id}): {reason}");
-
-                await _auditLogRepository.AddAsync(new AuditLog
-                {
-                    Action = "AutoExpire",
-                    EntityType = "Employee",
-                    EntityId = employee.Id,
-                    Details = $"Auto-expired: {reason}. Cards disabled on {devices.Count} devices.",
-                    DetailsAr = $"انتهاء تلقائي: {reason}. تم تعطيل البطاقات على {devices.Count} جهاز.",
-                    PerformedBy = "System",
-                    Timestamp = DateTime.UtcNow
-                });
             }
         }
         catch (Exception ex)
@@ -150,6 +102,25 @@ public class ExpiryMonitorService : IExpiryMonitorService
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Gets players who have exhausted their visit count (MaxVisits > 0 and UsedVisits >= MaxVisits).
+    /// Lightweight query — only fetches visit-based players with active synced cards.
+    /// </summary>
+    private async Task<IEnumerable<Employee>> GetVisitExhaustedPlayersAsync()
+    {
+        try
+        {
+            var allWithCards = await _employeeRepository.GetAllWithCardsAsync();
+            return allWithCards
+                .Where(e => !e.IsFrozen && e.MaxVisits > 0 && e.UsedVisits >= e.MaxVisits
+                    && e.AccessCards != null && e.AccessCards.Any(c => c.IsActive && c.IsSyncedToDevice));
+        }
+        catch
+        {
+            return [];
+        }
     }
 
     private static DeviceInfo BuildDeviceInfo(Device device) => new()

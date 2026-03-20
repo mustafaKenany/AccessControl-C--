@@ -30,6 +30,13 @@ public partial class MonitorDisplayWindow : Window
             ShowIdle();
         };
 
+        // ESC to close display window
+        PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key == System.Windows.Input.Key.Escape)
+                Close();
+        };
+
         Loaded += (_, _) => PositionOnSecondaryScreen();
     }
 
@@ -65,25 +72,26 @@ public partial class MonitorDisplayWindow : Window
     /// <summary>
     /// Shows player info when a card is swiped.
     /// </summary>
-    public void ShowCardEvent(Employee employee, AccessCard card, string cardNumber)
+    public void ShowCardEvent(Employee employee, AccessCard card, string cardNumber, string direction = "", bool isCardExpired = false)
     {
         Dispatcher.Invoke(() =>
         {
             _resetTimer.Stop();
 
-            bool isExpired = employee.EndDate.Date < DateTime.Today;
+            bool isExpired = isCardExpired
+                || employee.EndDate.Date < DateTime.Today
+                || (employee.MaxVisits > 0 && employee.UsedVisits >= employee.MaxVisits);
             bool isFrozen = employee.IsFrozen;
 
-            if (isExpired)
-                SetStatus(Lang.DispExpiredCard, "#F7685B", FontAwesomeIcon.TimesCircle);
-            else if (isFrozen)
-                SetStatus(Lang.DispFrozenCard, "#FFB946", FontAwesomeIcon.PauseCircle);
+            if (isFrozen)
+                SetStatus($"{Lang.DispFrozenCard}\n{direction}", "#FFB946", FontAwesomeIcon.PauseCircle);
+            else if (isExpired)
+                SetStatus($"{Lang.DispExpiredCard}\n{direction}", "#F7685B", FontAwesomeIcon.TimesCircle);
             else
-                SetStatus(Lang.DispSuccessPass, "#2ED47A", FontAwesomeIcon.CheckCircle);
+                SetStatus($"{Lang.DispSuccessPass}\n{direction}", "#2ED47A", FontAwesomeIcon.CheckCircle);
 
-            PlayerNameText.Text = Lang.IsArabic
-                ? employee.FullNameAr
-                : employee.FullNameEn;
+            // Show both Arabic and English names
+            PlayerNameText.Text = $"{employee.FullNameEn}\n{employee.FullNameAr}";
 
             SubLabel.Text = Lang.Subscription;
             SubValue.Text = employee.SubscriptionType;
@@ -134,11 +142,42 @@ public partial class MonitorDisplayWindow : Window
     }
 
     /// <summary>
-    /// Called when an unregistered card is swiped — stay on idle.
+    /// Called when an unregistered card is swiped — show "Not Registered" with gray color.
     /// </summary>
     public void ShowUnregistered()
     {
-        Dispatcher.Invoke(ShowIdle);
+        Dispatcher.Invoke(() =>
+        {
+            _resetTimer.Stop();
+
+            SetStatus(Lang.DispNotRegistered, "#8E8E93", FontAwesomeIcon.QuestionCircle);
+
+            PlayerNameText.Text = Lang.DispNotRegistered;
+            SubLabel.Text = "";
+            SubValue.Text = "";
+            CardLabel.Text = "";
+            CardValue.Text = "";
+            StartLabel.Text = "";
+            StartValue.Text = "";
+            EndLabel.Text = "";
+            EndValue.Text = "";
+            FeePanel.Visibility = Visibility.Collapsed;
+            PaidPanel.Visibility = Visibility.Collapsed;
+            BalancePanel.Visibility = Visibility.Collapsed;
+            TimeLabel.Text = Lang.Time;
+            TimeValue.Text = DateTime.Now.ToString("hh:mm tt");
+
+            PlayerPhoto.ImageSource = null;
+            NoPhotoIcon.Visibility = Visibility.Visible;
+
+            IdlePanel.Visibility = Visibility.Collapsed;
+            EventPanel.Visibility = Visibility.Visible;
+
+            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(400));
+            EventPanel.BeginAnimation(OpacityProperty, fadeIn);
+
+            _resetTimer.Start();
+        });
     }
 
     private void ShowIdle()
@@ -188,6 +227,12 @@ public partial class MonitorDisplayWindow : Window
             PlayerPhoto.ImageSource = null;
             NoPhotoIcon.Visibility = Visibility.Visible;
         }
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _resetTimer.Stop();
+        base.OnClosed(e);
     }
 
     #region Monitor Detection via Win32 API

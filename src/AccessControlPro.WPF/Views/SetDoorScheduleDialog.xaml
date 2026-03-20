@@ -1,0 +1,280 @@
+<Window x:Class="AccessControlPro.WPF.Views.SetDoorScheduleDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="http://schemas.fontawesome.io/icons/"
+        Title="{Binding Lang.SetSchedule}"
+        Width="500" Height="560"
+        WindowStartupLocation="CenterOwner"
+        Background="#081B1D"
+        ResizeMode="NoResize"
+        FlowDirection="{Binding Lang.FlowDirection}">
+
+    <Window.Resources>
+        <!-- Styled ComboBox for time pickers -->
+        <Style x:Key="TimeComboBox" TargetType="ComboBox">
+            <Setter Property="Width" Value="80"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontFamily" Value="Cairo"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#E8F1F2"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="toggleButton"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          Focusable="False" ClickMode="Press">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="border" Background="#0E2E30"
+                                                BorderBrush="#2A5A5C" BorderThickness="1.5" CornerRadius="6">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition/>
+                                                    <ColumnDefinition Width="28"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="1" Background="#0A2224"
+                                                        BorderThickness="1.5,0,0,0" BorderBrush="#2A5A5C"
+                                                        CornerRadius="0,6,6,0">
+                                                    <Path Fill="#44A1A0" HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"
+                                                          Data="M 0 0 L 5 5 L 10 0 Z"/>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="border" Property="BorderBrush" Value="#44A1A0"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="8,6,28,6"/>
+                            <Popup x:Name="PART_Popup" AllowsTransparency="True"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom" PopupAnimation="Slide">
+                                <Grid MinWidth="{TemplateBinding ActualWidth}"
+                                      MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <Border Background="#0E2E30" BorderBrush="#44A1A0"
+                                            BorderThickness="1.5" CornerRadius="4" Padding="0,4">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <StackPanel IsItemsHost="True"/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Grid>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#E8F1F2"/>
+            <Setter Property="Background" Value="#0E2E30"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="FontFamily" Value="Cairo"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1A4446"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#44A1A0"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Day toggle button style -->
+        <Style x:Key="DayToggleButton" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#9EC5C8"/>
+            <Setter Property="FontFamily" Value="Cairo"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="4,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="border" Background="#0A2224"
+                                BorderBrush="#2A5A5C" BorderThickness="1.5"
+                                CornerRadius="8" Padding="14,8" MinWidth="58"
+                                HorizontalAlignment="Center">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#44A1A0"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#5BC0BE"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#78CDD7"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 24H toggle switch style -->
+        <Style x:Key="ToggleSwitchCheckBox" TargetType="CheckBox">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal">
+                            <Grid Width="48" Height="26" Margin="0,0,10,0">
+                                <Border x:Name="track" Background="#2A3A3C"
+                                        CornerRadius="13" BorderThickness="0"/>
+                                <Border x:Name="thumb" Width="22" Height="22"
+                                        CornerRadius="11" Background="#6A7A7C"
+                                        HorizontalAlignment="Left" Margin="2,0,0,0"
+                                        VerticalAlignment="Center"/>
+                            </Grid>
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="track" Property="Background" Value="#44A1A0"/>
+                                <Setter TargetName="thumb" Property="Background" Value="White"/>
+                                <Setter TargetName="thumb" Property="HorizontalAlignment" Value="Right"/>
+                                <Setter TargetName="thumb" Property="Margin" Value="0,0,2,0"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="#0E2E30" CornerRadius="12" Margin="16" Padding="28,24">
+        <StackPanel>
+            <!-- Title with icon -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
+                <fa:ImageAwesome Icon="ClockOutline" Width="22" Height="22"
+                                 Foreground="#44A1A0" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock Text="{Binding Lang.SetSchedule}" FontSize="20" FontWeight="Bold"
+                           Foreground="#E8F1F2" FontFamily="Cairo"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Door Name -->
+            <TextBlock x:Name="DoorNameText" FontSize="14"
+                       Foreground="#44A1A0" FontFamily="Cairo" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" Margin="0,0,0,20"/>
+
+            <!-- Separator -->
+            <Border Height="1" Background="#1A5A5C" Margin="0,0,0,16"/>
+
+            <!-- 24 Hours Toggle -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                <CheckBox x:Name="Is24HoursCheckBox" IsChecked="True"
+                          Style="{StaticResource ToggleSwitchCheckBox}"
+                          Checked="Is24HoursCheckBox_Changed"
+                          Unchecked="Is24HoursCheckBox_Changed">
+                    <TextBlock Text="{Binding Lang.Is24Hours}" FontFamily="Cairo"
+                               FontSize="14" FontWeight="Bold" Foreground="#E8F1F2"/>
+                </CheckBox>
+            </StackPanel>
+
+            <!-- Time Range Panel -->
+            <StackPanel x:Name="TimePanel" Visibility="Collapsed" Margin="0,0,0,16">
+                <Border Background="#081B1D" CornerRadius="8" Padding="16,12" Margin="0,0,0,4">
+                    <!-- Start Time -->
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <TextBlock Text="{Binding Lang.StartTime}" Width="100"
+                                       Foreground="#9EC5C8" FontFamily="Cairo" FontSize="13"
+                                       FontWeight="Bold" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="StartHourCombo" Style="{StaticResource TimeComboBox}"/>
+                            <TextBlock Text=":" Foreground="#44A1A0" FontSize="18" FontWeight="Bold"
+                                       VerticalAlignment="Center" Margin="6,0"/>
+                            <ComboBox x:Name="StartMinuteCombo" Style="{StaticResource TimeComboBox}"/>
+                        </StackPanel>
+
+                        <!-- End Time -->
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Lang.EndTime}" Width="100"
+                                       Foreground="#9EC5C8" FontFamily="Cairo" FontSize="13"
+                                       FontWeight="Bold" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="EndHourCombo" Style="{StaticResource TimeComboBox}"/>
+                            <TextBlock Text=":" Foreground="#44A1A0" FontSize="18" FontWeight="Bold"
+                                       VerticalAlignment="Center" Margin="6,0"/>
+                            <ComboBox x:Name="EndMinuteCombo" Style="{StaticResource TimeComboBox}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- Separator -->
+            <Border Height="1" Background="#1A5A5C" Margin="0,4,0,14"/>
+
+            <!-- Working Days -->
+            <TextBlock Text="{Binding Lang.WorkingDays}" FontSize="15" FontWeight="Bold"
+                       Foreground="#E8F1F2" FontFamily="Cairo" Margin="0,0,0,10"/>
+
+            <WrapPanel HorizontalAlignment="Center">
+                <CheckBox x:Name="DayMon" Style="{StaticResource DayToggleButton}" IsChecked="True"/>
+                <CheckBox x:Name="DayTue" Style="{StaticResource DayToggleButton}" IsChecked="True"/>
+                <CheckBox x:Name="DayWed" Style="{StaticResource DayToggleButton}" IsChecked="True"/>
+                <CheckBox x:Name="DayThu" Style="{StaticResource DayToggleButton}" IsChecked="True"/>
+                <CheckBox x:Name="DayFri" Style="{StaticResource DayToggleButton}" IsChecked="True"/>
+                <CheckBox x:Name="DaySat" Style="{StaticResource DayToggleButton}" IsChecked="True"/>
+                <CheckBox x:Name="DaySun" Style="{StaticResource DayToggleButton}" IsChecked="True"/>
+            </WrapPanel>
+
+            <!-- Buttons -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,28,0,0">
+                <Button Width="130" Height="40" Cursor="Hand"
+                        Click="OkButton_Click" Margin="0,0,14,0">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bg" Background="#44A1A0"
+                                    CornerRadius="10" Padding="16,6">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bg" Property="Background" Value="#3A8F8E"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <TextBlock Text="{Binding Lang.Save}" FontFamily="Cairo"
+                               FontSize="14" FontWeight="Bold" Foreground="White"/>
+                </Button>
+                <Button Width="130" Height="40" Cursor="Hand"
+                        Click="CancelButton_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bg" Background="#1A2A2E"
+                                    CornerRadius="10" BorderBrush="#2A5A5C"
+                                    BorderThickness="1.5" Padding="16,6">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bg" Property="Background" Value="#243A3E"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <TextBlock Text="{Binding Lang.Cancel}" FontFamily="Cairo"
+                               FontSize="14" FontWeight="Bold" Foreground="#9EC5C8"/>
+                </Button>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

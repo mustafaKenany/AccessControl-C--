@@ -45,6 +45,7 @@ public static class DependencyInjection
         services.AddSingleton<IPurchaseOrderRepository, PurchaseOrderRepository>();
         services.AddSingleton<IStockMovementRepository, StockMovementRepository>();
         services.AddSingleton<ICardDeviceSyncRepository, CardDeviceSyncRepository>();
+        services.AddSingleton<IQrPassRepository, QrPassRepository>();
 
         // SDK
         services.AddSingleton<IAccessControlSdk, AccessControlSdkWrapper>();

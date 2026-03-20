@@ -206,8 +206,8 @@
                 </WrapPanel>
             </StackPanel>
 
-            <!-- Effective Times -->
-            <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding Lang.EffectiveTimes}"
+            <!-- Effective Times — hidden in Multi Device mode -->
+            <TextBlock x:Name="EffectiveTimesLabel" Grid.Row="3" Grid.Column="0" Text="{Binding Lang.EffectiveTimes}"
                        Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
             <ComboBox x:Name="EffectiveTimesCombo" Grid.Row="3" Grid.Column="1"
                       Style="{StaticResource DarkComboBox}" Margin="0,0,0,10"/>

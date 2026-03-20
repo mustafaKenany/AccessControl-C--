@@ -1,0 +1,89 @@
+<Window x:Class="AccessControlPro.WPF.Views.CreateQrPassDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="http://schemas.fontawesome.io/icons/"
+        xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers"
+        Title="Create QR Pass"
+        Width="440" SizeToContent="Height" MaxHeight="620"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent"
+        FlowDirection="{Binding FlowDirection, Source={x:Static helpers:LanguageManager.Instance}}"
+        FontFamily="{StaticResource CairoFont}" FontWeight="Bold">
+
+    <Border Background="{StaticResource BgDarkBrush}" CornerRadius="12" Padding="24">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="0" Opacity="0.5" Color="Black"/>
+        </Border.Effect>
+
+        <StackPanel>
+            <!-- Header -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                <fa:ImageAwesome Icon="Qrcode" Width="22" Height="22"
+                                 Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBlock Text="{Binding QrCreatePass, Source={x:Static helpers:LanguageManager.Instance}}"
+                           FontSize="18" FontWeight="Bold"
+                           Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Player Name -->
+            <TextBlock Text="{Binding QrPlayerName, Source={x:Static helpers:LanguageManager.Instance}}"
+                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,4"/>
+            <TextBox x:Name="NameTextBox" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"/>
+
+            <!-- Phone -->
+            <TextBlock Text="{Binding Phone, Source={x:Static helpers:LanguageManager.Instance}}"
+                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,4"/>
+            <TextBox x:Name="PhoneTextBox" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"/>
+
+            <!-- Fee -->
+            <TextBlock Text="{Binding Fee, Source={x:Static helpers:LanguageManager.Instance}}"
+                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,4"/>
+            <TextBox x:Name="FeeTextBox" Style="{StaticResource DarkTextBox}" Text="0" Margin="0,0,0,12"/>
+
+            <!-- Valid Days + Max Uses side by side -->
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{Binding QrValidDays, Source={x:Static helpers:LanguageManager.Instance}}"
+                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,4"/>
+                    <TextBox x:Name="ValidDaysTextBox" Style="{StaticResource DarkTextBox}" Text="1"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="{Binding QrMaxUses, Source={x:Static helpers:LanguageManager.Instance}}"
+                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,4"/>
+                    <TextBox x:Name="MaxUsesTextBox" Style="{StaticResource DarkTextBox}" Text="5"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Device Selection -->
+            <TextBlock Text="{Binding SelectDevice, Source={x:Static helpers:LanguageManager.Instance}}"
+                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,4"/>
+            <ComboBox x:Name="DeviceCombo" Style="{StaticResource DarkComboBox}"
+                      Margin="0,0,0,12" DisplayMemberPath="Name"/>
+
+            <!-- Door Number -->
+            <TextBlock Text="Door Number" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,4"/>
+            <ComboBox x:Name="DoorCombo" Style="{StaticResource DarkComboBox}" Margin="0,0,0,20">
+                <ComboBoxItem Content="Door 1" Tag="1" IsSelected="True"/>
+                <ComboBoxItem Content="Door 2" Tag="2"/>
+                <ComboBoxItem Content="Door 3" Tag="3"/>
+                <ComboBoxItem Content="Door 4" Tag="4"/>
+            </ComboBox>
+
+            <!-- Buttons -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="{Binding Cancel, Source={x:Static helpers:LanguageManager.Instance}}"
+                        Style="{StaticResource DarkButton}" Click="CancelClick"
+                        Width="100" Margin="0,0,10,0"/>
+                <Button Content="{Binding QrCreatePass, Source={x:Static helpers:LanguageManager.Instance}}"
+                        Style="{StaticResource PrimaryButton}" Click="CreateClick"
+                        Width="140"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

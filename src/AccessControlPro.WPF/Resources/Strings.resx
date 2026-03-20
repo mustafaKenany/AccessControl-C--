@@ -592,6 +592,20 @@
   <data name="DispSuccessPass" xml:space="preserve"><value>Success Pass</value></data>
   <data name="DispExpiredCard" xml:space="preserve"><value>Expired Card</value></data>
   <data name="DispFrozenCard" xml:space="preserve"><value>Frozen Card</value></data>
+  <data name="DispNotRegistered" xml:space="preserve"><value>Not Registered</value></data>
+  <data name="DispActive" xml:space="preserve"><value>Active</value></data>
+  <data name="DispEntry" xml:space="preserve"><value>Entry</value></data>
+  <data name="DispExit" xml:space="preserve"><value>Exit</value></data>
+  <data name="DispCardOpen" xml:space="preserve"><value>Card Open</value></data>
+  <data name="DispPasswordOpen" xml:space="preserve"><value>Password Open</value></data>
+  <data name="DispCardPassword" xml:space="preserve"><value>Card + Password</value></data>
+  <data name="DispCardRepeat" xml:space="preserve"><value>Card Repeat</value></data>
+  <data name="DispInvalidCard" xml:space="preserve"><value>Invalid Card</value></data>
+  <data name="DispButtonOpen" xml:space="preserve"><value>Button Open</value></data>
+  <data name="DispRemoteOpen" xml:space="preserve"><value>Remote Open</value></data>
+  <data name="DispRemoteClose" xml:space="preserve"><value>Remote Close</value></data>
+  <data name="DispDoorOpened" xml:space="preserve"><value>Door Opened</value></data>
+  <data name="DispDoorClosed" xml:space="preserve"><value>Door Closed</value></data>
   <data name="DispOpenDisplay" xml:space="preserve"><value>Projector Display</value></data>
   <data name="DispCloseDisplay" xml:space="preserve"><value>Close Display</value></data>
   <!-- Device Sync All Players -->
@@ -724,4 +738,38 @@ Card sync errors on some devices:
   <data name="Confirm" xml:space="preserve"><value>Confirm</value></data>
   <data name="DispDoorName" xml:space="preserve"><value>Door</value></data>
   <data name="DispNoDoors" xml:space="preserve"><value>No doors found. Please add devices first.</value></data>
+  <!-- QR Pass -->
+  <data name="QrNavTitle" xml:space="preserve"><value>QR Daily Pass</value></data>
+  <data name="QrCreatePass" xml:space="preserve"><value>Create QR Pass</value></data>
+  <data name="QrPlayerName" xml:space="preserve"><value>Visitor Name</value></data>
+  <data name="QrValidDays" xml:space="preserve"><value>Valid Days</value></data>
+  <data name="QrMaxUses" xml:space="preserve"><value>Max Uses</value></data>
+  <data name="QrValidTo" xml:space="preserve"><value>Valid To</value></data>
+  <data name="QrActiveOnly" xml:space="preserve"><value>Active Only</value></data>
+  <data name="QrActiveToday" xml:space="preserve"><value>Active Today</value></data>
+  <data name="QrScanMode" xml:space="preserve"><value>Scan Mode</value></data>
+  <data name="QrScanReady" xml:space="preserve"><value>Ready to Scan</value></data>
+  <data name="QrScanInstruction" xml:space="preserve"><value>Scan a QR code with the barcode scanner to validate access</value></data>
+  <data name="QrPassCreated" xml:space="preserve"><value>QR Pass created successfully</value></data>
+  <data name="QrPassDeactivated" xml:space="preserve"><value>QR Pass deactivated</value></data>
+  <data name="QrConfirmDeactivate" xml:space="preserve"><value>Deactivate this QR pass?</value></data>
+  <data name="QrDeactivate" xml:space="preserve"><value>Deactivate</value></data>
+  <data name="QrCodeTitle" xml:space="preserve"><value>QR Code</value></data>
+  <data name="QrPrint" xml:space="preserve"><value>Print</value></data>
+  <!-- Door Schedule -->
+  <data name="WorkingHours" xml:space="preserve"><value>Working Hours</value></data>
+  <data name="WorkingDays" xml:space="preserve"><value>Working Days</value></data>
+  <data name="Is24Hours" xml:space="preserve"><value>24 Hours</value></data>
+  <data name="StartTime" xml:space="preserve"><value>Start Time</value></data>
+  <data name="EndTime" xml:space="preserve"><value>End Time</value></data>
+  <data name="SetSchedule" xml:space="preserve"><value>Set Schedule</value></data>
+  <data name="Monday" xml:space="preserve"><value>Monday</value></data>
+  <data name="Tuesday" xml:space="preserve"><value>Tuesday</value></data>
+  <data name="Wednesday" xml:space="preserve"><value>Wednesday</value></data>
+  <data name="Thursday" xml:space="preserve"><value>Thursday</value></data>
+  <data name="Friday" xml:space="preserve"><value>Friday</value></data>
+  <data name="Saturday" xml:space="preserve"><value>Saturday</value></data>
+  <data name="Sunday" xml:space="preserve"><value>Sunday</value></data>
+  <!-- Validation -->
+  <data name="AtLeastOneNameRequired" xml:space="preserve"><value>At least one name (English or Arabic) is required.</value></data>
 </root>

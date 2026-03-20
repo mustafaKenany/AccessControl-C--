@@ -119,15 +119,18 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        // ── First-run setup wizard ──
-        if (!SetupWizardWindow.IsSetupComplete())
+        // ── First-run: POS only needs DB connection (main app handles full setup) ──
+        if (!IsPosSetupComplete())
         {
-            var wizard = new SetupWizardWindow();
-            if (wizard.ShowDialog() != true || !wizard.SetupCompleted)
+            var setupWindow = new ConnectionSetupWindow(
+                errorMessage: "POS Terminal Setup — Enter the database connection used by the main application.");
+            if (setupWindow.ShowDialog() != true || !setupWindow.IsSaved)
             {
                 Shutdown();
                 return;
             }
+            // Mark POS setup as complete
+            MarkPosSetupComplete();
             RestartApp();
             return;
         }
@@ -235,6 +238,36 @@ public partial class App : System.Windows.Application
                 "Startup Error", MsgType.Error);
             Shutdown();
         }
+    }
+
+    private static string GetAppVersion()
+    {
+        var exePath = Environment.ProcessPath;
+        if (exePath != null && File.Exists(exePath))
+            return $"v_{new FileInfo(exePath).Length}";
+        return "v_unknown";
+    }
+
+    private static bool IsPosSetupComplete()
+    {
+        var markerPath = Path.Combine(AppContext.BaseDirectory, ".setup_complete");
+        if (!File.Exists(markerPath)) return false;
+        try
+        {
+            var saved = File.ReadAllText(markerPath).Trim();
+            return saved == GetAppVersion();
+        }
+        catch { return false; }
+    }
+
+    private static void MarkPosSetupComplete()
+    {
+        try
+        {
+            var markerPath = Path.Combine(AppContext.BaseDirectory, ".setup_complete");
+            File.WriteAllText(markerPath, GetAppVersion());
+        }
+        catch { }
     }
 
     private static void ParseConnectionString(string connStr, out string server, out string database, out string userId)

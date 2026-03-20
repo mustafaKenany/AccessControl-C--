@@ -1,4 +1,5 @@
 using AccessControlPro.Application.DTOs;
+using AccessControlPro.Application.Helpers;
 using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Domain.Entities;
 using AccessControlPro.Domain.Interfaces;
@@ -11,12 +12,14 @@ public class DoorService : IDoorService
     private readonly IDoorRepository _doorRepository;
     private readonly IDeviceRepository _deviceRepository;
     private readonly IAccessControlSdk _sdk;
+    private readonly DeviceOperationHelper _opHelper;
 
-    public DoorService(IDoorRepository doorRepository, IDeviceRepository deviceRepository, IAccessControlSdk sdk)
+    public DoorService(IDoorRepository doorRepository, IDeviceRepository deviceRepository, IAccessControlSdk sdk, DeviceOperationHelper opHelper)
     {
         _doorRepository = doorRepository;
         _deviceRepository = deviceRepository;
         _sdk = sdk;
+        _opHelper = opHelper;
     }
 
     public async Task<IEnumerable<DoorDto>> GetAllDoorsAsync()
@@ -34,57 +37,47 @@ public class DoorService : IDoorService
             DoorNumber = d.DoorNumber,
             Name = d.Name,
             Status = d.Status.ToString(),
-            IsLocked = d.IsLocked
+            IsLocked = d.IsLocked,
+            WorkStartTime = d.WorkStartTime,
+            WorkEndTime = d.WorkEndTime,
+            Is24Hours = d.Is24Hours,
+            WorkingDays = d.WorkingDays
         });
     }
 
     public async Task<bool> OpenDoorAsync(int doorId)
     {
         var door = await _doorRepository.GetByIdWithDeviceAsync(doorId);
-        if (door == null) return false;
+        if (door == null || door.Device == null) return false;
 
-        if (door.Device == null) return false;
-        _sdk.Initialize();
-        var info = ToDeviceInfo(door.Device);
-        // SDK uses 0-indexed door numbers
-        _sdk.RemoteOpenDoor(info, new[] { door.DoorNumber - 1 });
+        _opHelper.ExecuteWithLock(() => _sdk.RemoteOpenDoor(ToDeviceInfo(door.Device), new[] { door.DoorNumber - 1 }));
         return true;
     }
 
     public async Task<bool> CloseDoorAsync(int doorId)
     {
         var door = await _doorRepository.GetByIdWithDeviceAsync(doorId);
-        if (door == null) return false;
+        if (door == null || door.Device == null) return false;
 
-        if (door.Device == null) return false;
-        _sdk.Initialize();
-        var info = ToDeviceInfo(door.Device);
-        _sdk.RemoteCloseDoor(info, new[] { door.DoorNumber - 1 });
+        _opHelper.ExecuteWithLock(() => _sdk.RemoteCloseDoor(ToDeviceInfo(door.Device), new[] { door.DoorNumber - 1 }));
         return true;
     }
 
     public async Task<bool> SetDoorDelayAsync(int doorId, int delaySeconds)
     {
         var door = await _doorRepository.GetByIdWithDeviceAsync(doorId);
-        if (door == null) return false;
+        if (door == null || door.Device == null) return false;
 
-        if (door.Device == null) return false;
-        _sdk.Initialize();
-        var info = ToDeviceInfo(door.Device);
-        // SDK uses 0-indexed door numbers
-        _sdk.SetDoorDelay(info, door.DoorNumber - 1, delaySeconds);
+        _opHelper.ExecuteWithLock(() => _sdk.SetDoorDelay(ToDeviceInfo(door.Device), door.DoorNumber - 1, delaySeconds));
         return true;
     }
 
     public async Task<bool> SetDoorPasswordAsync(int doorId, string password)
     {
         var door = await _doorRepository.GetByIdWithDeviceAsync(doorId);
-        if (door == null) return false;
+        if (door == null || door.Device == null) return false;
 
-        if (door.Device == null) return false;
-        _sdk.Initialize();
-        var info = ToDeviceInfo(door.Device);
-        _sdk.SetDoorPassword(info, password);
+        _opHelper.ExecuteWithLock(() => _sdk.SetDoorPassword(ToDeviceInfo(door.Device), password));
         return true;
     }
 
@@ -94,6 +87,19 @@ public class DoorService : IDoorService
         if (door == null) return false;
 
         door.Name = newName;
+        await _doorRepository.UpdateAsync(door);
+        return true;
+    }
+
+    public async Task<bool> UpdateDoorScheduleAsync(int doorId, TimeSpan startTime, TimeSpan endTime, bool is24Hours, string workingDays)
+    {
+        var door = await _doorRepository.GetByIdWithDeviceAsync(doorId);
+        if (door == null) return false;
+
+        door.WorkStartTime = startTime;
+        door.WorkEndTime = endTime;
+        door.Is24Hours = is24Hours;
+        door.WorkingDays = workingDays;
         await _doorRepository.UpdateAsync(door);
         return true;
     }

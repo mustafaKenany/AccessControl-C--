@@ -31,7 +31,8 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.HasIndex(e => e.SubscriptionType);
         builder.HasIndex(e => e.EndDate);
 
-        builder.HasMany(e => e.AccessCards).WithOne(c => c.Employee).HasForeignKey(c => c.EmployeeId);
+        builder.HasMany(e => e.AccessCards).WithOne(c => c.Employee).HasForeignKey(c => c.EmployeeId)
+            .OnDelete(DeleteBehavior.Cascade);
         builder.HasMany(e => e.FreezeHistories).WithOne(e => e.Employee).HasForeignKey(e => e.EmployeeId);
     }
 }

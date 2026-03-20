@@ -107,7 +107,9 @@
                     <ColumnDefinition Width="140"/>
                     <ColumnDefinition Width="120"/>
                     <ColumnDefinition Width="60"/>
-                    <ColumnDefinition Width="240"/>
+                    <ColumnDefinition Width="120"/>
+                    <ColumnDefinition Width="120"/>
+                    <ColumnDefinition Width="270"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="{Binding Lang.Status}" FontSize="12"
                            Foreground="{StaticResource TextMutedBrush}"/>
@@ -119,13 +121,18 @@
                            Foreground="{StaticResource TextMutedBrush}"/>
                 <TextBlock Grid.Column="4" Text="{Binding Lang.DoorNumber}" FontSize="12"
                            Foreground="{StaticResource TextMutedBrush}"/>
-                <TextBlock Grid.Column="5" Text="{Binding Lang.Actions}" FontSize="12"
+                <TextBlock Grid.Column="5" Text="{Binding Lang.WorkingHours}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+                <TextBlock Grid.Column="6" Text="{Binding Lang.WorkingDays}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+                <TextBlock Grid.Column="7" Text="{Binding Lang.Actions}" FontSize="12"
                            Foreground="{StaticResource TextMutedBrush}"/>
             </Grid>
         </Border>
 
         <!-- ═══ Table Body ═══ -->
         <Border Grid.Row="3" Background="{StaticResource BgCardBrush}" CornerRadius="0,0,12,12">
+            <Grid>
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding Doors}">
                     <ItemsControl.ItemTemplate>
@@ -140,7 +147,9 @@
                                         <ColumnDefinition Width="140"/>
                                         <ColumnDefinition Width="120"/>
                                         <ColumnDefinition Width="60"/>
-                                        <ColumnDefinition Width="240"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="270"/>
                                     </Grid.ColumnDefinitions>
 
                                     <!-- Status dot -->
@@ -188,8 +197,34 @@
                                                    HorizontalAlignment="Center"/>
                                     </Border>
 
+                                    <!-- Working Hours -->
+                                    <TextBlock Grid.Column="5" FontSize="12"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center">
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="{}{0:hh\:mm} - {1:hh\:mm}">
+                                                <Binding Path="WorkStartTime"/>
+                                                <Binding Path="WorkEndTime"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Is24Hours}" Value="True">
+                                                        <Setter Property="Text" Value="24h"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <!-- Working Days -->
+                                    <TextBlock Grid.Column="6" Text="{Binding WorkingDays}" FontSize="11"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
                                     <!-- Actions -->
-                                    <StackPanel Grid.Column="5" Orientation="Horizontal"
+                                    <StackPanel Grid.Column="7" Orientation="Horizontal"
                                                 VerticalAlignment="Center">
                                         <!-- Open Door -->
                                         <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.OpenDoor, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -271,6 +306,26 @@
                                                 </ControlTemplate>
                                             </Button.Template>
                                         </Button>
+                                        <!-- Set Schedule -->
+                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.SetSchedule, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                Command="{Binding DataContext.SetScheduleCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"
+                                                Visibility="{Binding DataContext.CanSettings, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BoolToVisibility}}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bg" Background="Transparent"
+                                                            CornerRadius="6" Padding="8,6">
+                                                        <fa:ImageAwesome Icon="Calendar" Width="12" Height="12"
+                                                                         Foreground="{StaticResource PrimaryLightBrush}"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bg" Property="Background" Value="#18247B7B"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
                                         <!-- Rename -->
                                         <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.Edit, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 Command="{Binding DataContext.RenameDoorCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -303,6 +358,18 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+
+                <!-- Loading Overlay -->
+                <Border Background="#CC1E1E2E" CornerRadius="0,0,12,12"
+                        Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <fa:ImageAwesome Icon="Spinner" Width="30" Height="30"
+                                         Foreground="{StaticResource PrimaryLightBrush}" SpinDuration="1" Spin="True"/>
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="13"
+                                   Foreground="{StaticResource TextMutedBrush}" Margin="0,10,0,0" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>

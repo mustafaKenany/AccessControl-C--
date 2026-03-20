@@ -6,11 +6,13 @@ using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using AccessControlPro.Domain.Entities;
 using AccessControlPro.Infrastructure.Persistence;
 using AccessControlPro.WPF.Helpers;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Win32;
 
 namespace AccessControlPro.WPF.Views;
 
@@ -20,6 +22,8 @@ public partial class SetupWizardWindow : Window
     private const int TotalSteps = 5;
     private bool _dbTestPassed;
     private string _connectionString = "";
+    private string? _devLogoSourcePath;
+    private string? _gymLogoSourcePath;
 
     /// <summary>True if setup completed successfully.</summary>
     public bool SetupCompleted { get; private set; }
@@ -196,6 +200,61 @@ public partial class SetupWizardWindow : Window
 
     #endregion
 
+    #region Logo Upload
+
+    private void BrowseDevLogo_Click(object sender, RoutedEventArgs e)
+    {
+        var path = BrowseImageFile("Select Developer Company Logo");
+        if (path == null) return;
+
+        _devLogoSourcePath = path;
+        DevLogoPreview.Source = new BitmapImage(new Uri(path));
+        DevLogoFileName.Text = Path.GetFileName(path);
+    }
+
+    private void BrowseGymLogo_Click(object sender, RoutedEventArgs e)
+    {
+        var path = BrowseImageFile("Select Gym Logo");
+        if (path == null) return;
+
+        _gymLogoSourcePath = path;
+        GymLogoPreview.Source = new BitmapImage(new Uri(path));
+        GymLogoFileName.Text = Path.GetFileName(path);
+    }
+
+    private static string? BrowseImageFile(string title)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = title,
+            Filter = "Image Files|*.png;*.jpg;*.jpeg;*.bmp;*.ico|All Files|*.*",
+            CheckFileExists = true
+        };
+        return dlg.ShowDialog() == true ? dlg.FileName : null;
+    }
+
+    /// <summary>
+    /// Copies a logo file to a persistent location and returns the destination path.
+    /// </summary>
+    private static string? CopyLogoToAppData(string? sourcePath, string fileName)
+    {
+        if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath)) return null;
+
+        var logoDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AccessControlPro", "logos");
+        Directory.CreateDirectory(logoDir);
+
+        // Sanitize fileName to prevent path traversal
+        var safeName = Path.GetFileName(fileName);
+        var ext = Path.GetExtension(sourcePath);
+        var destPath = Path.Combine(logoDir, safeName + ext);
+        File.Copy(sourcePath, destPath, overwrite: true);
+        return destPath;
+    }
+
+    #endregion
+
     #region Database Test
 
     private async void TestDbButton_Click(object sender, RoutedEventArgs e)
@@ -261,7 +320,9 @@ public partial class SetupWizardWindow : Window
             $"Admin Display:    {AdminDisplayNameBox.Text.Trim()}\n" +
             $"─────────────────────────────\n" +
             $"Developer:        {DevCompanyNameBox.Text.Trim()}\n" +
-            $"Support Phone:    {DevPhoneBox.Text.Trim()}";
+            $"Support Phone:    {DevPhoneBox.Text.Trim()}\n" +
+            $"Dev Logo:         {(_devLogoSourcePath != null ? Path.GetFileName(_devLogoSourcePath) : "None")}\n" +
+            $"Gym Logo:         {(_gymLogoSourcePath != null ? Path.GetFileName(_gymLogoSourcePath) : "None")}";
     }
 
     #endregion
@@ -286,37 +347,36 @@ public partial class SetupWizardWindow : Window
         var gymAddress = GymAddressBox.Text.Trim();
         var createDesktopShortcut = CreateDesktopShortcutCheck.IsChecked == true;
         var createStartMenuShortcut = CreateStartMenuCheck.IsChecked == true;
+        var selectedLang = (LanguageCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag?.ToString() ?? "en";
 
         try
         {
-            // Step 0: Check for previous version
-            InstallStatusText.Text = "Checking for previous installation...";
+            // Step 0: Auto-detect and clean previous installations (old app files)
+            InstallStatusText.Text = "Checking for previous installations...";
+            var oldInstalls = await Task.Run(() => FindPreviousInstallations());
+
+            if (oldInstalls.Count > 0)
+            {
+                int totalCleaned = 0;
+                foreach (var oldPath in oldInstalls)
+                {
+                    InstallStatusText.Text = $"Removing old version from {oldPath}...";
+                    totalCleaned += await Task.Run(() => CleanupOldInstallation(oldPath));
+                }
+                if (totalCleaned > 0)
+                {
+                    InstallStatusText.Text = $"Cleaned {totalCleaned} old files. Data preserved.";
+                    await Task.Delay(500);
+                }
+            }
+
+            // Step 0b: Check if database already exists (upgrade = keep all data automatically)
+            InstallStatusText.Text = "Checking database...";
             var dbExists = await Task.Run(() => CheckDatabaseExists());
             if (dbExists)
             {
-                var result = MessageBox.Show(
-                    "A previous installation was detected (database already exists).\n\n" +
-                    "• Click YES to drop the old database and start fresh.\n" +
-                    "• Click NO to keep existing data and update settings only.\n" +
-                    "• Click Cancel to abort installation.",
-                    "Previous Installation Detected",
-                    MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
-
-                if (result == MessageBoxResult.Cancel)
-                {
-                    InstallProgress.Visibility = Visibility.Collapsed;
-                    InstallStatusText.Visibility = Visibility.Collapsed;
-                    NextButton.IsEnabled = true;
-                    BackButton.IsEnabled = true;
-                    CancelButton.IsEnabled = true;
-                    return;
-                }
-
-                if (result == MessageBoxResult.Yes)
-                {
-                    InstallStatusText.Text = "Removing previous database...";
-                    await Task.Run(() => DropDatabase());
-                }
+                InstallStatusText.Text = "Existing database found — upgrading (all data preserved)...";
+                await Task.Delay(500);
             }
 
             // Step 1: Remove old shortcuts
@@ -333,10 +393,17 @@ public partial class SetupWizardWindow : Window
             InstallStatusText.Text = "Creating database and tables...";
             await Task.Run(() => CreateDatabase());
 
+            // Step 3.5: Copy logos to persistent location
+            InstallStatusText.Text = "Saving logos...";
+            var devLogoPath = CopyLogoToAppData(_devLogoSourcePath, "dev_logo");
+            var gymLogoPath = CopyLogoToAppData(_gymLogoSourcePath, "gym_logo");
+            UpdateAppSettingsLogoPaths(devLogoPath, gymLogoPath);
+            await Task.Delay(200);
+
             // Step 4: Seed admin user + gym settings
             InstallStatusText.Text = "Creating admin account and gym settings...";
             await Task.Run(() => SeedData(adminUsername, adminPassword, adminDisplayName,
-                devCompanyName, gymNameEn, gymPhone, gymAddress));
+                devCompanyName, gymNameEn, gymPhone, gymAddress, gymLogoPath, devLogoPath));
 
             // Step 5: Copy appsettings.json to Admin & POS apps
             InstallStatusText.Text = "Configuring all applications...";
@@ -348,8 +415,11 @@ public partial class SetupWizardWindow : Window
             CreateShortcuts(createDesktopShortcut, createStartMenuShortcut);
             await Task.Delay(300);
 
-            // Step 7: Save setup completion marker for all apps
+            // Step 7: Save device mode + language preference + setup completion marker
             InstallStatusText.Text = "Finalizing setup...";
+            var deviceMode = (DeviceModeCombo?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag?.ToString() ?? "Single";
+            Helpers.DeviceModeHelper.SetMode(deviceMode);
+            Helpers.LanguageManager.Instance.SetLanguage(selectedLang);
             SaveSetupMarkerForAllApps();
             await Task.Delay(300);
 
@@ -387,9 +457,32 @@ public partial class SetupWizardWindow : Window
                 ["CompanyName"] = DevCompanyNameBox.Text.Trim(),
                 ["Phone"] = DevPhoneBox.Text.Trim(),
                 ["Email"] = DevEmailBox.Text.Trim(),
-                ["WhatsApp"] = DevWhatsAppBox.Text.Trim()
+                ["WhatsApp"] = DevWhatsAppBox.Text.Trim(),
+                ["LogoPath"] = ""
             }
         };
+
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        File.WriteAllText(settingsPath, root.ToJsonString(options));
+    }
+
+    private static void UpdateAppSettingsLogoPaths(string? devLogoPath, string? gymLogoPath)
+    {
+        if (devLogoPath == null && gymLogoPath == null) return;
+
+        var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+        if (!File.Exists(settingsPath)) return;
+
+        var json = File.ReadAllText(settingsPath);
+        var root = JsonNode.Parse(json)?.AsObject();
+        if (root == null) return;
+
+        var dev = root["Developer"]?.AsObject();
+        if (dev != null && devLogoPath != null)
+            dev["LogoPath"] = devLogoPath;
+
+        if (gymLogoPath != null)
+            root["GymLogoPath"] = gymLogoPath;
 
         var options = new JsonSerializerOptions { WriteIndented = true };
         File.WriteAllText(settingsPath, root.ToJsonString(options));
@@ -405,7 +498,8 @@ public partial class SetupWizardWindow : Window
     }
 
     private void SeedData(string adminUsername, string adminPassword, string adminDisplayName,
-        string devCompanyName, string gymNameEn, string gymPhone, string gymAddress)
+        string devCompanyName, string gymNameEn, string gymPhone, string gymAddress,
+        string? gymLogoPath, string? devLogoPath)
     {
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         optionsBuilder.UseSqlServer(_connectionString);
@@ -435,7 +529,9 @@ public partial class SetupWizardWindow : Window
                 CompanyName = devCompanyName,
                 GymName = gymNameEn,
                 Phone = gymPhone,
-                Address = gymAddress
+                Address = gymAddress,
+                LogoPath = gymLogoPath ?? "",
+                DevLogoPath = devLogoPath ?? ""
             });
         }
         else
@@ -444,15 +540,25 @@ public partial class SetupWizardWindow : Window
             existingSettings.GymName = gymNameEn;
             existingSettings.Phone = gymPhone;
             existingSettings.Address = gymAddress;
+            existingSettings.LogoPath = gymLogoPath ?? existingSettings.LogoPath;
+            existingSettings.DevLogoPath = devLogoPath ?? existingSettings.DevLogoPath;
         }
 
         db.SaveChanges();
     }
 
+    /// <summary>
+    /// Stable version string — bump this when a new release requires re-running setup.
+    /// Using a constant prevents the marker from becoming invalid when the exe is copied/reinstalled.
+    /// </summary>
+    private const string AppVersion = "v3.4";
+
+    private static string GetAppVersion() => AppVersion;
+
     private static void SaveSetupMarker()
     {
         var markerPath = Path.Combine(AppContext.BaseDirectory, ".setup_complete");
-        File.WriteAllText(markerPath, DateTime.UtcNow.ToString("O"));
+        File.WriteAllText(markerPath, AppVersion);
     }
 
     /// <summary>
@@ -463,37 +569,57 @@ public partial class SetupWizardWindow : Window
         SaveSetupMarker(); // Current app
 
         var apps = FindAllAppExes();
-        var timestamp = DateTime.UtcNow.ToString("O");
+        var baseNorm = Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar);
         foreach (var (_, exePath) in apps)
         {
             var dir = Path.GetDirectoryName(exePath);
-            if (dir == null || dir == AppContext.BaseDirectory) continue;
+            if (dir == null) continue;
+
+            // Normalize paths before comparing to avoid trailing-slash mismatches
+            var dirNorm = Path.GetFullPath(dir).TrimEnd(Path.DirectorySeparatorChar);
+            if (string.Equals(dirNorm, baseNorm, StringComparison.OrdinalIgnoreCase)) continue;
+
             try
             {
-                File.WriteAllText(Path.Combine(dir, ".setup_complete"), timestamp);
+                File.WriteAllText(Path.Combine(dir, ".setup_complete"), AppVersion);
             }
             catch { /* ignore */ }
         }
     }
 
     /// <summary>
-    /// Checks if setup has been completed (marker file exists).
+    /// Checks if setup has been completed for THIS version.
+    /// If the exe was updated (new build), the marker won't match → re-run setup.
     /// </summary>
     public static bool IsSetupComplete()
     {
         var markerPath = Path.Combine(AppContext.BaseDirectory, ".setup_complete");
-        return File.Exists(markerPath);
+        if (!File.Exists(markerPath)) return false;
+
+        try
+        {
+            var savedVersion = File.ReadAllText(markerPath).Trim();
+            var currentVersion = GetAppVersion();
+            // If versions match, setup is complete for this version
+            return savedVersion == currentVersion;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     #endregion
 
-    #region Previous Version Detection
+    #region Previous Version Detection & Cleanup
 
+    /// <summary>
+    /// Checks if the target database already exists on the SQL Server.
+    /// </summary>
     private bool CheckDatabaseExists()
     {
         try
         {
-            // Parse the target DB name from connection string
             var builder = new SqlConnectionStringBuilder(_connectionString);
             var dbName = builder.InitialCatalog;
             builder.InitialCatalog = "master";
@@ -501,7 +627,7 @@ public partial class SetupWizardWindow : Window
             using var conn = new SqlConnection(builder.ConnectionString);
             conn.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = $"SELECT DB_ID(@dbName)";
+            cmd.CommandText = "SELECT DB_ID(@dbName)";
             cmd.Parameters.AddWithValue("@dbName", dbName);
             var result = cmd.ExecuteScalar();
             return result != null && result != DBNull.Value;
@@ -512,27 +638,113 @@ public partial class SetupWizardWindow : Window
         }
     }
 
-    private void DropDatabase()
+    /// <summary>
+    /// Searches common locations for previous AccessControlPro installations.
+    /// Returns list of found directories (excludes current directory).
+    /// </summary>
+    private static List<string> FindPreviousInstallations()
     {
-        var builder = new SqlConnectionStringBuilder(_connectionString);
-        var dbName = builder.InitialCatalog;
-        builder.InitialCatalog = "master";
+        var found = new List<string>();
+        var currentDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
 
-        using var conn = new SqlConnection(builder.ConnectionString);
-        conn.Open();
+        // Common installation locations to check
+        var searchPaths = new List<string>();
 
-        // Kill active connections first
-        using (var cmd = conn.CreateCommand())
+        // Check all drives
+        foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType == DriveType.Fixed))
         {
-            cmd.CommandText = $@"
-                IF DB_ID(@dbName) IS NOT NULL
-                BEGIN
-                    ALTER DATABASE [{dbName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                    DROP DATABASE [{dbName}];
-                END";
-            cmd.Parameters.AddWithValue("@dbName", dbName);
-            cmd.ExecuteNonQuery();
+            searchPaths.Add(Path.Combine(drive.RootDirectory.FullName, "AccessControlPro"));
+            searchPaths.Add(Path.Combine(drive.RootDirectory.FullName, "HM-GymManagement"));
+            searchPaths.Add(Path.Combine(drive.RootDirectory.FullName, "Program Files", "AccessControlPro"));
+            searchPaths.Add(Path.Combine(drive.RootDirectory.FullName, "Program Files", "HM-GymManagement"));
+            searchPaths.Add(Path.Combine(drive.RootDirectory.FullName, "Program Files (x86)", "AccessControlPro"));
+            searchPaths.Add(Path.Combine(drive.RootDirectory.FullName, "Program Files (x86)", "HM-GymManagement"));
         }
+
+        // Check Desktop and Downloads
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        searchPaths.Add(Path.Combine(userProfile, "Desktop", "AccessControlPro"));
+        searchPaths.Add(Path.Combine(userProfile, "Desktop", "HM-GymManagement"));
+        searchPaths.Add(Path.Combine(userProfile, "Desktop", "MainSetup"));
+        searchPaths.Add(Path.Combine(userProfile, "Downloads", "AccessControlPro"));
+        searchPaths.Add(Path.Combine(userProfile, "Downloads", "HM-GymManagement"));
+        searchPaths.Add(Path.Combine(userProfile, "Downloads", "MainSetup"));
+
+        foreach (var path in searchPaths)
+        {
+            try
+            {
+                if (!Directory.Exists(path)) continue;
+                var normalized = path.TrimEnd(Path.DirectorySeparatorChar);
+                if (string.Equals(normalized, currentDir, StringComparison.OrdinalIgnoreCase)) continue;
+
+                // Verify it's actually our app (contains our exe)
+                var hasOurExe = File.Exists(Path.Combine(path, "AccessControlPro.WPF.exe"))
+                             || File.Exists(Path.Combine(path, "AccessControlPro.Admin.exe"))
+                             || File.Exists(Path.Combine(path, "AccessControlPro.POS.exe"));
+
+                if (hasOurExe && !found.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+                    found.Add(normalized);
+            }
+            catch { /* access denied or other — skip */ }
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// Removes old installation files but KEEPS the database data intact.
+    /// Only deletes: .exe, .dll, .json, .pdb, .log, .setup_complete, crash logs
+    /// </summary>
+    private static int CleanupOldInstallation(string directory)
+    {
+        int cleaned = 0;
+        var extensionsToDelete = new[] { ".exe", ".dll", ".pdb", ".log", ".deps.json", ".runtimeconfig.json" };
+        var filesToDelete = new[] { "appsettings.json", "SubscriptionPlans.json", ".setup_complete",
+            "crash_log.txt", "admin_crash_log.txt", "pos_crash_log.txt" };
+
+        try
+        {
+            // Delete known app files by name
+            foreach (var fileName in filesToDelete)
+            {
+                var filePath = Path.Combine(directory, fileName);
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                    cleaned++;
+                }
+            }
+
+            // Delete files by extension (only in root, not subdirectories)
+            foreach (var file in Directory.GetFiles(directory))
+            {
+                var ext = Path.GetExtension(file).ToLowerInvariant();
+                if (extensionsToDelete.Contains(ext))
+                {
+                    File.Delete(file);
+                    cleaned++;
+                }
+            }
+
+            // Delete Logs subfolder
+            var logsDir = Path.Combine(directory, "Logs");
+            if (Directory.Exists(logsDir))
+            {
+                Directory.Delete(logsDir, recursive: true);
+                cleaned++;
+            }
+
+            // Remove old shortcuts
+            RemoveOldShortcuts();
+
+            // If directory is now empty, remove it
+            if (Directory.Exists(directory) && !Directory.EnumerateFileSystemEntries(directory).Any())
+                Directory.Delete(directory);
+        }
+        catch { /* best effort cleanup */ }
+
+        return cleaned;
     }
 
     #endregion

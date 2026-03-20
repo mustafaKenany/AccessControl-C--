@@ -10,4 +10,5 @@ public interface IDoorService
     Task<bool> SetDoorDelayAsync(int doorId, int delaySeconds);
     Task<bool> SetDoorPasswordAsync(int doorId, string password);
     Task<bool> RenameDoorAsync(int doorId, string newName);
+    Task<bool> UpdateDoorScheduleAsync(int doorId, TimeSpan startTime, TimeSpan endTime, bool is24Hours, string workingDays);
 }

@@ -12,6 +12,7 @@ public class AccessEventConfiguration : IEntityTypeConfiguration<AccessEvent>
         builder.Property(e => e.Details).HasMaxLength(500);
         builder.HasIndex(e => e.Timestamp);
         builder.HasOne(e => e.Door).WithMany(d => d.AccessEvents).HasForeignKey(e => e.DoorId);
-        builder.HasOne(e => e.Card).WithMany(c => c.AccessEvents).HasForeignKey(e => e.CardId).IsRequired(false);
+        builder.HasOne(e => e.Card).WithMany(c => c.AccessEvents).HasForeignKey(e => e.CardId).IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

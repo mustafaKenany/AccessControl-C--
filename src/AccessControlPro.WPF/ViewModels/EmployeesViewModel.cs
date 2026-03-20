@@ -148,6 +148,7 @@ public partial class EmployeesViewModel : ObservableObject
 
         try
         {
+            ActivityLogger.LogAction("Employees", "AddEmployee", dialog.FullNameEn);
             IsLoading = true;
             StatusMessage = "Adding new player...";
 
@@ -215,6 +216,7 @@ public partial class EmployeesViewModel : ObservableObject
         if (reasonDialog.ShowDialog() != true) return;
 
         IsLoading = true;
+        StatusMessage = Lang.IsArabic ? "جارٍ تحديث البيانات..." : "Updating player...";
         try
         {
             var dto = new EmployeeDto
@@ -281,7 +283,9 @@ public partial class EmployeesViewModel : ObservableObject
 
         if (confirmed)
         {
+            ActivityLogger.LogAction("Employees", "DeleteEmployee", $"{employee.FullNameEn} (ID:{employee.Id})");
             IsLoading = true;
+            StatusMessage = Lang.IsArabic ? "جارٍ حذف اللاعب..." : "Deleting player...";
             try
             {
                 await _employeeService.SoftDeleteEmployeeAsync(employee.Id, reasonDialog.Reason);
@@ -293,13 +297,25 @@ public partial class EmployeesViewModel : ObservableObject
             catch (Exception ex)
             {
                 var errorMsg = ex.Message;
-                if (errorMsg.Contains("foreign key") || errorMsg.Contains("constraint"))
-                    errorMsg = "Cannot delete player: This player has associated records in the system. Soft delete recorded instead.";
-                else if (errorMsg.Contains("Concurrency"))
-                    errorMsg = "This player was modified by another user. Please refresh and try again.";
 
-                CustomMessageBox.Show(errorMsg, Lang.Delete, MsgType.Error,
-                    System.Windows.Application.Current.MainWindow);
+                if (errorMsg.Contains("PARTIAL_SUCCESS:"))
+                {
+                    // Player deleted from DB but hardware removal failed — show warning, not error
+                    await LoadPagedAsync();
+                    var warningMsg = errorMsg.Replace("PARTIAL_SUCCESS:", "");
+                    CustomMessageBox.Show(warningMsg, Lang.Delete, MsgType.Warning,
+                        System.Windows.Application.Current.MainWindow);
+                }
+                else if (errorMsg.Contains("Concurrency"))
+                {
+                    CustomMessageBox.Show("This player was modified by another user. Please refresh and try again.",
+                        Lang.Delete, MsgType.Error, System.Windows.Application.Current.MainWindow);
+                }
+                else
+                {
+                    CustomMessageBox.Show(errorMsg, Lang.Delete, MsgType.Error,
+                        System.Windows.Application.Current.MainWindow);
+                }
             }
             finally
             {
@@ -312,6 +328,41 @@ public partial class EmployeesViewModel : ObservableObject
     private async Task AssignCardAsync(EmployeeDto? employee)
     {
         if (employee == null) return;
+
+        // Check if this is a card RE-assignment (player already has an active card)
+        bool isReassignment = employee.Cards != null && employee.Cards.Any(c => c.IsActive);
+        if (isReassignment)
+        {
+            // Permission check: only users with ReassignCard permission can re-assign
+            if (!_currentUser.HasPermission(AppPermission.PlayersReassignCard))
+            {
+                var permMsg = Lang.IsArabic
+                    ? "فقط المسؤولون يمكنهم إعادة تعيين البطاقات"
+                    : "Only administrators can re-assign cards";
+                CustomMessageBox.Show(permMsg, Lang.AssignCard, MsgType.Error,
+                    System.Windows.Application.Current.MainWindow);
+                return;
+            }
+
+            // Show warning dialog with current card info
+            var activeCard = employee.Cards!.First(c => c.IsActive);
+            var warningMsg = Lang.IsArabic
+                ? $"هذا اللاعب لديه بالفعل بطاقة نشطة:\n" +
+                  $"رقم البطاقة: {activeCard.CardNumber}\n" +
+                  $"المرات الفعالة: {activeCard.EffectiveTimes}\n" +
+                  $"المستخدم: {employee.UsedVisits}/{employee.MaxVisits}\n\n" +
+                  $"هل أنت متأكد من إعادة التعيين؟ سيتم إعادة تعيين البطاقة بإعدادات جديدة."
+                : $"This player already has an active card:\n" +
+                  $"Card Number: {activeCard.CardNumber}\n" +
+                  $"Effective Times: {activeCard.EffectiveTimes}\n" +
+                  $"Used: {employee.UsedVisits}/{employee.MaxVisits}\n\n" +
+                  $"Are you sure you want to re-assign? This will reset the card with new settings.";
+
+            var title = Lang.IsArabic ? "تحذير إعادة تعيين البطاقة" : "Card Re-assignment Warning";
+            var confirmed = CustomMessageBox.Confirm(warningMsg, title, MsgType.Warning,
+                System.Windows.Application.Current.MainWindow);
+            if (!confirmed) return;
+        }
 
         // Load devices to show in dialog
         var devices = (await _deviceService.GetAllDevicesAsync()).ToList();
@@ -365,6 +416,7 @@ public partial class EmployeesViewModel : ObservableObject
             }
         }
 
+        ActivityLogger.LogAction("Employees", "AssignCard", $"{employee.FullNameEn} card={dialog.CardNumber}");
         IsLoading = true;
         try
         {
@@ -386,43 +438,51 @@ public partial class EmployeesViewModel : ObservableObject
             var success = await _employeeService.AssignCardAsync(employee.Id, cardDto);
             if (success)
             {
-                // Auto-sync card to all selected devices
-                if (selectedDeviceIds.Count > 0)
+                var updatedEmployee = await _employeeService.GetEmployeeByIdAsync(employee.Id);
+                var latestCard = updatedEmployee?.Cards.LastOrDefault();
+
+                if (selectedDeviceIds.Count > 0 && latestCard != null)
                 {
-                    var updatedEmployee = await _employeeService.GetEmployeeByIdAsync(employee.Id);
-                    var latestCard = updatedEmployee?.Cards.LastOrDefault();
-                    if (latestCard != null)
+                    // Sync card to devices SEQUENTIALLY (ping → SDK → DB)
+                    int syncedCount = 0;
+                    var syncErrors = new List<string>();
+
+                    foreach (var deviceId in selectedDeviceIds)
                     {
-                        int syncedCount = 0;
-                        var syncErrors = new List<string>();
+                        try
+                        {
+                            StatusMessage = string.Format(Lang.SyncingCardToDevice, syncedCount + 1, selectedDeviceIds.Count) + " (please wait...)";
+                            await _employeeService.SyncCardToDeviceAsync(latestCard.Id, deviceId);
+                            syncedCount++;
+                        }
+                        catch (Exception ex)
+                        {
+                            var device = devices.FirstOrDefault(d => d.Id == deviceId);
+                            syncErrors.Add($"- {device?.Name ?? $"Device {deviceId}"}: {ex.Message}");
+                        }
+                    }
 
-                        foreach (var deviceId in selectedDeviceIds)
-                        {
-                            try
-                            {
-                                StatusMessage = string.Format(Lang.SyncingCardToDevice, syncedCount + 1, selectedDeviceIds.Count);
-                                await _employeeService.SyncCardToDeviceAsync(latestCard.Id, deviceId);
-                                syncedCount++;
-                            }
-                            catch (Exception ex)
-                            {
-                                var device = devices.FirstOrDefault(d => d.Id == deviceId);
-                                syncErrors.Add($"- {device?.Name ?? $"Device {deviceId}"}: {ex.Message}");
-                            }
-                        }
-
-                        if (syncErrors.Count > 0)
-                        {
-                            var syncMsg = string.Format(Lang.CardAssignedSyncErrors, syncedCount, selectedDeviceIds.Count, string.Join("\n", syncErrors));
-                            CustomMessageBox.Show(syncMsg, Lang.AssignCard, MsgType.Warning,
-                                System.Windows.Application.Current.MainWindow);
-                        }
-                        else
-                        {
-                            StatusMessage = "✓ " + string.Format(Lang.CardAssignedSynced, syncedCount);
-                            CustomMessageBox.Show(string.Format(Lang.CardAssignedSynced, syncedCount), Lang.AssignCard, MsgType.Success,
-                                System.Windows.Application.Current.MainWindow);
-                        }
+                    if (syncedCount == 0)
+                    {
+                        // ALL devices failed → rollback: delete card from DB
+                        try { await _employeeService.RemoveCardAsync(latestCard.Id); } catch { }
+                        var errMsg = $"Card NOT assigned — failed to sync to all devices:\n\n{string.Join("\n", syncErrors)}";
+                        CustomMessageBox.Show(errMsg, Lang.AssignCard, MsgType.Error,
+                            System.Windows.Application.Current.MainWindow);
+                    }
+                    else if (syncErrors.Count > 0)
+                    {
+                        // Partial success
+                        var syncMsg = string.Format(Lang.CardAssignedSyncErrors, syncedCount, selectedDeviceIds.Count, string.Join("\n", syncErrors));
+                        CustomMessageBox.Show(syncMsg, Lang.AssignCard, MsgType.Warning,
+                            System.Windows.Application.Current.MainWindow);
+                    }
+                    else
+                    {
+                        // All devices succeeded
+                        StatusMessage = "✓ " + string.Format(Lang.CardAssignedSynced, syncedCount);
+                        CustomMessageBox.Show(string.Format(Lang.CardAssignedSynced, syncedCount), Lang.AssignCard, MsgType.Success,
+                            System.Windows.Application.Current.MainWindow);
                     }
                 }
                 else
@@ -457,7 +517,7 @@ public partial class EmployeesViewModel : ObservableObject
     {
         if (employee == null || employee.CardCount == 0) return;
 
-        var cards = employee.Cards;
+        var cards = employee.Cards ?? new();
         if (cards.Count == 0) return;
 
         AccessCardDto cardToRemove;
@@ -539,6 +599,7 @@ public partial class EmployeesViewModel : ObservableObject
                 ? devices.Select(d => d.Id).ToList()
                 : null;
 
+            ActivityLogger.LogAction("Employees", "UnfreezePlayer", $"{employee.FullNameEn} (ID:{employee.Id})");
             IsLoading = true;
             try
             {
@@ -555,10 +616,18 @@ public partial class EmployeesViewModel : ObservableObject
             catch (Exception ex)
             {
                 var errorMsg = ex.Message;
-                if (errorMsg.Contains("not found"))
-                    errorMsg = Lang.PlayerNotFoundDeleted;
-                CustomMessageBox.Show(errorMsg, Lang.UnfreezePlayer, MsgType.Error,
-                    System.Windows.Application.Current.MainWindow);
+                if (errorMsg.Contains("PARTIAL_SUCCESS:"))
+                {
+                    await LoadPagedAsync();
+                    CustomMessageBox.Show(errorMsg.Replace("PARTIAL_SUCCESS:", ""), Lang.UnfreezePlayer, MsgType.Warning,
+                        System.Windows.Application.Current.MainWindow);
+                }
+                else
+                {
+                    if (errorMsg.Contains("not found")) errorMsg = Lang.PlayerNotFoundDeleted;
+                    CustomMessageBox.Show(errorMsg, Lang.UnfreezePlayer, MsgType.Error,
+                        System.Windows.Application.Current.MainWindow);
+                }
             }
             finally
             {
@@ -575,6 +644,7 @@ public partial class EmployeesViewModel : ObservableObject
 
             var selectedDeviceIds = reasonDialog.SelectedDeviceIds;
 
+            ActivityLogger.LogAction("Employees", "FreezePlayer", $"{employee.FullNameEn} (ID:{employee.Id})");
             IsLoading = true;
             try
             {
@@ -591,10 +661,18 @@ public partial class EmployeesViewModel : ObservableObject
             catch (Exception ex)
             {
                 var errorMsg = ex.Message;
-                if (errorMsg.Contains("not found"))
-                    errorMsg = Lang.PlayerNotFoundDeleted;
-                CustomMessageBox.Show(errorMsg, Lang.FreezePlayer, MsgType.Error,
-                    System.Windows.Application.Current.MainWindow);
+                if (errorMsg.Contains("PARTIAL_SUCCESS:"))
+                {
+                    await LoadPagedAsync();
+                    CustomMessageBox.Show(errorMsg.Replace("PARTIAL_SUCCESS:", ""), Lang.FreezePlayer, MsgType.Warning,
+                        System.Windows.Application.Current.MainWindow);
+                }
+                else
+                {
+                    if (errorMsg.Contains("not found")) errorMsg = Lang.PlayerNotFoundDeleted;
+                    CustomMessageBox.Show(errorMsg, Lang.FreezePlayer, MsgType.Error,
+                        System.Windows.Application.Current.MainWindow);
+                }
             }
             finally
             {
@@ -669,12 +747,11 @@ public partial class EmployeesViewModel : ObservableObject
             }
         }
 
+        ActivityLogger.LogAction("Employees", "RenewSubscription", $"{employee.FullNameEn} type={dialog.SelectedSubscriptionType}");
         IsLoading = true;
         try
         {
-            StatusMessage = Lang.RenewingSubscription;
-
-            StatusMessage = Lang.RenewingSubscription;
+            StatusMessage = Lang.RenewingSubscription + " (syncing to device, please wait...)";
 
             var success = await _employeeService.RenewSubscriptionAsync(
                 employee.Id,
@@ -712,15 +789,23 @@ public partial class EmployeesViewModel : ObservableObject
         catch (Exception ex)
         {
             var errorMsg = ex.Message;
-            if (errorMsg.Contains("not found"))
-                errorMsg = Lang.PlayerNotFoundDeleted;
-            else if (errorMsg.Contains("Concurrency"))
-                errorMsg = Lang.ConcurrencyError;
-            else if (errorMsg.Contains("constraint"))
-                errorMsg = Lang.DatabaseError;
+            if (errorMsg.Contains("PARTIAL_SUCCESS:"))
+            {
+                await LoadPagedAsync();
+                CustomMessageBox.Show(
+                    Lang.RenewSyncErrors,
+                    Lang.RenewSubscription, MsgType.Warning,
+                    System.Windows.Application.Current.MainWindow);
+            }
+            else
+            {
+                if (errorMsg.Contains("not found")) errorMsg = Lang.PlayerNotFoundDeleted;
+                else if (errorMsg.Contains("Concurrency")) errorMsg = Lang.ConcurrencyError;
+                else if (errorMsg.Contains("constraint")) errorMsg = Lang.DatabaseError;
 
-            CustomMessageBox.Show(errorMsg, Lang.RenewSubscription, MsgType.Error,
-                System.Windows.Application.Current.MainWindow);
+                CustomMessageBox.Show(errorMsg, Lang.RenewSubscription, MsgType.Error,
+                    System.Windows.Application.Current.MainWindow);
+            }
         }
         finally
         {
@@ -868,7 +953,9 @@ public partial class EmployeesViewModel : ObservableObject
 
     private async Task LoadPagedAsync()
     {
+        ActivityLogger.LogAction("Employees", "LoadPage", $"page={CurrentPage} filter={SelectedFilterIndex} search={SearchText}");
         IsLoading = true;
+        StatusMessage = Lang.Loading;
         try
         {
             if (SelectedFilterIndex == 0)
@@ -933,4 +1020,5 @@ public partial class EmployeesViewModel : ObservableObject
             IsLoading = false;
         }
     }
+
 }

@@ -1,5 +1,6 @@
 using System.IO;
 using AccessControlPro.Application.DTOs;
+using AccessControlPro.Application.Helpers;
 using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Domain.Entities;
 using AccessControlPro.Domain.Interfaces;
@@ -13,12 +14,14 @@ public class DeviceService : IDeviceService
     private readonly IDeviceRepository _deviceRepository;
     private readonly IDoorRepository _doorRepository;
     private readonly IAccessControlSdk _sdk;
+    private readonly DeviceOperationHelper _opHelper;
 
-    public DeviceService(IDeviceRepository deviceRepository, IDoorRepository doorRepository, IAccessControlSdk sdk)
+    public DeviceService(IDeviceRepository deviceRepository, IDoorRepository doorRepository, IAccessControlSdk sdk, DeviceOperationHelper opHelper)
     {
         _deviceRepository = deviceRepository;
         _doorRepository = doorRepository;
         _sdk = sdk;
+        _opHelper = opHelper;
     }
 
     public async Task<IEnumerable<DeviceDto>> GetAllDevicesAsync()
@@ -179,10 +182,8 @@ public class DeviceService : IDeviceService
         var device = await _deviceRepository.GetByIdAsync(deviceId);
         if (device == null) return false;
 
-        _sdk.Initialize();
         var info = ToDeviceInfo(device);
-        // SDK uses 0-indexed door numbers: door 1 = 0, door 2 = 1, etc.
-        _sdk.RemoteOpenDoor(info, new[] { doorNumber - 1 });
+        _opHelper.ExecuteWithLock(() => _sdk.RemoteOpenDoor(info, new[] { doorNumber - 1 }));
         return true;
     }
 
@@ -191,12 +192,10 @@ public class DeviceService : IDeviceService
         var device = await _deviceRepository.GetByIdAsync(deviceId);
         if (device == null) return false;
 
-        _sdk.Initialize();
         var info = ToDeviceInfo(device);
         var doorCount = GetDoorCount(device.DeviceType.ToString());
-        // SDK uses 0-indexed: pass all door indices in a single call
         var allDoors = Enumerable.Range(0, doorCount).ToArray();
-        _sdk.RemoteOpenDoor(info, allDoors);
+        _opHelper.ExecuteWithLock(() => _sdk.RemoteOpenDoor(info, allDoors));
         return true;
     }
 
@@ -205,10 +204,20 @@ public class DeviceService : IDeviceService
         var device = await _deviceRepository.GetByIdAsync(deviceId);
         if (device == null) return false;
 
-        _sdk.Initialize();
         var info = ToDeviceInfo(device);
-        _sdk.CalibrateTime(info);
+        _opHelper.ExecuteWithLock(() => _sdk.CalibrateTime(info));
         return true;
+    }
+
+    public async Task FactoryResetAsync(int deviceId)
+    {
+        var device = await _deviceRepository.GetByIdAsync(deviceId);
+        if (device == null)
+            throw new InvalidOperationException("Device not found.");
+
+        var info = ToDeviceInfo(device);
+        var doorCount = GetDoorCount(device.DeviceType.ToString());
+        _opHelper.ExecuteWithLock(() => _sdk.InitializeDevice(info, doorCount));
     }
 
     public async Task<bool> RenameDeviceAsync(int deviceId, string newName)

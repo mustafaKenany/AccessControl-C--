@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.RegularExpressions;
 using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Domain.Entities;
 using AccessControlPro.Domain.Interfaces;
@@ -15,8 +16,16 @@ public class MigrationService : IMigrationService
         _employeeRepository = employeeRepository;
     }
 
+    /// <summary>Validates table name to prevent SQL injection (alphanumeric + underscore only).</summary>
+    private static void ValidateTableName(string tableName)
+    {
+        if (!Regex.IsMatch(tableName, @"^[a-zA-Z_][a-zA-Z0-9_]*$"))
+            throw new ArgumentException($"Invalid table name: {tableName}");
+    }
+
     public async Task<MigrationPreview> PreviewAsync(string connectionString, string tableName)
     {
+        ValidateTableName(tableName);
         var preview = new MigrationPreview();
 
         await using var conn = new SqlConnection(connectionString);
@@ -66,6 +75,7 @@ public class MigrationService : IMigrationService
     public async Task<MigrationResult> ImportAsync(string connectionString, string tableName,
         IProgress<(int current, int total, string name)>? progress = null)
     {
+        ValidateTableName(tableName);
         var result = new MigrationResult();
 
         await using var conn = new SqlConnection(connectionString);

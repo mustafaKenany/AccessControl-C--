@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using AccessControlPro.SDK.Models;
@@ -379,22 +380,30 @@ public class AccessControlSdkWrapper : IAccessControlSdk
 
     public void RemoteOpenDoor(DeviceInfo device, int[] doorNumbers)
     {
-        if (_connectMain == null) return;
+        Initialize(); // Ensure SDK is ready
+        if (_connectMain == null)
+            throw new InvalidOperationException("SDK not initialized - ConnectMain is null");
         var info = BuildConnectInfo(device);
         var doors = new bool[4];
         foreach (var d in doorNumbers)
             if (d >= 0 && d < 4) doors[d] = true;
-        _connectMain.Command(info, "OpenRelay", doors);
+        SdkLog($"RemoteOpenDoor: device={device.SerialNumber} doors=[{string.Join(",", doorNumbers)}]");
+        var result = _connectMain.Command(info, "OpenRelay", doors);
+        SdkLog($"RemoteOpenDoor result: {result}");
     }
 
     public void RemoteCloseDoor(DeviceInfo device, int[] doorNumbers)
     {
-        if (_connectMain == null) return;
+        Initialize(); // Ensure SDK is ready
+        if (_connectMain == null)
+            throw new InvalidOperationException("SDK not initialized - ConnectMain is null");
         var info = BuildConnectInfo(device);
         var doors = new bool[4];
         foreach (var d in doorNumbers)
             if (d >= 0 && d < 4) doors[d] = true;
-        _connectMain.Command(info, "CloseRelay", doors);
+        SdkLog($"RemoteCloseDoor: device={device.SerialNumber} doors=[{string.Join(",", doorNumbers)}]");
+        var result = _connectMain.Command(info, "CloseRelay", doors);
+        SdkLog($"RemoteCloseDoor result: {result}");
     }
 
     private static FCardCDrive.Connect.ConnectInfo BuildConnectInfo(DeviceInfo device)
@@ -433,11 +442,232 @@ public class AccessControlSdkWrapper : IAccessControlSdk
 
     public void AddAccessCard(DeviceInfo device, string cardNo, string cardPassword, int openMode, string openLock, string permitTime, int effectiveTimes = 1, int timePeriodIndex = 0, bool holidayEnabled = false)
     {
-        var ioFlag = new IntPtr(3); // Must be 3 per demo CDlgGrant — enables door IO
+        Initialize(); // Ensure SDK is ready
+
+        // Sanitize: never send date before 2024 — use 10 years from now instead
+        if (DateTime.TryParse(permitTime, out var parsedDate) && parsedDate.Year < 2024)
+            permitTime = DateTime.Now.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
+
+        // Try P/Invoke first (proven to program cards correctly)
+        var ioFlag = new IntPtr(3);
         var result = CareaIfcNative.addUnSortCard(device.SerialNumber, device.IP, device.TCPPort, device.Password,
             1, cardNo, cardPassword, openMode, ioFlag, effectiveTimes, openLock, permitTime,
             timePeriodIndex.ToString(), holidayEnabled ? 1 : 0);
-        SdkLog($"addUnSortCard() returned: {result} for device {device.SerialNumber}, card {cardNo}");
+        SdkLog($"addUnSortCard() returned: {result} for device {device.SerialNumber}, card {cardNo}, effectiveTimes={effectiveTimes}, permitTime={permitTime}, openLock={openLock}");
+
+        if (result >= 0)
+            return; // Success via P/Invoke
+
+        // P/Invoke failed (TCP stuck after monitoring) — skip ConnectMain (returns True but doesn't work)
+        // Go directly to subprocess (fresh process = clean native DLL state)
+        SdkLog($"Trying subprocess fallback for card {cardNo}...");
+        try
+        {
+            var subprocessResult = AddCardViaSubprocessSync(device, cardNo, cardPassword, openMode,
+                openLock, permitTime, effectiveTimes, timePeriodIndex.ToString(), holidayEnabled ? 1 : 0);
+            if (subprocessResult)
+            {
+                SdkLog($"Subprocess fallback succeeded for card {cardNo}");
+                return;
+            }
+            SdkLog($"Subprocess fallback returned false for card {cardNo}");
+        }
+        catch (Exception subEx)
+        {
+            SdkLog($"Subprocess fallback exception: {subEx.Message}");
+        }
+
+        throw new InvalidOperationException($"Failed to add card {cardNo} to device {device.SerialNumber} ({device.IP}). P/Invoke, ConnectMain, and subprocess all failed.");
+    }
+
+    /// <summary>
+    /// Spawns a separate process to execute addUnSortCard with fresh native DLL state.
+    /// This bypasses the corrupted TCP state caused by monitoring.
+    /// </summary>
+    private bool AddCardViaSubprocessSync(DeviceInfo device, string cardNo, string cardPassword,
+        int openMode, string doorPermissions, string permitTime,
+        int effectiveTimes, string timePeriodIndex, int holidayEnabled)
+    {
+        var paramsFile = Path.Combine(Path.GetTempPath(), $"cardsync_{Guid.NewGuid():N}.tmp");
+        var cardSyncExe = Path.Combine(AppContext.BaseDirectory, "AccessControlPro.CardSync.exe");
+
+        // Fallback: if CardSync.exe not found, look for CardSync.dll
+        if (!File.Exists(cardSyncExe))
+        {
+            var cardSyncDll = Path.Combine(AppContext.BaseDirectory, "AccessControlPro.CardSync.dll");
+            if (File.Exists(cardSyncDll))
+                cardSyncExe = cardSyncDll;
+            else
+            {
+                SdkLog("AddCardViaSubprocess: CardSync.exe not found");
+                return false;
+            }
+        }
+
+        try
+        {
+            // Write params file
+            var lines = new[]
+            {
+                device.SerialNumber,
+                device.IP,
+                device.TCPPort.ToString(),
+                device.Password ?? "",
+                cardNo,
+                cardPassword ?? "",
+                openMode.ToString(),
+                doorPermissions,
+                permitTime,
+                effectiveTimes.ToString(),
+                timePeriodIndex ?? "00000000",
+                holidayEnabled.ToString()
+            };
+            File.WriteAllLines(paramsFile, lines);
+
+            SdkLog($"AddCardViaSubprocess: Spawning for card {cardNo} on device {device.SerialNumber}");
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = cardSyncExe.EndsWith(".dll") ? "dotnet" : cardSyncExe,
+                Arguments = cardSyncExe.EndsWith(".dll") ? $"\"{cardSyncExe}\" \"{paramsFile}\"" : $"\"{paramsFile}\"",
+                WorkingDirectory = AppContext.BaseDirectory,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(psi);
+            if (process == null)
+            {
+                SdkLog("AddCardViaSubprocess: Failed to start process");
+                return false;
+            }
+
+            var output = process.StandardOutput.ReadToEnd();
+            var error = process.StandardError.ReadToEnd();
+
+            var exited = process.WaitForExit(30000);
+            if (!exited)
+            {
+                process.Kill();
+                SdkLog("AddCardViaSubprocess: Process timed out (30s)");
+                return false;
+            }
+
+            var result = output.Trim();
+            var success = process.ExitCode == 0 && result == "1";
+
+            SdkLog($"AddCardViaSubprocess: ExitCode={process.ExitCode}, Output={result}, Error={error.Trim()}, Success={success}");
+            return success;
+        }
+        catch (Exception ex)
+        {
+            SdkLog($"AddCardViaSubprocess: Exception - {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            try { if (File.Exists(paramsFile)) File.Delete(paramsFile); } catch { }
+        }
+    }
+
+    /// <summary>
+    /// Write (add/update) a card using FC8900Command.WriteCardList via ConnectMain.
+    /// Uses the same TCP connection as monitoring — avoids TCP conflict/stuck issue
+    /// that occurs when addUnSortCard() creates a competing TCP connection.
+    /// </summary>
+    public void WriteCardViaConnectMain(DeviceInfo device, string cardNo, string cardPassword,
+        int openMode, string openLock, string permitTime, int effectiveTimes = 1,
+        int timePeriodIndex = 0, bool holidayEnabled = false)
+    {
+        Initialize();
+        if (_connectMain == null)
+            throw new InvalidOperationException("SDK not initialized — ConnectMain is null");
+
+        var info = BuildConnectInfo(device);
+
+        // Parse and sanitize expiry date
+        if (!DateTime.TryParse(permitTime, out var expiryDate) || expiryDate.Year < 2024)
+            expiryDate = DateTime.Now.AddYears(10);
+
+        var card = new FCardCDrive.FC8900.FC8900Card();
+        card.Card = uint.Parse(cardNo);
+        card.Password = cardPassword ?? "";
+        card.ExpiryDate = expiryDate;
+        card.OpenCount = (ushort)(effectiveTimes < 0 ? 0 : effectiveTimes);
+        card.CardType = FCardCDrive.Card.eCardType.eNormal;
+        card.StandardCard = true;
+
+        // Parse door permissions from openLock string "01010000" → door 0,1 enabled
+        bool[] doorPerms = new bool[4];
+        if (openLock != null && openLock.Length >= 8)
+        {
+            doorPerms[0] = openLock.Substring(0, 2) == "01";
+            doorPerms[1] = openLock.Substring(2, 2) == "01";
+            doorPerms[2] = openLock.Substring(4, 2) == "01";
+            doorPerms[3] = openLock.Substring(6, 2) == "01";
+        }
+        else
+        {
+            doorPerms[0] = doorPerms[1] = doorPerms[2] = doorPerms[3] = true;
+        }
+
+        // Set indexed properties via reflection (VB.NET parameterized properties)
+        var cardType = card.GetType();
+        var setDoor = cardType.GetMethod("set_Door");
+        var setTimeGroup = cardType.GetMethod("set_TimeGroupNum");
+        var setHoliday = cardType.GetMethod("set_Holiday");
+        byte tg = (byte)(timePeriodIndex > 0 ? timePeriodIndex : 1);
+
+        for (byte doorIdx = 0; doorIdx < 4; doorIdx++)
+        {
+            setDoor?.Invoke(card, new object[] { doorIdx, doorPerms[doorIdx] });
+            setTimeGroup?.Invoke(card, new object[] { doorIdx, tg });
+            setHoliday?.Invoke(card, new object[] { doorIdx, holidayEnabled });
+        }
+
+        SdkLog($"WriteSortCardList card: num={card.Card}, expiry={card.ExpiryDate}, openCount={card.OpenCount}, standard={card.StandardCard}, doors=[{doorPerms[0]},{doorPerms[1]},{doorPerms[2]},{doorPerms[3]}], setDoor={setDoor != null}, setTG={setTimeGroup != null}");
+
+        var cardList = new System.Collections.Generic.List<FCardCDrive.Card> { card };
+
+        // Try WriteSortCardList first (indexed card area — needed for card to work at reader)
+        var result = _connectMain.Command(info, "WriteSortCardList", cardList);
+        SdkLog($"WriteSortCardList via ConnectMain returned: {result} for device {device.SerialNumber}, card {cardNo}");
+
+        if (!result)
+        {
+            // Fallback to WriteCardList (non-indexed area)
+            result = _connectMain.Command(info, "WriteCardList", cardList);
+            SdkLog($"WriteCardList fallback returned: {result} for device {device.SerialNumber}, card {cardNo}");
+        }
+
+        if (!result)
+            throw new InvalidOperationException($"Both WriteSortCardList and WriteCardList failed for card {cardNo} on device {device.SerialNumber}");
+    }
+
+    /// <summary>
+    /// Delete a card from device using FC8900Command.DeleteCardList via ConnectMain.
+    /// Uses the same TCP connection as monitoring — avoids TCP conflict with addUnSortCard.
+    /// </summary>
+    public void DeleteCardViaConnectMain(DeviceInfo device, string cardNo)
+    {
+        Initialize();
+        if (_connectMain == null)
+            throw new InvalidOperationException("SDK not initialized — ConnectMain is null");
+
+        var info = BuildConnectInfo(device);
+
+        var card = new FCardCDrive.FC8900.FC8900Card
+        {
+            Card = uint.Parse(cardNo)
+        };
+
+        var cardList = new System.Collections.Generic.List<FCardCDrive.Card> { card };
+        var result = _connectMain.Command(info, "DeleteCardList", cardList);
+        SdkLog($"DeleteCardList via ConnectMain returned: {result} for device {device.SerialNumber}, card {cardNo}");
+        if (!result)
+            SdkLog($"WARNING: DeleteCardList returned false for card {cardNo} on device {device.SerialNumber} — card may not have existed");
     }
 
     public void SetDoorPassword(DeviceInfo device, string password)
@@ -528,17 +758,81 @@ public class AccessControlSdkWrapper : IAccessControlSdk
         {
             devicesToClose = _monitoredDevices;
             monitorToClose = _monitorMain;
+        }
+
+        // Send CloseWatch BEFORE nulling _monitorMain (so SendCloseWatch can use it)
+        if (monitorToClose != null && devicesToClose != null)
+        {
+            foreach (var device in devicesToClose)
+            {
+                try
+                {
+                    var info = new ConnectInfo
+                    {
+                        SN = device.SerialNumber,
+                        IP = device.IP,
+                        NetPort = (ushort)device.TCPPort,
+                        Password = device.Password,
+                        EquptType = GetEquipmentType(device.SerialNumber),
+                        ConnType = ConnectInfo.e_ConnectType.OnTCPClient,
+                        RestartCount = 1,
+                        TimeOutMSEL = 3000
+                    };
+                    monitorToClose.Command(info, "CloseWatch");
+                }
+                catch { }
+            }
+            // Wait for device to process CloseWatch and release TCP
+            Thread.Sleep(2000);
+        }
+
+        // NOW null everything
+        lock (_monitorLock)
+        {
             _monitorMain = null;
             _monitoredDevices = null;
             _onMonitorEvent = null;
         }
+        SdkLog("StopMonitoring: stopped");
+    }
 
-        if (monitorToClose != null && devicesToClose != null)
+    /// <summary>
+    /// Temporarily pause monitoring (close watch on all devices).
+    /// SDK can't handle card operations while monitoring is active.
+    /// </summary>
+    public void PauseMonitoring()
+    {
+        _keepAliveTimer?.Stop();
+        List<DeviceInfo>? devices;
+        lock (_monitorLock)
         {
-            foreach (var device in devicesToClose)
+            devices = _monitoredDevices;
+        }
+        if (devices != null)
+        {
+            foreach (var device in devices)
                 try { SendCloseWatch(device); } catch { }
         }
-        SdkLog("StopMonitoring: stopped");
+        SdkLog("PauseMonitoring: paused");
+    }
+
+    /// <summary>
+    /// Resume monitoring after pause (re-send BeginWatch to all devices).
+    /// </summary>
+    public void ResumeMonitoring()
+    {
+        List<DeviceInfo>? devices;
+        lock (_monitorLock)
+        {
+            devices = _monitoredDevices;
+        }
+        if (devices != null)
+        {
+            foreach (var device in devices)
+                try { SendBeginWatch(device); } catch { }
+        }
+        _keepAliveTimer?.Start();
+        SdkLog("ResumeMonitoring: resumed");
     }
 
     private void SendBeginWatch(DeviceInfo device)

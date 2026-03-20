@@ -135,4 +135,13 @@ public class EmployeeRepository : IEmployeeRepository
             .OrderByDescending(e => e.EndDate)
             .ToListAsync();
     }
+
+    public async Task<IEnumerable<Employee>> GetOutstandingBalancesAsync()
+    {
+        await using var db = _factory.CreateDbContext();
+        return await db.Employees
+            .Where(e => e.SubscriptionFee > e.AmountPaid)
+            .OrderByDescending(e => e.SubscriptionFee - e.AmountPaid)
+            .ToListAsync();
+    }
 }

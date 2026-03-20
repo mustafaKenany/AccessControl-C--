@@ -269,21 +269,61 @@
                                             </TextBlock>
                                         </Border>
 
-                                        <TextBlock Grid.Column="6" Text="{Binding EventDescription}" FontSize="14"
-                                                   Foreground="#8899A6" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        <!-- Card Status Badge (Details column) -->
+                                        <Border Grid.Column="6" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                CornerRadius="6" Padding="10,4">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#20556677"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding CardStatusKey}" Value="Active">
+                                                            <Setter Property="Background" Value="#202ED47A"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding CardStatusKey}" Value="Expired">
+                                                            <Setter Property="Background" Value="#20F7685B"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding CardStatusKey}" Value="Frozen">
+                                                            <Setter Property="Background" Value="#204FC3F7"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding CardStatusKey}" Value="NotRegistered">
+                                                            <Setter Property="Background" Value="#20FFB946"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding CardStatus}" FontSize="13" FontWeight="Bold"
+                                                       TextTrimming="CharacterEllipsis">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#556677"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CardStatusKey}" Value="Active">
+                                                                <Setter Property="Foreground" Value="#2ED47A"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding CardStatusKey}" Value="Expired">
+                                                                <Setter Property="Foreground" Value="#F7685B"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding CardStatusKey}" Value="Frozen">
+                                                                <Setter Property="Foreground" Value="#4FC3F7"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding CardStatusKey}" Value="NotRegistered">
+                                                                <Setter Property="Foreground" Value="#FFB946"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
 
-                                        <!-- Direction Badge -->
+                                        <!-- Direction Badge — uses IsEntry bool so it works in both Arabic and English -->
                                         <Border Grid.Column="7" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                 CornerRadius="6" Padding="8,3">
                                             <Border.Style>
                                                 <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="Background" Value="#15F7685B"/>
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Direction}" Value="Entry">
+                                                        <DataTrigger Binding="{Binding IsEntry}" Value="True">
                                                             <Setter Property="Background" Value="#152ED47A"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Direction}" Value="Exit">
-                                                            <Setter Property="Background" Value="#15F7685B"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -292,13 +332,10 @@
                                                        HorizontalAlignment="Center">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="#556677"/>
+                                                        <Setter Property="Foreground" Value="#F7685B"/>
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Direction}" Value="Entry">
+                                                            <DataTrigger Binding="{Binding IsEntry}" Value="True">
                                                                 <Setter Property="Foreground" Value="#2ED47A"/>
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding Direction}" Value="Exit">
-                                                                <Setter Property="Foreground" Value="#F7685B"/>
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>

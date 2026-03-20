@@ -8,7 +8,37 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Resources\app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
+
+  <!-- Anti-reverse-engineering: SingleFile + R2R + self-contained (Release only) -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <!-- Exclude legacy/native DLLs from R2R (crossgen2 can't process them) -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishReadyToRunExclude Include="FontAwesome.WPF.dll" />
+    <PublishReadyToRunExclude Include="FCardCDrive.dll" />
+    <PublishReadyToRunExclude Include="CareaIfc.dll" />
+    <PublishReadyToRunExclude Include="CtrlEx.dll" />
+    <PublishReadyToRunExclude Include="DataTool.dll" />
+    <PublishReadyToRunExclude Include="DoorCtrller.dll" />
+    <PublishReadyToRunExclude Include="MyCPlusPlus.dll" />
+    <PublishReadyToRunExclude Include="cmproxy.dll" />
+    <PublishReadyToRunExclude Include="dbproxy.dll" />
+    <PublishReadyToRunExclude Include="egcproxy.dll" />
+    <PublishReadyToRunExclude Include="netproxy.dll" />
+    <PublishReadyToRunExclude Include="regex2.dll" />
+    <PublishReadyToRunExclude Include="util.dll" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AccessControlPro.Application\AccessControlPro.Application.csproj" />
@@ -19,13 +49,14 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="FontAwesome.WPF" Version="4.7.0.9" />
+    <PackageReference Include="FontAwesome.WPF" Version="4.7.0.9" NoWarn="NU1701" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.*">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.*" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.*" />
+    <PackageReference Include="QRCoder" Version="1.7.0" />
   </ItemGroup>
 
   <ItemGroup>

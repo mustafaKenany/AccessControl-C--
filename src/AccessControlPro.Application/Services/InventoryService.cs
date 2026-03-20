@@ -159,11 +159,13 @@ public class InventoryService : IInventoryService
 
         await _poRepo.AddAsync(order);
 
-        // Add stock to products + record stock movements
+        // Batch-load all products in one query, then update stock + record movements
+        var productIds = dto.Items.Select(i => i.ProductId).Distinct();
+        var productList = (await _productRepo.GetByIdsAsync(productIds)).ToDictionary(p => p.Id);
+
         foreach (var item in dto.Items)
         {
-            var product = await _productRepo.GetByIdAsync(item.ProductId);
-            if (product != null)
+            if (productList.TryGetValue(item.ProductId, out var product))
             {
                 product.Stock += item.Quantity;
                 await _productRepo.UpdateAsync(product);

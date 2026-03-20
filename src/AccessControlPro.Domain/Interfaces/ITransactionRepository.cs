@@ -14,4 +14,5 @@ public interface ITransactionRepository
     Task<decimal> GetTotalByTypeAsync(TransactionType type, DateTime? from = null, DateTime? to = null);
     Task<IEnumerable<Transaction>> GetRecentAsync(int count);
     Task<IEnumerable<Transaction>> GetByEmployeeIdAsync(int employeeId);
+    Task NullifyEmployeeIdAsync(int employeeId);
 }

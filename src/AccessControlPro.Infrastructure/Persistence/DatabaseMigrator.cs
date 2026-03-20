@@ -351,6 +351,107 @@ public static class DatabaseMigrator
 
             @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Employees') AND name = 'UsedVisits')
               ALTER TABLE Employees ADD UsedVisits int NOT NULL DEFAULT 0;",
+
+            // v3.1: QrPasses table — daily/short-term QR code passes for visitors
+            @"IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'QrPasses')
+              CREATE TABLE QrPasses (
+                  Id int IDENTITY(1,1) PRIMARY KEY,
+                  PassCode nvarchar(100) NOT NULL,
+                  PlayerName nvarchar(200) NOT NULL DEFAULT '',
+                  Phone nvarchar(100) NOT NULL DEFAULT '',
+                  ValidFrom datetime2 NOT NULL,
+                  ValidTo datetime2 NOT NULL,
+                  MaxUses int NOT NULL DEFAULT 5,
+                  UsedCount int NOT NULL DEFAULT 0,
+                  Fee decimal(18,2) NOT NULL DEFAULT 0,
+                  IsActive bit NOT NULL DEFAULT 1,
+                  CreatedBy nvarchar(100) NOT NULL DEFAULT '',
+                  CreatedAt datetime2 NOT NULL DEFAULT GETUTCDATE(),
+                  CONSTRAINT UQ_QrPasses_PassCode UNIQUE (PassCode)
+              );",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_QrPasses_PassCode' AND object_id = OBJECT_ID('QrPasses'))
+              CREATE INDEX IX_QrPasses_PassCode ON QrPasses(PassCode);",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_QrPasses_IsActive_ValidTo' AND object_id = OBJECT_ID('QrPasses'))
+              CREATE INDEX IX_QrPasses_IsActive_ValidTo ON QrPasses(IsActive, ValidTo) WHERE IsActive = 1;",
+
+            // v3.1: Add DailyPass income category to LookupItems
+            @"IF NOT EXISTS (SELECT 1 FROM LookupItems WHERE Category = 'IncomeCategory' AND Name = 'Daily Pass')
+              INSERT INTO LookupItems (Category, Name, NameAr, SortOrder) VALUES ('IncomeCategory', 'Daily Pass', N'تصريح يومي', 4);",
+
+            // v3.2: Add Device/Door columns to QrPasses
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('QrPasses') AND name = 'DeviceId')
+              ALTER TABLE QrPasses ADD DeviceId int NULL;",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('QrPasses') AND name = 'DoorNumber')
+              ALTER TABLE QrPasses ADD DoorNumber int NOT NULL DEFAULT 1;",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('QrPasses') AND name = 'DeviceName')
+              ALTER TABLE QrPasses ADD DeviceName nvarchar(200) NOT NULL DEFAULT '';",
+
+            // v3.3: Add DevLogoPath to AppSettings (developer company logo)
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AppSettings') AND name = 'DevLogoPath')
+              ALTER TABLE AppSettings ADD DevLogoPath nvarchar(500) NOT NULL DEFAULT '';",
+
+            // v3.4: Performance indexes — hot query paths identified by profiling
+            // AccessEvents: standalone Timestamp index for date-range-only queries (dashboard, reports)
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AccessEvents_Timestamp' AND object_id = OBJECT_ID('AccessEvents'))
+              CREATE INDEX IX_AccessEvents_Timestamp ON AccessEvents(Timestamp DESC);",
+
+            // Employees: CardNo lookup (used by card assignment, scan, sync)
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Employees_CardNo' AND object_id = OBJECT_ID('Employees'))
+              CREATE INDEX IX_Employees_CardNo ON Employees(CardNo) WHERE CardNo <> '';",
+
+            // Employees: Outstanding balance query (SubscriptionFee > AmountPaid)
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Employees_Outstanding' AND object_id = OBJECT_ID('Employees'))
+              CREATE INDEX IX_Employees_Outstanding ON Employees(SubscriptionFee, AmountPaid) WHERE SubscriptionFee > AmountPaid;",
+
+            // AccessCards: CardNumber for scan lookups
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AccessCards_CardNumber' AND object_id = OBJECT_ID('AccessCards'))
+              CREATE INDEX IX_AccessCards_CardNumber ON AccessCards(CardNumber);",
+
+            // AuditLogs: Timestamp for recent audit queries
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AuditLogs_Timestamp' AND object_id = OBJECT_ID('AuditLogs'))
+              CREATE INDEX IX_AuditLogs_Timestamp ON AuditLogs(Timestamp DESC);",
+
+            // v3.5: MonitorLock table — ensures only ONE Real-Time Monitor runs across all PCs
+            @"IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'MonitorLocks')
+              CREATE TABLE MonitorLocks (
+                  Id INT IDENTITY(1,1) PRIMARY KEY,
+                  MachineName NVARCHAR(200) NOT NULL,
+                  UserName NVARCHAR(200) NOT NULL DEFAULT '',
+                  AcquiredAt DATETIME2 NOT NULL,
+                  HeartbeatAt DATETIME2 NOT NULL
+              );",
+
+            // v3.7: Door working schedule (hours + days)
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Doors') AND name = 'WorkStartTime')
+              ALTER TABLE Doors ADD WorkStartTime TIME NOT NULL DEFAULT '00:00:00';",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Doors') AND name = 'WorkEndTime')
+              ALTER TABLE Doors ADD WorkEndTime TIME NOT NULL DEFAULT '23:59:59';",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Doors') AND name = 'Is24Hours')
+              ALTER TABLE Doors ADD Is24Hours BIT NOT NULL DEFAULT 1;",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Doors') AND name = 'WorkingDays')
+              ALTER TABLE Doors ADD WorkingDays NVARCHAR(20) NOT NULL DEFAULT '1,2,3,4,5,6,7';",
+
+            // v3.6: Fix FK on AccessEvents.CardId → SET NULL on delete (allows employee/card deletion without constraint errors)
+            @"DECLARE @fkName NVARCHAR(200);
+              SELECT @fkName = fk.name
+              FROM sys.foreign_keys fk
+              JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
+              JOIN sys.columns c ON fkc.parent_object_id = c.object_id AND fkc.parent_column_id = c.column_id
+              WHERE fk.parent_object_id = OBJECT_ID('AccessEvents') AND c.name = 'CardId'
+                AND fk.delete_referential_action <> 1; -- 1 = SET NULL, skip if already correct
+              IF @fkName IS NOT NULL
+              BEGIN
+                  EXEC('ALTER TABLE AccessEvents DROP CONSTRAINT ' + @fkName);
+                  ALTER TABLE AccessEvents ADD CONSTRAINT FK_AccessEvents_CardId
+                      FOREIGN KEY (CardId) REFERENCES AccessCards(Id) ON DELETE SET NULL;
+              END;",
         };
 
         var failedMigrations = new List<string>();

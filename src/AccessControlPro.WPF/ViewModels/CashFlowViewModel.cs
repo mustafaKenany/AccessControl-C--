@@ -118,7 +118,7 @@ public partial class CashFlowViewModel : ObservableObject
 
         // Try to keep previous selection, fall back to "All"
         SelectedCategory = Categories.FirstOrDefault(c => c.EnKey == previousKey)
-                           ?? Categories.First();
+                           ?? Categories.FirstOrDefault()!;
     }
 
     private (DateTime? From, DateTime? To) GetDateRange()
