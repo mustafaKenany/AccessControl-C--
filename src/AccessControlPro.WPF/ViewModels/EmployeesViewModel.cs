@@ -16,6 +16,7 @@ public partial class EmployeesViewModel : ObservableObject
     private readonly IEmployeeService _employeeService;
     private readonly IDeviceService _deviceService;
     private readonly ILookupService _lookupService;
+    private readonly ITimeGroupService _timeGroupService;
     private readonly CurrentUserService _currentUser;
     private const int PageSize = 100;
     private CancellationTokenSource? _searchCts;
@@ -71,11 +72,12 @@ public partial class EmployeesViewModel : ObservableObject
 
     public ObservableCollection<EmployeeDto> Employees { get; } = new();
 
-    public EmployeesViewModel(IEmployeeService employeeService, IDeviceService deviceService, ILookupService lookupService, CurrentUserService currentUser)
+    public EmployeesViewModel(IEmployeeService employeeService, IDeviceService deviceService, ILookupService lookupService, ITimeGroupService timeGroupService, CurrentUserService currentUser)
     {
         _employeeService = employeeService;
         _deviceService = deviceService;
         _lookupService = lookupService;
+        _timeGroupService = timeGroupService;
         _currentUser = currentUser;
     }
 
@@ -367,7 +369,7 @@ public partial class EmployeesViewModel : ObservableObject
         // Load devices to show in dialog
         var devices = (await _deviceService.GetAllDevicesAsync()).ToList();
 
-        var dialog = new AssignCardDialog(employee, devices);
+        var dialog = new AssignCardDialog(employee, devices, _timeGroupService);
         dialog.Owner = System.Windows.Application.Current.MainWindow;
         dialog.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner;
 

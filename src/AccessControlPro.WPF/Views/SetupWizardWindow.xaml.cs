@@ -322,7 +322,9 @@ public partial class SetupWizardWindow : Window
             $"Developer:        {DevCompanyNameBox.Text.Trim()}\n" +
             $"Support Phone:    {DevPhoneBox.Text.Trim()}\n" +
             $"Dev Logo:         {(_devLogoSourcePath != null ? Path.GetFileName(_devLogoSourcePath) : "None")}\n" +
-            $"Gym Logo:         {(_gymLogoSourcePath != null ? Path.GetFileName(_gymLogoSourcePath) : "None")}";
+            $"Gym Logo:         {(_gymLogoSourcePath != null ? Path.GetFileName(_gymLogoSourcePath) : "None")}\n" +
+            $"─────────────────────────────\n" +
+            $"Backup Folder:    {(string.IsNullOrWhiteSpace(BackupFolderBox.Text) ? "(default)" : BackupFolderBox.Text.Trim())}";
     }
 
     #endregion
@@ -459,7 +461,10 @@ public partial class SetupWizardWindow : Window
                 ["Email"] = DevEmailBox.Text.Trim(),
                 ["WhatsApp"] = DevWhatsAppBox.Text.Trim(),
                 ["LogoPath"] = ""
-            }
+            },
+            ["BackupPath"] = string.IsNullOrWhiteSpace(BackupFolderBox.Text)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AccessControlPro", "Backups")
+                : BackupFolderBox.Text.Trim()
         };
 
         var options = new JsonSerializerOptions { WriteIndented = true };

@@ -778,4 +778,28 @@
   <data name="Sunday" xml:space="preserve"><value>الأحد</value></data>
   <!-- Validation -->
   <data name="AtLeastOneNameRequired" xml:space="preserve"><value>يجب إدخال اسم واحد على الأقل (إنجليزي أو عربي).</value></data>
+  <!-- Time Groups -->
+  <data name="NavTimeGroups" xml:space="preserve"><value>مجموعات الوقت</value></data>
+  <data name="TgTitle" xml:space="preserve"><value>مجموعات الوقت</value></data>
+  <data name="TgSubtitle" xml:space="preserve"><value>إدارة جداول الوصول الزمنية للبطاقات</value></data>
+  <data name="TgAddNew" xml:space="preserve"><value>إضافة مجموعة وقت</value></data>
+  <data name="TgEdit" xml:space="preserve"><value>تعديل مجموعة الوقت</value></data>
+  <data name="TgNameEn" xml:space="preserve"><value>الاسم (EN)</value></data>
+  <data name="TgNameAr" xml:space="preserve"><value>الاسم (AR)</value></data>
+  <data name="TgHwIndex" xml:space="preserve"><value>رقم الجهاز</value></data>
+  <data name="TgSchedule" xml:space="preserve"><value>الجدول</value></data>
+  <data name="TgDefault" xml:space="preserve"><value>افتراضي</value></data>
+  <data name="TgFullAccess" xml:space="preserve"><value>24/7</value></data>
+  <data name="TgClosed" xml:space="preserve"><value>مغلق</value></data>
+  <data name="TgActive" xml:space="preserve"><value>نشط</value></data>
+  <data name="TgAddSegment" xml:space="preserve"><value>+ إضافة فترة</value></data>
+  <data name="TgDeleteConfirm" xml:space="preserve"><value>هل تريد حذف مجموعة الوقت هذه؟</value></data>
+  <data name="TgCannotDeleteDefault" xml:space="preserve"><value>لا يمكن حذف مجموعة الوقت الافتراضية 24/7.</value></data>
+  <data name="TgSlotsFull" xml:space="preserve"><value>جميع فتحات مجموعات الوقت (64) مستخدمة.</value></data>
+  <data name="TgSyncToDevice" xml:space="preserve"><value>مزامنة مع الجهاز</value></data>
+  <data name="TgSegments" xml:space="preserve"><value>فترات</value></data>
+  <data name="TgSaved" xml:space="preserve"><value>تم حفظ مجموعة الوقت بنجاح.</value></data>
+  <data name="TgDeleted" xml:space="preserve"><value>تم حذف مجموعة الوقت.</value></data>
+  <data name="TgNameRequired" xml:space="preserve"><value>الاسم مطلوب.</value></data>
+  <data name="TgScheduleLabel" xml:space="preserve"><value>الجدول</value></data>
 </root>

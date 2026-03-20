@@ -166,7 +166,7 @@
                 <RowDefinition Height="Auto"/>  <!-- Card Number (auto-filled) -->
                 <RowDefinition Height="Auto"/>  <!-- Door Access -->
                 <RowDefinition Height="Auto"/>  <!-- Effective Times -->
-                <RowDefinition Height="Auto"/>  <!-- Holiday -->
+                <RowDefinition Height="Auto"/>  <!-- Schedule (Time Group) -->
                 <RowDefinition Height="Auto"/>  <!-- Valid Period (auto-filled) -->
                 <RowDefinition Height="Auto"/>  <!-- Devices -->
                 <RowDefinition Height="*"/>
@@ -212,12 +212,11 @@
             <ComboBox x:Name="EffectiveTimesCombo" Grid.Row="3" Grid.Column="1"
                       Style="{StaticResource DarkComboBox}" Margin="0,0,0,10"/>
 
-            <!-- Holiday -->
-            <TextBlock Grid.Row="4" Grid.Column="0" Text="{Binding Lang.HolidayAccess}"
+            <!-- Schedule (Time Group) -->
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="{Binding Lang.TgScheduleLabel}"
                        Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
-            <CheckBox x:Name="HolidayCheck" Grid.Row="4" Grid.Column="1"
-                      Content="{Binding Lang.HolidayAccess}"
-                      Style="{StaticResource DarkCheckBox}" Margin="0,0,0,10"/>
+            <ComboBox x:Name="TimeGroupCombo" Grid.Row="4" Grid.Column="1"
+                      Style="{StaticResource DarkComboBox}" Margin="0,0,0,10"/>
 
             <!-- Valid Period (auto-filled from player subscription, read-only display) -->
             <TextBlock Grid.Row="5" Grid.Column="0" Text="{Binding Lang.ValidUntil}"

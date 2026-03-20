@@ -12,6 +12,17 @@
                   HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="32,28,32,32">
 
+            <!-- ═══ Backup Warning ═══ -->
+            <Border Visibility="{Binding ShowBackupWarning, Converter={StaticResource BoolToVisibility}}"
+                    Background="#FF4444" CornerRadius="8" Padding="16,10" Margin="0,0,0,15">
+                <StackPanel Orientation="Horizontal">
+                    <fa:ImageAwesome Icon="ExclamationTriangle" Foreground="White" Width="18" Height="18"
+                                     VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Text="{Binding BackupWarningMessage}" Foreground="White"
+                               FontFamily="Cairo" FontSize="13" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
             <!-- ═══ Header ═══ -->
             <DockPanel Margin="0,0,0,24">
                 <StackPanel VerticalAlignment="Center">

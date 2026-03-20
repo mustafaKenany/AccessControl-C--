@@ -27,6 +27,7 @@ public class AppDbContext : DbContext
     public DbSet<CardDeviceSync> CardDeviceSyncs => Set<CardDeviceSync>();
     public DbSet<QrPass> QrPasses => Set<QrPass>();
     public DbSet<MonitorLock> MonitorLocks => Set<MonitorLock>();
+    public DbSet<TimeGroup> TimeGroups => Set<TimeGroup>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

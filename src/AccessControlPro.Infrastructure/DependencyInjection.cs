@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddSingleton<IStockMovementRepository, StockMovementRepository>();
         services.AddSingleton<ICardDeviceSyncRepository, CardDeviceSyncRepository>();
         services.AddSingleton<IQrPassRepository, QrPassRepository>();
+        services.AddSingleton<ITimeGroupRepository, TimeGroupRepository>();
 
         // SDK
         services.AddSingleton<IAccessControlSdk, AccessControlSdkWrapper>();

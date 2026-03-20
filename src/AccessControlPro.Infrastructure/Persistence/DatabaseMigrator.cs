@@ -438,6 +438,27 @@ public static class DatabaseMigrator
             @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Doors') AND name = 'WorkingDays')
               ALTER TABLE Doors ADD WorkingDays NVARCHAR(20) NOT NULL DEFAULT '1,2,3,4,5,6,7';",
 
+            // v4.0: TimeGroups table — time-based access schedules for cards
+            @"IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'TimeGroups')
+            BEGIN
+                CREATE TABLE TimeGroups (
+                    Id INT IDENTITY(1,1) PRIMARY KEY,
+                    NameEn NVARCHAR(100) NOT NULL,
+                    NameAr NVARCHAR(100) NOT NULL DEFAULT '',
+                    HardwareIndex INT NOT NULL DEFAULT 1,
+                    IsDefault BIT NOT NULL DEFAULT 0,
+                    ScheduleJson NVARCHAR(MAX) NOT NULL DEFAULT '{}',
+                    CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                    UpdatedAt DATETIME2 NULL
+                );
+
+                CREATE UNIQUE INDEX UX_TimeGroups_HardwareIndex ON TimeGroups(HardwareIndex);
+
+                -- Seed default 24/7 group
+                INSERT INTO TimeGroups (NameEn, NameAr, HardwareIndex, IsDefault, ScheduleJson)
+                VALUES ('24/7 Full Access', N'وصول كامل 24/7', 1, 1, '{}');
+            END",
+
             // v3.6: Fix FK on AccessEvents.CardId → SET NULL on delete (allows employee/card deletion without constraint errors)
             @"DECLARE @fkName NVARCHAR(200);
               SELECT @fkName = fk.name

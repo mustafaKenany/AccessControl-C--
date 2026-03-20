@@ -18,6 +18,7 @@ public partial class AdminMainViewModel : ObservableObject
     private readonly AlertsViewModel _alertsViewModel;
     private readonly BackupViewModel _backupViewModel;
     private readonly ReportsViewModel _reportsViewModel;
+    private readonly TimeGroupViewModel _timeGroupViewModel;
     private readonly CurrentUserService _currentUser;
 
     [ObservableProperty]
@@ -42,6 +43,7 @@ public partial class AdminMainViewModel : ObservableObject
         AlertsViewModel alertsViewModel,
         BackupViewModel backupViewModel,
         ReportsViewModel reportsViewModel,
+        TimeGroupViewModel timeGroupViewModel,
         CurrentUserService currentUser)
     {
         _usersViewModel = usersViewModel;
@@ -55,6 +57,7 @@ public partial class AdminMainViewModel : ObservableObject
         _alertsViewModel = alertsViewModel;
         _backupViewModel = backupViewModel;
         _reportsViewModel = reportsViewModel;
+        _timeGroupViewModel = timeGroupViewModel;
         _currentUser = currentUser;
         CurrentView = dashboardViewModel;
     }
@@ -83,6 +86,7 @@ public partial class AdminMainViewModel : ObservableObject
             "Alerts" => _alertsViewModel,
             "Backup" => _backupViewModel,
             "Reports" => _reportsViewModel,
+            "TimeGroups" => _timeGroupViewModel,
             _ => CurrentView
         };
 
@@ -106,5 +110,7 @@ public partial class AdminMainViewModel : ObservableObject
             await _alertsViewModel.LoadAsync();
         else if (page == "Reports")
             await _reportsViewModel.LoadAsync();
+        else if (page == "TimeGroups")
+            await _timeGroupViewModel.LoadAsync();
     }
 }

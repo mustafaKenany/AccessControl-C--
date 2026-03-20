@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Threading;
 using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Application.Services;
 using AccessControlPro.Infrastructure;
@@ -18,6 +19,7 @@ public partial class App : System.Windows.Application
 {
     private static Mutex? _singleInstanceMutex;
     private readonly ServiceProvider _serviceProvider;
+    private DispatcherTimer? _backupTimer;
     private static readonly string CrashLogPath = Path.Combine(AppContext.BaseDirectory, "admin_crash_log.txt");
 
     public App()
@@ -100,6 +102,10 @@ public partial class App : System.Windows.Application
         services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IFinanceService, FinanceService>();
         services.AddScoped<IEmployeeService, EmployeeService>();
+        services.AddScoped<ITimeGroupService, TimeGroupService>();
+
+        // Backup
+        services.AddSingleton<IBackupService>(sp => new BackupService(connectionString));
 
         services.AddTransient<AdminMainViewModel>();
         services.AddTransient<UsersViewModel>();
@@ -113,6 +119,7 @@ public partial class App : System.Windows.Application
         services.AddTransient<AlertsViewModel>();
         services.AddTransient<BackupViewModel>();
         services.AddTransient<ReportsViewModel>();
+        services.AddTransient<TimeGroupViewModel>();
 
         services.AddTransient<AdminMainWindow>();
     }
@@ -238,6 +245,50 @@ public partial class App : System.Windows.Application
             MainWindow = mainWindow;
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             mainWindow.Show();
+
+            // Automated backup timer — checks every 30 minutes, runs at 2:00 AM and 2:00 PM, retries on failure
+            _backupTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(30) };
+            _backupTimer.Tick += async (_, _) =>
+            {
+                var now = DateTime.Now;
+                var hour = now.Hour;
+                var minute = now.Minute;
+
+                var status = BackupService.LoadStatus();
+
+                // Normal schedule: 2AM or 2PM
+                bool isScheduledTime = (hour == 2 || hour == 14) && minute < 30;
+
+                // Retry: if last backup failed and less than 3 consecutive failures
+                bool isRetry = status.ConsecutiveFailures > 0 && status.ConsecutiveFailures < 3
+                    && status.LastAttempt.HasValue
+                    && (DateTime.Now - status.LastAttempt.Value).TotalMinutes >= 30;
+
+                if (isScheduledTime || isRetry)
+                {
+                    // Check if already ran this hour for scheduled runs (prevent duplicate runs)
+                    if (isScheduledTime && !isRetry)
+                    {
+                        var markerPath = Path.Combine(AppContext.BaseDirectory, ".last_backup");
+                        var lastRun = File.Exists(markerPath) ? File.ReadAllText(markerPath).Trim() : "";
+                        var currentKey = $"{now:yyyy-MM-dd-HH}";
+                        if (lastRun == currentKey) return; // Already ran this hour
+                        File.WriteAllText(markerPath, currentKey);
+                    }
+
+                    try
+                    {
+                        var backupService = _serviceProvider.GetRequiredService<IBackupService>();
+                        var result = await Task.Run(() => backupService.RunBackupAsync());
+                        AdminStartupLog($"AutoBackup{(isRetry ? " (retry)" : "")}: {result}");
+                    }
+                    catch (Exception ex)
+                    {
+                        AdminStartupLog($"AutoBackup error: {ex.Message}");
+                    }
+                }
+            };
+            _backupTimer.Start();
         }
         catch (Exception ex)
         {
@@ -247,6 +298,14 @@ public partial class App : System.Windows.Application
                 "Startup Error", MsgType.Error);
             Shutdown();
         }
+    }
+
+    private static readonly string AdminStartupLogPath = Path.Combine(AppContext.BaseDirectory, "admin_startup_log.txt");
+
+    private static void AdminStartupLog(string msg)
+    {
+        try { File.AppendAllText(AdminStartupLogPath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n"); }
+        catch { }
     }
 
     private static void ParseConnectionString(string connStr, out string server, out string database, out string userId)
@@ -274,6 +333,8 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _backupTimer?.Stop();
+        _backupTimer = null;
         _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();
         _serviceProvider.Dispose();

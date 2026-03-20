@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using AccessControlPro.Application.DTOs;
+using AccessControlPro.Application.Interfaces;
+using AccessControlPro.Domain.Entities;
 using AccessControlPro.WPF.Helpers;
 
 namespace AccessControlPro.WPF.Views;
@@ -9,6 +11,7 @@ public partial class AssignCardDialog : Window
 {
     private readonly List<DeviceDto> _devices;
     private readonly List<CheckBox> _deviceCheckBoxes = new();
+    private List<TimeGroup> _timeGroups = new();
 
     public LanguageManager Lang => LanguageManager.Instance;
 
@@ -32,8 +35,9 @@ public partial class AssignCardDialog : Window
     private int _effectiveTimes = 65535;
     public int EffectiveTimes => _effectiveTimes;
 
-    public int TimePeriodIndex => 1;
-    public bool HolidayEnabled => HolidayCheck.IsChecked == true;
+    private int _timePeriodIndex = 1;
+    public int TimePeriodIndex => _timePeriodIndex;
+    public bool HolidayEnabled => false;
     public DateTime ValidFrom { get; private set; }
     public DateTime ValidTo { get; private set; }
 
@@ -51,7 +55,7 @@ public partial class AssignCardDialog : Window
         }
     }
 
-    public AssignCardDialog(EmployeeDto employee, List<DeviceDto> devices)
+    public AssignCardDialog(EmployeeDto employee, List<DeviceDto> devices, ITimeGroupService? timeGroupService = null)
     {
         _devices = devices ?? new List<DeviceDto>();
         InitializeComponent();
@@ -65,12 +69,76 @@ public partial class AssignCardDialog : Window
 
         PopulateEffectiveTimes(employee.MaxVisits);
         PopulateDevices();
+        _ = PopulateTimeGroupsAsync(timeGroupService);
 
         if (DeviceModeHelper.IsMultiDevice)
         {
             EffectiveTimesLabel.Visibility = Visibility.Collapsed;
             EffectiveTimesCombo.Visibility = Visibility.Collapsed;
         }
+    }
+
+    private async Task PopulateTimeGroupsAsync(ITimeGroupService? timeGroupService)
+    {
+        try
+        {
+            if (timeGroupService != null)
+            {
+                var groups = (await timeGroupService.GetAllAsync()).ToList();
+                _timeGroups = groups;
+
+                TimeGroupCombo.Items.Clear();
+                foreach (var g in groups)
+                {
+                    var displayName = Lang.IsArabic && !string.IsNullOrWhiteSpace(g.NameAr)
+                        ? g.NameAr : g.NameEn;
+                    TimeGroupCombo.Items.Add(new ComboBoxItem
+                    {
+                        Content = $"{displayName}  (#{g.HardwareIndex})",
+                        Tag = g.HardwareIndex
+                    });
+                }
+
+                // Select default (index 1)
+                if (TimeGroupCombo.Items.Count > 0)
+                    TimeGroupCombo.SelectedIndex = 0;
+
+                TimeGroupCombo.SelectionChanged += TimeGroupCombo_SelectionChanged;
+                UpdateTimePeriodIndex();
+            }
+            else
+            {
+                // No service available - just show default
+                TimeGroupCombo.Items.Add(new ComboBoxItem
+                {
+                    Content = "24/7 Full Access (#1)",
+                    Tag = 1
+                });
+                TimeGroupCombo.SelectedIndex = 0;
+            }
+        }
+        catch
+        {
+            TimeGroupCombo.Items.Add(new ComboBoxItem
+            {
+                Content = "24/7 Full Access (#1)",
+                Tag = 1
+            });
+            TimeGroupCombo.SelectedIndex = 0;
+        }
+    }
+
+    private void TimeGroupCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateTimePeriodIndex();
+    }
+
+    private void UpdateTimePeriodIndex()
+    {
+        if (TimeGroupCombo.SelectedItem is ComboBoxItem selected && selected.Tag is int idx)
+            _timePeriodIndex = idx;
+        else
+            _timePeriodIndex = 1;
     }
 
     private void PopulateEffectiveTimes(int maxVisits)

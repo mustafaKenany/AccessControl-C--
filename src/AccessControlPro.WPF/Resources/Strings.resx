@@ -772,4 +772,28 @@ Card sync errors on some devices:
   <data name="Sunday" xml:space="preserve"><value>Sunday</value></data>
   <!-- Validation -->
   <data name="AtLeastOneNameRequired" xml:space="preserve"><value>At least one name (English or Arabic) is required.</value></data>
+  <!-- Time Groups -->
+  <data name="NavTimeGroups" xml:space="preserve"><value>Time Groups</value></data>
+  <data name="TgTitle" xml:space="preserve"><value>Time Groups</value></data>
+  <data name="TgSubtitle" xml:space="preserve"><value>Manage time-based access schedules for cards</value></data>
+  <data name="TgAddNew" xml:space="preserve"><value>Add Time Group</value></data>
+  <data name="TgEdit" xml:space="preserve"><value>Edit Time Group</value></data>
+  <data name="TgNameEn" xml:space="preserve"><value>Name (EN)</value></data>
+  <data name="TgNameAr" xml:space="preserve"><value>Name (AR)</value></data>
+  <data name="TgHwIndex" xml:space="preserve"><value>HW Index</value></data>
+  <data name="TgSchedule" xml:space="preserve"><value>Schedule</value></data>
+  <data name="TgDefault" xml:space="preserve"><value>Default</value></data>
+  <data name="TgFullAccess" xml:space="preserve"><value>24/7</value></data>
+  <data name="TgClosed" xml:space="preserve"><value>Closed</value></data>
+  <data name="TgActive" xml:space="preserve"><value>Active</value></data>
+  <data name="TgAddSegment" xml:space="preserve"><value>+ Add Segment</value></data>
+  <data name="TgDeleteConfirm" xml:space="preserve"><value>Delete this time group?</value></data>
+  <data name="TgCannotDeleteDefault" xml:space="preserve"><value>Cannot delete the default 24/7 time group.</value></data>
+  <data name="TgSlotsFull" xml:space="preserve"><value>All 64 time group slots are in use.</value></data>
+  <data name="TgSyncToDevice" xml:space="preserve"><value>Sync to Device</value></data>
+  <data name="TgSegments" xml:space="preserve"><value>segments</value></data>
+  <data name="TgSaved" xml:space="preserve"><value>Time group saved successfully.</value></data>
+  <data name="TgDeleted" xml:space="preserve"><value>Time group deleted.</value></data>
+  <data name="TgNameRequired" xml:space="preserve"><value>A name is required.</value></data>
+  <data name="TgScheduleLabel" xml:space="preserve"><value>Schedule</value></data>
 </root>

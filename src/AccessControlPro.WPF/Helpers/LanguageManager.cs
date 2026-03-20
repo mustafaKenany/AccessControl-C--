@@ -842,6 +842,31 @@ public class LanguageManager : INotifyPropertyChanged
     // Validation
     public string AtLeastOneNameRequired => GetString("AtLeastOneNameRequired");
 
+    // Time Groups
+    public string NavTimeGroups => GetString("NavTimeGroups");
+    public string TgTitle => GetString("TgTitle");
+    public string TgSubtitle => GetString("TgSubtitle");
+    public string TgAddNew => GetString("TgAddNew");
+    public string TgEdit => GetString("TgEdit");
+    public string TgNameEn => GetString("TgNameEn");
+    public string TgNameAr => GetString("TgNameAr");
+    public string TgHwIndex => GetString("TgHwIndex");
+    public string TgSchedule => GetString("TgSchedule");
+    public string TgDefault => GetString("TgDefault");
+    public string TgFullAccess => GetString("TgFullAccess");
+    public string TgClosed => GetString("TgClosed");
+    public string TgActive => GetString("TgActive");
+    public string TgAddSegment => GetString("TgAddSegment");
+    public string TgDeleteConfirm => GetString("TgDeleteConfirm");
+    public string TgCannotDeleteDefault => GetString("TgCannotDeleteDefault");
+    public string TgSlotsFull => GetString("TgSlotsFull");
+    public string TgSyncToDevice => GetString("TgSyncToDevice");
+    public string TgSegments => GetString("TgSegments");
+    public string TgSaved => GetString("TgSaved");
+    public string TgDeleted => GetString("TgDeleted");
+    public string TgNameRequired => GetString("TgNameRequired");
+    public string TgScheduleLabel => GetString("TgScheduleLabel");
+
     private string GetString(string name)
     {
         return _resourceManager.GetString(name, _currentCulture) ?? name;
@@ -1553,6 +1578,30 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(Saturday));
         OnPropertyChanged(nameof(Sunday));
         OnPropertyChanged(nameof(AtLeastOneNameRequired));
+        // Time Groups
+        OnPropertyChanged(nameof(NavTimeGroups));
+        OnPropertyChanged(nameof(TgTitle));
+        OnPropertyChanged(nameof(TgSubtitle));
+        OnPropertyChanged(nameof(TgAddNew));
+        OnPropertyChanged(nameof(TgEdit));
+        OnPropertyChanged(nameof(TgNameEn));
+        OnPropertyChanged(nameof(TgNameAr));
+        OnPropertyChanged(nameof(TgHwIndex));
+        OnPropertyChanged(nameof(TgSchedule));
+        OnPropertyChanged(nameof(TgDefault));
+        OnPropertyChanged(nameof(TgFullAccess));
+        OnPropertyChanged(nameof(TgClosed));
+        OnPropertyChanged(nameof(TgActive));
+        OnPropertyChanged(nameof(TgAddSegment));
+        OnPropertyChanged(nameof(TgDeleteConfirm));
+        OnPropertyChanged(nameof(TgCannotDeleteDefault));
+        OnPropertyChanged(nameof(TgSlotsFull));
+        OnPropertyChanged(nameof(TgSyncToDevice));
+        OnPropertyChanged(nameof(TgSegments));
+        OnPropertyChanged(nameof(TgSaved));
+        OnPropertyChanged(nameof(TgDeleted));
+        OnPropertyChanged(nameof(TgNameRequired));
+        OnPropertyChanged(nameof(TgScheduleLabel));
     }
 
     private void OnPropertyChanged(string propertyName)

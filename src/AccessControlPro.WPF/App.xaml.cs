@@ -23,6 +23,7 @@ public partial class App : System.Windows.Application
     private readonly ServiceProvider _serviceProvider;
     private DispatcherTimer? _cleanupTimer;
     private DispatcherTimer? _expiryMonitorTimer;
+    private DispatcherTimer? _backupTimer;
     private static readonly string CrashLogPath = Path.Combine(AppContext.BaseDirectory, "crash_log.txt");
 
     public App()
@@ -135,7 +136,11 @@ public partial class App : System.Windows.Application
         services.AddScoped<IExpiryMonitorService, ExpiryMonitorService>();
         services.AddScoped<IQrPassService, QrPassService>();
         services.AddScoped<Domain.Interfaces.IMonitorLockService, AccessControlPro.Infrastructure.Persistence.MonitorLockService>();
+        services.AddScoped<ITimeGroupService, TimeGroupService>();
         // POS moved to separate AccessControlPro.POS app
+
+        // Backup
+        services.AddSingleton<IBackupService>(sp => new BackupService(connectionString));
 
         // ViewModels
         services.AddTransient<MainViewModel>();
@@ -400,6 +405,50 @@ public partial class App : System.Windows.Application
                 }
             };
             _expiryMonitorTimer.Start();
+
+            // Automated backup timer — checks every 30 minutes, runs at 2:00 AM and 2:00 PM, retries on failure
+            _backupTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(30) };
+            _backupTimer.Tick += async (_, _) =>
+            {
+                var now = DateTime.Now;
+                var hour = now.Hour;
+                var minute = now.Minute;
+
+                var status = BackupService.LoadStatus();
+
+                // Normal schedule: 2AM or 2PM
+                bool isScheduledTime = (hour == 2 || hour == 14) && minute < 30;
+
+                // Retry: if last backup failed and less than 3 consecutive failures
+                bool isRetry = status.ConsecutiveFailures > 0 && status.ConsecutiveFailures < 3
+                    && status.LastAttempt.HasValue
+                    && (DateTime.Now - status.LastAttempt.Value).TotalMinutes >= 30;
+
+                if (isScheduledTime || isRetry)
+                {
+                    // Check if already ran this hour for scheduled runs (prevent duplicate runs)
+                    if (isScheduledTime && !isRetry)
+                    {
+                        var markerPath = Path.Combine(AppContext.BaseDirectory, ".last_backup");
+                        var lastRun = File.Exists(markerPath) ? File.ReadAllText(markerPath).Trim() : "";
+                        var currentKey = $"{now:yyyy-MM-dd-HH}";
+                        if (lastRun == currentKey) return; // Already ran this hour
+                        File.WriteAllText(markerPath, currentKey);
+                    }
+
+                    try
+                    {
+                        var backupService = _serviceProvider.GetRequiredService<IBackupService>();
+                        var result = await Task.Run(() => backupService.RunBackupAsync());
+                        StartupLog($"AutoBackup{(isRetry ? " (retry)" : "")}: {result}");
+                    }
+                    catch (Exception ex)
+                    {
+                        StartupLog($"AutoBackup error: {ex.Message}");
+                    }
+                }
+            };
+            _backupTimer.Start();
         }
         catch (Exception ex)
         {
@@ -493,6 +542,8 @@ public partial class App : System.Windows.Application
         _cleanupTimer = null;
         _expiryMonitorTimer?.Stop();
         _expiryMonitorTimer = null;
+        _backupTimer?.Stop();
+        _backupTimer = null;
 
         // Stop SDK monitoring and shutdown to prevent background thread crashes
         try

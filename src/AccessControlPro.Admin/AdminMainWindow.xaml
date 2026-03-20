@@ -218,6 +218,16 @@
                                 </StackPanel>
                             </Button>
 
+                            <Button Style="{StaticResource SidebarButton}"
+                                    Command="{Binding NavigateToCommand}" CommandParameter="TimeGroups">
+                                <StackPanel Orientation="Horizontal">
+                                    <fa:ImageAwesome Icon="ClockOutline" Width="16" Height="16"
+                                                     Foreground="{StaticResource TextMutedBrush}"
+                                                     VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                    <TextBlock Text="{Binding Lang.NavTimeGroups}" FontSize="14" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
                             <Border Height="1" Background="#15FFFFFF" Margin="8,8"/>
 
                             <Button Style="{StaticResource SidebarButton}"
@@ -309,6 +319,9 @@
                     </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:ReportsViewModel}">
                         <views:ReportsView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:TimeGroupViewModel}">
+                        <views:TimeGroupView/>
                     </DataTemplate>
                 </ContentControl.Resources>
             </ContentControl>
