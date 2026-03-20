@@ -1,0 +1,110 @@
+@page "/my"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject AccessControlPro.Web.Data.CloudDbContext Db
+@rendermode InteractiveServer
+
+@if (!Session.IsAuthenticated || !Session.IsPlayer)
+{
+    <p>Redirecting...</p>
+}
+else if (_player != null)
+{
+    <div class="page-header">
+        <h1>My Subscription</h1>
+    </div>
+
+    <div class="player-card">
+        <div class="player-header">
+            <h2>@_player.FullNameEn</h2>
+            @if (!string.IsNullOrEmpty(_player.FullNameAr))
+            {
+                <h3 dir="rtl">@_player.FullNameAr</h3>
+            }
+            <span class="badge @StatusClass large">@Status</span>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">@_player.SubscriptionType</div>
+                <div class="stat-label">Subscription Type</div>
+            </div>
+            <div class="stat-card @(DaysLeft <= 7 ? "danger" : "accent")">
+                <div class="stat-number">@DaysLeft</div>
+                <div class="stat-label">Days Remaining</div>
+            </div>
+            @if (_player.MaxVisits > 0)
+            {
+                <div class="stat-card @(VisitsRemaining <= 5 ? "warning" : "")">
+                    <div class="stat-number">@VisitsRemaining</div>
+                    <div class="stat-label">Visits Remaining</div>
+                </div>
+            }
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Start Date</span>
+                <span class="info-value">@_player.StartDate.ToString("yyyy-MM-dd")</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">End Date</span>
+                <span class="info-value">@_player.EndDate.ToString("yyyy-MM-dd")</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Card Number</span>
+                <span class="info-value">@_player.CardNo</span>
+            </div>
+            @if (_player.MaxVisits > 0)
+            {
+                <div class="info-item">
+                    <span class="info-label">Visits Used</span>
+                    <span class="info-value">@_player.UsedVisits / @_player.MaxVisits</span>
+                </div>
+            }
+            @if (_player.IsFrozen && _player.FreezeStartDate.HasValue)
+            {
+                <div class="info-item">
+                    <span class="info-label">Frozen Since</span>
+                    <span class="info-value">@_player.FreezeStartDate.Value.ToString("yyyy-MM-dd")</span>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <p class="no-data">Player data not found</p>
+}
+
+@code {
+    private AccessControlPro.Domain.Entities.Employee? _player;
+
+    private string Status => _player == null ? "" :
+        _player.IsFrozen ? "Frozen" :
+        _player.EndDate <= DateTime.UtcNow ? "Expired" : "Active";
+
+    private string StatusClass => Status == "Active" ? "badge-active" :
+        Status == "Frozen" ? "badge-frozen" : "badge-expired";
+
+    private int DaysLeft => _player == null ? 0 :
+        Math.Max(0, (_player.EndDate - DateTime.UtcNow).Days);
+
+    private int VisitsRemaining => _player == null ? 0 :
+        Math.Max(0, _player.MaxVisits - _player.UsedVisits);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || !Session.IsPlayer)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        try
+        {
+            _player = await Db.Players.FirstOrDefaultAsync(p => p.Id == Session.UserId);
+        }
+        catch { }
+    }
+}

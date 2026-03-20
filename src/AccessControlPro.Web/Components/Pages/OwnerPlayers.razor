@@ -1,0 +1,100 @@
+@page "/players"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject AccessControlPro.Web.Data.CloudDbContext Db
+@rendermode InteractiveServer
+
+@if (!Session.IsAuthenticated || !Session.IsOwner)
+{
+    <p>Redirecting...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1>Players</h1>
+    </div>
+
+    <div class="search-bar">
+        <input type="text" @bind="_search" @bind:event="oninput" @onkeyup="OnSearch"
+               class="form-input" placeholder="Search by name, phone, or card..." />
+    </div>
+
+    <div class="content-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Card</th>
+                    <th>Phone</th>
+                    <th>Subscription</th>
+                    <th>End Date</th>
+                    <th>Status</th>
+                    <th>Visits</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in _filtered)
+                {
+                    var now = DateTime.UtcNow;
+                    var status = p.IsFrozen ? "Frozen" : p.EndDate <= now ? "Expired" : "Active";
+                    var statusClass = status == "Active" ? "badge-active" : status == "Frozen" ? "badge-frozen" : "badge-expired";
+                    var visitsText = p.MaxVisits > 0 ? $"{p.UsedVisits}/{p.MaxVisits}" : "Unlimited";
+
+                    <tr>
+                        <td>@p.FullNameEn</td>
+                        <td>@p.CardNo</td>
+                        <td>@p.Phone</td>
+                        <td>@p.SubscriptionType</td>
+                        <td>@p.EndDate.ToString("yyyy-MM-dd")</td>
+                        <td><span class="badge @statusClass">@status</span></td>
+                        <td>@visitsText</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (!_filtered.Any())
+        {
+            <p class="no-data">No players found</p>
+        }
+    </div>
+}
+
+@code {
+    private string _search = "";
+    private List<AccessControlPro.Domain.Entities.Employee> _allPlayers = new();
+    private List<AccessControlPro.Domain.Entities.Employee> _filtered = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || !Session.IsOwner)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        try
+        {
+            _allPlayers = await Db.Players.OrderBy(p => p.FullNameEn).ToListAsync();
+            _filtered = _allPlayers;
+        }
+        catch { }
+    }
+
+    private void OnSearch()
+    {
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            _filtered = _allPlayers;
+            return;
+        }
+
+        var q = _search.Trim().ToLower();
+        _filtered = _allPlayers.Where(p =>
+            p.FullNameEn.ToLower().Contains(q) ||
+            p.FullNameAr.Contains(q) ||
+            p.Phone.Contains(q) ||
+            p.CardNo.Contains(q)
+        ).ToList();
+    }
+}

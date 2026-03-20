@@ -1,0 +1,114 @@
+@page "/login"
+@inject AccessControlPro.Web.Services.WebAuthService AuthService
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<div class="login-container">
+    <div class="login-card">
+        <h2 class="login-title">HM-GymManagement</h2>
+        <p class="login-subtitle">Cloud Portal</p>
+
+        <div class="login-tabs">
+            <button class="tab-btn @(_isOwnerMode ? "active" : "")" @onclick="() => _isOwnerMode = true">Owner Login</button>
+            <button class="tab-btn @(!_isOwnerMode ? "active" : "")" @onclick="() => _isOwnerMode = false">Player Login</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="error-msg">@_error</div>
+        }
+
+        @if (_isOwnerMode)
+        {
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" @bind="_username" class="form-input" placeholder="Enter username" />
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" @bind="_password" class="form-input" placeholder="Enter password"
+                       @onkeydown="HandleKeyDown" />
+            </div>
+        }
+        else
+        {
+            <div class="form-group">
+                <label>Phone Number</label>
+                <input type="tel" @bind="_phone" class="form-input" placeholder="Enter phone number" />
+            </div>
+            <div class="form-group">
+                <label>Last 4 Digits of Card</label>
+                <input type="text" @bind="_cardLast4" class="form-input" placeholder="e.g. 1234" maxlength="4"
+                       @onkeydown="HandleKeyDown" />
+            </div>
+        }
+
+        <button class="login-btn" @onclick="DoLogin" disabled="@_loading">
+            @if (_loading)
+            {
+                <span>Logging in...</span>
+            }
+            else
+            {
+                <span>Login</span>
+            }
+        </button>
+    </div>
+</div>
+
+@code {
+    private bool _isOwnerMode = true;
+    private string _username = "";
+    private string _password = "";
+    private string _phone = "";
+    private string _cardLast4 = "";
+    private string _error = "";
+    private bool _loading;
+
+    protected override void OnInitialized()
+    {
+        if (Session.IsAuthenticated)
+            Nav.NavigateTo("/");
+    }
+
+    private async Task HandleKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await DoLogin();
+    }
+
+    private async Task DoLogin()
+    {
+        _error = "";
+        _loading = true;
+
+        try
+        {
+            AuthResult result;
+
+            if (_isOwnerMode)
+                result = await AuthService.OwnerLoginAsync(_username.Trim(), _password);
+            else
+                result = await AuthService.PlayerLoginAsync(_phone.Trim(), _cardLast4.Trim());
+
+            if (result.IsAuthenticated)
+            {
+                Session.Login(result);
+                Nav.NavigateTo("/");
+            }
+            else
+            {
+                _error = result.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Connection error: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

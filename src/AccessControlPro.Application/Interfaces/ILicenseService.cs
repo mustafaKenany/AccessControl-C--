@@ -5,7 +5,8 @@ public record LicenseStatus(
     string Message,
     string MachineId,
     DateTime? ExpiryDate,
-    int DaysRemaining = 0);
+    int DaysRemaining = 0,
+    string Tier = "Basic"); // Basic, Pro, Enterprise
 
 public record DeveloperInfo(
     string CompanyName = "",

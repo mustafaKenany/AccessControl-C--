@@ -24,6 +24,7 @@ public partial class App : System.Windows.Application
     private DispatcherTimer? _cleanupTimer;
     private DispatcherTimer? _expiryMonitorTimer;
     private DispatcherTimer? _backupTimer;
+    private DispatcherTimer? _cloudSyncTimer;
     private static readonly string CrashLogPath = Path.Combine(AppContext.BaseDirectory, "crash_log.txt");
 
     public App()
@@ -141,6 +142,9 @@ public partial class App : System.Windows.Application
 
         // Backup
         services.AddSingleton<IBackupService>(sp => new BackupService(connectionString));
+
+        // Cloud sync
+        services.AddSingleton<ICloudSyncService>(sp => new CloudSyncService(connectionString));
 
         // ViewModels
         services.AddTransient<MainViewModel>();
@@ -449,6 +453,45 @@ public partial class App : System.Windows.Application
                 }
             };
             _backupTimer.Start();
+
+            // Cloud sync timer — syncs local data to cloud PostgreSQL every 5 minutes
+            // Only runs if license tier is Pro or Enterprise
+            if (licenseStatus.Tier == "Pro" || licenseStatus.Tier == "Enterprise")
+            {
+                var cloudSync = new CloudSyncService(LoadConnectionString());
+                if (cloudSync.IsCloudEnabled())
+                {
+                    _cloudSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(5) };
+                    _cloudSyncTimer.Tick += async (_, _) =>
+                    {
+                        try
+                        {
+                            var result = await Task.Run(() => cloudSync.SyncToCloudAsync());
+                            StartupLog($"CloudSync: {result}");
+                        }
+                        catch (Exception ex2)
+                        {
+                            StartupLog($"CloudSync error: {ex2.Message}");
+                        }
+                    };
+                    _cloudSyncTimer.Start();
+
+                    // Run initial sync after 30 seconds
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(30000);
+                        try
+                        {
+                            var result = await cloudSync.SyncToCloudAsync();
+                            StartupLog($"CloudSync (initial): {result}");
+                        }
+                        catch (Exception ex2)
+                        {
+                            StartupLog($"CloudSync (initial) error: {ex2.Message}");
+                        }
+                    });
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -544,6 +587,8 @@ public partial class App : System.Windows.Application
         _expiryMonitorTimer = null;
         _backupTimer?.Stop();
         _backupTimer = null;
+        _cloudSyncTimer?.Stop();
+        _cloudSyncTimer = null;
 
         // Stop SDK monitoring and shutdown to prevent background thread crashes
         try

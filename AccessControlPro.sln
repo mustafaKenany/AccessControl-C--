@@ -25,6 +25,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeyGen", "tools\KeyGen\KeyG
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AccessControlPro.CardSync", "src\AccessControlPro.CardSync\AccessControlPro.CardSync.csproj", "{5F32FDA8-C521-4C3D-A555-2AA164F8BD40}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AccessControlPro.Web", "src\AccessControlPro.Web\AccessControlPro.Web.csproj", "{BCCCD021-97D7-4196-8023-3A6E8D144917}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -143,6 +145,18 @@ Global
 		{5F32FDA8-C521-4C3D-A555-2AA164F8BD40}.Release|x64.Build.0 = Release|Any CPU
 		{5F32FDA8-C521-4C3D-A555-2AA164F8BD40}.Release|x86.ActiveCfg = Release|Any CPU
 		{5F32FDA8-C521-4C3D-A555-2AA164F8BD40}.Release|x86.Build.0 = Release|Any CPU
+		{BCCCD021-97D7-4196-8023-3A6E8D144917}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCCCD021-97D7-4196-8023-3A6E8D144917}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCCCD021-97D7-4196-8023-3A6E8D144917}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BCCCD021-97D7-4196-8023-3A6E8D144917}.Debug|x64.Build.0 = Debug|Any CPU
+		{BCCCD021-97D7-4196-8023-3A6E8D144917}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BCCCD021-97D7-4196-8023-3A6E8D144917}.Debug|x86.Build.0 = Debug|Any CPU
+		{BCCCD021-97D7-4196-8023-3A6E8D144917}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCCCD021-97D7-4196-8023-3A6E8D144917}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BCCCD021-97D7-4196-8023-3A6E8D144917}.Release|x64.ActiveCfg = Release|Any CPU
+		{BCCCD021-97D7-4196-8023-3A6E8D144917}.Release|x64.Build.0 = Release|Any CPU
+		{BCCCD021-97D7-4196-8023-3A6E8D144917}.Release|x86.ActiveCfg = Release|Any CPU
+		{BCCCD021-97D7-4196-8023-3A6E8D144917}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -157,5 +171,6 @@ Global
 		{69776844-72A8-4D6E-9C77-CD9A775922E7} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{EA4B97D9-0482-44CD-B55A-3714EF1D42B6} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
 		{5F32FDA8-C521-4C3D-A555-2AA164F8BD40} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{BCCCD021-97D7-4196-8023-3A6E8D144917} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

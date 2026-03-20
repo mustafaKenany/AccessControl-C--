@@ -1,0 +1,46 @@
+@inherits LayoutComponentBase
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+
+<div class="app-container">
+    @if (Session.IsAuthenticated)
+    {
+        <nav class="sidebar">
+            <div class="sidebar-brand">
+                <h3>HM-GymManagement</h3>
+                <span class="user-role">@Session.DisplayName (@Session.Role)</span>
+            </div>
+            <div class="nav-links">
+                @if (Session.IsOwner)
+                {
+                    <a href="/" class="nav-link @ActiveClass("/")">Dashboard</a>
+                    <a href="/players" class="nav-link @ActiveClass("/players")">Players</a>
+                    <a href="/events" class="nav-link @ActiveClass("/events")">Events</a>
+                    <a href="/finance" class="nav-link @ActiveClass("/finance")">Finance</a>
+                }
+                else
+                {
+                    <a href="/my" class="nav-link @ActiveClass("/my")">My Subscription</a>
+                    <a href="/my/visits" class="nav-link @ActiveClass("/my/visits")">Visit History</a>
+                }
+                <a href="/logout" class="nav-link logout">Logout</a>
+            </div>
+        </nav>
+        <main class="main-content">
+            @Body
+        </main>
+    }
+    else
+    {
+        @Body
+    }
+</div>
+
+@code {
+    private string ActiveClass(string href)
+    {
+        var uri = Nav.ToBaseRelativePath(Nav.Uri).TrimEnd('/');
+        var target = href.TrimStart('/').TrimEnd('/');
+        return string.Equals(uri, target, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    }
+}

@@ -1,0 +1,111 @@
+@page "/finance"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject AccessControlPro.Web.Data.CloudDbContext Db
+@rendermode InteractiveServer
+
+@if (!Session.IsAuthenticated || !Session.IsOwner)
+{
+    <p>Redirecting...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1>Finance</h1>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card accent">
+            <div class="stat-number">@_monthIncome.ToString("N2")</div>
+            <div class="stat-label">Income This Month</div>
+        </div>
+        <div class="stat-card danger">
+            <div class="stat-number">@_monthExpense.ToString("N2")</div>
+            <div class="stat-label">Expenses This Month</div>
+        </div>
+        <div class="stat-card @(_monthProfit >= 0 ? "accent" : "danger")">
+            <div class="stat-number">@_monthProfit.ToString("N2")</div>
+            <div class="stat-label">Net Profit</div>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number">@_totalIncome.ToString("N2")</div>
+            <div class="stat-label">Total Income (All Time)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">@_totalExpense.ToString("N2")</div>
+            <div class="stat-label">Total Expenses (All Time)</div>
+        </div>
+    </div>
+
+    <div class="content-card">
+        <h3>Recent Transactions</h3>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Description</th>
+                    <th>By</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in _recentTransactions)
+                {
+                    var typeClass = t.Type == Domain.Enums.TransactionType.Income ? "text-success" : "text-danger";
+                    <tr>
+                        <td>@t.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="@typeClass">@t.Type</td>
+                        <td>@t.Category</td>
+                        <td class="@typeClass">@t.Amount.ToString("N2")</td>
+                        <td>@t.Description</td>
+                        <td>@t.CreatedBy</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (!_recentTransactions.Any())
+        {
+            <p class="no-data">No transactions found</p>
+        }
+    </div>
+}
+
+@code {
+    private decimal _monthIncome, _monthExpense, _monthProfit;
+    private decimal _totalIncome, _totalExpense;
+    private List<AccessControlPro.Domain.Entities.Transaction> _recentTransactions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || !Session.IsOwner)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        try
+        {
+            var now = DateTime.UtcNow;
+            var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            var transactions = await Db.Transactions.ToListAsync();
+
+            _totalIncome = transactions.Where(t => t.Type == Domain.Enums.TransactionType.Income).Sum(t => t.Amount);
+            _totalExpense = transactions.Where(t => t.Type == Domain.Enums.TransactionType.Expense).Sum(t => t.Amount);
+
+            var monthTx = transactions.Where(t => t.CreatedAt >= monthStart).ToList();
+            _monthIncome = monthTx.Where(t => t.Type == Domain.Enums.TransactionType.Income).Sum(t => t.Amount);
+            _monthExpense = monthTx.Where(t => t.Type == Domain.Enums.TransactionType.Expense).Sum(t => t.Amount);
+            _monthProfit = _monthIncome - _monthExpense;
+
+            _recentTransactions = transactions.OrderByDescending(t => t.CreatedAt).Take(50).ToList();
+        }
+        catch { }
+    }
+}

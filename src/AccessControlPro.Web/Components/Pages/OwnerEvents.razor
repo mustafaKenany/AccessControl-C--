@@ -1,0 +1,94 @@
+@page "/events"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject AccessControlPro.Web.Data.CloudDbContext Db
+@rendermode InteractiveServer
+
+@if (!Session.IsAuthenticated || !Session.IsOwner)
+{
+    <p>Redirecting...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1>Access Events</h1>
+    </div>
+
+    <div class="filter-bar">
+        <div class="form-group inline">
+            <label>From</label>
+            <input type="date" @bind="_dateFrom" class="form-input" />
+        </div>
+        <div class="form-group inline">
+            <label>To</label>
+            <input type="date" @bind="_dateTo" class="form-input" />
+        </div>
+        <button class="btn-accent" @onclick="LoadEventsAsync">Filter</button>
+    </div>
+
+    <div class="content-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date/Time</th>
+                    <th>Door</th>
+                    <th>Card ID</th>
+                    <th>Event Type</th>
+                    <th>Event Code</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ev in _events)
+                {
+                    <tr>
+                        <td>@ev.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@ev.DoorId</td>
+                        <td>@(ev.CardId?.ToString() ?? "-")</td>
+                        <td>@ev.EventType</td>
+                        <td>@ev.EventCode</td>
+                        <td>@ev.Details</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (!_events.Any())
+        {
+            <p class="no-data">No events found for the selected period</p>
+        }
+    </div>
+}
+
+@code {
+    private DateTime _dateFrom = DateTime.Today.AddDays(-7);
+    private DateTime _dateTo = DateTime.Today;
+    private List<AccessControlPro.Domain.Entities.AccessEvent> _events = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || !Session.IsOwner)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        await LoadEventsAsync();
+    }
+
+    private async Task LoadEventsAsync()
+    {
+        try
+        {
+            var from = DateTime.SpecifyKind(_dateFrom, DateTimeKind.Utc);
+            var to = DateTime.SpecifyKind(_dateTo.AddDays(1), DateTimeKind.Utc);
+
+            _events = await Db.AccessEvents
+                .Where(e => e.Timestamp >= from && e.Timestamp < to)
+                .OrderByDescending(e => e.Timestamp)
+                .Take(500)
+                .ToListAsync();
+        }
+        catch { }
+    }
+}

@@ -1,0 +1,15 @@
+@page "/"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnInitialized()
+    {
+        if (!Session.IsAuthenticated)
+            Nav.NavigateTo("/login");
+        else if (Session.IsOwner)
+            Nav.NavigateTo("/dashboard");
+        else
+            Nav.NavigateTo("/my");
+    }
+}

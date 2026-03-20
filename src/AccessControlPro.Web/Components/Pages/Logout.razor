@@ -1,0 +1,11 @@
+@page "/logout"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnInitialized()
+    {
+        Session.Logout();
+        Nav.NavigateTo("/login");
+    }
+}

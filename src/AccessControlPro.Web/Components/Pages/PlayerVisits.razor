@@ -1,0 +1,88 @@
+@page "/my/visits"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject AccessControlPro.Web.Data.CloudDbContext Db
+@rendermode InteractiveServer
+
+@if (!Session.IsAuthenticated || !Session.IsPlayer)
+{
+    <p>Redirecting...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1>My Visit History</h1>
+    </div>
+
+    <div class="content-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Door</th>
+                    <th>Event</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ev in _events)
+                {
+                    var local = ev.Timestamp.ToLocalTime();
+                    <tr>
+                        <td>@local.ToString("yyyy-MM-dd")</td>
+                        <td>@local.ToString("HH:mm:ss")</td>
+                        <td>@GetDoorName(ev.DoorId)</td>
+                        <td>@ev.EventCode</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (!_events.Any())
+        {
+            <p class="no-data">No visit history found</p>
+        }
+    </div>
+}
+
+@code {
+    private List<AccessControlPro.Domain.Entities.AccessEvent> _events = new();
+    private Dictionary<int, string> _doorNames = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || !Session.IsPlayer)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        try
+        {
+            // Load door names for display
+            var doors = await Db.Doors.ToListAsync();
+            _doorNames = doors.ToDictionary(d => d.Id, d => d.Name);
+
+            // Get player's card IDs
+            var cardIds = await Db.AccessCards
+                .Where(c => c.EmployeeId == Session.UserId)
+                .Select(c => c.Id)
+                .ToListAsync();
+
+            if (cardIds.Any())
+            {
+                _events = await Db.AccessEvents
+                    .Where(e => e.CardId.HasValue && cardIds.Contains(e.CardId.Value))
+                    .OrderByDescending(e => e.Timestamp)
+                    .Take(200)
+                    .ToListAsync();
+            }
+        }
+        catch { }
+    }
+
+    private string GetDoorName(int doorId)
+    {
+        return _doorNames.TryGetValue(doorId, out var name) ? name : $"Door {doorId}";
+    }
+}

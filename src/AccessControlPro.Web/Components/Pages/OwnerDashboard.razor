@@ -1,0 +1,154 @@
+@page "/dashboard"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject AccessControlPro.Web.Data.CloudDbContext Db
+@rendermode InteractiveServer
+
+@if (!Session.IsAuthenticated || !Session.IsOwner)
+{
+    <p>Redirecting...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1>Dashboard</h1>
+        <span class="last-sync">Last refresh: @DateTime.Now.ToString("HH:mm")</span>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number">@_totalPlayers</div>
+            <div class="stat-label">Total Players</div>
+        </div>
+        <div class="stat-card accent">
+            <div class="stat-number">@_activePlayers</div>
+            <div class="stat-label">Active</div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-number">@_expiringPlayers</div>
+            <div class="stat-label">Expiring (7 days)</div>
+        </div>
+        <div class="stat-card danger">
+            <div class="stat-number">@_expiredPlayers</div>
+            <div class="stat-label">Expired</div>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number">@_todayEntries</div>
+            <div class="stat-label">Today's Entries</div>
+        </div>
+        <div class="stat-card accent">
+            <div class="stat-number">@_monthRevenue.ToString("N0")</div>
+            <div class="stat-label">Revenue This Month</div>
+        </div>
+    </div>
+
+    <div class="content-grid">
+        <div class="content-card">
+            <h3>Recent Events</h3>
+            @if (_recentEvents.Any())
+            {
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Time</th><th>Card</th><th>Event</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ev in _recentEvents)
+                        {
+                            <tr>
+                                <td>@ev.Timestamp.ToLocalTime().ToString("MM/dd HH:mm")</td>
+                                <td>@(ev.CardId?.ToString() ?? "-")</td>
+                                <td>@ev.EventCode</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p class="no-data">No recent events</p>
+            }
+        </div>
+
+        <div class="content-card">
+            <h3>Expiring Soon</h3>
+            @if (_expiringList.Any())
+            {
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Player</th><th>Expires</th><th>Days Left</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in _expiringList)
+                        {
+                            var days = (p.EndDate - DateTime.UtcNow).Days;
+                            <tr>
+                                <td>@p.FullNameEn</td>
+                                <td>@p.EndDate.ToString("yyyy-MM-dd")</td>
+                                <td class="@(days <= 3 ? "text-danger" : "text-warning")">@days</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p class="no-data">No expiring subscriptions</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private int _totalPlayers, _activePlayers, _expiringPlayers, _expiredPlayers, _todayEntries;
+    private decimal _monthRevenue;
+    private List<AccessControlPro.Domain.Entities.AccessEvent> _recentEvents = new();
+    private List<AccessControlPro.Domain.Entities.Employee> _expiringList = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || !Session.IsOwner)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var players = await Db.Players.ToListAsync();
+
+            _totalPlayers = players.Count;
+            _activePlayers = players.Count(p => p.EndDate > now && !p.IsFrozen);
+            _expiringPlayers = players.Count(p => p.EndDate > now && p.EndDate <= now.AddDays(7) && !p.IsFrozen);
+            _expiredPlayers = players.Count(p => p.EndDate <= now);
+
+            var todayStart = DateTime.UtcNow.Date;
+            _todayEntries = await Db.AccessEvents.CountAsync(e => e.Timestamp >= todayStart);
+
+            var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            _monthRevenue = await Db.Transactions
+                .Where(t => t.CreatedAt >= monthStart && t.Type == Domain.Enums.TransactionType.Income)
+                .SumAsync(t => t.Amount);
+
+            _recentEvents = await Db.AccessEvents
+                .OrderByDescending(e => e.Timestamp)
+                .Take(10)
+                .ToListAsync();
+
+            _expiringList = players
+                .Where(p => p.EndDate > now && p.EndDate <= now.AddDays(7) && !p.IsFrozen)
+                .OrderBy(p => p.EndDate)
+                .Take(10)
+                .ToList();
+        }
+        catch { /* cloud DB may not be available yet */ }
+    }
+}
