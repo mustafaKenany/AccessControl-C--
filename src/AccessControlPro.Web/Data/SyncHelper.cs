@@ -5,6 +5,10 @@ namespace AccessControlPro.Web.Data;
 
 public static class SyncHelper
 {
+    private static readonly List<string> _lastErrors = new();
+
+    public static List<string> GetLastErrors() => _lastErrors;
+
     public static async Task<int> UpsertRowsAsync(NpgsqlConnection conn, string tableName,
         List<Dictionary<string, object?>> rows)
     {
@@ -16,9 +20,13 @@ public static class SyncHelper
             using var del = new NpgsqlCommand($@"DELETE FROM ""{tableName}""", conn);
             await del.ExecuteNonQueryAsync();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            _lastErrors.Add($"{tableName} DELETE: {ex.Message}");
+        }
 
         int count = 0;
+        int errors = 0;
         foreach (var row in rows)
         {
             try
@@ -38,23 +46,7 @@ public static class SyncHelper
                     // Handle JsonElement values from deserialization
                     if (val is JsonElement je)
                     {
-                        val = je.ValueKind switch
-                        {
-                            JsonValueKind.String => je.GetString(),
-                            JsonValueKind.Number => je.TryGetInt64(out var l) ? (object)l : je.GetDouble(),
-                            JsonValueKind.True => true,
-                            JsonValueKind.False => false,
-                            JsonValueKind.Null => DBNull.Value,
-                            _ => je.ToString()
-                        };
-                    }
-
-                    // Handle decimal conversion for numeric fields
-                    if (val is double d && (kvp.Key.Contains("Fee") || kvp.Key.Contains("Amount") ||
-                        kvp.Key.Contains("Paid") || kvp.Key.Contains("Height") || kvp.Key.Contains("Weight") ||
-                        kvp.Key.Contains("Balance")))
-                    {
-                        val = (decimal)d;
+                        val = ConvertJsonElement(je, kvp.Key);
                     }
 
                     pars.Add(new NpgsqlParameter($"p{i}", val ?? DBNull.Value));
@@ -67,9 +59,88 @@ public static class SyncHelper
                 await cmd.ExecuteNonQueryAsync();
                 count++;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                errors++;
+                if (errors <= 3)
+                    _lastErrors.Add($"{tableName} INSERT row {count + errors}: {ex.Message}");
+            }
         }
 
+        if (errors > 0)
+            _lastErrors.Add($"{tableName}: {errors}/{rows.Count} rows failed");
+
         return count;
+    }
+
+    private static object? ConvertJsonElement(JsonElement je, string columnName)
+    {
+        switch (je.ValueKind)
+        {
+            case JsonValueKind.String:
+                var str = je.GetString();
+                if (str == null) return DBNull.Value;
+
+                // Try to parse as DateTime for date/time columns
+                if (IsDateColumn(columnName) && DateTime.TryParse(str, out var dt))
+                    return dt;
+
+                // Try to parse as TimeSpan for time columns
+                if (IsTimeColumn(columnName) && TimeSpan.TryParse(str, out var ts))
+                    return ts;
+
+                return str;
+
+            case JsonValueKind.Number:
+                // For decimal columns, use decimal
+                if (IsDecimalColumn(columnName))
+                    return je.GetDecimal();
+                // For integer columns
+                if (je.TryGetInt32(out var intVal))
+                    return intVal;
+                if (je.TryGetInt64(out var longVal))
+                    return longVal;
+                return je.GetDouble();
+
+            case JsonValueKind.True:
+                return true;
+
+            case JsonValueKind.False:
+                return false;
+
+            case JsonValueKind.Null:
+            case JsonValueKind.Undefined:
+                return DBNull.Value;
+
+            default:
+                return je.ToString();
+        }
+    }
+
+    private static bool IsDateColumn(string name)
+    {
+        return name.Contains("Date", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Time", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("At", StringComparison.OrdinalIgnoreCase) ||
+               name == "Timestamp" || name == "EventDate" ||
+               name == "CreatedAt" || name == "DeletedAt" ||
+               name == "FreezeStartDate" || name == "ValidFrom" || name == "ValidTo" ||
+               name == "TransactionDate" || name == "SyncedAt" || name == "ExpiresAt";
+    }
+
+    private static bool IsTimeColumn(string name)
+    {
+        return name == "WorkStartTime" || name == "WorkEndTime";
+    }
+
+    private static bool IsDecimalColumn(string name)
+    {
+        return name.Contains("Fee", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Amount", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Paid", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Height", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Weight", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Balance", StringComparison.OrdinalIgnoreCase) ||
+               name == "SubscriptionFee" || name == "AmountPaid";
     }
 }

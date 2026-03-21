@@ -92,19 +92,27 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db) =>
         if (syncData.AccessCards?.Count > 0)
             total += await SyncHelper.UpsertRowsAsync(conn, "AccessCards", syncData.AccessCards);
 
+        // Get errors from SyncHelper
+        var syncErrors = SyncHelper.GetLastErrors();
+        var status = syncErrors.Count == 0 ? "Success" : "PartialSuccess";
+        var details = $"Synced {total} records via API";
+        if (syncErrors.Count > 0)
+            details += " | Errors: " + string.Join("; ", syncErrors.Take(10));
+
         // Log sync
         try
         {
             using var logCmd = new Npgsql.NpgsqlCommand(
                 @"INSERT INTO ""CloudSyncLogs"" (""SyncType"", ""Status"", ""Details"", ""SyncedAt"")
-                  VALUES ('API', 'Success', @d, @ts)", conn);
-            logCmd.Parameters.AddWithValue("d", $"Synced {total} records via API");
+                  VALUES ('API', @s, @d, @ts)", conn);
+            logCmd.Parameters.AddWithValue("s", status);
+            logCmd.Parameters.AddWithValue("d", details);
             logCmd.Parameters.AddWithValue("ts", DateTime.UtcNow);
             await logCmd.ExecuteNonQueryAsync();
         }
         catch { }
 
-        return Results.Ok(new { success = true, total });
+        return Results.Ok(new { success = true, total, errors = syncErrors });
     }
     catch (Exception ex)
     {
