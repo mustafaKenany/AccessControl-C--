@@ -53,17 +53,34 @@ else
         </div>
         <div class="form-group">
             <label>@L("Permissions", "الصلاحيات")</label>
-            <div class="permissions-grid">
-                @foreach (var perm in _allPermissions)
-                {
-                    var isChecked = _newPermissions.Contains(perm.Key);
-                    <div class="permission-item">
-                        <input type="checkbox" id="new_@perm.Key" checked="@isChecked"
-                               @onchange="(e) => ToggleNewPermission(perm.Key, (bool)(e.Value ?? false))" />
-                        <label for="new_@perm.Key">@L(perm.Value.en, perm.Value.ar)</label>
-                    </div>
-                }
+            <div style="margin-bottom: 0.5rem;">
+                <button class="filter-btn" style="font-size: 0.75rem;" @onclick="() => SelectAllNew(true)">
+                    @L("Select All", "تحديد الكل")
+                </button>
+                <button class="filter-btn" style="font-size: 0.75rem;" @onclick="() => SelectAllNew(false)">
+                    @L("Clear All", "مسح الكل")
+                </button>
             </div>
+            @foreach (var group in _permissionGroups)
+            {
+                <div style="margin-bottom: 0.75rem;">
+                    <div style="color: var(--accent); font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.2rem;">
+                        @L(group.groupEn, group.groupAr)
+                    </div>
+                    <div class="permissions-grid">
+                        @foreach (var perm in group.perms)
+                        {
+                            var key = perm.key;
+                            var isChecked = _newPermissions.Contains(key);
+                            <div class="permission-item">
+                                <input type="checkbox" id="new_@key" checked="@isChecked"
+                                       @onchange="(e) => ToggleNewPermission(key, (bool)(e.Value ?? false))" />
+                                <label for="new_@key">@L(perm.en, perm.ar)</label>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
         </div>
         <div class="form-actions">
             <button class="btn-accent" @onclick="CreateUserAsync" disabled="@_loading">
@@ -137,17 +154,34 @@ else
                             <td>
                                 @if (isEditing)
                                 {
-                                    <div class="permissions-grid" style="font-size: 0.8rem;">
-                                        @foreach (var perm in _allPermissions)
-                                        {
-                                            var isChecked = _editPermissions.Contains(perm.Key);
-                                            <div class="permission-item">
-                                                <input type="checkbox" id="edit_@perm.Key" checked="@isChecked"
-                                                       @onchange="(e) => ToggleEditPermission(perm.Key, (bool)(e.Value ?? false))" />
-                                                <label for="edit_@perm.Key">@L(perm.Value.en, perm.Value.ar)</label>
-                                            </div>
-                                        }
+                                    <div style="margin-bottom: 0.3rem;">
+                                        <button class="filter-btn" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" @onclick="() => SelectAllEdit(true)">
+                                            @L("All", "الكل")
+                                        </button>
+                                        <button class="filter-btn" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" @onclick="() => SelectAllEdit(false)">
+                                            @L("None", "لا شيء")
+                                        </button>
                                     </div>
+                                    @foreach (var group in _permissionGroups)
+                                    {
+                                        <div style="margin-bottom: 0.5rem;">
+                                            <div style="color: var(--accent); font-weight: 600; font-size: 0.75rem; margin-bottom: 0.15rem;">
+                                                @L(group.groupEn, group.groupAr)
+                                            </div>
+                                            <div class="permissions-grid" style="font-size: 0.78rem;">
+                                                @foreach (var perm in group.perms)
+                                                {
+                                                    var key = perm.key;
+                                                    var isChecked = _editPermissions.Contains(key);
+                                                    <div class="permission-item">
+                                                        <input type="checkbox" id="edit_@key" checked="@isChecked"
+                                                               @onchange="(e) => ToggleEditPermission(key, (bool)(e.Value ?? false))" />
+                                                        <label for="edit_@key">@L(perm.en, perm.ar)</label>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
                                 }
                                 else
                                 {
@@ -244,19 +278,66 @@ else
     private int _resetPasswordUserId;
     private string _resetPassword = "";
 
-    private readonly Dictionary<string, (string en, string ar)> _allPermissions = new()
-    {
-        ["ManagePlayers"] = ("Manage Players", "إدارة اللاعبين"),
-        ["ManageCards"] = ("Manage Cards", "إدارة البطاقات"),
-        ["ManageDevices"] = ("Manage Devices", "إدارة الأجهزة"),
-        ["ViewEvents"] = ("View Events", "عرض الأحداث"),
-        ["ManageFinance"] = ("Manage Finance", "إدارة المالية"),
-        ["ViewReports"] = ("View Reports", "عرض التقارير"),
-        ["ManageUsers"] = ("Manage Users", "إدارة المستخدمين"),
-        ["ManageSettings"] = ("Manage Settings", "إدارة الإعدادات"),
-        ["DeleteRecords"] = ("Delete Records", "حذف السجلات"),
-        ["BackupRestore"] = ("Backup & Restore", "النسخ والاستعادة")
-    };
+    // Exact same permissions as local WPF app (AppPermission.cs)
+    private readonly (string groupEn, string groupAr, (string key, string en, string ar)[] perms)[] _permissionGroups =
+    [
+        ("App Access", "الوصول للتطبيقات", [
+            ("AccessMainApp", "Main App", "التطبيق الرئيسي"),
+            ("AccessPOS", "POS App", "نقطة البيع"),
+            ("AccessAdmin", "Admin Panel", "لوحة الإدارة")
+        ]),
+        ("Players", "اللاعبون", [
+            ("Players.View", "View Players", "عرض اللاعبين"),
+            ("Players.Add", "Add Players", "إضافة لاعبين"),
+            ("Players.Edit", "Edit Players", "تعديل لاعبين"),
+            ("Players.Delete", "Delete Players", "حذف لاعبين"),
+            ("Players.AssignCard", "Assign Card", "تعيين بطاقة"),
+            ("Players.RemoveCard", "Remove Card", "إزالة بطاقة"),
+            ("Players.ReassignCard", "Reassign Card", "إعادة تعيين بطاقة"),
+            ("Players.Freeze", "Freeze/Unfreeze", "تجميد/إلغاء تجميد"),
+            ("Players.Renew", "Renew Subscription", "تجديد اشتراك"),
+            ("Players.Reports", "Player Reports", "تقارير اللاعبين")
+        ]),
+        ("Devices", "الأجهزة", [
+            ("Devices.View", "View Devices", "عرض الأجهزة"),
+            ("Devices.Add", "Add Devices", "إضافة أجهزة"),
+            ("Devices.Edit", "Edit Devices", "تعديل أجهزة"),
+            ("Devices.Delete", "Delete Devices", "حذف أجهزة"),
+            ("Devices.Connect", "Connect/Sync", "اتصال/مزامنة")
+        ]),
+        ("Doors", "الأبواب", [
+            ("Doors.View", "View Doors", "عرض الأبواب"),
+            ("Doors.OpenClose", "Open/Close Doors", "فتح/إغلاق الأبواب"),
+            ("Doors.Settings", "Door Settings", "إعدادات الأبواب")
+        ]),
+        ("Events", "الأحداث", [
+            ("Events.View", "View Events", "عرض الأحداث")
+        ]),
+        ("Finance", "المالية", [
+            ("Finance.View", "View Finance", "عرض المالية"),
+            ("Finance.Manage", "Manage Finance", "إدارة المالية")
+        ]),
+        ("Cash Flow", "التدفق النقدي", [
+            ("CashFlow.View", "View Cash Flow", "عرض التدفق النقدي"),
+            ("CashFlow.Manage", "Manage Cash Flow", "إدارة التدفق النقدي")
+        ]),
+        ("Logs", "السجلات", [
+            ("Logs.View", "View Logs", "عرض السجلات")
+        ]),
+        ("Deleted Records", "المحذوفات", [
+            ("DeletedRecords.View", "View Deleted", "عرض المحذوفات")
+        ]),
+        ("Monitor", "المراقبة", [
+            ("Monitor.View", "Real-Time Monitor", "المراقبة المباشرة")
+        ]),
+        ("Admin", "الإدارة", [
+            ("Admin.ManageUsers", "Manage Users", "إدارة المستخدمين"),
+            ("Admin.ManageSettings", "Manage Settings", "إدارة الإعدادات")
+        ])
+    ];
+
+    // Flat dictionary for display
+    private Dictionary<string, (string en, string ar)> _allPermissions = new();
 
     private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
@@ -267,6 +348,11 @@ else
             Nav.NavigateTo("/login");
             return;
         }
+
+        // Build flat permissions from groups
+        foreach (var group in _permissionGroups)
+            foreach (var perm in group.perms)
+                _allPermissions[perm.key] = (perm.en, perm.ar);
 
         await LoadUsersAsync();
     }
@@ -459,6 +545,24 @@ else
     {
         if (isChecked) _editPermissions.Add(perm);
         else _editPermissions.Remove(perm);
+    }
+
+    private void SelectAllNew(bool select)
+    {
+        _newPermissions.Clear();
+        if (select)
+            foreach (var g in _permissionGroups)
+                foreach (var p in g.perms)
+                    _newPermissions.Add(p.key);
+    }
+
+    private void SelectAllEdit(bool select)
+    {
+        _editPermissions.Clear();
+        if (select)
+            foreach (var g in _permissionGroups)
+                foreach (var p in g.perms)
+                    _editPermissions.Add(p.key);
     }
 
     private string FormatPermissions(string permissions)
