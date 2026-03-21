@@ -61,9 +61,9 @@ else
                     @L("Valid until", "صالح حتى"): @_validTo.ToString("yyyy-MM-dd")
                 </p>
                 <div class="qr-actions">
-                    <a class="btn-whatsapp" href="@_whatsAppUrl" target="_blank">
+                    <button class="btn-whatsapp" @onclick="ShareQrViaWhatsApp">
                         <i class="fab fa-whatsapp"></i> @L("Share via WhatsApp", "مشاركة عبر واتساب")
-                    </a>
+                    </button>
                     <a class="btn-accent" href="https://api.qrserver.com/v1/create-qr-code/?data=@Uri.EscapeDataString(_qrContent)&size=600x600&format=png" target="_blank" download="@($"pass-{_createdCode}.png")">
                         <i class="fas fa-download"></i> @L("Download QR", "تحميل QR")
                     </a>
@@ -149,6 +149,7 @@ else
     private string _createdCode = "";
     private string _qrContent = "";
     private string _whatsAppUrl = "";
+    private string _gymName = "MyGym";
 
     // Passes list
     private List<QrPass> _passes = new();
@@ -181,7 +182,7 @@ else
 
         try
         {
-            var code = Guid.NewGuid().ToString("N")[..12].ToUpper();
+            var code = GenerateSecureCode();
             var validTo = new DateTime(_validTo.Year, _validTo.Month, _validTo.Day, 23, 59, 59, DateTimeKind.Utc);
             var now = DateTime.UtcNow;
 
@@ -198,12 +199,12 @@ else
             cmd.Parameters.AddWithValue("at", now);
             await cmd.ExecuteNonQueryAsync();
 
-            // Build QR content
+            // Build QR content - just the numeric code
             _createdCode = code;
-            _qrContent = $"GYMPASS:{code}:{_maxUses}:{validTo:yyyy-MM-dd}";
+            _qrContent = code;
 
             // Build WhatsApp share URL
-            var gymName = "MyGym";
+            _gymName = "MyGym";
             try
             {
                 using var gymCmd = new Npgsql.NpgsqlCommand(@"SELECT ""GymName"" FROM ""AppSettings"" LIMIT 1", conn);
@@ -211,13 +212,12 @@ else
                 if (result != null && result != DBNull.Value)
                 {
                     var name = result.ToString();
-                    if (!string.IsNullOrEmpty(name)) gymName = name;
+                    if (!string.IsNullOrEmpty(name)) _gymName = name;
                 }
             }
             catch { }
 
-            var msg = $"Your guest pass for {gymName}:\nCode: {code}\nValid: {validTo:yyyy-MM-dd}\nUses: {_maxUses}\n\nShow this QR at reception.";
-            _whatsAppUrl = $"https://wa.me/?text={Uri.EscapeDataString(msg)}";
+            ShareQrViaWhatsAppBuild();
 
             _showQrResult = true;
             await LoadPassesAsync();
@@ -265,6 +265,46 @@ else
             }
         }
         catch { }
+    }
+
+    private string GenerateSecureCode()
+    {
+        // Combine timestamp + random for uniqueness
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var random = Random.Shared.Next(100000, 999999);
+        var raw = $"{timestamp}{random}";
+
+        // Hash with HMAC-SHA256 using a secret key
+        using var hmac = new System.Security.Cryptography.HMACSHA256(
+            System.Text.Encoding.UTF8.GetBytes("HMTech-QR-Secret-2026"));
+        var hash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(raw));
+
+        // Convert hash to numeric string (take first 14 digits)
+        var numeric = string.Join("", hash.Take(7).Select(b => (b % 100).ToString("D2")));
+        return numeric; // 14-digit number like "84729163502847"
+    }
+
+    private void ShareQrViaWhatsApp()
+    {
+        var qrImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?data={_createdCode}&size=300x300";
+
+        var msg = SessionState.IsArabic
+            ? $"\U0001F3CB\uFE0F \u062A\u0635\u0631\u064A\u062D \u062F\u062E\u0648\u0644 - {_gymName}\n\n\U0001F464 \u0627\u0644\u0627\u0633\u0645: {_guestName}\n\U0001F522 \u0627\u0644\u0631\u0645\u0632: {_createdCode}\n\U0001F4C5 \u0635\u0627\u0644\u062D \u062D\u062A\u0649: {_validTo:yyyy-MM-dd}\n\U0001F504 \u0639\u062F\u062F \u0627\u0644\u0645\u0631\u0627\u062A: {_maxUses}\n\n\U0001F4F1 \u0635\u0648\u0631\u0629 QR:\n{qrImageUrl}\n\n\u0623\u0638\u0647\u0631 \u0647\u0630\u0627 \u0627\u0644\u0631\u0645\u0632 \u0639\u0646\u062F \u0627\u0644\u0627\u0633\u062A\u0642\u0628\u0627\u0644"
+            : $"\U0001F3CB\uFE0F Guest Pass - {_gymName}\n\n\U0001F464 Name: {_guestName}\n\U0001F522 Code: {_createdCode}\n\U0001F4C5 Valid until: {_validTo:yyyy-MM-dd}\n\U0001F504 Uses: {_maxUses}\n\n\U0001F4F1 QR Image:\n{qrImageUrl}\n\nShow this code at reception";
+
+        var url = $"https://wa.me/?text={Uri.EscapeDataString(msg)}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private void ShareQrViaWhatsAppBuild()
+    {
+        var qrImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?data={_createdCode}&size=300x300";
+
+        var msg = SessionState.IsArabic
+            ? $"\U0001F3CB\uFE0F \u062A\u0635\u0631\u064A\u062D \u062F\u062E\u0648\u0644 - {_gymName}\n\n\U0001F464 \u0627\u0644\u0627\u0633\u0645: {_guestName}\n\U0001F522 \u0627\u0644\u0631\u0645\u0632: {_createdCode}\n\U0001F4C5 \u0635\u0627\u0644\u062D \u062D\u062A\u0649: {_validTo:yyyy-MM-dd}\n\U0001F504 \u0639\u062F\u062F \u0627\u0644\u0645\u0631\u0627\u062A: {_maxUses}\n\n\U0001F4F1 \u0635\u0648\u0631\u0629 QR:\n{qrImageUrl}\n\n\u0623\u0638\u0647\u0631 \u0647\u0630\u0627 \u0627\u0644\u0631\u0645\u0632 \u0639\u0646\u062F \u0627\u0644\u0627\u0633\u062A\u0642\u0628\u0627\u0644"
+            : $"\U0001F3CB\uFE0F Guest Pass - {_gymName}\n\n\U0001F464 Name: {_guestName}\n\U0001F522 Code: {_createdCode}\n\U0001F4C5 Valid until: {_validTo:yyyy-MM-dd}\n\U0001F504 Uses: {_maxUses}\n\n\U0001F4F1 QR Image:\n{qrImageUrl}\n\nShow this code at reception";
+
+        _whatsAppUrl = $"https://wa.me/?text={Uri.EscapeDataString(msg)}";
     }
 
     private record QrPass(int Id, string Code, string PlayerName, int MaxUses, int UsedCount, DateTime ValidTo, bool IsActive, DateTime CreatedAt);

@@ -56,6 +56,9 @@
                         <i class="fas fa-clock"></i> <span class="nav-text">@L("Visits", "الزيارات")</span>
                     </a>
                 }
+                <a href="/change-password" class="nav-link @ActiveClass("change-password")">
+                    <i class="fas fa-key"></i> <span class="nav-text">@L("Password", "كلمة المرور")</span>
+                </a>
                 <a href="javascript:void(0)" class="nav-link lang-toggle" @onclick="ToggleLang">
                     <i class="fas fa-globe"></i> <span class="nav-text">@(SessionState.IsArabic ? "EN" : "عربي")</span>
                 </a>
