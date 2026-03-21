@@ -1042,16 +1042,34 @@ html, body {
 
 /* === Responsive === */
 
-/* All tables scrollable on mobile */
+/* Prevent any overflow */
+html, body { overflow-x: hidden; max-width: 100vw; }
+.app-container { max-width: 100vw; overflow-x: hidden; }
+
+/* All tables scrollable */
 .table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     margin: 0 -0.5rem;
     padding: 0 0.5rem;
+    max-width: 100%;
 }
 
 .table-responsive .data-table {
-    min-width: 600px;
+    min-width: 500px;
+}
+
+/* All content must not overflow */
+.main-content * { max-width: 100%; }
+.main-content img { max-width: 100%; height: auto; }
+.content-card { overflow: hidden; word-wrap: break-word; }
+.data-table td { word-break: break-word; }
+
+/* Flexible containers */
+.filter-group, .filter-buttons, .filter-bar,
+.form-actions, .qr-actions, .pagination,
+.sync-info-bar, .page-header {
+    flex-wrap: wrap;
 }
 
 @media (max-width: 768px) {
@@ -1216,104 +1234,160 @@ html, body {
         align-items: stretch;
     }
 
-    /* Info grid 2 columns on mobile */
+    /* Info grid single column on mobile */
     .info-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.5rem;
+        grid-template-columns: 1fr;
+        gap: 0.4rem;
     }
 
     .detail-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.5rem;
+        grid-template-columns: 1fr;
+        gap: 0.4rem;
     }
 
     /* Sync info bar stacks */
     .sync-info-bar {
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 0.4rem;
         text-align: center;
+        font-size: 0.75rem;
+        padding: 0.4rem 0.6rem;
     }
 
-    /* Pagination */
+    /* Pagination compact */
     .pagination {
         flex-wrap: wrap;
-        gap: 0.5rem;
+        gap: 0.3rem;
+        justify-content: center;
     }
 
     .pagination .btn-accent,
     .pagination .btn-outline {
-        min-width: 80px;
-        padding: 0.35rem 0.75rem;
-        font-size: 0.8rem;
+        min-width: 70px;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.75rem;
     }
 
-    /* Player avatar smaller */
-    .player-avatar { width: 28px; height: 28px; font-size: 0.7rem; }
-    .player-avatar-large { width: 60px; height: 60px; font-size: 1.5rem; }
+    .pagination .page-info { font-size: 0.75rem; min-width: auto; }
 
-    /* Badges */
-    .badge { font-size: 0.68rem; padding: 0.15rem 0.4rem; }
+    /* Avatars smaller */
+    .player-avatar { width: 24px; height: 24px; font-size: 0.65rem; }
+    .player-avatar-large { width: 50px; height: 50px; font-size: 1.2rem; }
 
-    /* Permissions grid */
-    .permissions-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    /* Badges smaller */
+    .badge { font-size: 0.65rem; padding: 0.1rem 0.35rem; }
 
-    /* Login card */
+    /* Permissions single column */
+    .permissions-grid { grid-template-columns: 1fr; }
+
+    /* Login card tight */
     .login-card {
-        padding: 1.5rem;
+        padding: 1.2rem;
         margin: 0.5rem;
+        max-width: 100%;
     }
-
-    .login-title { font-size: 1.2rem; }
+    .login-title { font-size: 1.1rem; }
+    .login-subtitle { font-size: 0.8rem; }
+    .tab-btn { font-size: 0.8rem; padding: 0.4rem; }
 
     /* Device cards */
     .device-info-row {
         flex-direction: column;
         align-items: flex-start;
-        gap: 0.15rem;
+        gap: 0.1rem;
     }
 
     /* User card */
-    .user-card { padding: 0.75rem; }
+    .user-card { padding: 0.6rem; }
 
-    /* Buttons */
-    .btn-accent, .btn-danger, .btn-outline {
-        padding: 0.5rem 0.75rem;
-        font-size: 0.82rem;
+    /* All buttons full width on mobile */
+    .btn-accent, .btn-danger, .btn-outline, .btn-whatsapp {
+        padding: 0.45rem 0.6rem;
+        font-size: 0.78rem;
+        width: 100%;
+        text-align: center;
+        box-sizing: border-box;
     }
 
     .form-actions {
         flex-direction: column;
+        gap: 0.4rem;
     }
 
-    .form-actions .btn-accent,
-    .form-actions .btn-danger {
-        width: 100%;
+    /* Form inputs full width */
+    .form-input, .form-select {
+        width: 100% !important;
+        max-width: 100% !important;
+        font-size: 0.85rem;
+        padding: 0.5rem;
     }
+
+    /* Player card compact */
+    .player-card { padding: 0.75rem; }
+    .player-header h2 { font-size: 1.1rem; }
+    .player-header h3 { font-size: 0.9rem; }
+
+    /* QR result compact */
+    .qr-result { padding: 0.75rem; }
+    .qr-result img { max-width: 180px; }
+    .qr-code-text { font-size: 0.9rem; }
+
+    /* Content card compact */
+    .content-card { padding: 0.6rem; margin-bottom: 0.6rem; }
+    .content-card h3 { font-size: 0.9rem; margin-bottom: 0.5rem; }
+
+    /* Table minimum width smaller for mobile */
+    .table-responsive .data-table { min-width: 400px; }
+
+    /* Filter group compact */
+    .filter-group {
+        padding: 0.3rem;
+        gap: 0.2rem;
+        border-radius: 6px;
+    }
+
+    /* Tabs compact */
+    .login-tabs { gap: 0; }
+
+    /* Player name cell */
+    .name-primary { font-size: 0.82rem; }
+    .name-secondary { font-size: 0.7rem; }
+
+    /* No data message */
+    .no-data { padding: 1rem; font-size: 0.85rem; }
+
+    /* Progress bar */
+    .progress-bar-container { height: 6px; }
 }
 
 @media (max-width: 480px) {
     .stats-grid {
         grid-template-columns: 1fr 1fr;
-        gap: 0.4rem;
+        gap: 0.3rem;
     }
 
-    .stat-card { padding: 0.6rem; }
-    .stat-number { font-size: 1.2rem; }
-    .stat-label { font-size: 0.7rem; }
+    .stat-card { padding: 0.5rem; }
+    .stat-number { font-size: 1.1rem; }
+    .stat-label { font-size: 0.65rem; }
 
-    .info-grid { grid-template-columns: 1fr; }
-    .detail-grid { grid-template-columns: 1fr; }
+    .page-header h1 { font-size: 0.95rem; }
 
-    .page-header h1 { font-size: 1rem; }
+    .filter-btn { font-size: 0.62rem; padding: 0.15rem 0.35rem; }
 
-    .content-card h3 { font-size: 0.95rem; }
-
-    .filter-btn { font-size: 0.68rem; padding: 0.2rem 0.4rem; }
-
-    .permissions-grid { grid-template-columns: 1fr; }
-
-    /* Hide less important table columns on very small screens */
+    /* Hide less important table columns */
     .hide-mobile { display: none !important; }
+
+    /* Very small screen adjustments */
+    .main-content { padding: 0.5rem; padding-bottom: 4.5rem; }
+    .table-responsive .data-table { min-width: 350px; }
+    .data-table { font-size: 0.72rem; }
+    .data-table th, .data-table td { padding: 0.25rem 0.35rem; }
+}
+
+@media (max-width: 360px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .stat-card { padding: 0.4rem; }
+    .stat-number { font-size: 1rem; }
+    .nav-link { min-width: 40px; padding: 0.4rem; }
+    .nav-link i { font-size: 0.9rem; }
 }
