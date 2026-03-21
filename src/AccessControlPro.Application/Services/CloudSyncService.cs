@@ -51,7 +51,7 @@ public class CloudSyncService : ICloudSyncService
             payload["players"] = await ReadTableAsync(local,
                 "SELECT Id, FullNameEn, FullNameAr, CardNo, Phone, SubscriptionType, StartDate, EndDate, " +
                 "SubscriptionFee, AmountPaid, MaxVisits, UsedVisits, IsFrozen, FreezeStartDate, " +
-                "IsDeleted, CreatedAt, '' AS PhotoPath, Height, Weight, Notes FROM Employees");
+                "CAST(0 AS BIT) AS IsDeleted, CreatedAt, '' AS PhotoPath, Height, Weight, Notes FROM Employees");
 
             payload["accessEvents"] = await ReadTableAsync(local,
                 "SELECT TOP 2000 Id, DoorId, CardId, EventType AS RecordType, EventCode, " +
@@ -83,6 +83,10 @@ public class CloudSyncService : ICloudSyncService
 
             payload["accessCards"] = await ReadTableAsync(local,
                 "SELECT Id, EmployeeId, CardNumber, IsActive, ValidFrom, ValidTo, EffectiveTimes, CreatedAt FROM AccessCards");
+
+            // Log table counts
+            foreach (var kvp in payload)
+                Log($"  {kvp.Key}: {kvp.Value.Count} rows read");
 
             // POST to cloud API
             var json = JsonSerializer.Serialize(payload);
