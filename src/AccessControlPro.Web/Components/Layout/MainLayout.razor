@@ -8,7 +8,12 @@
         <nav class="sidebar">
             <div class="sidebar-brand">
                 <h3>HM-GymManagement</h3>
-                <span class="user-role">@Session.DisplayName (@(L("Owner","مالك") ))</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+                    <span class="user-role">@Session.DisplayName</span>
+                    <a href="/logout" class="logout-brand-btn" style="color: #e74c3c; font-size: 0.8rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; opacity: 0.9;">
+                        <i class="fas fa-sign-out-alt"></i> @L("Logout", "خروج")
+                    </a>
+                </div>
             </div>
             <div class="nav-links">
                 @if (Session.IsOwner)
@@ -62,7 +67,7 @@
                 <a href="javascript:void(0)" class="nav-link lang-toggle" @onclick="ToggleLang">
                     <i class="fas fa-globe"></i> <span class="nav-text">@(SessionState.IsArabic ? "EN" : "عربي")</span>
                 </a>
-                <a href="/logout" class="nav-link logout">
+                <a href="/logout" class="nav-link logout-link" style="color: #e74c3c; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 0.5rem; padding-top: 0.75rem;">
                     <i class="fas fa-sign-out-alt"></i> <span class="nav-text">@L("Logout", "خروج")</span>
                 </a>
             </div>

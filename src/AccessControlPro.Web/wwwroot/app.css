@@ -99,15 +99,20 @@ html, body {
     font-weight: 600;
 }
 
-.nav-link.logout {
+.nav-link.logout, .nav-link.logout-link {
     margin-top: auto;
     border-top: 1px solid var(--border);
     color: var(--danger);
 }
 
-.nav-link.logout:hover {
+.nav-link.logout:hover, .nav-link.logout-link:hover {
     background: rgba(231, 76, 60, 0.1);
     border-left-color: var(--danger);
+}
+
+.logout-brand-btn:hover {
+    opacity: 1 !important;
+    text-decoration: underline !important;
 }
 
 .main-content {
@@ -1101,10 +1106,12 @@ html, body {
         border-top-color: var(--accent);
     }
 
-    .nav-link.logout {
+    .nav-link.logout, .nav-link.logout-link {
         margin-top: 0;
         margin-left: auto;
         border-top: none;
+        color: var(--danger);
+        flex-shrink: 0;
     }
 
     .main-content {

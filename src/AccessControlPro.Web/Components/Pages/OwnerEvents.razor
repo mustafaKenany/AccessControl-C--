@@ -68,9 +68,9 @@ else
                         <tr>
                             <td>@ev.EventDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                             <td>@GetDeviceName(ev.DoorId)</td>
-                            <td>@GetDoorName(ev.DoorId)</td>
-                            <td>@(ev.CardId?.ToString() ?? "-")</td>
-                            <td>@GetPlayerName(ev.CardId)</td>
+                            <td>@(string.IsNullOrEmpty(ev.DoorName) ? GetDoorName(ev.DoorId) : ev.DoorName)</td>
+                            <td>@(string.IsNullOrEmpty(ev.CardNumber) ? "-" : ev.CardNumber)</td>
+                            <td>@GetPlayerDisplay(ev)</td>
                             <td>
                                 <span class="badge @GetEventBadgeClass(ev.EventCode)">
                                     @GetEventTypeName(ev.EventCode)
@@ -206,11 +206,11 @@ else
 
             using var conn = await Db.GetConnectionAsync();
 
-            var dateWhere = isAll ? "" : @" WHERE ""EventDate"" >= @from AND ""EventDate"" < @to";
+            var dateWhere = isAll ? "" : @" WHERE e.""EventDate"" >= @from AND e.""EventDate"" < @to";
 
             // Count
             using (var countCmd = new Npgsql.NpgsqlCommand(
-                $@"SELECT COUNT(*) FROM ""AccessEvents""{dateWhere}", conn))
+                $@"SELECT COUNT(*) FROM ""AccessEvents"" e{dateWhere}", conn))
             {
                 if (!isAll)
                 {
@@ -220,11 +220,18 @@ else
                 _totalCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
             }
 
-            // Data
-            using (var cmd = new Npgsql.NpgsqlCommand(
-                $@"SELECT ""Id"", ""DoorId"", ""CardId"", ""EventCode"", ""EventDate"", COALESCE(""Details"",'')
-                  FROM ""AccessEvents""{dateWhere}
-                  ORDER BY ""EventDate"" DESC LIMIT @limit OFFSET @offset", conn))
+            // Data with JOINs for card number and player name
+            var joinDateWhere = isAll ? "" : @"WHERE e.""EventDate"" >= @from AND e.""EventDate"" < @to";
+            var dataSql = @"SELECT e.""Id"", e.""DoorId"", e.""CardId"", e.""EventCode"", e.""EventDate"", COALESCE(e.""Details"",''),
+                          COALESCE(d.""Name"", ''), COALESCE(c.""CardNumber"", ''),
+                          COALESCE(p.""FullNameEn"", ''), COALESCE(p.""FullNameAr"", '')
+                  FROM ""AccessEvents"" e
+                  LEFT JOIN ""Doors"" d ON e.""DoorId"" = d.""Id""
+                  LEFT JOIN ""AccessCards"" c ON e.""CardId"" = c.""Id""
+                  LEFT JOIN ""Players"" p ON c.""EmployeeId"" = p.""Id"" "
+                  + joinDateWhere +
+                  @" ORDER BY e.""EventDate"" DESC LIMIT @limit OFFSET @offset";
+            using (var cmd = new Npgsql.NpgsqlCommand(dataSql, conn))
             {
                 if (!isAll)
                 {
@@ -241,7 +248,8 @@ else
                     _events.Add(new EventRow(
                         r.GetInt32(0), r.GetInt32(1),
                         r.IsDBNull(2) ? null : r.GetInt32(2),
-                        r.GetInt32(3), r.GetDateTime(4), r.GetString(5)));
+                        r.GetInt32(3), r.GetDateTime(4), r.GetString(5),
+                        r.GetString(6), r.GetString(7), r.GetString(8), r.GetString(9)));
                 }
             }
 
@@ -250,9 +258,10 @@ else
             {
                 var q = _search.Trim().ToLower();
                 _events = _events.Where(ev =>
-                    (ev.CardId?.ToString() ?? "").Contains(q) ||
-                    GetPlayerName(ev.CardId).ToLower().Contains(q) ||
-                    GetDoorName(ev.DoorId).ToLower().Contains(q)
+                    ev.CardNumber.ToLower().Contains(q) ||
+                    ev.PlayerNameEn.ToLower().Contains(q) ||
+                    ev.PlayerNameAr.Contains(q) ||
+                    ev.DoorName.ToLower().Contains(q)
                 ).ToList();
             }
         }
@@ -261,6 +270,8 @@ else
 
     private async Task OnSearch()
     {
+        // Limit search input length to prevent abuse
+        if (_search.Length > 100) _search = _search[..100];
         _page = 1;
         await LoadEventsAsync();
     }
@@ -285,6 +296,17 @@ else
     {
         if (cardId == null) return "-";
         return _playerByCard.TryGetValue(cardId.Value, out var name) ? name : "-";
+    }
+
+    private string GetPlayerDisplay(EventRow ev)
+    {
+        // Prefer JOIN-based player name from query
+        if (!string.IsNullOrEmpty(ev.PlayerNameAr) && SessionState.IsArabic)
+            return ev.PlayerNameAr;
+        if (!string.IsNullOrEmpty(ev.PlayerNameEn))
+            return ev.PlayerNameEn;
+        // Fallback to lookup dictionary
+        return GetPlayerName(ev.CardId);
     }
 
     private string GetEventTypeName(int code) => code switch

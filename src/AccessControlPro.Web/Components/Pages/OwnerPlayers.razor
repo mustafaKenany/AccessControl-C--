@@ -320,6 +320,8 @@ else
 
     private async Task OnSearch()
     {
+        // Limit search input length to prevent abuse
+        if (_search.Length > 100) _search = _search[..100];
         _page = 1;
         await LoadPlayersAsync();
     }

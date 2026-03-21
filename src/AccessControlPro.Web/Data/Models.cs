@@ -4,7 +4,8 @@ public record PlayerRow(int Id, string FullNameEn, string FullNameAr, string Car
     string SubscriptionType, DateTime StartDate, DateTime EndDate, decimal Fee, decimal Paid,
     int MaxVisits, int UsedVisits, bool IsFrozen, DateTime? FreezeStartDate);
 
-public record EventRow(int Id, int DoorId, int? CardId, int EventCode, DateTime EventDate, string Details);
+public record EventRow(int Id, int DoorId, int? CardId, int EventCode, DateTime EventDate, string Details,
+    string DoorName = "", string CardNumber = "", string PlayerNameEn = "", string PlayerNameAr = "");
 
 public record TransactionRow(int Id, int Type, string Category, decimal Amount, string Description, DateTime TransactionDate, string RecordedBy);
 

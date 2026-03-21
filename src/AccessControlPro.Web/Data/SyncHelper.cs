@@ -1,5 +1,6 @@
 using Npgsql;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace AccessControlPro.Web.Data;
 
@@ -7,12 +8,30 @@ public static class SyncHelper
 {
     private static readonly List<string> _lastErrors = new();
 
+    // Whitelist of allowed table names to prevent SQL injection
+    private static readonly HashSet<string> _allowedTables = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Players", "AccessEvents", "Devices", "Doors", "Transactions",
+        "Users", "AuditLogs", "DeletedEmployees", "AppSettings", "AccessCards",
+        "CloudSyncLogs", "QrPasses", "Gyms"
+    };
+
+    // Column name must be alphanumeric/underscore only
+    private static readonly Regex _validColumnName = new(@"^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.Compiled);
+
     public static List<string> GetLastErrors() => _lastErrors;
 
     public static async Task<int> UpsertRowsAsync(NpgsqlConnection conn, string tableName,
         List<Dictionary<string, object?>> rows)
     {
         if (rows.Count == 0) return 0;
+
+        // Validate table name against whitelist
+        if (!_allowedTables.Contains(tableName))
+        {
+            _lastErrors.Add($"Rejected invalid table name: {tableName}");
+            return 0;
+        }
 
         // Delete existing data first (full sync)
         try
@@ -38,6 +57,13 @@ public static class SyncHelper
 
                 foreach (var kvp in row)
                 {
+                    // Validate column name to prevent SQL injection
+                    if (!_validColumnName.IsMatch(kvp.Key) || kvp.Key.Length > 100)
+                    {
+                        _lastErrors.Add($"{tableName}: Rejected invalid column name '{kvp.Key}'");
+                        continue;
+                    }
+
                     cols.Add($@"""{kvp.Key}""");
                     vals.Add($"@p{i}");
 
@@ -52,6 +78,8 @@ public static class SyncHelper
                     pars.Add(new NpgsqlParameter($"p{i}", val ?? DBNull.Value));
                     i++;
                 }
+
+                if (cols.Count == 0) continue;
 
                 var sql = $@"INSERT INTO ""{tableName}"" ({string.Join(",", cols)}) VALUES ({string.Join(",", vals)})";
                 using var cmd = new NpgsqlCommand(sql, conn);

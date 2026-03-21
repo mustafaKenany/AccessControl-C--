@@ -88,8 +88,8 @@ else
                         {
                             <tr>
                                 <td>@ev.EventDate.ToLocalTime().ToString("MM/dd HH:mm")</td>
-                                <td>@GetPlayerName(ev.CardId)</td>
-                                <td>@GetDoorName(ev.DoorId)</td>
+                                <td>@GetPlayerDisplay(ev)</td>
+                                <td>@(string.IsNullOrEmpty(ev.DoorName) ? GetDoorName(ev.DoorId) : ev.DoorName)</td>
                                 <td>@GetEventName(ev.EventCode)</td>
                             </tr>
                         }
@@ -175,6 +175,17 @@ else
     {
         if (cardId == null) return "-";
         return _playerByCard.TryGetValue(cardId.Value, out var name) ? name : cardId.Value.ToString();
+    }
+
+    private string GetPlayerDisplay(EventRow ev)
+    {
+        // Prefer JOIN-based player name from query
+        if (!string.IsNullOrEmpty(ev.PlayerNameAr) && SessionState.IsArabic)
+            return ev.PlayerNameAr;
+        if (!string.IsNullOrEmpty(ev.PlayerNameEn))
+            return ev.PlayerNameEn;
+        // Fallback to lookup dictionary
+        return GetPlayerName(ev.CardId);
     }
 
     private string GetEventName(int code) => code switch
@@ -269,10 +280,18 @@ else
                 }
             }
 
-            // Recent events
+            // Recent events with JOINs for card number and player name
             using (var cmd = new Npgsql.NpgsqlCommand(
-                @"SELECT ""Id"", ""DoorId"", ""CardId"", ""EventCode"", ""EventDate"", COALESCE(""Details"",'')
-                  FROM ""AccessEvents"" ORDER BY ""EventDate"" DESC LIMIT 10", conn))
+                @"SELECT e.""Id"", e.""DoorId"", e.""CardId"", e.""EventCode"", e.""EventDate"", COALESCE(e.""Details"",''),
+                         COALESCE(dr.""Name"", 'Door ' || e.""DoorId"") AS ""DoorName"",
+                         COALESCE(c.""CardNumber"", '') AS ""CardNumber"",
+                         COALESCE(p.""FullNameEn"", '') AS ""PlayerNameEn"",
+                         COALESCE(p.""FullNameAr"", '') AS ""PlayerNameAr""
+                  FROM ""AccessEvents"" e
+                  LEFT JOIN ""Doors"" dr ON e.""DoorId"" = dr.""Id""
+                  LEFT JOIN ""AccessCards"" c ON e.""CardId"" = c.""Id""
+                  LEFT JOIN ""Players"" p ON c.""EmployeeId"" = p.""Id""
+                  ORDER BY e.""EventDate"" DESC LIMIT 10", conn))
             {
                 using var r = await cmd.ExecuteReaderAsync();
                 _recentEvents = new List<EventRow>();
@@ -281,7 +300,8 @@ else
                     _recentEvents.Add(new EventRow(
                         r.GetInt32(0), r.GetInt32(1),
                         r.IsDBNull(2) ? null : r.GetInt32(2),
-                        r.GetInt32(3), r.GetDateTime(4), r.GetString(5)));
+                        r.GetInt32(3), r.GetDateTime(4), r.GetString(5),
+                        r.GetString(6), r.GetString(7), r.GetString(8), r.GetString(9)));
                 }
             }
 
