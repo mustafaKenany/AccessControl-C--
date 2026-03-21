@@ -1,0 +1,271 @@
+@page "/qr-pass"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject AccessControlPro.Web.Data.DbHelper Db
+@rendermode InteractiveServer
+
+@if (!Session.IsAuthenticated || !Session.IsOwner)
+{
+    <p>Redirecting...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1><i class="fas fa-qrcode"></i> @L("QR Guest Pass", "تصريح ضيف QR")</h1>
+    </div>
+
+    <div class="content-card">
+        <h3>@L("Create New Pass", "إنشاء تصريح جديد")</h3>
+        <div class="qr-form">
+            <div class="form-group">
+                <label>@L("Guest Name", "اسم الضيف")</label>
+                <input class="form-input" @bind="_guestName" placeholder="@L("Enter guest name", "أدخل اسم الضيف")" />
+            </div>
+            <div class="form-group">
+                <label>@L("Max Uses", "الحد الأقصى للاستخدام")</label>
+                <select class="form-select" @bind="_maxUses">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>@L("Valid Until", "صالح حتى")</label>
+                <input type="date" class="form-input" @bind="_validTo" />
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end;">
+                <button class="btn-accent" @onclick="CreatePassAsync" disabled="@_isCreating">
+                    <i class="fas fa-plus"></i> @L("Create Pass", "إنشاء تصريح")
+                </button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMsg))
+        {
+            <div class="error-msg">@_errorMsg</div>
+        }
+    </div>
+
+    @if (_showQrResult)
+    {
+        <div class="content-card">
+            <h3>@L("Pass Created", "تم إنشاء التصريح")</h3>
+            <div class="qr-result">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?data=@Uri.EscapeDataString(_qrContent)&size=300x300" alt="QR Code" width="300" height="300" />
+                <div class="qr-code-text">@_createdCode</div>
+                <p style="color:var(--text-secondary);margin-bottom:0.75rem;">
+                    @L("Guest", "الضيف"): @_guestName |
+                    @L("Uses", "الاستخدامات"): @_maxUses |
+                    @L("Valid until", "صالح حتى"): @_validTo.ToString("yyyy-MM-dd")
+                </p>
+                <div class="qr-actions">
+                    <a class="btn-whatsapp" href="@_whatsAppUrl" target="_blank">
+                        <i class="fab fa-whatsapp"></i> @L("Share via WhatsApp", "مشاركة عبر واتساب")
+                    </a>
+                    <a class="btn-accent" href="https://api.qrserver.com/v1/create-qr-code/?data=@Uri.EscapeDataString(_qrContent)&size=600x600&format=png" target="_blank" download="@($"pass-{_createdCode}.png")">
+                        <i class="fas fa-download"></i> @L("Download QR", "تحميل QR")
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="content-card">
+        <h3>@L("Active Passes", "التصاريح النشطة")</h3>
+        @if (_passes.Any())
+        {
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>@L("Guest Name", "اسم الضيف")</th>
+                            <th>@L("Code", "الرمز")</th>
+                            <th>@L("Uses", "الاستخدامات")</th>
+                            <th>@L("Valid Until", "صالح حتى")</th>
+                            <th>@L("Status", "الحالة")</th>
+                            <th>@L("Actions", "الإجراءات")</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in _passes)
+                        {
+                            var isExpired = p.ValidTo < DateTime.UtcNow;
+                            var isUsedUp = p.UsedCount >= p.MaxUses;
+                            <tr>
+                                <td>@p.PlayerName</td>
+                                <td style="font-family:monospace;">@p.Code</td>
+                                <td>@p.UsedCount / @p.MaxUses</td>
+                                <td>@p.ValidTo.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    @if (!p.IsActive)
+                                    {
+                                        <span class="badge badge-expired">@L("Deactivated", "معطل")</span>
+                                    }
+                                    else if (isExpired)
+                                    {
+                                        <span class="badge badge-expired">@L("Expired", "منتهي")</span>
+                                    }
+                                    else if (isUsedUp)
+                                    {
+                                        <span class="badge badge-expiring">@L("Used Up", "مستنفد")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-active">@L("Active", "نشط")</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (p.IsActive && !isExpired && !isUsedUp)
+                                    {
+                                        <button class="btn-danger btn-sm" @onclick="() => DeactivateAsync(p.Id)">
+                                            <i class="fas fa-ban"></i> @L("Deactivate", "تعطيل")
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="no-data">@L("No passes created yet", "لم يتم إنشاء تصاريح بعد")</p>
+        }
+    </div>
+}
+
+@code {
+    private string _guestName = "";
+    private int _maxUses = 1;
+    private DateTime _validTo = DateTime.Today;
+    private bool _isCreating;
+    private string? _errorMsg;
+
+    // QR result
+    private bool _showQrResult;
+    private string _createdCode = "";
+    private string _qrContent = "";
+    private string _whatsAppUrl = "";
+
+    // Passes list
+    private List<QrPass> _passes = new();
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || !Session.IsOwner)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+        await LoadPassesAsync();
+    }
+
+    private async Task CreatePassAsync()
+    {
+        _errorMsg = null;
+        _showQrResult = false;
+
+        if (string.IsNullOrWhiteSpace(_guestName))
+        {
+            _errorMsg = L("Please enter guest name", "الرجاء إدخال اسم الضيف");
+            return;
+        }
+
+        _isCreating = true;
+        StateHasChanged();
+
+        try
+        {
+            var code = Guid.NewGuid().ToString("N")[..12].ToUpper();
+            var validTo = new DateTime(_validTo.Year, _validTo.Month, _validTo.Day, 23, 59, 59, DateTimeKind.Utc);
+            var now = DateTime.UtcNow;
+
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"INSERT INTO ""QrPasses"" (""Code"", ""PlayerName"", ""MaxUses"", ""UsedCount"", ""ValidFrom"", ""ValidTo"", ""IsActive"", ""CreatedBy"", ""CreatedAt"")
+                  VALUES (@code, @name, @max, 0, @from, @to, TRUE, @by, @at)", conn);
+            cmd.Parameters.AddWithValue("code", code);
+            cmd.Parameters.AddWithValue("name", _guestName.Trim());
+            cmd.Parameters.AddWithValue("max", _maxUses);
+            cmd.Parameters.AddWithValue("from", now);
+            cmd.Parameters.AddWithValue("to", validTo);
+            cmd.Parameters.AddWithValue("by", Session.DisplayName);
+            cmd.Parameters.AddWithValue("at", now);
+            await cmd.ExecuteNonQueryAsync();
+
+            // Build QR content
+            _createdCode = code;
+            _qrContent = $"GYMPASS:{code}:{_maxUses}:{validTo:yyyy-MM-dd}";
+
+            // Build WhatsApp share URL
+            var gymName = "MyGym";
+            try
+            {
+                using var gymCmd = new Npgsql.NpgsqlCommand(@"SELECT ""GymName"" FROM ""AppSettings"" LIMIT 1", conn);
+                var result = await gymCmd.ExecuteScalarAsync();
+                if (result != null && result != DBNull.Value)
+                {
+                    var name = result.ToString();
+                    if (!string.IsNullOrEmpty(name)) gymName = name;
+                }
+            }
+            catch { }
+
+            var msg = $"Your guest pass for {gymName}:\nCode: {code}\nValid: {validTo:yyyy-MM-dd}\nUses: {_maxUses}\n\nShow this QR at reception.";
+            _whatsAppUrl = $"https://wa.me/?text={Uri.EscapeDataString(msg)}";
+
+            _showQrResult = true;
+            await LoadPassesAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMsg = L("Error creating pass: ", "خطأ في إنشاء التصريح: ") + ex.Message;
+        }
+        finally
+        {
+            _isCreating = false;
+        }
+    }
+
+    private async Task DeactivateAsync(int id)
+    {
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"UPDATE ""QrPasses"" SET ""IsActive"" = FALSE WHERE ""Id"" = @id", conn);
+            cmd.Parameters.AddWithValue("id", id);
+            await cmd.ExecuteNonQueryAsync();
+            await LoadPassesAsync();
+        }
+        catch { }
+    }
+
+    private async Task LoadPassesAsync()
+    {
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Id"", ""Code"", ""PlayerName"", ""MaxUses"", ""UsedCount"", ""ValidTo"", ""IsActive"", ""CreatedAt""
+                  FROM ""QrPasses"" ORDER BY ""CreatedAt"" DESC LIMIT 50", conn);
+            using var r = await cmd.ExecuteReaderAsync();
+            _passes = new List<QrPass>();
+            while (await r.ReadAsync())
+            {
+                _passes.Add(new QrPass(
+                    r.GetInt32(0), r.GetString(1), r.GetString(2),
+                    r.GetInt32(3), r.GetInt32(4), r.GetDateTime(5),
+                    r.GetBoolean(6), r.GetDateTime(7)));
+            }
+        }
+        catch { }
+    }
+
+    private record QrPass(int Id, string Code, string PlayerName, int MaxUses, int UsedCount, DateTime ValidTo, bool IsActive, DateTime CreatedAt);
+}

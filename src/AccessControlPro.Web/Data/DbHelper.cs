@@ -127,6 +127,19 @@ CREATE TABLE IF NOT EXISTS ""CloudSyncLogs"" (
     ""SyncedAt"" TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS ""QrPasses"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""Code"" VARCHAR(100) NOT NULL,
+    ""PlayerName"" VARCHAR(200) DEFAULT '',
+    ""MaxUses"" INT DEFAULT 1,
+    ""UsedCount"" INT DEFAULT 0,
+    ""ValidFrom"" TIMESTAMP DEFAULT NOW(),
+    ""ValidTo"" TIMESTAMP DEFAULT NOW(),
+    ""IsActive"" BOOLEAN DEFAULT TRUE,
+    ""CreatedBy"" VARCHAR(100) DEFAULT '',
+    ""CreatedAt"" TIMESTAMP DEFAULT NOW()
+);
+
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_players_isdeleted ON ""Players"" (""IsDeleted"");
 CREATE INDEX IF NOT EXISTS idx_players_phone ON ""Players"" (""Phone"");
@@ -137,6 +150,7 @@ CREATE INDEX IF NOT EXISTS idx_transactions_date ON ""Transactions"" (""Transact
 CREATE INDEX IF NOT EXISTS idx_auditlogs_timestamp ON ""AuditLogs"" (""Timestamp"" DESC);
 CREATE INDEX IF NOT EXISTS idx_users_username ON ""Users"" (""Username"");
 CREATE INDEX IF NOT EXISTS idx_deleted_deletedat ON ""DeletedEmployees"" (""DeletedAt"" DESC);
+CREATE INDEX IF NOT EXISTS idx_qrpasses_code ON ""QrPasses"" (""Code"");
 ";
         using var cmd = new NpgsqlCommand(sql, conn);
         await cmd.ExecuteNonQueryAsync();

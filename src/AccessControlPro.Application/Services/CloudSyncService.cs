@@ -37,70 +37,88 @@ public class CloudSyncService : ICloudSyncService
         if (string.IsNullOrEmpty(cloudConn) || cloudConn.Contains("xxxx"))
             return "Cloud sync disabled";
 
+        var errors = new List<string>();
         try
         {
             Log("Starting cloud sync...");
 
             using var local = new SqlConnection(_localConnectionString);
             await local.OpenAsync();
+            Log("Local DB connected.");
 
             using var cloud = new Npgsql.NpgsqlConnection(cloudConn);
             await cloud.OpenAsync();
+            Log("Cloud DB connected.");
 
             int total = 0;
 
             // Sync Players (Employees → Players)
+            // Local Employees table columns: Id, FullNameEn, FullNameAr, CardNo, Phone, SubscriptionType,
+            // StartDate, EndDate, SubscriptionFee, AmountPaid, MaxVisits, UsedVisits, IsFrozen, FreezeStartDate,
+            // IsDeleted, CreatedAt, Height, Weight, Notes
+            // Note: Local has PhotoData (binary) and CardBalance - excluded as cloud doesn't need them.
+            // Note: Cloud has PhotoPath (varchar) - we send empty string as local stores binary PhotoData.
             total += await SyncWithMappingAsync(local, cloud, "Players",
                 "SELECT Id, FullNameEn, FullNameAr, CardNo, Phone, SubscriptionType, StartDate, EndDate, " +
                 "SubscriptionFee, AmountPaid, MaxVisits, UsedVisits, IsFrozen, FreezeStartDate, " +
-                "IsDeleted, CreatedAt, Height, Weight, Notes FROM Employees",
+                "IsDeleted, CreatedAt, '' AS PhotoPath, Height, Weight, Notes FROM Employees",
                 new[] { "Id", "FullNameEn", "FullNameAr", "CardNo", "Phone", "SubscriptionType", "StartDate", "EndDate",
                         "SubscriptionFee", "AmountPaid", "MaxVisits", "UsedVisits", "IsFrozen", "FreezeStartDate",
-                        "IsDeleted", "CreatedAt", "Height", "Weight", "Notes" });
+                        "IsDeleted", "CreatedAt", "PhotoPath", "Height", "Weight", "Notes" }, errors);
 
             // Sync Events
+            // Local AccessEvents columns: Id, DoorId, CardId, EventType (int), EventCode (int), Timestamp, Details
+            // Cloud columns: Id, DoorId, CardId, RecordType (int), EventCode (int), EventDate, Details
             total += await SyncWithMappingAsync(local, cloud, "AccessEvents",
-                "SELECT TOP 2000 Id, DoorId, CardId, EventType, EventCode, Timestamp, Details " +
-                "FROM AccessEvents ORDER BY Timestamp DESC",
-                new[] { "Id", "DoorId", "CardId", "RecordType", "EventCode", "EventDate", "Details" });
+                "SELECT TOP 2000 Id, DoorId, CardId, EventType, EventCode, [Timestamp], Details " +
+                "FROM AccessEvents ORDER BY [Timestamp] DESC",
+                new[] { "Id", "DoorId", "CardId", "RecordType", "EventCode", "EventDate", "Details" }, errors);
 
             // Sync Devices
             total += await SyncWithMappingAsync(local, cloud, "Devices",
                 "SELECT Id, Name, SerialNumber, IP, MAC FROM Devices",
-                new[] { "Id", "Name", "SerialNumber", "IP", "MAC" });
+                new[] { "Id", "Name", "SerialNumber", "IP", "MAC" }, errors);
 
             // Sync Doors
             total += await SyncWithMappingAsync(local, cloud, "Doors",
                 "SELECT Id, DeviceId, Name, DoorNumber FROM Doors",
-                new[] { "Id", "DeviceId", "Name", "DoorNumber" });
+                new[] { "Id", "DeviceId", "Name", "DoorNumber" }, errors);
 
             // Sync Transactions
+            // Local columns: Id, Type, Category, Amount, Description, RelatedEmployeeId, CreatedAt, CreatedBy
+            // Cloud columns: Id, Type, Category, Amount, Description, RelatedEmployeeId, TransactionDate, RecordedBy
             total += await SyncWithMappingAsync(local, cloud, "Transactions",
                 "SELECT Id, Type, Category, Amount, Description, RelatedEmployeeId, CreatedAt, CreatedBy " +
                 "FROM Transactions",
-                new[] { "Id", "Type", "Category", "Amount", "Description", "RelatedEmployeeId", "TransactionDate", "RecordedBy" });
+                new[] { "Id", "Type", "Category", "Amount", "Description", "RelatedEmployeeId", "TransactionDate", "RecordedBy" }, errors);
 
             // Sync Users
             total += await SyncWithMappingAsync(local, cloud, "Users",
                 "SELECT Id, Username, PasswordHash, DisplayName, Role, IsActive, Permissions FROM Users",
-                new[] { "Id", "Username", "PasswordHash", "DisplayName", "Role", "IsActive", "Permissions" });
+                new[] { "Id", "Username", "PasswordHash", "DisplayName", "Role", "IsActive", "Permissions" }, errors);
 
             // Sync AppSettings
             total += await SyncWithMappingAsync(local, cloud, "AppSettings",
                 "SELECT TOP 1 Id, GymName FROM AppSettings",
-                new[] { "Id", "GymName" });
+                new[] { "Id", "GymName" }, errors);
 
             // Sync AuditLogs
             total += await SyncWithMappingAsync(local, cloud, "AuditLogs",
-                "SELECT TOP 1000 Id, Action, EntityType, EntityId, Details, DetailsAr, PerformedBy, Timestamp " +
-                "FROM AuditLogs ORDER BY Timestamp DESC",
-                new[] { "Id", "Action", "EntityType", "EntityId", "Details", "DetailsAr", "PerformedBy", "Timestamp" });
+                "SELECT TOP 1000 Id, Action, EntityType, EntityId, Details, DetailsAr, PerformedBy, [Timestamp] " +
+                "FROM AuditLogs ORDER BY [Timestamp] DESC",
+                new[] { "Id", "Action", "EntityType", "EntityId", "Details", "DetailsAr", "PerformedBy", "Timestamp" }, errors);
 
             // Sync DeletedEmployees
             total += await SyncWithMappingAsync(local, cloud, "DeletedEmployees",
                 "SELECT Id, OriginalId, FullNameEn, FullNameAr, CardNo, Phone, DeleteReason, DeletedBy, DeletedAt " +
                 "FROM DeletedEmployees",
-                new[] { "Id", "OriginalId", "FullNameEn", "FullNameAr", "CardNo", "Phone", "DeleteReason", "DeletedBy", "DeletedAt" });
+                new[] { "Id", "OriginalId", "FullNameEn", "FullNameAr", "CardNo", "Phone", "DeleteReason", "DeletedBy", "DeletedAt" }, errors);
+
+            // Build sync details
+            var status = errors.Count == 0 ? "Success" : "PartialSuccess";
+            var details = $"Synced {total} records";
+            if (errors.Count > 0)
+                details += $" | Errors ({errors.Count}): " + string.Join("; ", errors.Take(5));
 
             // Log sync
             try
@@ -109,25 +127,47 @@ public class CloudSyncService : ICloudSyncService
                     @"INSERT INTO ""CloudSyncLogs"" (""SyncType"", ""Status"", ""Details"", ""SyncedAt"")
                       VALUES (@t, @s, @d, @ts)", cloud);
                 logCmd.Parameters.AddWithValue("t", "FullSync");
-                logCmd.Parameters.AddWithValue("s", "Success");
-                logCmd.Parameters.AddWithValue("d", $"Synced {total} records");
+                logCmd.Parameters.AddWithValue("s", status);
+                logCmd.Parameters.AddWithValue("d", details);
                 logCmd.Parameters.AddWithValue("ts", DateTime.UtcNow);
                 await logCmd.ExecuteNonQueryAsync();
             }
-            catch { }
+            catch (Exception ex) { Log($"  Failed to write sync log: {ex.Message}"); }
 
-            Log($"Cloud sync completed: {total} records");
-            return $"Synced {total} records";
+            Log($"Cloud sync completed: {details}");
+            return details;
         }
         catch (Exception ex)
         {
-            Log($"Cloud sync FAILED: {ex.Message}");
-            return $"Sync failed: {ex.Message}";
+            var msg = $"Sync failed: {ex.Message}";
+            Log($"Cloud sync FAILED: {ex.Message}\n  StackTrace: {ex.StackTrace}");
+
+            // Try to log the failure to cloud
+            try
+            {
+                var cloudConn2 = LoadCloudConnectionString();
+                if (!string.IsNullOrEmpty(cloudConn2))
+                {
+                    using var cloud2 = new Npgsql.NpgsqlConnection(cloudConn2);
+                    await cloud2.OpenAsync();
+                    using var logCmd = new Npgsql.NpgsqlCommand(
+                        @"INSERT INTO ""CloudSyncLogs"" (""SyncType"", ""Status"", ""Details"", ""SyncedAt"")
+                          VALUES (@t, @s, @d, @ts)", cloud2);
+                    logCmd.Parameters.AddWithValue("t", "FullSync");
+                    logCmd.Parameters.AddWithValue("s", "Failed");
+                    logCmd.Parameters.AddWithValue("d", ex.Message);
+                    logCmd.Parameters.AddWithValue("ts", DateTime.UtcNow);
+                    await logCmd.ExecuteNonQueryAsync();
+                }
+            }
+            catch { }
+
+            return msg;
         }
     }
 
     private async Task<int> SyncWithMappingAsync(SqlConnection local, Npgsql.NpgsqlConnection cloud,
-        string cloudTable, string localSelect, string[] cloudColumns)
+        string cloudTable, string localSelect, string[] cloudColumns, List<string> errors)
     {
         // Clear cloud table
         try
@@ -137,11 +177,14 @@ public class CloudSyncService : ICloudSyncService
         }
         catch (Exception ex)
         {
-            Log($"  Clear {cloudTable}: {ex.Message}");
+            var msg = $"Clear {cloudTable}: {ex.Message}";
+            Log($"  {msg}");
+            errors.Add(msg);
             return 0;
         }
 
         int count = 0;
+        int failCount = 0;
         try
         {
             using var cmd = new SqlCommand(localSelect, local);
@@ -174,15 +217,29 @@ public class CloudSyncService : ICloudSyncService
                     await ins.ExecuteNonQueryAsync();
                     count++;
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    failCount++;
+                    if (failCount <= 3) // Log first 3 insert errors per table
+                        Log($"  {cloudTable} insert error: {ex.Message}");
+                }
             }
         }
         catch (Exception ex)
         {
-            Log($"  Read {cloudTable}: {ex.Message}");
+            var msg = $"Read {cloudTable}: {ex.Message}";
+            Log($"  {msg}");
+            errors.Add(msg);
         }
 
-        Log($"  {cloudTable}: {count} records");
+        if (failCount > 0)
+        {
+            var msg = $"{cloudTable}: {failCount} rows failed to insert";
+            Log($"  {msg}");
+            errors.Add(msg);
+        }
+
+        Log($"  {cloudTable}: {count} records synced" + (failCount > 0 ? $", {failCount} failed" : ""));
         return count;
     }
 
