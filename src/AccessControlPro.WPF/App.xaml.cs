@@ -112,6 +112,15 @@ public partial class App : System.Windows.Application
             if (!File.Exists(path)) return null;
             var json = File.ReadAllText(path);
             var doc = JsonDocument.Parse(json);
+
+            // Check CloudSyncUrl (new API-based sync)
+            if (doc.RootElement.TryGetProperty("CloudSyncUrl", out var syncUrl))
+            {
+                var val = syncUrl.GetString();
+                if (!string.IsNullOrEmpty(val)) return val;
+            }
+
+            // Check old CloudConnection (direct PostgreSQL - deprecated)
             if (doc.RootElement.TryGetProperty("ConnectionStrings", out var cs) &&
                 cs.TryGetProperty("CloudConnection", out var conn))
             {

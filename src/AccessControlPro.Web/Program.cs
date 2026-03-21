@@ -14,6 +14,16 @@ builder.Services.AddSingleton(new DbHelper(cloudConn));
 builder.Services.AddSingleton<WebAuthService>();
 builder.Services.AddScoped<SessionState>();
 
+// Allow large request bodies for sync API (50MB)
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 50_000_000;
+});
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 50_000_000;
+});
+
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
 var app = builder.Build();
@@ -37,6 +47,70 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseAntiforgery();
+
+// Sync API — receives data from WPF app via HTTPS
+app.MapPost("/api/sync", async (HttpContext context, DbHelper db) =>
+{
+    // Verify API key
+    var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
+    if (apiKey != app.Configuration["SyncApiKey"] && apiKey != "HMTech-Sync-2026")
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        using var reader = new StreamReader(context.Request.Body);
+        var json = await reader.ReadToEndAsync();
+        var syncData = System.Text.Json.JsonSerializer.Deserialize<SyncPayload>(json);
+
+        if (syncData == null)
+            return Results.BadRequest("Invalid sync data");
+
+        using var conn = await db.GetConnectionAsync();
+        int total = 0;
+
+        // Process each table
+        if (syncData.Players?.Count > 0)
+            total += await SyncHelper.UpsertRowsAsync(conn, "Players", syncData.Players);
+        if (syncData.AccessEvents?.Count > 0)
+            total += await SyncHelper.UpsertRowsAsync(conn, "AccessEvents", syncData.AccessEvents);
+        if (syncData.Devices?.Count > 0)
+            total += await SyncHelper.UpsertRowsAsync(conn, "Devices", syncData.Devices);
+        if (syncData.Doors?.Count > 0)
+            total += await SyncHelper.UpsertRowsAsync(conn, "Doors", syncData.Doors);
+        if (syncData.Transactions?.Count > 0)
+            total += await SyncHelper.UpsertRowsAsync(conn, "Transactions", syncData.Transactions);
+        if (syncData.Users?.Count > 0)
+            total += await SyncHelper.UpsertRowsAsync(conn, "Users", syncData.Users);
+        if (syncData.AuditLogs?.Count > 0)
+            total += await SyncHelper.UpsertRowsAsync(conn, "AuditLogs", syncData.AuditLogs);
+        if (syncData.DeletedEmployees?.Count > 0)
+            total += await SyncHelper.UpsertRowsAsync(conn, "DeletedEmployees", syncData.DeletedEmployees);
+        if (syncData.AppSettings?.Count > 0)
+            total += await SyncHelper.UpsertRowsAsync(conn, "AppSettings", syncData.AppSettings);
+        if (syncData.AccessCards?.Count > 0)
+            total += await SyncHelper.UpsertRowsAsync(conn, "AccessCards", syncData.AccessCards);
+
+        // Log sync
+        try
+        {
+            using var logCmd = new Npgsql.NpgsqlCommand(
+                @"INSERT INTO ""CloudSyncLogs"" (""SyncType"", ""Status"", ""Details"", ""SyncedAt"")
+                  VALUES ('API', 'Success', @d, @ts)", conn);
+            logCmd.Parameters.AddWithValue("d", $"Synced {total} records via API");
+            logCmd.Parameters.AddWithValue("ts", DateTime.UtcNow);
+            await logCmd.ExecuteNonQueryAsync();
+        }
+        catch { }
+
+        return Results.Ok(new { success = true, total });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Sync failed: {ex.Message}");
+    }
+});
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
