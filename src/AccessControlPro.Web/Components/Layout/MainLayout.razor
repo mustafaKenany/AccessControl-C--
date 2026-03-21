@@ -14,50 +14,50 @@
                 @if (Session.IsOwner)
                 {
                     <a href="/dashboard" class="nav-link @ActiveClass("dashboard")">
-                        <i class="fas fa-chart-line"></i> @L("Dashboard", "لوحة التحكم")
+                        <i class="fas fa-chart-line"></i> <span class="nav-text">@L("Dashboard", "لوحة التحكم")</span>
                     </a>
                     <a href="/players" class="nav-link @ActiveClass("players")">
-                        <i class="fas fa-users"></i> @L("Players", "اللاعبون")
+                        <i class="fas fa-users"></i> <span class="nav-text">@L("Players", "اللاعبون")</span>
                     </a>
                     <a href="/events" class="nav-link @ActiveClass("events")">
-                        <i class="fas fa-clock"></i> @L("Events", "الأحداث")
+                        <i class="fas fa-clock"></i> <span class="nav-text">@L("Events", "الأحداث")</span>
                     </a>
                     <a href="/finance" class="nav-link @ActiveClass("finance")">
-                        <i class="fas fa-wallet"></i> @L("Finance", "المالية")
+                        <i class="fas fa-wallet"></i> <span class="nav-text">@L("Finance", "المالية")</span>
                     </a>
                     <a href="/devices" class="nav-link @ActiveClass("devices")">
-                        <i class="fas fa-server"></i> @L("Devices", "الأجهزة")
+                        <i class="fas fa-server"></i> <span class="nav-text">@L("Devices", "الأجهزة")</span>
                     </a>
                     <a href="/logs" class="nav-link @ActiveClass("logs")">
-                        <i class="fas fa-list"></i> @L("Logs", "السجلات")
+                        <i class="fas fa-list"></i> <span class="nav-text">@L("Logs", "السجلات")</span>
                     </a>
                     <a href="/deleted" class="nav-link @ActiveClass("deleted")">
-                        <i class="fas fa-trash"></i> @L("Deleted Records", "المحذوفات")
+                        <i class="fas fa-trash"></i> <span class="nav-text">@L("Deleted", "المحذوفات")</span>
                     </a>
                     <a href="/qr-pass" class="nav-link @ActiveClass("qr-pass")">
-                        <i class="fas fa-qrcode"></i> @L("QR Pass", "تصريح QR")
+                        <i class="fas fa-qrcode"></i> <span class="nav-text">@L("QR", "QR")</span>
                     </a>
                     <a href="/backup" class="nav-link @ActiveClass("backup")">
-                        <i class="fas fa-database"></i> @L("Backup Status", "النسخ الاحتياطي")
+                        <i class="fas fa-database"></i> <span class="nav-text">@L("Backup", "نسخ")</span>
                     </a>
                     <a href="/users" class="nav-link @ActiveClass("users")">
-                        <i class="fas fa-user-shield"></i> @L("Users", "المستخدمون")
+                        <i class="fas fa-user-shield"></i> <span class="nav-text">@L("Users", "مستخدمون")</span>
                     </a>
                 }
                 else
                 {
                     <a href="/my" class="nav-link @ActiveClass("my")">
-                        <i class="fas fa-id-card"></i> @L("My Subscription", "اشتراكي")
+                        <i class="fas fa-id-card"></i> <span class="nav-text">@L("My Subscription", "اشتراكي")</span>
                     </a>
                     <a href="/my/visits" class="nav-link @ActiveClass("my/visits")">
-                        <i class="fas fa-clock"></i> @L("Visit History", "سجل الزيارات")
+                        <i class="fas fa-clock"></i> <span class="nav-text">@L("Visits", "الزيارات")</span>
                     </a>
                 }
                 <a href="javascript:void(0)" class="nav-link lang-toggle" @onclick="ToggleLang">
-                    <i class="fas fa-globe"></i> @(SessionState.IsArabic ? "EN" : "عربي")
+                    <i class="fas fa-globe"></i> <span class="nav-text">@(SessionState.IsArabic ? "EN" : "عربي")</span>
                 </a>
                 <a href="/logout" class="nav-link logout">
-                    <i class="fas fa-sign-out-alt"></i> @L("Logout", "تسجيل الخروج")
+                    <i class="fas fa-sign-out-alt"></i> <span class="nav-text">@L("Logout", "خروج")</span>
                 </a>
             </div>
         </nav>
