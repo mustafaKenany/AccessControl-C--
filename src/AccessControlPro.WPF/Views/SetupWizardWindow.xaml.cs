@@ -462,6 +462,7 @@ public partial class SetupWizardWindow : Window
                 ["WhatsApp"] = DevWhatsAppBox.Text.Trim(),
                 ["LogoPath"] = ""
             },
+            ["CloudSyncUrl"] = "https://hmtech.solutions/api/sync",
             ["BackupPath"] = string.IsNullOrWhiteSpace(BackupFolderBox.Text)
                 ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AccessControlPro", "Backups")
                 : BackupFolderBox.Text.Trim()

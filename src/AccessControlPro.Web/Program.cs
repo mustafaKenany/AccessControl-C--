@@ -7,6 +7,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+});
+
 var cloudConn = builder.Configuration.GetConnectionString("CloudConnection")
     ?? "Host=localhost;Database=gymcloud;Username=postgres;Password=GymCloud2026";
 
@@ -45,7 +50,15 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 
-app.UseStaticFiles();
+app.UseResponseCompression();
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=604800"); // 7 days
+    }
+});
 app.UseAntiforgery();
 
 // Sync API — receives data from WPF app via HTTPS
@@ -60,8 +73,22 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db) =>
 
     try
     {
-        using var reader = new StreamReader(context.Request.Body);
-        var json = await reader.ReadToEndAsync();
+        // Support gzip-compressed request bodies
+        string json;
+        if (context.Request.Headers.ContentEncoding.ToString().Contains("gzip"))
+        {
+            using var decompressed = new System.IO.MemoryStream();
+            using (var gzip = new System.IO.Compression.GZipStream(context.Request.Body, System.IO.Compression.CompressionMode.Decompress))
+            {
+                await gzip.CopyToAsync(decompressed);
+            }
+            json = System.Text.Encoding.UTF8.GetString(decompressed.ToArray());
+        }
+        else
+        {
+            using var reader = new StreamReader(context.Request.Body);
+            json = await reader.ReadToEndAsync();
+        }
         var syncData = System.Text.Json.JsonSerializer.Deserialize<SyncPayload>(json);
 
         if (syncData == null)
@@ -91,6 +118,9 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db) =>
             total += await SyncHelper.UpsertRowsAsync(conn, "AppSettings", syncData.AppSettings);
         if (syncData.AccessCards?.Count > 0)
             total += await SyncHelper.UpsertRowsAsync(conn, "AccessCards", syncData.AccessCards);
+
+        // Invalidate cached data after sync
+        QueryCache.InvalidateAll();
 
         // Get errors from SyncHelper
         var syncErrors = SyncHelper.GetLastErrors();

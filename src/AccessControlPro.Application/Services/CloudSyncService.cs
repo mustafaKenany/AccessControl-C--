@@ -88,13 +88,25 @@ public class CloudSyncService : ICloudSyncService
             foreach (var kvp in payload)
                 Log($"  {kvp.Key}: {kvp.Value.Count} rows read");
 
-            // POST to cloud API
+            // POST to cloud API with gzip compression
             var json = JsonSerializer.Serialize(payload);
+            var jsonBytes = System.Text.Encoding.UTF8.GetBytes(json);
+            using var memoryStream = new System.IO.MemoryStream();
+            using (var gzipStream = new System.IO.Compression.GZipStream(memoryStream, System.IO.Compression.CompressionLevel.Fastest))
+            {
+                gzipStream.Write(jsonBytes, 0, jsonBytes.Length);
+            }
+            var compressedBytes = memoryStream.ToArray();
+
+            Log($"  JSON size: {jsonBytes.Length / 1024}KB -> compressed: {compressedBytes.Length / 1024}KB");
+
             using var httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("X-Api-Key", "HMTech-Sync-2026");
             httpClient.Timeout = TimeSpan.FromMinutes(2);
 
-            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            var content = new ByteArrayContent(compressedBytes);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+            content.Headers.ContentEncoding.Add("gzip");
             var response = await httpClient.PostAsync(cloudUrl, content);
 
             var responseBody = await response.Content.ReadAsStringAsync();
