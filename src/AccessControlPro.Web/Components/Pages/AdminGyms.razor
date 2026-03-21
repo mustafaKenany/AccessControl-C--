@@ -1,0 +1,148 @@
+@page "/admin/gyms"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject AccessControlPro.Web.Data.DbHelper Db
+@inject IConfiguration Config
+@rendermode InteractiveServer
+
+@if (!Session.IsAuthenticated || !Session.IsOwner)
+{
+    <p>Redirecting...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1><i class="fas fa-building"></i> @L("Gym Management", "ادارة النادي")</h1>
+    </div>
+
+    <div class="content-card">
+        <h3>@L("Gym Information", "معلومات النادي")</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">@L("Gym Name", "اسم النادي")</span>
+                <span class="info-value">@_gymName</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">@L("Subdomain", "النطاق الفرعي")</span>
+                <span class="info-value">@_subdomain</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">@L("Cloud Expiry Date", "تاريخ انتهاء الخدمة السحابية")</span>
+                <span class="info-value @(_daysRemaining <= 30 ? "text-warning" : _daysRemaining <= 0 ? "text-danger" : "")">
+                    @_expiresAt.ToString("yyyy-MM-dd")
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">@L("Days Remaining", "الايام المتبقية")</span>
+                <span class="info-value @(_daysRemaining <= 30 ? "text-warning" : _daysRemaining <= 0 ? "text-danger" : "text-success")">
+                    @(_daysRemaining > 0 ? _daysRemaining.ToString() : L("Expired", "منتهي"))
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">@L("Status", "الحالة")</span>
+                <span class="badge @(_daysRemaining > 0 ? "badge-active" : "badge-expired")" style="font-size: 0.9rem;">
+                    @(_daysRemaining > 0 ? L("Active", "نشط") : L("Expired", "منتهي"))
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-card">
+        <h3>@L("Contact Information", "معلومات التواصل")</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">@L("Owner Name", "اسم المالك")</span>
+                <span class="info-value">@_ownerName</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">@L("Owner Phone", "هاتف المالك")</span>
+                <span class="info-value">@_ownerPhone</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">@L("Owner Email", "بريد المالك")</span>
+                <span class="info-value">@_ownerEmail</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-card">
+        <h3>@L("Cloud Service", "الخدمة السحابية")</h3>
+        <div style="padding: 0.5rem 0; color: var(--text-secondary); font-size: 0.9rem;">
+            <p style="margin-bottom: 0.5rem;">
+                <i class="fas fa-info-circle" style="color: var(--accent);"></i>
+                @L("First year of cloud access is free. After that, contact support to renew.",
+                   "السنة الاولى من الوصول السحابي مجانية. بعد ذلك، تواصل مع الدعم للتجديد.")
+            </p>
+            <p>
+                <i class="fas fa-envelope" style="color: var(--accent);"></i>
+                @L("Support", "الدعم"): support@hmtech.solutions
+            </p>
+        </div>
+    </div>
+}
+
+@code {
+    private string _gymName = "";
+    private string _subdomain = "hmtech.solutions";
+    private DateTime _expiresAt = DateTime.UtcNow.AddYears(1);
+    private int _daysRemaining;
+    private string _ownerName = "";
+    private string _ownerPhone = "";
+    private string _ownerEmail = "";
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || !Session.IsOwner)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        // Load from config
+        _gymName = Config["GymName"] ?? "HM Gym";
+        var expiresStr = Config["CloudExpiresAt"];
+        if (!string.IsNullOrEmpty(expiresStr) && DateTime.TryParse(expiresStr, out var expires))
+            _expiresAt = expires;
+
+        // Try to load from AppSettings table
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(@"SELECT ""GymName"" FROM ""AppSettings"" LIMIT 1", conn);
+            var result = await cmd.ExecuteScalarAsync();
+            if (result != null && result != DBNull.Value && !string.IsNullOrWhiteSpace(result.ToString()))
+                _gymName = result.ToString()!;
+        }
+        catch { }
+
+        // Try to load from Gyms table
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Name"", ""Subdomain"", ""ExpiresAt"", ""OwnerName"", ""OwnerPhone"", ""OwnerEmail""
+                  FROM ""Gyms"" WHERE ""IsActive"" = TRUE LIMIT 1", conn);
+            using var r = await cmd.ExecuteReaderAsync();
+            if (await r.ReadAsync())
+            {
+                if (!r.IsDBNull(0) && !string.IsNullOrWhiteSpace(r.GetString(0)))
+                    _gymName = r.GetString(0);
+                if (!r.IsDBNull(1))
+                    _subdomain = r.GetString(1);
+                if (!r.IsDBNull(2))
+                    _expiresAt = r.GetDateTime(2);
+                if (!r.IsDBNull(3))
+                    _ownerName = r.GetString(3);
+                if (!r.IsDBNull(4))
+                    _ownerPhone = r.GetString(4);
+                if (!r.IsDBNull(5))
+                    _ownerEmail = r.GetString(5);
+            }
+        }
+        catch { }
+
+        _daysRemaining = (_expiresAt - DateTime.UtcNow).Days;
+    }
+}

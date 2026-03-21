@@ -2,6 +2,7 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.DbHelper Db
+@inject IConfiguration Config
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsOwner)
@@ -86,6 +87,14 @@ else
                         </span>
                     }
                 </div>
+                @if (!string.IsNullOrEmpty(_player.Phone))
+                {
+                    <div style="margin-top: 0.5rem;">
+                        <button class="btn-whatsapp btn-sm" @onclick="ShareViaWhatsApp">
+                            <i class="fab fa-whatsapp"></i> @L("Share Login via WhatsApp", "مشاركة بيانات الدخول عبر واتساب")
+                        </button>
+                    </div>
+                }
             </div>
             <div class="stats-grid" style="flex: 1; min-width: 300px; margin-bottom: 0;">
                 <div class="stat-card @(daysLeft <= 0 ? "red" : daysLeft <= 7 ? "orange" : "teal")" style="margin-bottom: 0;">
@@ -425,6 +434,7 @@ else
     private List<VisitRow> _visits = new();
     private bool _loading = true;
     private string _activeTab = "subscription";
+    private string _gymName = "";
 
     private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
@@ -436,6 +446,7 @@ else
             return;
         }
 
+        await LoadGymNameAsync();
         await LoadPlayerAsync();
         if (_player != null)
         {
@@ -449,6 +460,35 @@ else
             );
         }
         _loading = false;
+    }
+
+    private async Task LoadGymNameAsync()
+    {
+        _gymName = Config["GymName"] ?? "HM Gym";
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(@"SELECT ""GymName"" FROM ""AppSettings"" LIMIT 1", conn);
+            var result = await cmd.ExecuteScalarAsync();
+            if (result != null && result != DBNull.Value && !string.IsNullOrWhiteSpace(result.ToString()))
+                _gymName = result.ToString()!;
+        }
+        catch { }
+    }
+
+    private void ShareViaWhatsApp()
+    {
+        if (_player == null) return;
+
+        var last4 = !string.IsNullOrEmpty(_player.CardNo) && _player.CardNo.Length >= 4
+            ? _player.CardNo[^4..] : _player.CardNo;
+
+        var msg = SessionState.IsArabic
+            ? $"\u0645\u0631\u062d\u0628\u0627\u064b \u0628\u0643 \u0641\u064a {_gymName}! \U0001f3cb\ufe0f\n\u062a\u0627\u0628\u0639 \u0627\u0634\u062a\u0631\u0627\u0643\u0643 \u0623\u0648\u0646\u0644\u0627\u064a\u0646:\n\n\U0001f310 https://hmtech.solutions\n\U0001f4f1 \u0627\u0644\u0647\u0627\u062a\u0641: {_player.Phone}\n\U0001f4b3 \u0622\u062e\u0631 4 \u0623\u0631\u0642\u0627\u0645: {last4}\n\n\u062d\u0645\u0651\u0644 \u0643\u062a\u0637\u0628\u064a\u0642: \u0627\u0641\u062a\u062d \u0627\u0644\u0631\u0627\u0628\u0637 \u2190 \u0627\u0636\u063a\u0637 \"\u0625\u0636\u0627\u0641\u0629 \u0625\u0644\u0649 \u0627\u0644\u0634\u0627\u0634\u0629 \u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629\""
+            : $"Welcome to {_gymName}! \U0001f3cb\ufe0f\nTrack your subscription online:\n\n\U0001f310 https://hmtech.solutions\n\U0001f4f1 Phone: {_player.Phone}\n\U0001f4b3 Last 4 digits: {last4}\n\nInstall as app: Open link \u2192 tap \"Add to Home Screen\"";
+
+        var url = $"https://wa.me/?text={Uri.EscapeDataString(msg)}";
+        Nav.NavigateTo(url, forceLoad: true);
     }
 
     private async Task LoadPlayerAsync()

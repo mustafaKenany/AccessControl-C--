@@ -151,6 +151,20 @@ CREATE TABLE IF NOT EXISTS ""AccessCards"" (
     ""CreatedAt"" TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS ""Gyms"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""Name"" VARCHAR(200) NOT NULL DEFAULT '',
+    ""Subdomain"" VARCHAR(100) NOT NULL DEFAULT '',
+    ""ApiKey"" VARCHAR(100) NOT NULL DEFAULT '',
+    ""DatabaseName"" VARCHAR(100) NOT NULL DEFAULT '',
+    ""IsActive"" BOOLEAN DEFAULT TRUE,
+    ""ExpiresAt"" TIMESTAMP DEFAULT (NOW() + INTERVAL '1 year'),
+    ""CreatedAt"" TIMESTAMP DEFAULT NOW(),
+    ""OwnerName"" VARCHAR(200) DEFAULT '',
+    ""OwnerPhone"" VARCHAR(50) DEFAULT '',
+    ""OwnerEmail"" VARCHAR(200) DEFAULT ''
+);
+
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_players_isdeleted ON ""Players"" (""IsDeleted"");
 CREATE INDEX IF NOT EXISTS idx_players_phone ON ""Players"" (""Phone"");
