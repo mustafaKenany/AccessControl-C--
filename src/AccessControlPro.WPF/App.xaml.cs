@@ -104,6 +104,26 @@ public partial class App : System.Windows.Application
         return "Server=localhost;Database=AccessControlPro;User Id=sa;Password=123;TrustServerCertificate=True;";
     }
 
+    private static string? LoadCloudConnectionString()
+    {
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            if (!File.Exists(path)) return null;
+            var json = File.ReadAllText(path);
+            var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("ConnectionStrings", out var cs) &&
+                cs.TryGetProperty("CloudConnection", out var conn))
+            {
+                var val = conn.GetString();
+                if (!string.IsNullOrEmpty(val) && !val.Contains("xxxx"))
+                    return val;
+            }
+        }
+        catch { }
+        return null;
+    }
+
     private static void ConfigureServices(IServiceCollection services)
     {
         var connectionString = LoadConnectionString();
@@ -179,16 +199,25 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
         StartupLog("=== APP STARTING ===");
 
-        // ── Disable WiFi to prevent routing conflicts with SDK ──
-        try
+        // ── Disable WiFi only if cloud sync is NOT enabled ──
+        // If cloud sync is enabled, WiFi is needed for internet access
+        var cloudConn = LoadCloudConnectionString();
+        if (string.IsNullOrEmpty(cloudConn))
         {
-            StartupLog("Disabling WiFi...");
-            Helpers.WifiManager.DisableWifi();
-            StartupLog("WiFi disabled OK");
+            try
+            {
+                StartupLog("Disabling WiFi (no cloud sync)...");
+                Helpers.WifiManager.DisableWifi();
+                StartupLog("WiFi disabled OK");
+            }
+            catch (Exception ex)
+            {
+                StartupLog($"WiFi disable failed (non-critical): {ex.Message}");
+            }
         }
-        catch (Exception ex)
+        else
         {
-            StartupLog($"WiFi disable failed (non-critical): {ex.Message}");
+            StartupLog("WiFi kept enabled (cloud sync configured)");
         }
 
         // ── Single-instance guard: kill any stale processes from previous runs ──
@@ -455,8 +484,7 @@ public partial class App : System.Windows.Application
             _backupTimer.Start();
 
             // Cloud sync timer — syncs local data to cloud PostgreSQL every 5 minutes
-            // Only runs if license tier is Pro or Enterprise
-            if (licenseStatus.Tier == "Pro" || licenseStatus.Tier == "Enterprise")
+            // Runs if CloudConnection is configured (license check bypassed for now)
             {
                 var cloudSync = new CloudSyncService(LoadConnectionString());
                 if (cloudSync.IsCloudEnabled())

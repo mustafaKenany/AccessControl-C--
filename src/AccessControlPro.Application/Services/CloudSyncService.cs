@@ -35,67 +35,89 @@ public class CloudSyncService : ICloudSyncService
     {
         var cloudConn = LoadCloudConnectionString();
         if (string.IsNullOrEmpty(cloudConn) || cloudConn.Contains("xxxx"))
-            return "Cloud sync disabled - configure CloudConnection in appsettings.json";
+            return "Cloud sync disabled";
 
         try
         {
             Log("Starting cloud sync...");
 
-            using var localConn = new SqlConnection(_localConnectionString);
-            await localConn.OpenAsync();
+            using var local = new SqlConnection(_localConnectionString);
+            await local.OpenAsync();
 
-            using var cloudConnPg = new Npgsql.NpgsqlConnection(cloudConn);
-            await cloudConnPg.OpenAsync();
+            using var cloud = new Npgsql.NpgsqlConnection(cloudConn);
+            await cloud.OpenAsync();
 
             int total = 0;
 
-            // Sync Players (from Employees table)
-            total += await SyncTableAsync(localConn, cloudConnPg, "Players",
-                "SELECT Id, FullNameEn, FullNameAr, CardNo, Phone, SubscriptionType, " +
-                "StartDate, EndDate, SubscriptionFee, AmountPaid, MaxVisits, UsedVisits, " +
-                "IsFrozen, FreezeStartDate, CreatedAt, Height, Weight, Notes, CardBalance " +
-                "FROM Employees");
+            // Sync Players (Employees → Players)
+            total += await SyncWithMappingAsync(local, cloud, "Players",
+                "SELECT Id, FullNameEn, FullNameAr, CardNo, Phone, SubscriptionType, StartDate, EndDate, " +
+                "SubscriptionFee, AmountPaid, MaxVisits, UsedVisits, IsFrozen, FreezeStartDate, " +
+                "IsDeleted, CreatedAt, Height, Weight, Notes FROM Employees",
+                new[] { "Id", "FullNameEn", "FullNameAr", "CardNo", "Phone", "SubscriptionType", "StartDate", "EndDate",
+                        "SubscriptionFee", "AmountPaid", "MaxVisits", "UsedVisits", "IsFrozen", "FreezeStartDate",
+                        "IsDeleted", "CreatedAt", "Height", "Weight", "Notes" });
 
-            // Sync AccessCards
-            total += await SyncTableAsync(localConn, cloudConnPg, "AccessCards",
-                "SELECT Id, EmployeeId, CardNumber, CardPassword, CardType, OpenMode, " +
-                "DoorPermissions, EffectiveTimes, TimePeriodIndex, HolidayEnabled, " +
-                "IsActive, IsSyncedToDevice, ValidFrom, ValidTo, CreatedAt " +
-                "FROM AccessCards");
-
-            // Sync AccessEvents (recent 1000)
-            total += await SyncTableAsync(localConn, cloudConnPg, "AccessEvents",
-                "SELECT TOP 1000 Id, DoorId, CardId, EventType, EventCode, " +
-                "Timestamp, Details FROM AccessEvents ORDER BY Timestamp DESC");
+            // Sync Events
+            total += await SyncWithMappingAsync(local, cloud, "AccessEvents",
+                "SELECT TOP 2000 Id, DoorId, CardId, EventType, EventCode, Timestamp, Details " +
+                "FROM AccessEvents ORDER BY Timestamp DESC",
+                new[] { "Id", "DoorId", "CardId", "RecordType", "EventCode", "EventDate", "Details" });
 
             // Sync Devices
-            total += await SyncTableAsync(localConn, cloudConnPg, "Devices",
-                "SELECT Id, Name, SerialNumber, IP, MAC, TCPPort, IsOnline FROM Devices");
+            total += await SyncWithMappingAsync(local, cloud, "Devices",
+                "SELECT Id, Name, SerialNumber, IP, MAC FROM Devices",
+                new[] { "Id", "Name", "SerialNumber", "IP", "MAC" });
 
             // Sync Doors
-            total += await SyncTableAsync(localConn, cloudConnPg, "Doors",
-                "SELECT Id, DeviceId, Name, DoorNumber, IsLocked, " +
-                "WorkStartTime, WorkEndTime, Is24Hours, WorkingDays FROM Doors");
+            total += await SyncWithMappingAsync(local, cloud, "Doors",
+                "SELECT Id, DeviceId, Name, DoorNumber FROM Doors",
+                new[] { "Id", "DeviceId", "Name", "DoorNumber" });
 
             // Sync Transactions
-            total += await SyncTableAsync(localConn, cloudConnPg, "Transactions",
-                "SELECT Id, Type, Category, Amount, Description, " +
-                "RelatedEmployeeId, PaymentMethod, CreatedBy, CreatedAt FROM Transactions");
+            total += await SyncWithMappingAsync(local, cloud, "Transactions",
+                "SELECT Id, Type, Category, Amount, Description, RelatedEmployeeId, CreatedAt, CreatedBy " +
+                "FROM Transactions",
+                new[] { "Id", "Type", "Category", "Amount", "Description", "RelatedEmployeeId", "TransactionDate", "RecordedBy" });
 
-            // Sync Users (for owner login)
-            total += await SyncTableAsync(localConn, cloudConnPg, "Users",
-                "SELECT Id, Username, PasswordHash, DisplayName, Role, IsActive, " +
-                "CreatedAt, Permissions FROM Users");
+            // Sync Users
+            total += await SyncWithMappingAsync(local, cloud, "Users",
+                "SELECT Id, Username, PasswordHash, DisplayName, Role, IsActive, Permissions FROM Users",
+                new[] { "Id", "Username", "PasswordHash", "DisplayName", "Role", "IsActive", "Permissions" });
 
             // Sync AppSettings
-            total += await SyncTableAsync(localConn, cloudConnPg, "AppSettings",
-                "SELECT Id, CompanyName, GymName, LogoPath, DevLogoPath, Phone, Address FROM AppSettings");
+            total += await SyncWithMappingAsync(local, cloud, "AppSettings",
+                "SELECT TOP 1 Id, GymName FROM AppSettings",
+                new[] { "Id", "GymName" });
 
-            // Log sync result to cloud
-            await LogSyncResultAsync(cloudConnPg, total, null);
+            // Sync AuditLogs
+            total += await SyncWithMappingAsync(local, cloud, "AuditLogs",
+                "SELECT TOP 1000 Id, Action, EntityType, EntityId, Details, DetailsAr, PerformedBy, Timestamp " +
+                "FROM AuditLogs ORDER BY Timestamp DESC",
+                new[] { "Id", "Action", "EntityType", "EntityId", "Details", "DetailsAr", "PerformedBy", "Timestamp" });
 
-            Log($"Cloud sync completed: {total} records synced");
-            return $"Synced {total} records to cloud";
+            // Sync DeletedEmployees
+            total += await SyncWithMappingAsync(local, cloud, "DeletedEmployees",
+                "SELECT Id, OriginalId, FullNameEn, FullNameAr, CardNo, Phone, DeleteReason, DeletedBy, DeletedAt " +
+                "FROM DeletedEmployees",
+                new[] { "Id", "OriginalId", "FullNameEn", "FullNameAr", "CardNo", "Phone", "DeleteReason", "DeletedBy", "DeletedAt" });
+
+            // Log sync
+            try
+            {
+                using var logCmd = new Npgsql.NpgsqlCommand(
+                    @"INSERT INTO ""CloudSyncLogs"" (""SyncType"", ""Status"", ""Details"", ""SyncedAt"")
+                      VALUES (@t, @s, @d, @ts)", cloud);
+                logCmd.Parameters.AddWithValue("t", "FullSync");
+                logCmd.Parameters.AddWithValue("s", "Success");
+                logCmd.Parameters.AddWithValue("d", $"Synced {total} records");
+                logCmd.Parameters.AddWithValue("ts", DateTime.UtcNow);
+                await logCmd.ExecuteNonQueryAsync();
+            }
+            catch { }
+
+            Log($"Cloud sync completed: {total} records");
+            return $"Synced {total} records";
         }
         catch (Exception ex)
         {
@@ -104,92 +126,64 @@ public class CloudSyncService : ICloudSyncService
         }
     }
 
-    private async Task<int> SyncTableAsync(SqlConnection local, Npgsql.NpgsqlConnection cloud,
-        string tableName, string selectSql)
+    private async Task<int> SyncWithMappingAsync(SqlConnection local, Npgsql.NpgsqlConnection cloud,
+        string cloudTable, string localSelect, string[] cloudColumns)
     {
+        // Clear cloud table
         try
         {
-            // Clear existing data in cloud table
-            using var deleteCmd = new Npgsql.NpgsqlCommand($"DELETE FROM \"{tableName}\"", cloud);
-            await deleteCmd.ExecuteNonQueryAsync();
+            using var del = new Npgsql.NpgsqlCommand($@"DELETE FROM ""{cloudTable}""", cloud);
+            await del.ExecuteNonQueryAsync();
         }
-        catch
+        catch (Exception ex)
         {
-            // Table might not exist yet - EnsureCreated should handle this
+            Log($"  Clear {cloudTable}: {ex.Message}");
+            return 0;
         }
 
         int count = 0;
         try
         {
-            using var selectCmd = new SqlCommand(selectSql, local);
-            selectCmd.CommandTimeout = 30;
-            using var reader = await selectCmd.ExecuteReaderAsync();
+            using var cmd = new SqlCommand(localSelect, local);
+            cmd.CommandTimeout = 60;
+            using var reader = await cmd.ExecuteReaderAsync();
 
             while (await reader.ReadAsync())
             {
-                var columns = new List<string>();
-                var values = new List<string>();
-                var parameters = new List<Npgsql.NpgsqlParameter>();
+                var cols = new List<string>();
+                var vals = new List<string>();
+                var pars = new List<Npgsql.NpgsqlParameter>();
 
-                for (int i = 0; i < reader.FieldCount; i++)
+                for (int i = 0; i < reader.FieldCount && i < cloudColumns.Length; i++)
                 {
-                    var colName = reader.GetName(i);
-                    columns.Add($"\"{colName}\"");
-                    values.Add($"@p{i}");
+                    cols.Add($@"""{cloudColumns[i]}""");
+                    vals.Add($"@p{i}");
 
                     object val = reader.IsDBNull(i) ? DBNull.Value : reader.GetValue(i);
+                    if (val is TimeSpan ts) val = ts.ToString(@"hh\:mm\:ss");
+                    if (val is byte[]) val = DBNull.Value; // Skip binary data
 
-                    // Convert TimeSpan to a format PostgreSQL understands
-                    if (val is TimeSpan ts)
-                        val = ts.ToString(@"hh\:mm\:ss");
-
-                    parameters.Add(new Npgsql.NpgsqlParameter($"p{i}", val));
+                    pars.Add(new Npgsql.NpgsqlParameter($"p{i}", val));
                 }
 
-                var insertSql = $"INSERT INTO \"{tableName}\" ({string.Join(",", columns)}) " +
-                                $"VALUES ({string.Join(",", values)}) ON CONFLICT (\"Id\") DO NOTHING";
                 try
                 {
-                    using var insertCmd = new Npgsql.NpgsqlCommand(insertSql, cloud);
-                    insertCmd.Parameters.AddRange(parameters.ToArray());
-                    await insertCmd.ExecuteNonQueryAsync();
+                    var sql = $@"INSERT INTO ""{cloudTable}"" ({string.Join(",", cols)}) VALUES ({string.Join(",", vals)})";
+                    using var ins = new Npgsql.NpgsqlCommand(sql, cloud);
+                    ins.Parameters.AddRange(pars.ToArray());
+                    await ins.ExecuteNonQueryAsync();
                     count++;
                 }
-                catch (Exception ex)
-                {
-                    Log($"  Skip {tableName} record: {ex.Message}");
-                }
+                catch { }
             }
         }
         catch (Exception ex)
         {
-            Log($"  Error reading {tableName}: {ex.Message}");
+            Log($"  Read {cloudTable}: {ex.Message}");
         }
 
+        Log($"  {cloudTable}: {count} records");
         return count;
-    }
-
-    private static async Task LogSyncResultAsync(Npgsql.NpgsqlConnection cloud, int total, string? error)
-    {
-        try
-        {
-            var sql = "INSERT INTO \"CloudSyncLogs\" (\"Id\", \"SyncedAt\", \"TableName\", \"RecordCount\", \"Status\", \"Error\") " +
-                      "VALUES (DEFAULT, @ts, @tn, @rc, @st, @err)";
-
-            // Try with DEFAULT id first, fallback to explicit
-            try
-            {
-                using var cmd = new Npgsql.NpgsqlCommand(sql, cloud);
-                cmd.Parameters.AddWithValue("ts", DateTime.UtcNow);
-                cmd.Parameters.AddWithValue("tn", "ALL");
-                cmd.Parameters.AddWithValue("rc", total);
-                cmd.Parameters.AddWithValue("st", error == null ? "Success" : "Failed");
-                cmd.Parameters.AddWithValue("err", (object?)error ?? DBNull.Value);
-                await cmd.ExecuteNonQueryAsync();
-            }
-            catch { /* sync log is best-effort */ }
-        }
-        catch { }
     }
 
     private static string? LoadCloudConnectionString()
