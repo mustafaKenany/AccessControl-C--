@@ -76,7 +76,9 @@ else
                             </td>
                             <td>
                                 <div class="player-name-cell">
-                                    <span class="name-primary">@name</span>
+                                    <a href="/player/@p.Id" style="color: var(--text-primary); text-decoration: none; font-weight: 600;" @onclick:stopPropagation="true">
+                                        @name
+                                    </a>
                                     @if (!string.IsNullOrEmpty(nameSecondary))
                                     {
                                         <span class="name-secondary">@nameSecondary</span>
@@ -131,6 +133,11 @@ else
                                                     <span class="detail-value text-warning">@p.FreezeStartDate.Value.ToString("yyyy-MM-dd")</span>
                                                 </div>
                                             }
+                                        </div>
+                                        <div style="margin-top: 0.75rem; text-align: center;">
+                                            <a href="/player/@p.Id" class="btn-accent btn-sm" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;" @onclick:stopPropagation="true">
+                                                <i class="fas fa-user"></i> @L("View Full Profile", "عرض الملف الكامل")
+                                            </a>
                                         </div>
                                     </div>
                                 </td>

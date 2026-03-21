@@ -1,0 +1,605 @@
+@page "/player/{PlayerId:int}"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject AccessControlPro.Web.Data.DbHelper Db
+@rendermode InteractiveServer
+
+@if (!Session.IsAuthenticated || !Session.IsOwner)
+{
+    <p>Redirecting...</p>
+}
+else if (_loading)
+{
+    <div class="page-header">
+        <h1><i class="fas fa-spinner fa-spin"></i> @L("Loading...", "جار التحميل...")</h1>
+    </div>
+}
+else if (_player == null)
+{
+    <div class="page-header">
+        <h1><i class="fas fa-exclamation-triangle"></i> @L("Player Not Found", "اللاعب غير موجود")</h1>
+        <a href="/players" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i> @L("Back to Players", "العودة للاعبين")</a>
+    </div>
+}
+else
+{
+    var now = DateTime.UtcNow;
+    var daysLeft = (_player.EndDate - now).Days;
+    var status = _player.IsFrozen ? "Frozen" :
+                 _player.EndDate <= now ? "Expired" :
+                 daysLeft <= 7 ? "Expiring" : "Active";
+    var statusClass = status switch {
+        "Active" => "badge-active",
+        "Frozen" => "badge-frozen",
+        "Expiring" => "badge-expiring",
+        _ => "badge-expired"
+    };
+    var statusLabel = status switch {
+        "Active" => L("Active", "نشط"),
+        "Frozen" => L("Frozen", "مجمد"),
+        "Expiring" => L("Expiring", "ينتهي قريبا"),
+        _ => L("Expired", "منتهي")
+    };
+    var remaining = _player.Fee - _player.Paid;
+    var visitsText = _player.MaxVisits > 0 ? $"{_player.UsedVisits}/{_player.MaxVisits}" : L("Unlimited", "غير محدود");
+    var visitPercent = _player.MaxVisits > 0 ? Math.Min(100, _player.UsedVisits * 100 / _player.MaxVisits) : 0;
+    var visitBarClass = visitPercent >= 90 ? "progress-danger" : visitPercent >= 70 ? "progress-warning" : "";
+
+    <!-- Back button + Page Header -->
+    <div class="page-header">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <a href="/players" class="btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                <i class="fas @(SessionState.IsArabic ? "fa-arrow-right" : "fa-arrow-left")"></i> @L("Back", "رجوع")
+            </a>
+            <h1><i class="fas fa-user"></i> @L("Player Profile", "ملف اللاعب")</h1>
+        </div>
+    </div>
+
+    <!-- Player Header Card -->
+    <div class="content-card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+            <div class="player-avatar-large" style="margin: 0; flex-shrink: 0;">
+                @(string.IsNullOrEmpty(_player.FullNameEn) ? "?" : _player.FullNameEn[0].ToString().ToUpper())
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <h2 style="margin-bottom: 0.25rem; font-size: 1.4rem;">
+                    @(SessionState.IsArabic && !string.IsNullOrEmpty(_player.FullNameAr) ? _player.FullNameAr : _player.FullNameEn)
+                </h2>
+                @if (!string.IsNullOrEmpty(SessionState.IsArabic ? _player.FullNameEn : _player.FullNameAr))
+                {
+                    <p style="color: var(--text-secondary); margin-bottom: 0.5rem; font-size: 1rem;" dir="@(SessionState.IsArabic ? "ltr" : "rtl")">
+                        @(SessionState.IsArabic ? _player.FullNameEn : _player.FullNameAr)
+                    </p>
+                }
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                    <span class="badge large @statusClass">@statusLabel</span>
+                    @if (!string.IsNullOrEmpty(_player.CardNo))
+                    {
+                        <span style="color: var(--text-secondary); font-size: 0.9rem;">
+                            <i class="fas fa-id-card"></i> @_player.CardNo
+                        </span>
+                    }
+                    @if (!string.IsNullOrEmpty(_player.Phone))
+                    {
+                        <span style="color: var(--text-secondary); font-size: 0.9rem;">
+                            <i class="fas fa-phone"></i> @_player.Phone
+                        </span>
+                    }
+                </div>
+            </div>
+            <div class="stats-grid" style="flex: 1; min-width: 300px; margin-bottom: 0;">
+                <div class="stat-card @(daysLeft <= 0 ? "red" : daysLeft <= 7 ? "orange" : "teal")" style="margin-bottom: 0;">
+                    <div class="stat-number">@(daysLeft > 0 ? daysLeft.ToString() : "0")</div>
+                    <div class="stat-label">@L("Days Left", "ايام متبقية")</div>
+                </div>
+                <div class="stat-card blue" style="margin-bottom: 0;">
+                    <div class="stat-number">@visitsText</div>
+                    <div class="stat-label">@L("Visits", "الزيارات")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="content-card" style="padding: 0;">
+        <div style="display: flex; border-bottom: 2px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch;">
+            <button class="tab-btn @(_activeTab == "subscription" ? "active" : "")" @onclick='() => _activeTab = "subscription"'>
+                <i class="fas fa-file-alt"></i> @L("Subscription", "الاشتراك")
+            </button>
+            <button class="tab-btn @(_activeTab == "payments" ? "active" : "")" @onclick='() => _activeTab = "payments"'>
+                <i class="fas fa-money-bill-wave"></i> @L("Payments", "المدفوعات")
+                @if (_payments.Any()) { <span style="margin-inline-start: 0.3rem; opacity: 0.7;">(@_payments.Count)</span> }
+            </button>
+            <button class="tab-btn @(_activeTab == "renewals" ? "active" : "")" @onclick='() => _activeTab = "renewals"'>
+                <i class="fas fa-sync"></i> @L("Renewals", "التجديدات")
+                @if (_renewals.Any()) { <span style="margin-inline-start: 0.3rem; opacity: 0.7;">(@_renewals.Count)</span> }
+            </button>
+            <button class="tab-btn @(_activeTab == "freezes" ? "active" : "")" @onclick='() => _activeTab = "freezes"'>
+                <i class="fas fa-snowflake"></i> @L("Freezes", "التجميد")
+                @if (_freezes.Any()) { <span style="margin-inline-start: 0.3rem; opacity: 0.7;">(@_freezes.Count)</span> }
+            </button>
+            <button class="tab-btn @(_activeTab == "cards" ? "active" : "")" @onclick='() => _activeTab = "cards"'>
+                <i class="fas fa-id-card"></i> @L("Cards", "البطاقات")
+                @if (_cardHistory.Any()) { <span style="margin-inline-start: 0.3rem; opacity: 0.7;">(@_cardHistory.Count)</span> }
+            </button>
+            <button class="tab-btn @(_activeTab == "visits" ? "active" : "")" @onclick='() => _activeTab = "visits"'>
+                <i class="fas fa-door-open"></i> @L("Visits", "الزيارات")
+                @if (_visits.Any()) { <span style="margin-inline-start: 0.3rem; opacity: 0.7;">(@_visits.Count)</span> }
+            </button>
+        </div>
+
+        <div style="padding: 1.25rem;">
+            @* ============ SUBSCRIPTION TAB ============ *@
+            @if (_activeTab == "subscription")
+            {
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">@L("Subscription Type", "نوع الاشتراك")</span>
+                        <span class="info-value">@(string.IsNullOrEmpty(_player.SubscriptionType) ? "-" : _player.SubscriptionType)</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@L("Start Date", "تاريخ البداية")</span>
+                        <span class="info-value">@_player.StartDate.ToString("yyyy-MM-dd")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@L("End Date", "تاريخ النهاية")</span>
+                        <span class="info-value @(daysLeft <= 0 ? "text-danger" : daysLeft <= 7 ? "text-warning" : "")">@_player.EndDate.ToString("yyyy-MM-dd")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@L("Days Remaining", "الايام المتبقية")</span>
+                        <span class="info-value @(daysLeft <= 0 ? "text-danger" : daysLeft <= 7 ? "text-warning" : "")">
+                            @(daysLeft > 0 ? daysLeft.ToString() : L("Expired", "منتهي"))
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@L("Fee", "الرسوم")</span>
+                        <span class="info-value">@_player.Fee.ToString("N0")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@L("Paid", "المدفوع")</span>
+                        <span class="info-value text-success">@_player.Paid.ToString("N0")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@L("Remaining Balance", "المبلغ المتبقي")</span>
+                        <span class="info-value @(remaining > 0 ? "text-danger" : "text-success")">@remaining.ToString("N0")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@L("Card Number", "رقم البطاقة")</span>
+                        <span class="info-value">@(string.IsNullOrEmpty(_player.CardNo) ? "-" : _player.CardNo)</span>
+                    </div>
+                </div>
+
+                @if (_player.MaxVisits > 0)
+                {
+                    <div style="margin-top: 1.25rem;">
+                        <h3 style="color: var(--accent); font-size: 1rem; margin-bottom: 0.75rem;">
+                            @L("Visits Progress", "تقدم الزيارات")
+                        </h3>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div class="progress-bar-container" style="flex: 1; height: 12px;">
+                                <div class="progress-bar-fill @visitBarClass" style="width: @(visitPercent)%"></div>
+                            </div>
+                            <span style="font-weight: 600; white-space: nowrap;">@_player.UsedVisits / @_player.MaxVisits</span>
+                        </div>
+                    </div>
+                }
+            }
+
+            @* ============ PAYMENTS TAB ============ *@
+            @if (_activeTab == "payments")
+            {
+                @if (_payments.Any())
+                {
+                    var totalPaid = _payments.Where(t => t.Amount > 0).Sum(t => t.Amount);
+                    var totalRefund = _payments.Where(t => t.Amount < 0).Sum(t => Math.Abs(t.Amount));
+                    <div class="stats-grid" style="margin-bottom: 1rem;">
+                        <div class="stat-card green" style="margin-bottom: 0;">
+                            <div class="stat-number">@totalPaid.ToString("N0")</div>
+                            <div class="stat-label">@L("Total Paid", "اجمالي المدفوع")</div>
+                        </div>
+                        @if (totalRefund > 0)
+                        {
+                            <div class="stat-card red" style="margin-bottom: 0;">
+                                <div class="stat-number">@totalRefund.ToString("N0")</div>
+                                <div class="stat-label">@L("Total Refunds", "اجمالي المرتجعات")</div>
+                            </div>
+                        }
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>@L("Date", "التاريخ")</th>
+                                    <th>@L("Amount", "المبلغ")</th>
+                                    <th>@L("Type", "النوع")</th>
+                                    <th>@L("Description", "الوصف")</th>
+                                    <th>@L("Recorded By", "بواسطة")</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var t in _payments)
+                                {
+                                    var typeLabel = t.Type switch {
+                                        0 => L("Payment", "دفعة"),
+                                        1 => L("Renewal", "تجديد"),
+                                        2 => L("Refund", "استرجاع"),
+                                        _ => L("Other", "اخرى")
+                                    };
+                                    <tr>
+                                        <td>@t.TransactionDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td class="@(t.Amount >= 0 ? "text-success" : "text-danger")">@t.Amount.ToString("N0")</td>
+                                        <td><span class="badge @(t.Type == 2 ? "badge-expired" : "badge-active")">@typeLabel</span></td>
+                                        <td>@t.Description</td>
+                                        <td>@t.RecordedBy</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="no-data">@L("No payment records found", "لا توجد سجلات دفع")</p>
+                }
+            }
+
+            @* ============ RENEWALS TAB ============ *@
+            @if (_activeTab == "renewals")
+            {
+                @if (_renewals.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>@L("Date", "التاريخ")</th>
+                                    <th>@L("Action", "الاجراء")</th>
+                                    <th>@L("Details", "التفاصيل")</th>
+                                    <th>@L("Performed By", "بواسطة")</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var a in _renewals)
+                                {
+                                    var actionLabel = a.Action.ToUpper() switch {
+                                        "CREATE" => L("Created", "انشاء"),
+                                        "RENEW" => L("Renewed", "تجديد"),
+                                        "UPDATE" => L("Updated", "تحديث"),
+                                        _ => a.Action
+                                    };
+                                    var details = SessionState.IsArabic && !string.IsNullOrEmpty(a.DetailsAr) ? a.DetailsAr : a.Details;
+                                    <tr>
+                                        <td>@a.Timestamp.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td><span class="badge badge-active">@actionLabel</span></td>
+                                        <td style="max-width: 400px; word-break: break-word;">@details</td>
+                                        <td>@a.PerformedBy</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="no-data">@L("No renewal records found", "لا توجد سجلات تجديد")</p>
+                }
+            }
+
+            @* ============ FREEZES TAB ============ *@
+            @if (_activeTab == "freezes")
+            {
+                @if (_freezes.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>@L("Date", "التاريخ")</th>
+                                    <th>@L("Action", "الاجراء")</th>
+                                    <th>@L("Details / Reason", "التفاصيل / السبب")</th>
+                                    <th>@L("Performed By", "بواسطة")</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var a in _freezes)
+                                {
+                                    var isFrozen = a.Action.ToUpper().Contains("FREEZE") && !a.Action.ToUpper().Contains("UNFREEZE");
+                                    var actionLabel = isFrozen ? L("Frozen", "تجميد") : L("Unfrozen", "الغاء التجميد");
+                                    var details = SessionState.IsArabic && !string.IsNullOrEmpty(a.DetailsAr) ? a.DetailsAr : a.Details;
+                                    <tr>
+                                        <td>@a.Timestamp.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td><span class="badge @(isFrozen ? "badge-frozen" : "badge-active")">@actionLabel</span></td>
+                                        <td style="max-width: 400px; word-break: break-word;">@details</td>
+                                        <td>@a.PerformedBy</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="no-data">@L("No freeze records found", "لا توجد سجلات تجميد")</p>
+                }
+            }
+
+            @* ============ CARDS TAB ============ *@
+            @if (_activeTab == "cards")
+            {
+                @if (_cardHistory.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>@L("Date", "التاريخ")</th>
+                                    <th>@L("Action", "الاجراء")</th>
+                                    <th>@L("Details", "التفاصيل")</th>
+                                    <th>@L("Performed By", "بواسطة")</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var a in _cardHistory)
+                                {
+                                    var actionLabel = a.Action.ToUpper() switch {
+                                        "ASSIGN_CARD" => L("Card Assigned", "تعيين بطاقة"),
+                                        "REMOVE_CARD" => L("Card Removed", "ازالة بطاقة"),
+                                        "REASSIGN_CARD" => L("Card Reassigned", "اعادة تعيين بطاقة"),
+                                        "SYNCCARD" => L("Card Synced", "مزامنة بطاقة"),
+                                        _ => a.Action
+                                    };
+                                    var details = SessionState.IsArabic && !string.IsNullOrEmpty(a.DetailsAr) ? a.DetailsAr : a.Details;
+                                    <tr>
+                                        <td>@a.Timestamp.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td><span class="badge badge-active">@actionLabel</span></td>
+                                        <td style="max-width: 400px; word-break: break-word;">@details</td>
+                                        <td>@a.PerformedBy</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="no-data">@L("No card history found", "لا يوجد سجل بطاقات")</p>
+                }
+            }
+
+            @* ============ VISITS TAB ============ *@
+            @if (_activeTab == "visits")
+            {
+                @if (_visits.Any())
+                {
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.75rem;">
+                        @L("Showing last 100 visits", "عرض اخر 100 زيارة")
+                    </p>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>@L("Date / Time", "التاريخ / الوقت")</th>
+                                    <th>@L("Door", "الباب")</th>
+                                    <th>@L("Event", "الحدث")</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var v in _visits)
+                                {
+                                    var eventLabel = v.EventCode switch {
+                                        1 => L("Entry", "دخول"),
+                                        2 => L("Exit", "خروج"),
+                                        _ => v.DoorName.Contains("Exit", StringComparison.OrdinalIgnoreCase) ||
+                                             v.DoorName.Contains("خروج", StringComparison.OrdinalIgnoreCase)
+                                             ? L("Exit", "خروج") : L("Entry", "دخول")
+                                    };
+                                    var eventIcon = eventLabel == L("Entry", "دخول") ? "fa-sign-in-alt" : "fa-sign-out-alt";
+                                    var eventColor = eventLabel == L("Entry", "دخول") ? "text-success" : "text-warning";
+                                    <tr>
+                                        <td>@v.EventDate.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                        <td>@v.DoorName</td>
+                                        <td class="@eventColor"><i class="fas @eventIcon"></i> @eventLabel</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="no-data">@L("No visit records found", "لا توجد سجلات زيارة")</p>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int PlayerId { get; set; }
+
+    private PlayerRow? _player;
+    private List<TransactionRow> _payments = new();
+    private List<AuditRow> _renewals = new();
+    private List<AuditRow> _freezes = new();
+    private List<AuditRow> _cardHistory = new();
+    private List<VisitRow> _visits = new();
+    private bool _loading = true;
+    private string _activeTab = "subscription";
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAuthenticated || !Session.IsOwner)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        await LoadPlayerAsync();
+        if (_player != null)
+        {
+            // Load all history in parallel
+            await Task.WhenAll(
+                LoadPaymentsAsync(),
+                LoadRenewalsAsync(),
+                LoadFreezesAsync(),
+                LoadCardHistoryAsync(),
+                LoadVisitsAsync()
+            );
+        }
+        _loading = false;
+    }
+
+    private async Task LoadPlayerAsync()
+    {
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Id"", ""FullNameEn"", ""FullNameAr"", COALESCE(""CardNo"",''), COALESCE(""Phone"",''),
+                         COALESCE(""SubscriptionType"",''), ""StartDate"", ""EndDate"",
+                         COALESCE(""SubscriptionFee"",0), COALESCE(""AmountPaid"",0),
+                         COALESCE(""MaxVisits"",0), COALESCE(""UsedVisits"",0), ""IsFrozen"", ""FreezeStartDate""
+                  FROM ""Players"" WHERE ""Id"" = @id AND ""IsDeleted"" = FALSE", conn);
+            cmd.Parameters.AddWithValue("id", PlayerId);
+
+            using var r = await cmd.ExecuteReaderAsync();
+            if (await r.ReadAsync())
+            {
+                _player = new PlayerRow(
+                    r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4),
+                    r.GetString(5), r.GetDateTime(6), r.GetDateTime(7),
+                    r.GetDecimal(8), r.GetDecimal(9),
+                    r.GetInt32(10), r.GetInt32(11), r.GetBoolean(12),
+                    r.IsDBNull(13) ? null : r.GetDateTime(13));
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadPaymentsAsync()
+    {
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Id"", ""Type"", COALESCE(""Category"",''), ""Amount"", COALESCE(""Description"",''),
+                         ""TransactionDate"", COALESCE(""RecordedBy"",'')
+                  FROM ""Transactions"" WHERE ""RelatedEmployeeId"" = @id
+                  ORDER BY ""TransactionDate"" DESC", conn);
+            cmd.Parameters.AddWithValue("id", PlayerId);
+
+            using var r = await cmd.ExecuteReaderAsync();
+            _payments = new List<TransactionRow>();
+            while (await r.ReadAsync())
+            {
+                _payments.Add(new TransactionRow(
+                    r.GetInt32(0), r.GetInt32(1), r.GetString(2), r.GetDecimal(3),
+                    r.GetString(4), r.GetDateTime(5), r.GetString(6)));
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadRenewalsAsync()
+    {
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Timestamp"", ""Action"", COALESCE(""Details"",''), COALESCE(""DetailsAr"",''), COALESCE(""PerformedBy"",'')
+                  FROM ""AuditLogs""
+                  WHERE ""EntityType"" = 'Employee' AND ""EntityId"" = @id
+                    AND ""Action"" IN ('Renew','CREATE','UPDATE')
+                  ORDER BY ""Timestamp"" DESC", conn);
+            cmd.Parameters.AddWithValue("id", PlayerId);
+
+            using var r = await cmd.ExecuteReaderAsync();
+            _renewals = new List<AuditRow>();
+            while (await r.ReadAsync())
+            {
+                _renewals.Add(new AuditRow(
+                    r.GetDateTime(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4)));
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadFreezesAsync()
+    {
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Timestamp"", ""Action"", COALESCE(""Details"",''), COALESCE(""DetailsAr"",''), COALESCE(""PerformedBy"",'')
+                  FROM ""AuditLogs""
+                  WHERE ""EntityType"" = 'Employee' AND ""EntityId"" = @id
+                    AND ""Action"" IN ('Freeze','Unfreeze','FREEZE','UNFREEZE')
+                  ORDER BY ""Timestamp"" DESC", conn);
+            cmd.Parameters.AddWithValue("id", PlayerId);
+
+            using var r = await cmd.ExecuteReaderAsync();
+            _freezes = new List<AuditRow>();
+            while (await r.ReadAsync())
+            {
+                _freezes.Add(new AuditRow(
+                    r.GetDateTime(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4)));
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadCardHistoryAsync()
+    {
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Timestamp"", ""Action"", COALESCE(""Details"",''), COALESCE(""DetailsAr"",''), COALESCE(""PerformedBy"",'')
+                  FROM ""AuditLogs""
+                  WHERE ""EntityType"" IN ('AccessCard','Employee') AND ""EntityId"" = @id
+                    AND ""Action"" IN ('ASSIGN_CARD','REMOVE_CARD','REASSIGN_CARD','SyncCard')
+                  ORDER BY ""Timestamp"" DESC", conn);
+            cmd.Parameters.AddWithValue("id", PlayerId);
+
+            using var r = await cmd.ExecuteReaderAsync();
+            _cardHistory = new List<AuditRow>();
+            while (await r.ReadAsync())
+            {
+                _cardHistory.Add(new AuditRow(
+                    r.GetDateTime(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4)));
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadVisitsAsync()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(_player?.CardNo))
+                return;
+
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT e.""EventDate"", e.""EventCode"",
+                         COALESCE(d.""Name"", 'Door ' || e.""DoorId"") as ""DoorName""
+                  FROM ""AccessEvents"" e
+                  LEFT JOIN ""Doors"" d ON e.""DoorId"" = d.""Id""
+                  WHERE e.""Details"" LIKE '%' || @cardNo || '%'
+                  ORDER BY e.""EventDate"" DESC
+                  LIMIT 100", conn);
+            cmd.Parameters.AddWithValue("cardNo", _player.CardNo);
+
+            using var r = await cmd.ExecuteReaderAsync();
+            _visits = new List<VisitRow>();
+            while (await r.ReadAsync())
+            {
+                _visits.Add(new VisitRow(
+                    r.GetDateTime(0), r.GetString(2), r.GetInt32(1)));
+            }
+        }
+        catch { }
+    }
+}

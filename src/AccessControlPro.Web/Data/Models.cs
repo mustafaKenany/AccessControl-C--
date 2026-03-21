@@ -11,3 +11,7 @@ public record TransactionRow(int Id, int Type, string Category, decimal Amount, 
 public record DeviceRow(int Id, string Name, string SerialNumber, string IP);
 
 public record DoorRow(int Id, string Name, int DoorNumber, string DeviceName);
+
+public record AuditRow(DateTime Timestamp, string Action, string Details, string DetailsAr, string PerformedBy);
+
+public record VisitRow(DateTime EventDate, string DoorName, int EventCode);

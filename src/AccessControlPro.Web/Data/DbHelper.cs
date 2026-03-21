@@ -140,6 +140,17 @@ CREATE TABLE IF NOT EXISTS ""QrPasses"" (
     ""CreatedAt"" TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS ""AccessCards"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""EmployeeId"" INT DEFAULT 0,
+    ""CardNumber"" VARCHAR(50) DEFAULT '',
+    ""IsActive"" BOOLEAN DEFAULT TRUE,
+    ""ValidFrom"" TIMESTAMP DEFAULT NOW(),
+    ""ValidTo"" TIMESTAMP DEFAULT NOW(),
+    ""EffectiveTimes"" INT DEFAULT 65535,
+    ""CreatedAt"" TIMESTAMP DEFAULT NOW()
+);
+
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_players_isdeleted ON ""Players"" (""IsDeleted"");
 CREATE INDEX IF NOT EXISTS idx_players_phone ON ""Players"" (""Phone"");
