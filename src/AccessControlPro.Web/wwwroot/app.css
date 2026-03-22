@@ -1041,20 +1041,12 @@ html, body {
 }
 
 /* === Desktop/Mobile Toggle === */
-/* Desktop: show tables, hide cards */
+/* Desktop (769px+): show tables, hide cards */
 .desktop-only { display: block; }
 .mobile-only { display: none; }
 
-/* Mobile & Tablet: show cards, hide tables */
-@media screen and (max-width: 1200px) {
-    .desktop-only { display: none !important; }
-    .mobile-only { display: block !important; }
-}
+/* Mobile only (768px and below): show cards, hide tables */
 @media screen and (max-width: 768px) {
-    .desktop-only { display: none !important; }
-    .mobile-only { display: block !important; }
-}
-@media screen and (max-width: 480px) {
     .desktop-only { display: none !important; }
     .mobile-only { display: block !important; }
 }
@@ -1131,13 +1123,7 @@ html, body {
     margin: 0.2rem 0;
 }
 
-@media (min-width: 768px) and (max-width: 1024px) {
-    .mobile-cards {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.5rem;
-    }
-}
+/* Cards don't need tablet grid — cards only show on phones (<768px) */
 
 /* Toggle handled above with multiple breakpoints */
 
