@@ -45,9 +45,20 @@ public class CloudSyncService : ICloudSyncService
             using var local = new SqlConnection(_localConnectionString);
             await local.OpenAsync();
 
+            // Step 0: Pull new users from cloud BEFORE push (so they survive the push)
+            try
+            {
+                await PullCloudUsersAsync(local, cloudUrl);
+            }
+            catch (Exception pullEx)
+            {
+                Log($"Pre-pull users error (non-critical): {pullEx.Message}");
+            }
+
             var payload = new Dictionary<string, List<Dictionary<string, object?>>>();
 
             // Read each table from local DB into dictionaries
+            // NOTE: Users are read AFTER pull, so newly pulled users are included in push
             payload["players"] = await ReadTableAsync(local,
                 "SELECT Id, FullNameEn, FullNameAr, CardNo, Phone, SubscriptionType, StartDate, EndDate, " +
                 "SubscriptionFee, AmountPaid, MaxVisits, UsedVisits, IsFrozen, FreezeStartDate, " +
@@ -114,17 +125,6 @@ public class CloudSyncService : ICloudSyncService
             if (response.IsSuccessStatusCode)
             {
                 Log($"Cloud sync completed via API: {responseBody}");
-
-                // Step 2: Pull new users from cloud → local (INSERT only, no updates)
-                try
-                {
-                    await PullCloudUsersAsync(local, cloudUrl);
-                }
-                catch (Exception pullEx)
-                {
-                    Log($"Pull users error: {pullEx.Message}");
-                }
-
                 return $"Synced via API: {responseBody}";
             }
             else
