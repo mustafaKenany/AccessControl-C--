@@ -453,6 +453,10 @@
   <data name="PermGroupLogs" xml:space="preserve"><value>السجلات</value></data>
   <data name="PermGroupDeletedRecords" xml:space="preserve"><value>السجلات المحذوفة</value></data>
   <data name="PermGroupMonitor" xml:space="preserve"><value>المراقبة</value></data>
+  <data name="PermGroupDataMigration" xml:space="preserve"><value>ترحيل البيانات</value></data>
+  <data name="PermDataMigrationAccess" xml:space="preserve"><value>ترحيل البيانات</value></data>
+  <data name="PermGroupQrPass" xml:space="preserve"><value>تصريح QR</value></data>
+  <data name="PermQrPassManage" xml:space="preserve"><value>إدارة تصاريح QR</value></data>
   <data name="PermGroupAdmin" xml:space="preserve"><value>لوحة الإدارة</value></data>
 
   <!-- Change Password -->

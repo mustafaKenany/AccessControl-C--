@@ -55,6 +55,12 @@ public static class AppPermission
     // Monitor
     public const string MonitorView = "Monitor.View";
 
+    // Data Migration
+    public const string DataMigration = "DataMigration.Access";
+
+    // QR Pass
+    public const string QrPassManage = "QrPass.Manage";
+
     // Admin Panel
     public const string AdminManageUsers = "Admin.ManageUsers";
     public const string AdminManageSettings = "Admin.ManageSettings";
@@ -75,6 +81,7 @@ public static class AppPermission
         LogsView,
         DeletedRecordsView,
         MonitorView,
+        DataMigration, QrPassManage,
         AdminManageUsers, AdminManageSettings
     ];
 
@@ -105,6 +112,8 @@ public static class AppPermission
         ("Logs", [LogsView]),
         ("DeletedRecords", [DeletedRecordsView]),
         ("Monitor", [MonitorView]),
+        ("DataMigration", [DataMigration]),
+        ("QrPass", [QrPassManage]),
         ("Admin", [AdminManageUsers, AdminManageSettings])
     ];
 }

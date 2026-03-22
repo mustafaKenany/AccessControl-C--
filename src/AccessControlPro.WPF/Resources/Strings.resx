@@ -448,6 +448,10 @@
   <data name="PermGroupLogs" xml:space="preserve"><value>Logs</value></data>
   <data name="PermGroupDeletedRecords" xml:space="preserve"><value>Deleted Records</value></data>
   <data name="PermGroupMonitor" xml:space="preserve"><value>Monitor</value></data>
+  <data name="PermGroupDataMigration" xml:space="preserve"><value>Data Migration</value></data>
+  <data name="PermDataMigrationAccess" xml:space="preserve"><value>Data Migration</value></data>
+  <data name="PermGroupQrPass" xml:space="preserve"><value>QR Pass</value></data>
+  <data name="PermQrPassManage" xml:space="preserve"><value>Manage QR Pass</value></data>
   <data name="PermGroupAdmin" xml:space="preserve"><value>Admin Panel</value></data>
 
   <!-- Change Password -->
