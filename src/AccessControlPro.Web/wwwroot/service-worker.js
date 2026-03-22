@@ -1,15 +1,18 @@
-// Simple service worker for PWA
+// Service worker for PWA — network only (no caching issues)
 self.addEventListener('install', event => {
     self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
-    event.waitUntil(clients.claim());
+    // Clear any old caches
+    event.waitUntil(
+        caches.keys().then(keys =>
+            Promise.all(keys.map(key => caches.delete(key)))
+        ).then(() => clients.claim())
+    );
 });
 
 self.addEventListener('fetch', event => {
-    // Network first, cache fallback
-    event.respondWith(
-        fetch(event.request).catch(() => caches.match(event.request))
-    );
+    // Always fetch from network — no caching (prevents stale CSS/JS)
+    event.respondWith(fetch(event.request));
 });

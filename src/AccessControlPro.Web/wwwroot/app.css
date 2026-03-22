@@ -1041,8 +1041,23 @@ html, body {
 }
 
 /* === Desktop/Mobile Toggle === */
+/* Desktop: show tables, hide cards */
 .desktop-only { display: block; }
 .mobile-only { display: none; }
+
+/* Mobile & Tablet: show cards, hide tables */
+@media screen and (max-width: 1200px) {
+    .desktop-only { display: none !important; }
+    .mobile-only { display: block !important; }
+}
+@media screen and (max-width: 768px) {
+    .desktop-only { display: none !important; }
+    .mobile-only { display: block !important; }
+}
+@media screen and (max-width: 480px) {
+    .desktop-only { display: none !important; }
+    .mobile-only { display: block !important; }
+}
 
 /* === Mobile Cards === */
 .mobile-cards {
@@ -1124,10 +1139,7 @@ html, body {
     }
 }
 
-@media (max-width: 1024px) {
-    .desktop-only { display: none !important; }
-    .mobile-only { display: block !important; }
-}
+/* Toggle handled above with multiple breakpoints */
 
 /* === Responsive === */
 

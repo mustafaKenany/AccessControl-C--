@@ -56,7 +56,7 @@ app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
     {
-        ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=604800"); // 7 days
+        ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=300"); // 5 min — prevents stale CSS
     }
 });
 app.UseAntiforgery();
