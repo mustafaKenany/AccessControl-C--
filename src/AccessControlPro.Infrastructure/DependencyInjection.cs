@@ -76,6 +76,9 @@ public static class DependencyInjection
         services.AddSingleton<IEnhancedAuthenticationService, EnhancedAuthenticationService>();
         services.AddSingleton<IEnhancedAuditLogger, EnhancedAuditLogger>();
 
+        // Cleanup
+        services.AddScoped<Domain.Interfaces.ICleanupService, Persistence.CleanupService>();
+
         // Logging
         services.AddSingleton<ISessionLogger, Logging.SessionFileLogger>();
 

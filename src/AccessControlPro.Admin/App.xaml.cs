@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Threading;
 using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Application.Services;
+using AccessControlPro.Domain.Interfaces;
 using AccessControlPro.Infrastructure;
 using AccessControlPro.Infrastructure.Persistence;
 using AccessControlPro.WPF.Helpers;
@@ -20,6 +21,7 @@ public partial class App : System.Windows.Application
     private static Mutex? _singleInstanceMutex;
     private readonly ServiceProvider _serviceProvider;
     private DispatcherTimer? _backupTimer;
+    private DispatcherTimer? _cleanupDailyTimer;
     private static readonly string CrashLogPath = Path.Combine(AppContext.BaseDirectory, "admin_crash_log.txt");
 
     public App()
@@ -289,6 +291,43 @@ public partial class App : System.Windows.Application
                 }
             };
             _backupTimer.Start();
+
+            // Daily cleanup timer — archives inactive players (6+ months expired) and deletes old events
+            _cleanupDailyTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(24) };
+            _cleanupDailyTimer.Tick += async (_, _) =>
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var cleanup = scope.ServiceProvider.GetRequiredService<ICleanupService>();
+                    var players = await Task.Run(() => cleanup.CleanupInactivePlayersAsync());
+                    var events = await Task.Run(() => cleanup.CleanupOldEventsAsync());
+                    AdminStartupLog($"DailyCleanup: {players} inactive players, {events} old events removed");
+                }
+                catch (Exception ex)
+                {
+                    AdminStartupLog($"DailyCleanup error: {ex.Message}");
+                }
+            };
+            _cleanupDailyTimer.Start();
+
+            // Run initial cleanup after 2 minutes
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(120000);
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var cleanup = scope.ServiceProvider.GetRequiredService<ICleanupService>();
+                    var players = await cleanup.CleanupInactivePlayersAsync();
+                    var events = await cleanup.CleanupOldEventsAsync();
+                    AdminStartupLog($"DailyCleanup (initial): {players} inactive players, {events} old events removed");
+                }
+                catch (Exception ex)
+                {
+                    AdminStartupLog($"DailyCleanup (initial) error: {ex.Message}");
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -335,6 +374,8 @@ public partial class App : System.Windows.Application
     {
         _backupTimer?.Stop();
         _backupTimer = null;
+        _cleanupDailyTimer?.Stop();
+        _cleanupDailyTimer = null;
         _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();
         _serviceProvider.Dispose();

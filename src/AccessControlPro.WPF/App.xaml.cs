@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Threading;
 using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Application.Services;
+using AccessControlPro.Domain.Interfaces;
 using AccessControlPro.Domain.Entities;
 using AccessControlPro.Infrastructure;
 using AccessControlPro.Infrastructure.Persistence;
@@ -25,6 +26,7 @@ public partial class App : System.Windows.Application
     private DispatcherTimer? _expiryMonitorTimer;
     private DispatcherTimer? _backupTimer;
     private DispatcherTimer? _cloudSyncTimer;
+    private DispatcherTimer? _cleanupDailyTimer;
     private static readonly string CrashLogPath = Path.Combine(AppContext.BaseDirectory, "crash_log.txt");
 
     public App()
@@ -492,6 +494,43 @@ public partial class App : System.Windows.Application
             };
             _backupTimer.Start();
 
+            // Daily cleanup timer — archives inactive players (6+ months expired) and deletes old events
+            _cleanupDailyTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(24) };
+            _cleanupDailyTimer.Tick += async (_, _) =>
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var cleanup = scope.ServiceProvider.GetRequiredService<ICleanupService>();
+                    var players = await Task.Run(() => cleanup.CleanupInactivePlayersAsync());
+                    var events = await Task.Run(() => cleanup.CleanupOldEventsAsync());
+                    StartupLog($"DailyCleanup: {players} inactive players, {events} old events removed");
+                }
+                catch (Exception ex)
+                {
+                    StartupLog($"DailyCleanup error: {ex.Message}");
+                }
+            };
+            _cleanupDailyTimer.Start();
+
+            // Run initial cleanup after 2 minutes (let app fully initialize first)
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(120000); // 2 minutes after startup
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var cleanup = scope.ServiceProvider.GetRequiredService<ICleanupService>();
+                    var players = await cleanup.CleanupInactivePlayersAsync();
+                    var events = await cleanup.CleanupOldEventsAsync();
+                    StartupLog($"DailyCleanup (initial): {players} inactive players, {events} old events removed");
+                }
+                catch (Exception ex)
+                {
+                    StartupLog($"DailyCleanup (initial) error: {ex.Message}");
+                }
+            });
+
             // Cloud sync timer — syncs local data to cloud PostgreSQL every 5 minutes
             // Runs if CloudConnection is configured (license check bypassed for now)
             {
@@ -626,6 +665,8 @@ public partial class App : System.Windows.Application
         _backupTimer = null;
         _cloudSyncTimer?.Stop();
         _cloudSyncTimer = null;
+        _cleanupDailyTimer?.Stop();
+        _cleanupDailyTimer = null;
 
         // Stop SDK monitoring and shutdown to prevent background thread crashes
         try
