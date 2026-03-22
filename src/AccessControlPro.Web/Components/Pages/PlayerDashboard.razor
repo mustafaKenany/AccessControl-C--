@@ -16,9 +16,16 @@ else if (_player != null)
 
     <div class="player-card">
         <div class="player-header">
-            <div class="player-avatar-large">
-                @(string.IsNullOrEmpty(_player.FullNameEn) ? "?" : _player.FullNameEn[0].ToString().ToUpper())
-            </div>
+            @if (!string.IsNullOrEmpty(_photoPath) && _photoPath != "")
+            {
+                <img src="@_photoPath" class="player-photo" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--teal);" />
+            }
+            else
+            {
+                <div class="player-avatar-large">
+                    @(string.IsNullOrEmpty(_player.FullNameEn) ? "?" : _player.FullNameEn[0].ToString().ToUpper())
+                </div>
+            }
             <h2>@_player.FullNameEn</h2>
             @if (!string.IsNullOrEmpty(_player.FullNameAr))
             {
@@ -44,7 +51,27 @@ else if (_player != null)
                 </div>
             }
         </div>
+    </div>
 
+    @* Tab Navigation *@
+    <div class="filter-group" style="margin: 1rem 0;">
+        <button class="filter-btn @(_tab == "overview" ? "active" : "")" @onclick='() => _tab = "overview"'>
+            <i class="fas fa-info-circle"></i> @L("Overview", "نظرة عامة")
+        </button>
+        <button class="filter-btn @(_tab == "payments" ? "active" : "")" @onclick='() => _tab = "payments"'>
+            <i class="fas fa-wallet"></i> @L("Payments", "المدفوعات")
+        </button>
+        <button class="filter-btn @(_tab == "visits" ? "active" : "")" @onclick='() => _tab = "visits"'>
+            <i class="fas fa-clock"></i> @L("Visits", "الزيارات")
+        </button>
+        <button class="filter-btn @(_tab == "history" ? "active" : "")" @onclick='() => _tab = "history"'>
+            <i class="fas fa-history"></i> @L("History", "السجل")
+        </button>
+    </div>
+
+    @* === OVERVIEW TAB === *@
+    @if (_tab == "overview")
+    {
         @if (_player.MaxVisits > 0)
         {
             <div class="content-card" style="margin-top: 1rem;">
@@ -96,6 +123,20 @@ else if (_player != null)
                     <span class="info-value">@_player.UsedVisits / @_player.MaxVisits</span>
                 </div>
             }
+            @if (_height > 0)
+            {
+                <div class="info-item">
+                    <span class="info-label">@L("Height", "الطول")</span>
+                    <span class="info-value">@_height.ToString("N1") cm</span>
+                </div>
+            }
+            @if (_weight > 0)
+            {
+                <div class="info-item">
+                    <span class="info-label">@L("Weight", "الوزن")</span>
+                    <span class="info-value">@_weight.ToString("N1") kg</span>
+                </div>
+            }
             @if (_player.IsFrozen && _player.FreezeStartDate.HasValue)
             {
                 <div class="info-item">
@@ -104,7 +145,162 @@ else if (_player != null)
                 </div>
             }
         </div>
-    </div>
+
+        @if (!string.IsNullOrEmpty(_notes))
+        {
+            <div class="content-card" style="margin-top: 1rem;">
+                <h3><i class="fas fa-sticky-note"></i> @L("Notes", "ملاحظات")</h3>
+                <p style="color: var(--text-secondary); margin: 0.5rem 0;">@_notes</p>
+            </div>
+        }
+    }
+
+    @* === PAYMENTS TAB === *@
+    @if (_tab == "payments")
+    {
+        <div class="content-card">
+            <h3><i class="fas fa-wallet"></i> @L("Payment History", "سجل المدفوعات") (@_payments.Count)</h3>
+
+            @if (_payments.Any())
+            {
+                <div class="mobile-cards">
+                    @foreach (var tx in _payments)
+                    {
+                        var local = tx.TransactionDate.ToLocalTime();
+                        var typeLabel = tx.Type == 0 ? L("Income", "إيراد") : L("Expense", "مصروف");
+                        var typeClass = tx.Type == 0 ? "badge-active" : "badge-expired";
+                        <div class="mobile-card">
+                            <div class="mobile-card-header">
+                                <span class="mobile-card-name">@local.ToString("yyyy-MM-dd")</span>
+                                <span style="font-weight: 600; color: @(tx.Type == 0 ? "var(--green, #4caf50)" : "var(--red, #f44336)");">
+                                    @tx.Amount.ToString("N2")
+                                </span>
+                            </div>
+                            <div class="mobile-card-divider"></div>
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">@L("Type", "النوع")</span>
+                                <span class="badge @typeClass">@typeLabel</span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(tx.Category))
+                            {
+                                <div class="mobile-card-row">
+                                    <span class="mobile-card-label">@L("Category", "الفئة")</span>
+                                    <span class="mobile-card-value">@tx.Category</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(tx.Description))
+                            {
+                                <div class="mobile-card-row">
+                                    <span class="mobile-card-label">@L("Description", "الوصف")</span>
+                                    <span class="mobile-card-value">@tx.Description</span>
+                                </div>
+                            }
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">@L("Time", "الوقت")</span>
+                                <span class="mobile-card-value">@local.ToString("HH:mm")</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="no-data">@L("No payment records found", "لم يتم العثور على سجلات دفع")</p>
+            }
+        </div>
+    }
+
+    @* === VISITS TAB === *@
+    @if (_tab == "visits")
+    {
+        <div class="stats-grid" style="margin-bottom: 1rem;">
+            <div class="stat-card teal">
+                <div class="stat-number">@_visitsTotalCount</div>
+                <div class="stat-label">@L("Total Entries", "إجمالي الدخول")</div>
+            </div>
+            <div class="stat-card blue">
+                <div class="stat-number">@_visitsThisMonth</div>
+                <div class="stat-label">@L("This Month", "هذا الشهر")</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="stat-number">@_visitsThisWeek</div>
+                <div class="stat-label">@L("This Week", "هذا الأسبوع")</div>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <h3><i class="fas fa-clock"></i> @L("Recent Visits", "الزيارات الأخيرة") (@_visits.Count)</h3>
+
+            @if (_visits.Any())
+            {
+                <div class="mobile-cards">
+                    @foreach (var v in _visits)
+                    {
+                        var local = v.EventDate.ToLocalTime();
+                        <div class="mobile-card">
+                            <div class="mobile-card-header">
+                                <span class="mobile-card-name">@local.ToString("yyyy-MM-dd")</span>
+                                <span class="badge badge-active">@GetEventTypeName(v.EventCode)</span>
+                            </div>
+                            <div class="mobile-card-divider"></div>
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">@L("Time", "الوقت")</span>
+                                <span class="mobile-card-value">@local.ToString("HH:mm:ss")</span>
+                            </div>
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">@L("Door", "الباب")</span>
+                                <span class="mobile-card-value">@v.DoorName</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="no-data">@L("No visit history found", "لم يتم العثور على سجل زيارات")</p>
+            }
+        </div>
+    }
+
+    @* === HISTORY TAB (Freeze/Unfreeze) === *@
+    @if (_tab == "history")
+    {
+        <div class="content-card">
+            <h3><i class="fas fa-snowflake"></i> @L("Freeze / Unfreeze History", "سجل التجميد / إلغاء التجميد") (@_freezes.Count)</h3>
+
+            @if (_freezes.Any())
+            {
+                <div class="mobile-cards">
+                    @foreach (var f in _freezes)
+                    {
+                        var local = f.Timestamp.ToLocalTime();
+                        var isFreeze = f.Action.Equals("Freeze", StringComparison.OrdinalIgnoreCase) || f.Action == "FREEZE";
+                        var actionLabel = isFreeze ? L("Frozen", "تجميد") : L("Unfrozen", "إلغاء التجميد");
+                        var actionClass = isFreeze ? "badge-frozen" : "badge-active";
+                        <div class="mobile-card">
+                            <div class="mobile-card-header">
+                                <span class="mobile-card-name">@local.ToString("yyyy-MM-dd")</span>
+                                <span class="badge @actionClass">@actionLabel</span>
+                            </div>
+                            <div class="mobile-card-divider"></div>
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">@L("Time", "الوقت")</span>
+                                <span class="mobile-card-value">@local.ToString("HH:mm")</span>
+                            </div>
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">@L("Details", "التفاصيل")</span>
+                                <span class="mobile-card-value">@(SessionState.IsArabic && !string.IsNullOrEmpty(f.DetailsAr) ? f.DetailsAr : f.Details)</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="no-data">@L("No freeze history found", "لم يتم العثور على سجل تجميد")</p>
+            }
+        </div>
+    }
 }
 else
 {
@@ -113,6 +309,25 @@ else
 
 @code {
     private PlayerRow? _player;
+    private string _tab = "overview";
+    private string _photoPath = "";
+    private decimal _height;
+    private decimal _weight;
+    private string _notes = "";
+
+    // Payments
+    private List<TransactionRow> _payments = new();
+
+    // Visits
+    private List<VisitRow> _visits = new();
+    private Dictionary<int, string> _doorNames = new();
+    private int _visitsTotalCount;
+    private int _visitsThisMonth;
+    private int _visitsThisWeek;
+    private int _cardId;
+
+    // Freeze history
+    private List<AuditRow> _freezes = new();
 
     private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
@@ -151,12 +366,32 @@ else
 
         try
         {
+            // Load player data
+            await LoadPlayerAsync();
+
+            if (_player == null) return;
+
+            // Load all other data in parallel for speed
+            await Task.WhenAll(
+                LoadPaymentsAsync(),
+                LoadVisitsAsync(),
+                LoadFreezeHistoryAsync()
+            );
+        }
+        catch { }
+    }
+
+    private async Task LoadPlayerAsync()
+    {
+        try
+        {
             using var conn = await Db.GetConnectionAsync();
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT ""Id"", ""FullNameEn"", ""FullNameAr"", COALESCE(""CardNo"",''), COALESCE(""Phone"",''),
                          COALESCE(""SubscriptionType"",''), ""StartDate"", ""EndDate"",
                          COALESCE(""SubscriptionFee"",0), COALESCE(""AmountPaid"",0),
-                         COALESCE(""MaxVisits"",0), COALESCE(""UsedVisits"",0), ""IsFrozen"", ""FreezeStartDate""
+                         COALESCE(""MaxVisits"",0), COALESCE(""UsedVisits"",0), ""IsFrozen"", ""FreezeStartDate"",
+                         COALESCE(""PhotoPath"",''), COALESCE(""Height"",0), COALESCE(""Weight"",0), COALESCE(""Notes"",'')
                   FROM ""Players"" WHERE ""Id"" = @id AND ""IsDeleted"" = FALSE", conn);
             cmd.Parameters.AddWithValue("id", Session.UserId);
 
@@ -169,8 +404,147 @@ else
                     r.GetDecimal(8), r.GetDecimal(9),
                     r.GetInt32(10), r.GetInt32(11), r.GetBoolean(12),
                     r.IsDBNull(13) ? null : r.GetDateTime(13));
+                _photoPath = r.GetString(14);
+                _height = r.GetDecimal(15);
+                _weight = r.GetDecimal(16);
+                _notes = r.GetString(17);
+
+                // Parse card ID for visits
+                if (!string.IsNullOrEmpty(_player.CardNo) && int.TryParse(_player.CardNo, out var cid))
+                    _cardId = cid;
             }
         }
         catch { }
     }
+
+    private async Task LoadPaymentsAsync()
+    {
+        try
+        {
+            var threeMonthsAgo = DateTime.UtcNow.AddMonths(-3);
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Id"", ""Type"", COALESCE(""Category"",''), ""Amount"", COALESCE(""Description"",''),
+                         ""TransactionDate"", COALESCE(""RecordedBy"",'')
+                  FROM ""Transactions""
+                  WHERE ""RelatedEmployeeId"" = @id AND ""TransactionDate"" >= @since
+                  ORDER BY ""TransactionDate"" DESC", conn);
+            cmd.Parameters.AddWithValue("id", Session.UserId);
+            cmd.Parameters.AddWithValue("since", threeMonthsAgo);
+
+            using var r = await cmd.ExecuteReaderAsync();
+            _payments = new List<TransactionRow>();
+            while (await r.ReadAsync())
+            {
+                _payments.Add(new TransactionRow(
+                    r.GetInt32(0), r.GetInt32(1), r.GetString(2), r.GetDecimal(3),
+                    r.GetString(4), r.GetDateTime(5), r.GetString(6)));
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadVisitsAsync()
+    {
+        if (_cardId == 0) return;
+
+        try
+        {
+            var threeMonthsAgo = DateTime.UtcNow.AddMonths(-3);
+            var now = DateTime.UtcNow;
+            var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var weekStart = now.Date.AddDays(-(int)now.DayOfWeek);
+            weekStart = DateTime.SpecifyKind(weekStart, DateTimeKind.Utc);
+
+            using var conn = await Db.GetConnectionAsync();
+
+            // Total count (all time)
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT COUNT(*) FROM ""AccessEvents"" WHERE ""CardId"" = @cid", conn))
+            {
+                cmd.Parameters.AddWithValue("cid", _cardId);
+                _visitsTotalCount = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+            }
+
+            // This month count
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT COUNT(*) FROM ""AccessEvents"" WHERE ""CardId"" = @cid AND ""EventDate"" >= @ms", conn))
+            {
+                cmd.Parameters.AddWithValue("cid", _cardId);
+                cmd.Parameters.AddWithValue("ms", monthStart);
+                _visitsThisMonth = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+            }
+
+            // This week count
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT COUNT(*) FROM ""AccessEvents"" WHERE ""CardId"" = @cid AND ""EventDate"" >= @ws", conn))
+            {
+                cmd.Parameters.AddWithValue("cid", _cardId);
+                cmd.Parameters.AddWithValue("ws", weekStart);
+                _visitsThisWeek = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+            }
+
+            // Load door names
+            using (var cmd = new Npgsql.NpgsqlCommand(@"SELECT ""Id"", COALESCE(""Name"",'') FROM ""Doors""", conn))
+            {
+                using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync())
+                    _doorNames[r.GetInt32(0)] = r.GetString(1);
+            }
+
+            // Recent visits (last 3 months, max 50)
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT e.""EventDate"", e.""EventCode"", e.""DoorId""
+                  FROM ""AccessEvents"" e
+                  WHERE e.""CardId"" = @cid AND e.""EventDate"" >= @since
+                  ORDER BY e.""EventDate"" DESC LIMIT 50", conn))
+            {
+                cmd.Parameters.AddWithValue("cid", _cardId);
+                cmd.Parameters.AddWithValue("since", threeMonthsAgo);
+
+                using var r = await cmd.ExecuteReaderAsync();
+                _visits = new List<VisitRow>();
+                while (await r.ReadAsync())
+                {
+                    var doorId = r.GetInt32(2);
+                    var doorName = _doorNames.TryGetValue(doorId, out var dn) && !string.IsNullOrEmpty(dn) ? dn : $"Door {doorId}";
+                    _visits.Add(new VisitRow(r.GetDateTime(0), doorName, r.GetInt32(1)));
+                }
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadFreezeHistoryAsync()
+    {
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Timestamp"", ""Action"", COALESCE(""Details"",''), COALESCE(""DetailsAr"",''), COALESCE(""PerformedBy"",'')
+                  FROM ""AuditLogs""
+                  WHERE ""EntityType"" = 'Employee' AND ""EntityId"" = @id
+                    AND ""Action"" IN ('Freeze','Unfreeze','FREEZE','UNFREEZE')
+                  ORDER BY ""Timestamp"" DESC
+                  LIMIT 20", conn);
+            cmd.Parameters.AddWithValue("id", Session.UserId);
+
+            using var r = await cmd.ExecuteReaderAsync();
+            _freezes = new List<AuditRow>();
+            while (await r.ReadAsync())
+            {
+                _freezes.Add(new AuditRow(
+                    r.GetDateTime(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4)));
+            }
+        }
+        catch { }
+    }
+
+    private string GetEventTypeName(int code) => code switch
+    {
+        1 => L("Card Entry", "دخول بالبطاقة"),
+        2 => L("Button Open", "فتح بالزر"),
+        3 => L("Remote Open", "فتح عن بعد"),
+        _ => $"Event {code}"
+    };
 }
