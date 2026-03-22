@@ -21,36 +21,92 @@ else
     </div>
 
     <div class="content-card">
-        <div class="table-responsive">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>@L("Original ID", "المعرف الأصلي")</th>
-                        <th>@L("Name (EN)", "الاسم (إنجليزي)")</th>
-                        <th>@L("Name (AR)", "الاسم (عربي)")</th>
-                        <th>@L("Card No", "رقم البطاقة")</th>
-                        <th>@L("Phone", "الهاتف")</th>
-                        <th>@L("Delete Reason", "سبب الحذف")</th>
-                        <th>@L("Deleted By", "حُذف بواسطة")</th>
-                        <th>@L("Deleted At", "تاريخ الحذف")</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var d in _deleted)
-                    {
+        @* Desktop table *@
+        <div class="desktop-only">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td>@d.OriginalId</td>
-                            <td>@d.FullNameEn</td>
-                            <td dir="rtl">@d.FullNameAr</td>
-                            <td>@d.CardNo</td>
-                            <td>@d.Phone</td>
-                            <td>@d.DeleteReason</td>
-                            <td>@d.DeletedBy</td>
-                            <td>@d.DeletedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                            <th>@L("Original ID", "المعرف الأصلي")</th>
+                            <th>@L("Name (EN)", "الاسم (إنجليزي)")</th>
+                            <th>@L("Name (AR)", "الاسم (عربي)")</th>
+                            <th>@L("Card No", "رقم البطاقة")</th>
+                            <th>@L("Phone", "الهاتف")</th>
+                            <th>@L("Delete Reason", "سبب الحذف")</th>
+                            <th>@L("Deleted By", "حُذف بواسطة")</th>
+                            <th>@L("Deleted At", "تاريخ الحذف")</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in _deleted)
+                        {
+                            <tr>
+                                <td>@d.OriginalId</td>
+                                <td>@d.FullNameEn</td>
+                                <td dir="rtl">@d.FullNameAr</td>
+                                <td>@d.CardNo</td>
+                                <td>@d.Phone</td>
+                                <td>@d.DeleteReason</td>
+                                <td>@d.DeletedBy</td>
+                                <td>@d.DeletedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* Mobile cards *@
+        <div class="mobile-only">
+            <div class="mobile-cards">
+                @foreach (var d in _deleted)
+                {
+                    var name = SessionState.IsArabic && !string.IsNullOrEmpty(d.FullNameAr) ? d.FullNameAr : d.FullNameEn;
+                    var nameSecondary = SessionState.IsArabic ? d.FullNameEn : d.FullNameAr;
+                    <div class="mobile-card">
+                        <div class="mobile-card-header">
+                            <div>
+                                <span class="mobile-card-name">@name</span>
+                                @if (!string.IsNullOrEmpty(nameSecondary))
+                                {
+                                    <div class="mobile-card-sub">@nameSecondary</div>
+                                }
+                            </div>
+                            <span class="badge badge-expired">@L("Deleted", "محذوف")</span>
+                        </div>
+                        <div class="mobile-card-divider"></div>
+                        @if (!string.IsNullOrEmpty(d.CardNo))
+                        {
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">@L("Card", "البطاقة")</span>
+                                <span class="mobile-card-value">@d.CardNo</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(d.Phone))
+                        {
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">@L("Phone", "الهاتف")</span>
+                                <span class="mobile-card-value">@d.Phone</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(d.DeleteReason))
+                        {
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">@L("Reason", "السبب")</span>
+                                <span class="mobile-card-value" style="max-width: 60%; text-align: right;">@d.DeleteReason</span>
+                            </div>
+                        }
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">@L("Deleted By", "حُذف بواسطة")</span>
+                            <span class="mobile-card-value">@d.DeletedBy</span>
+                        </div>
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">@L("Date", "التاريخ")</span>
+                            <span class="mobile-card-value">@d.DeletedAt.ToLocalTime().ToString("MM/dd HH:mm")</span>
+                        </div>
+                    </div>
+                }
+            </div>
         </div>
 
         @if (!_deleted.Any())

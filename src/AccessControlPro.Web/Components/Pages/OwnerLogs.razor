@@ -49,32 +49,66 @@ else
     </div>
 
     <div class="content-card">
-        <div class="table-responsive">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>@L("Date/Time", "التاريخ/الوقت")</th>
-                        <th>@L("Action", "الإجراء")</th>
-                        <th>@L("Entity Type", "نوع الكيان")</th>
-                        <th>@L("Entity ID", "معرف الكيان")</th>
-                        <th>@L("Details", "التفاصيل")</th>
-                        <th>@L("Performed By", "بواسطة")</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var log in _logs)
-                    {
+        @* Desktop table *@
+        <div class="desktop-only">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td>@log.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
-                            <td><span class="badge @GetActionBadge(log.Action)">@log.Action</span></td>
-                            <td>@log.EntityType</td>
-                            <td>@log.EntityId</td>
-                            <td>@(SessionState.IsArabic && !string.IsNullOrEmpty(log.DetailsAr) ? log.DetailsAr : log.Details)</td>
-                            <td>@log.PerformedBy</td>
+                            <th>@L("Date/Time", "التاريخ/الوقت")</th>
+                            <th>@L("Action", "الإجراء")</th>
+                            <th>@L("Entity Type", "نوع الكيان")</th>
+                            <th>@L("Entity ID", "معرف الكيان")</th>
+                            <th>@L("Details", "التفاصيل")</th>
+                            <th>@L("Performed By", "بواسطة")</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in _logs)
+                        {
+                            <tr>
+                                <td>@log.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td><span class="badge @GetActionBadge(log.Action)">@log.Action</span></td>
+                                <td>@log.EntityType</td>
+                                <td>@log.EntityId</td>
+                                <td>@(SessionState.IsArabic && !string.IsNullOrEmpty(log.DetailsAr) ? log.DetailsAr : log.Details)</td>
+                                <td>@log.PerformedBy</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* Mobile cards *@
+        <div class="mobile-only">
+            <div class="mobile-cards">
+                @foreach (var log in _logs)
+                {
+                    <div class="mobile-card">
+                        <div class="mobile-card-header">
+                            <span class="mobile-card-name">@log.Timestamp.ToLocalTime().ToString("MM/dd HH:mm")</span>
+                            <span class="badge @GetActionBadge(log.Action)">@log.Action</span>
+                        </div>
+                        <div class="mobile-card-divider"></div>
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">@L("Entity", "الكيان")</span>
+                            <span class="mobile-card-value">@log.EntityType #@log.EntityId</span>
+                        </div>
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">@L("Details", "التفاصيل")</span>
+                            <span class="mobile-card-value" style="max-width: 60%; text-align: right;">@(SessionState.IsArabic && !string.IsNullOrEmpty(log.DetailsAr) ? log.DetailsAr : log.Details)</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(log.PerformedBy))
+                        {
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">@L("By", "بواسطة")</span>
+                                <span class="mobile-card-value">@log.PerformedBy</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
         </div>
 
         @if (!_logs.Any())

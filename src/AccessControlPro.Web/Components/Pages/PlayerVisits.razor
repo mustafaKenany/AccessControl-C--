@@ -34,33 +34,61 @@ else
     }
 
     <div class="content-card">
-        <div class="table-responsive">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>@L("Date", "التاريخ")</th>
-                        <th>@L("Time", "الوقت")</th>
-                        <th>@L("Door", "الباب")</th>
-                        <th>@L("Event Type", "نوع الحدث")</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var ev in _events)
-                    {
-                        var local = ev.EventDate.ToLocalTime();
+        @* Desktop table *@
+        <div class="desktop-only">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td>@local.ToString("yyyy-MM-dd")</td>
-                            <td>@local.ToString("HH:mm:ss")</td>
-                            <td>@GetDoorName(ev.DoorId)</td>
-                            <td>
-                                <span class="badge badge-active">
-                                    @GetEventTypeName(ev.EventCode)
-                                </span>
-                            </td>
+                            <th>@L("Date", "التاريخ")</th>
+                            <th>@L("Time", "الوقت")</th>
+                            <th>@L("Door", "الباب")</th>
+                            <th>@L("Event Type", "نوع الحدث")</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var ev in _events)
+                        {
+                            var local = ev.EventDate.ToLocalTime();
+                            <tr>
+                                <td>@local.ToString("yyyy-MM-dd")</td>
+                                <td>@local.ToString("HH:mm:ss")</td>
+                                <td>@GetDoorName(ev.DoorId)</td>
+                                <td>
+                                    <span class="badge badge-active">
+                                        @GetEventTypeName(ev.EventCode)
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* Mobile cards *@
+        <div class="mobile-only">
+            <div class="mobile-cards">
+                @foreach (var ev in _events)
+                {
+                    var local = ev.EventDate.ToLocalTime();
+                    <div class="mobile-card">
+                        <div class="mobile-card-header">
+                            <span class="mobile-card-name">@local.ToString("MM/dd")</span>
+                            <span class="badge badge-active">@GetEventTypeName(ev.EventCode)</span>
+                        </div>
+                        <div class="mobile-card-divider"></div>
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">@L("Time", "الوقت")</span>
+                            <span class="mobile-card-value">@local.ToString("HH:mm:ss")</span>
+                        </div>
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">@L("Door", "الباب")</span>
+                            <span class="mobile-card-value">@GetDoorName(ev.DoorId)</span>
+                        </div>
+                    </div>
+                }
+            </div>
         </div>
 
         @if (!_events.Any())

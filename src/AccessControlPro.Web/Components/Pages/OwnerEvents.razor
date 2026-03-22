@@ -49,38 +49,77 @@ else
     </div>
 
     <div class="content-card">
-        <div class="table-responsive">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>@L("Date/Time", "التاريخ/الوقت")</th>
-                        <th>@L("Device", "الجهاز")</th>
-                        <th>@L("Door", "الباب")</th>
-                        <th>@L("Card No", "رقم البطاقة")</th>
-                        <th>@L("Player", "اللاعب")</th>
-                        <th>@L("Event Type", "نوع الحدث")</th>
-                        <th>@L("Details", "التفاصيل")</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var ev in _events)
-                    {
+        @* Desktop table *@
+        <div class="desktop-only">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td>@ev.EventDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
-                            <td>@GetDeviceName(ev.DoorId)</td>
-                            <td>@(string.IsNullOrEmpty(ev.DoorName) ? GetDoorName(ev.DoorId) : ev.DoorName)</td>
-                            <td>@(string.IsNullOrEmpty(ev.CardNumber) ? "-" : ev.CardNumber)</td>
-                            <td>@GetPlayerDisplay(ev)</td>
-                            <td>
-                                <span class="badge @GetEventBadgeClass(ev.EventCode)">
-                                    @GetEventTypeName(ev.EventCode)
-                                </span>
-                            </td>
-                            <td>@ev.Details</td>
+                            <th>@L("Date/Time", "التاريخ/الوقت")</th>
+                            <th>@L("Device", "الجهاز")</th>
+                            <th>@L("Door", "الباب")</th>
+                            <th>@L("Card No", "رقم البطاقة")</th>
+                            <th>@L("Player", "اللاعب")</th>
+                            <th>@L("Event Type", "نوع الحدث")</th>
+                            <th>@L("Details", "التفاصيل")</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var ev in _events)
+                        {
+                            <tr>
+                                <td>@ev.EventDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@GetDeviceName(ev.DoorId)</td>
+                                <td>@(string.IsNullOrEmpty(ev.DoorName) ? GetDoorName(ev.DoorId) : ev.DoorName)</td>
+                                <td>@(string.IsNullOrEmpty(ev.CardNumber) ? "-" : ev.CardNumber)</td>
+                                <td>@GetPlayerDisplay(ev)</td>
+                                <td>
+                                    <span class="badge @GetEventBadgeClass(ev.EventCode)">
+                                        @GetEventTypeName(ev.EventCode)
+                                    </span>
+                                </td>
+                                <td>@ev.Details</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* Mobile cards *@
+        <div class="mobile-only">
+            <div class="mobile-cards">
+                @foreach (var ev in _events)
+                {
+                    var local = ev.EventDate.ToLocalTime();
+                    <div class="mobile-card">
+                        <div class="mobile-card-header">
+                            <span class="mobile-card-name">@local.ToString("MM/dd HH:mm")</span>
+                            <span class="badge @GetEventBadgeClass(ev.EventCode)">@GetEventTypeName(ev.EventCode)</span>
+                        </div>
+                        <div class="mobile-card-divider"></div>
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">@L("Player", "اللاعب")</span>
+                            <span class="mobile-card-value">@GetPlayerDisplay(ev)</span>
+                        </div>
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">@L("Door", "الباب")</span>
+                            <span class="mobile-card-value">@(string.IsNullOrEmpty(ev.DoorName) ? GetDoorName(ev.DoorId) : ev.DoorName)</span>
+                        </div>
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">@L("Card", "البطاقة")</span>
+                            <span class="mobile-card-value">@(string.IsNullOrEmpty(ev.CardNumber) ? "-" : ev.CardNumber)</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(ev.Details))
+                        {
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">@L("Details", "التفاصيل")</span>
+                                <span class="mobile-card-value">@ev.Details</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
         </div>
 
         @if (!_events.Any())

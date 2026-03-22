@@ -74,27 +74,53 @@ else
             <h3>@L("Recent Events", "الأحداث الأخيرة")</h3>
             @if (_recentEvents.Any())
             {
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>@L("Time", "الوقت")</th>
-                            <th>@L("Player", "اللاعب")</th>
-                            <th>@L("Door", "الباب")</th>
-                            <th>@L("Event", "الحدث")</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                @* Desktop table *@
+                <div class="desktop-only">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>@L("Time", "الوقت")</th>
+                                <th>@L("Player", "اللاعب")</th>
+                                <th>@L("Door", "الباب")</th>
+                                <th>@L("Event", "الحدث")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ev in _recentEvents)
+                            {
+                                <tr>
+                                    <td>@ev.EventDate.ToLocalTime().ToString("MM/dd HH:mm")</td>
+                                    <td>@GetPlayerDisplay(ev)</td>
+                                    <td>@(string.IsNullOrEmpty(ev.DoorName) ? GetDoorName(ev.DoorId) : ev.DoorName)</td>
+                                    <td>@GetEventName(ev.EventCode)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @* Mobile cards *@
+                <div class="mobile-only">
+                    <div class="mobile-cards">
                         @foreach (var ev in _recentEvents)
                         {
-                            <tr>
-                                <td>@ev.EventDate.ToLocalTime().ToString("MM/dd HH:mm")</td>
-                                <td>@GetPlayerDisplay(ev)</td>
-                                <td>@(string.IsNullOrEmpty(ev.DoorName) ? GetDoorName(ev.DoorId) : ev.DoorName)</td>
-                                <td>@GetEventName(ev.EventCode)</td>
-                            </tr>
+                            <div class="mobile-card">
+                                <div class="mobile-card-header">
+                                    <span class="mobile-card-name">@ev.EventDate.ToLocalTime().ToString("MM/dd HH:mm")</span>
+                                    <span class="mobile-card-sub">@GetEventName(ev.EventCode)</span>
+                                </div>
+                                <div class="mobile-card-row">
+                                    <span class="mobile-card-label">@L("Player", "اللاعب")</span>
+                                    <span class="mobile-card-value">@GetPlayerDisplay(ev)</span>
+                                </div>
+                                <div class="mobile-card-row">
+                                    <span class="mobile-card-label">@L("Door", "الباب")</span>
+                                    <span class="mobile-card-value">@(string.IsNullOrEmpty(ev.DoorName) ? GetDoorName(ev.DoorId) : ev.DoorName)</span>
+                                </div>
+                            </div>
                         }
-                    </tbody>
-                </table>
+                    </div>
+                </div>
             }
             else
             {
@@ -106,26 +132,49 @@ else
             <h3>@L("Expiring Soon", "ينتهي قريباً")</h3>
             @if (_expiringList.Any())
             {
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>@L("Player", "اللاعب")</th>
-                            <th>@L("Expires", "ينتهي")</th>
-                            <th>@L("Days Left", "الأيام المتبقية")</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                @* Desktop table *@
+                <div class="desktop-only">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>@L("Player", "اللاعب")</th>
+                                <th>@L("Expires", "ينتهي")</th>
+                                <th>@L("Days Left", "الأيام المتبقية")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in _expiringList)
+                            {
+                                var days = (p.EndDate - DateTime.UtcNow).Days;
+                                <tr>
+                                    <td>@(SessionState.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn)</td>
+                                    <td>@p.EndDate.ToString("yyyy-MM-dd")</td>
+                                    <td class="@(days <= 3 ? "text-danger" : "text-warning")">@days</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @* Mobile cards *@
+                <div class="mobile-only">
+                    <div class="mobile-cards">
                         @foreach (var p in _expiringList)
                         {
                             var days = (p.EndDate - DateTime.UtcNow).Days;
-                            <tr>
-                                <td>@(SessionState.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn)</td>
-                                <td>@p.EndDate.ToString("yyyy-MM-dd")</td>
-                                <td class="@(days <= 3 ? "text-danger" : "text-warning")">@days</td>
-                            </tr>
+                            <div class="mobile-card">
+                                <div class="mobile-card-header">
+                                    <span class="mobile-card-name">@(SessionState.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn)</span>
+                                    <span class="badge @(days <= 3 ? "badge-expired" : "badge-expiring")">@days @L("days", "يوم")</span>
+                                </div>
+                                <div class="mobile-card-row">
+                                    <span class="mobile-card-label">@L("Expires", "ينتهي")</span>
+                                    <span class="mobile-card-value">@p.EndDate.ToString("yyyy-MM-dd")</span>
+                                </div>
+                            </div>
                         }
-                    </tbody>
-                </table>
+                    </div>
+                </div>
             }
             else
             {

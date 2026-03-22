@@ -92,159 +92,220 @@ else
     <!-- Existing Users -->
     <div class="content-card" style="margin-top: 1.5rem;">
         <h3><i class="fas fa-users"></i> @L("Existing Users", "المستخدمون الحاليون")</h3>
-        <div class="table-responsive">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>@L("Username", "اسم المستخدم")</th>
-                        <th>@L("Display Name", "الاسم المعروض")</th>
-                        <th>@L("Role", "الدور")</th>
-                        <th>@L("Status", "الحالة")</th>
-                        <th>@L("Permissions", "الصلاحيات")</th>
-                        <th>@L("Actions", "الإجراءات")</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var user in _users)
-                    {
-                        var isEditing = _editingUserId == user.Id;
+
+        @* Desktop table *@
+        <div class="desktop-only">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td>@user.Username</td>
-                            <td>
-                                @if (isEditing)
-                                {
-                                    <input type="text" @bind="_editDisplayName" class="form-input" style="max-width: 200px;" />
-                                }
-                                else
-                                {
-                                    @user.DisplayName
-                                }
-                            </td>
-                            <td>
-                                @if (isEditing)
-                                {
-                                    <select @bind="_editRole" class="form-select" style="max-width: 120px;">
-                                        <option value="Admin">@L("Admin", "مدير")</option>
-                                        <option value="User">@L("User", "مستخدم")</option>
-                                        <option value="Owner">@L("Owner", "مالك")</option>
-                                    </select>
-                                }
-                                else
-                                {
-                                    <span class="badge @(user.Role == "Owner" ? "badge-active" : user.Role == "Admin" ? "badge-frozen" : "badge-expiring")">
-                                        @user.Role
-                                    </span>
-                                }
-                            </td>
-                            <td>
-                                @if (isEditing)
-                                {
-                                    <select @bind="_editIsActive" class="form-select" style="max-width: 120px;">
-                                        <option value="true">@L("Active", "نشط")</option>
-                                        <option value="false">@L("Inactive", "غير نشط")</option>
-                                    </select>
-                                }
-                                else
-                                {
-                                    <span class="badge @(user.IsActive ? "badge-active" : "badge-expired")">
-                                        @(user.IsActive ? L("Active", "نشط") : L("Inactive", "غير نشط"))
-                                    </span>
-                                }
-                            </td>
-                            <td>
-                                @if (isEditing)
-                                {
-                                    <div style="margin-bottom: 0.3rem;">
-                                        <button class="filter-btn" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" @onclick="() => SelectAllEdit(true)">
-                                            @L("All", "الكل")
-                                        </button>
-                                        <button class="filter-btn" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" @onclick="() => SelectAllEdit(false)">
-                                            @L("None", "لا شيء")
-                                        </button>
-                                    </div>
-                                    @foreach (var group in _permissionGroups)
+                            <th>@L("Username", "اسم المستخدم")</th>
+                            <th>@L("Display Name", "الاسم المعروض")</th>
+                            <th>@L("Role", "الدور")</th>
+                            <th>@L("Status", "الحالة")</th>
+                            <th>@L("Permissions", "الصلاحيات")</th>
+                            <th>@L("Actions", "الإجراءات")</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in _users)
+                        {
+                            var isEditing = _editingUserId == user.Id;
+                            <tr>
+                                <td>@user.Username</td>
+                                <td>
+                                    @if (isEditing)
                                     {
-                                        <div style="margin-bottom: 0.5rem;">
-                                            <div style="color: var(--accent); font-weight: 600; font-size: 0.75rem; margin-bottom: 0.15rem;">
-                                                @L(group.groupEn, group.groupAr)
-                                            </div>
-                                            <div class="permissions-grid" style="font-size: 0.78rem;">
-                                                @foreach (var perm in group.perms)
-                                                {
-                                                    var key = perm.key;
-                                                    var isChecked = _editPermissions.Contains(key);
-                                                    <div class="permission-item">
-                                                        <input type="checkbox" id="edit_@key" checked="@isChecked"
-                                                               @onchange="(e) => ToggleEditPermission(key, (bool)(e.Value ?? false))" />
-                                                        <label for="edit_@key">@L(perm.en, perm.ar)</label>
-                                                    </div>
-                                                }
-                                            </div>
-                                        </div>
-                                    }
-                                }
-                                else
-                                {
-                                    @if (!string.IsNullOrEmpty(user.Permissions))
-                                    {
-                                        <span style="font-size: 0.8rem; color: var(--text-secondary);">
-                                            @FormatPermissions(user.Permissions)
-                                        </span>
+                                        <input type="text" @bind="_editDisplayName" class="form-input" style="max-width: 200px;" />
                                     }
                                     else
                                     {
-                                        <span style="color: var(--text-secondary); font-size: 0.8rem;">-</span>
+                                        @user.DisplayName
                                     }
-                                }
-                            </td>
-                            <td>
-                                @if (isEditing)
-                                {
-                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                        <button class="btn-accent btn-sm" @onclick="SaveEditAsync">
-                                            <i class="fas fa-check"></i> @L("Save", "حفظ")
-                                        </button>
-                                        <button class="btn-outline btn-sm" @onclick="CancelEdit">
-                                            <i class="fas fa-times"></i> @L("Cancel", "إلغاء")
-                                        </button>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                        <button class="btn-outline btn-sm" @onclick="() => StartEdit(user)">
-                                            <i class="fas fa-edit"></i> @L("Edit", "تعديل")
-                                        </button>
-                                        <button class="btn-outline btn-sm" @onclick="() => StartResetPassword(user.Id)">
-                                            <i class="fas fa-key"></i> @L("Reset Password", "إعادة تعيين كلمة المرور")
-                                        </button>
-                                    </div>
-                                }
-                            </td>
-                        </tr>
-                        @if (_resetPasswordUserId == user.Id)
-                        {
-                            <tr>
-                                <td colspan="6">
-                                    <div style="display: flex; gap: 0.75rem; align-items: flex-end; padding: 0.5rem;">
-                                        <div class="form-group" style="margin-bottom: 0; flex: 1; max-width: 300px;">
-                                            <label>@L("New Password", "كلمة المرور الجديدة")</label>
-                                            <input type="password" @bind="_resetPassword" class="form-input"
-                                                   placeholder="@L("Enter new password", "أدخل كلمة المرور الجديدة")" />
+                                </td>
+                                <td>
+                                    @if (isEditing)
+                                    {
+                                        <select @bind="_editRole" class="form-select" style="max-width: 120px;">
+                                            <option value="Admin">@L("Admin", "مدير")</option>
+                                            <option value="User">@L("User", "مستخدم")</option>
+                                            <option value="Owner">@L("Owner", "مالك")</option>
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge @(user.Role == "Owner" ? "badge-active" : user.Role == "Admin" ? "badge-frozen" : "badge-expiring")">
+                                            @user.Role
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (isEditing)
+                                    {
+                                        <select @bind="_editIsActive" class="form-select" style="max-width: 120px;">
+                                            <option value="true">@L("Active", "نشط")</option>
+                                            <option value="false">@L("Inactive", "غير نشط")</option>
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge @(user.IsActive ? "badge-active" : "badge-expired")">
+                                            @(user.IsActive ? L("Active", "نشط") : L("Inactive", "غير نشط"))
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (isEditing)
+                                    {
+                                        <div style="margin-bottom: 0.3rem;">
+                                            <button class="filter-btn" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" @onclick="() => SelectAllEdit(true)">
+                                                @L("All", "الكل")
+                                            </button>
+                                            <button class="filter-btn" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" @onclick="() => SelectAllEdit(false)">
+                                                @L("None", "لا شيء")
+                                            </button>
                                         </div>
-                                        <button class="btn-accent btn-sm" @onclick="ResetPasswordAsync">
-                                            <i class="fas fa-save"></i> @L("Reset", "إعادة تعيين")
-                                        </button>
-                                        <button class="btn-outline btn-sm" @onclick="() => _resetPasswordUserId = 0">
-                                            <i class="fas fa-times"></i> @L("Cancel", "إلغاء")
-                                        </button>
-                                    </div>
+                                        @foreach (var group in _permissionGroups)
+                                        {
+                                            <div style="margin-bottom: 0.5rem;">
+                                                <div style="color: var(--accent); font-weight: 600; font-size: 0.75rem; margin-bottom: 0.15rem;">
+                                                    @L(group.groupEn, group.groupAr)
+                                                </div>
+                                                <div class="permissions-grid" style="font-size: 0.78rem;">
+                                                    @foreach (var perm in group.perms)
+                                                    {
+                                                        var key = perm.key;
+                                                        var isChecked = _editPermissions.Contains(key);
+                                                        <div class="permission-item">
+                                                            <input type="checkbox" id="edit_@key" checked="@isChecked"
+                                                                   @onchange="(e) => ToggleEditPermission(key, (bool)(e.Value ?? false))" />
+                                                            <label for="edit_@key">@L(perm.en, perm.ar)</label>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        @if (!string.IsNullOrEmpty(user.Permissions))
+                                        {
+                                            <span style="font-size: 0.8rem; color: var(--text-secondary);">
+                                                @FormatPermissions(user.Permissions)
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color: var(--text-secondary); font-size: 0.8rem;">-</span>
+                                        }
+                                    }
+                                </td>
+                                <td>
+                                    @if (isEditing)
+                                    {
+                                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                            <button class="btn-accent btn-sm" @onclick="SaveEditAsync">
+                                                <i class="fas fa-check"></i> @L("Save", "حفظ")
+                                            </button>
+                                            <button class="btn-outline btn-sm" @onclick="CancelEdit">
+                                                <i class="fas fa-times"></i> @L("Cancel", "إلغاء")
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                            <button class="btn-outline btn-sm" @onclick="() => StartEdit(user)">
+                                                <i class="fas fa-edit"></i> @L("Edit", "تعديل")
+                                            </button>
+                                            <button class="btn-outline btn-sm" @onclick="() => StartResetPassword(user.Id)">
+                                                <i class="fas fa-key"></i> @L("Reset Password", "إعادة تعيين كلمة المرور")
+                                            </button>
+                                        </div>
+                                    }
                                 </td>
                             </tr>
+                            @if (_resetPasswordUserId == user.Id)
+                            {
+                                <tr>
+                                    <td colspan="6">
+                                        <div style="display: flex; gap: 0.75rem; align-items: flex-end; padding: 0.5rem;">
+                                            <div class="form-group" style="margin-bottom: 0; flex: 1; max-width: 300px;">
+                                                <label>@L("New Password", "كلمة المرور الجديدة")</label>
+                                                <input type="password" @bind="_resetPassword" class="form-input"
+                                                       placeholder="@L("Enter new password", "أدخل كلمة المرور الجديدة")" />
+                                            </div>
+                                            <button class="btn-accent btn-sm" @onclick="ResetPasswordAsync">
+                                                <i class="fas fa-save"></i> @L("Reset", "إعادة تعيين")
+                                            </button>
+                                            <button class="btn-outline btn-sm" @onclick="() => _resetPasswordUserId = 0">
+                                                <i class="fas fa-times"></i> @L("Cancel", "إلغاء")
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
                         }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* Mobile cards *@
+        <div class="mobile-only">
+            <div class="mobile-cards">
+                @foreach (var user in _users)
+                {
+                    var permCount = string.IsNullOrEmpty(user.Permissions) ? 0 : user.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries).Length;
+                    <div class="mobile-card">
+                        <div class="mobile-card-header">
+                            <div>
+                                <span class="mobile-card-name">@user.DisplayName</span>
+                                <div class="mobile-card-sub">@user.Username</div>
+                            </div>
+                            <span class="badge @(user.IsActive ? "badge-active" : "badge-expired")">
+                                @(user.IsActive ? L("Active", "نشط") : L("Inactive", "غير نشط"))
+                            </span>
+                        </div>
+                        <div class="mobile-card-divider"></div>
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">@L("Role", "الدور")</span>
+                            <span class="badge @(user.Role == "Owner" ? "badge-active" : user.Role == "Admin" ? "badge-frozen" : "badge-expiring")">@user.Role</span>
+                        </div>
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">@L("Permissions", "الصلاحيات")</span>
+                            <span class="mobile-card-value">@permCount</span>
+                        </div>
+                        <div class="mobile-card-actions">
+                            <button class="btn-outline btn-sm" @onclick="() => StartEdit(user)">
+                                <i class="fas fa-edit"></i> @L("Edit", "تعديل")
+                            </button>
+                            <button class="btn-outline btn-sm" @onclick="() => StartResetPassword(user.Id)">
+                                <i class="fas fa-key"></i> @L("Reset", "إعادة تعيين")
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (_resetPasswordUserId == user.Id)
+                    {
+                        <div class="mobile-card" style="border-color: var(--accent);">
+                            <div class="form-group" style="margin-bottom: 0.5rem;">
+                                <label>@L("New Password", "كلمة المرور الجديدة")</label>
+                                <input type="password" @bind="_resetPassword" class="form-input"
+                                       placeholder="@L("Enter new password", "أدخل كلمة المرور الجديدة")" />
+                            </div>
+                            <div class="mobile-card-actions">
+                                <button class="btn-accent btn-sm" @onclick="ResetPasswordAsync">
+                                    <i class="fas fa-save"></i> @L("Reset", "إعادة تعيين")
+                                </button>
+                                <button class="btn-outline btn-sm" @onclick="() => _resetPasswordUserId = 0">
+                                    <i class="fas fa-times"></i> @L("Cancel", "إلغاء")
+                                </button>
+                            </div>
+                        </div>
                     }
-                </tbody>
-            </table>
+                }
+            </div>
         </div>
 
         @if (!_users.Any())

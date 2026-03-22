@@ -62,35 +62,80 @@ else
 
     <div class="content-card">
         <h3>@L("Transactions", "المعاملات") (@_totalCount)</h3>
-        <div class="table-responsive">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>@L("Date", "التاريخ")</th>
-                        <th>@L("Type", "النوع")</th>
-                        <th>@L("Category", "الفئة")</th>
-                        <th>@L("Amount", "المبلغ")</th>
-                        <th>@L("Description", "الوصف")</th>
-                        <th>@L("Recorded By", "بواسطة")</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var t in _transactions)
-                    {
-                        var typeLabel = t.Type == 0 ? L("Income", "إيراد") : L("Expense", "مصروف");
-                        var typeClass = t.Type == 0 ? "badge-active" : "badge-expired";
-                        var amountClass = t.Type == 0 ? "text-success" : "text-danger";
+
+        @* Desktop table *@
+        <div class="desktop-only">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td>@t.TransactionDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-                            <td><span class="badge @typeClass">@typeLabel</span></td>
-                            <td>@t.Category</td>
-                            <td class="@amountClass">@t.Amount.ToString("N2")</td>
-                            <td>@t.Description</td>
-                            <td>@t.RecordedBy</td>
+                            <th>@L("Date", "التاريخ")</th>
+                            <th>@L("Type", "النوع")</th>
+                            <th>@L("Category", "الفئة")</th>
+                            <th>@L("Amount", "المبلغ")</th>
+                            <th>@L("Description", "الوصف")</th>
+                            <th>@L("Recorded By", "بواسطة")</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in _transactions)
+                        {
+                            var typeLabel = t.Type == 0 ? L("Income", "إيراد") : L("Expense", "مصروف");
+                            var typeClass = t.Type == 0 ? "badge-active" : "badge-expired";
+                            var amountClass = t.Type == 0 ? "text-success" : "text-danger";
+                            <tr>
+                                <td>@t.TransactionDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td><span class="badge @typeClass">@typeLabel</span></td>
+                                <td>@t.Category</td>
+                                <td class="@amountClass">@t.Amount.ToString("N2")</td>
+                                <td>@t.Description</td>
+                                <td>@t.RecordedBy</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* Mobile cards *@
+        <div class="mobile-only">
+            <div class="mobile-cards">
+                @foreach (var t in _transactions)
+                {
+                    var typeLabel = t.Type == 0 ? L("Income", "إيراد") : L("Expense", "مصروف");
+                    var typeClass = t.Type == 0 ? "badge-active" : "badge-expired";
+                    var amountClass = t.Type == 0 ? "text-success" : "text-danger";
+                    <div class="mobile-card">
+                        <div class="mobile-card-header">
+                            <span class="mobile-card-name @amountClass">@t.Amount.ToString("N2")</span>
+                            <span class="badge @typeClass">@typeLabel</span>
+                        </div>
+                        <div class="mobile-card-divider"></div>
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">@L("Date", "التاريخ")</span>
+                            <span class="mobile-card-value">@t.TransactionDate.ToLocalTime().ToString("MM/dd HH:mm")</span>
+                        </div>
+                        <div class="mobile-card-row">
+                            <span class="mobile-card-label">@L("Category", "الفئة")</span>
+                            <span class="mobile-card-value">@t.Category</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(t.Description))
+                        {
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">@L("Description", "الوصف")</span>
+                                <span class="mobile-card-value">@t.Description</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(t.RecordedBy))
+                        {
+                            <div class="mobile-card-row">
+                                <span class="mobile-card-label">@L("By", "بواسطة")</span>
+                                <span class="mobile-card-value">@t.RecordedBy</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
         </div>
 
         @if (!_transactions.Any())
