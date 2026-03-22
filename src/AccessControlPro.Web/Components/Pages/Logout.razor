@@ -6,6 +6,6 @@
     protected override void OnInitialized()
     {
         Session.Logout();
-        Nav.NavigateTo("/login");
+        Nav.NavigateTo("/login", forceLoad: true);
     }
 }
