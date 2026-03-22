@@ -114,6 +114,17 @@ public class CloudSyncService : ICloudSyncService
             if (response.IsSuccessStatusCode)
             {
                 Log($"Cloud sync completed via API: {responseBody}");
+
+                // Step 2: Pull new users from cloud → local (INSERT only, no updates)
+                try
+                {
+                    await PullCloudUsersAsync(local, cloudUrl);
+                }
+                catch (Exception pullEx)
+                {
+                    Log($"Pull users error: {pullEx.Message}");
+                }
+
                 return $"Synced via API: {responseBody}";
             }
             else
@@ -160,6 +171,76 @@ public class CloudSyncService : ICloudSyncService
             Log($"  Read error: {ex.Message}");
         }
         return rows;
+    }
+
+    private async Task PullCloudUsersAsync(SqlConnection local, string cloudUrl)
+    {
+        Log("Pull users: starting...");
+
+        using var pullClient = new HttpClient();
+        pullClient.DefaultRequestHeaders.Add("X-Api-Key", "HMTech-Sync-2026");
+        pullClient.Timeout = TimeSpan.FromSeconds(30);
+
+        var pullUrl = cloudUrl.Replace("/api/sync", "/api/users");
+        var pullResponse = await pullClient.GetAsync(pullUrl);
+
+        if (!pullResponse.IsSuccessStatusCode)
+        {
+            Log($"Pull users: API returned {pullResponse.StatusCode}");
+            return;
+        }
+
+        var json = await pullResponse.Content.ReadAsStringAsync();
+        var cloudUsers = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(json);
+
+        if (cloudUsers == null || cloudUsers.Count == 0)
+        {
+            Log("Pull users: no users from cloud");
+            return;
+        }
+
+        Log($"Pull users: received {cloudUsers.Count} users from cloud");
+        int added = 0;
+
+        foreach (var cloudUser in cloudUsers)
+        {
+            try
+            {
+                var username = cloudUser.ContainsKey("Username") ? cloudUser["Username"].GetString() ?? "" : "";
+                if (string.IsNullOrEmpty(username)) continue;
+
+                // Check if user already exists locally
+                using var checkCmd = new SqlCommand("SELECT COUNT(*) FROM Users WHERE Username = @u", local);
+                checkCmd.Parameters.AddWithValue("@u", username);
+                var exists = (int)(await checkCmd.ExecuteScalarAsync() ?? 0) > 0;
+
+                if (!exists)
+                {
+                    // INSERT new user from cloud — never update existing users (local is master)
+                    using var insertCmd = new SqlCommand(
+                        @"INSERT INTO Users (Username, PasswordHash, DisplayName, Role, IsActive, Permissions, CreatedAt)
+                          VALUES (@u, @p, @d, @r, @a, @perm, GETUTCDATE())", local);
+                    insertCmd.Parameters.AddWithValue("@u", username);
+                    insertCmd.Parameters.AddWithValue("@p", cloudUser.ContainsKey("PasswordHash") ? cloudUser["PasswordHash"].GetString() ?? "" : "");
+                    insertCmd.Parameters.AddWithValue("@d", cloudUser.ContainsKey("DisplayName") ? cloudUser["DisplayName"].GetString() ?? "" : "");
+                    insertCmd.Parameters.AddWithValue("@r", cloudUser.ContainsKey("Role") ? cloudUser["Role"].GetString() ?? "User" : "User");
+                    insertCmd.Parameters.AddWithValue("@a", cloudUser.ContainsKey("IsActive") && cloudUser["IsActive"].ValueKind == JsonValueKind.True);
+                    insertCmd.Parameters.AddWithValue("@perm", cloudUser.ContainsKey("Permissions") ? cloudUser["Permissions"].GetString() ?? "" : "");
+                    await insertCmd.ExecuteNonQueryAsync();
+                    added++;
+                    Log($"Pull users: added '{username}' from cloud");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Pull users: error adding user: {ex.Message}");
+            }
+        }
+
+        if (added > 0)
+            Log($"Pull users: {added} new user(s) added from cloud");
+        else
+            Log("Pull users: no new users to add (all exist locally)");
     }
 
     private static string? LoadCloudSyncUrl()

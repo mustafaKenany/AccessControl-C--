@@ -150,6 +150,44 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db) =>
     }
 });
 
+// Pull users API — local app pulls new users from cloud
+app.MapGet("/api/users", async (HttpContext context, DbHelper db) =>
+{
+    var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
+    if (apiKey != app.Configuration["SyncApiKey"] && apiKey != "HMTech-Sync-2026")
+        return Results.Unauthorized();
+
+    try
+    {
+        using var conn = await db.GetConnectionAsync();
+        using var cmd = new Npgsql.NpgsqlCommand(
+            @"SELECT ""Id"", ""Username"", ""PasswordHash"", ""DisplayName"", ""Role"", ""IsActive"", ""Permissions""
+              FROM ""Users"" ORDER BY ""Id""", conn);
+
+        var users = new List<Dictionary<string, object?>>();
+        using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            users.Add(new Dictionary<string, object?>
+            {
+                ["Id"] = reader.GetInt32(0),
+                ["Username"] = reader.GetString(1),
+                ["PasswordHash"] = reader.GetString(2),
+                ["DisplayName"] = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                ["Role"] = reader.IsDBNull(4) ? "User" : reader.GetString(4),
+                ["IsActive"] = reader.GetBoolean(5),
+                ["Permissions"] = reader.IsDBNull(6) ? "" : reader.GetString(6)
+            });
+        }
+
+        return Results.Ok(users);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to get users: {ex.Message}");
+    }
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
