@@ -1,11 +1,23 @@
 @page "/logout"
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<div class="login-container">
+    <div class="login-card" style="text-align: center;">
+        <i class="fas fa-sign-out-alt" style="font-size: 2rem; color: var(--accent); margin-bottom: 1rem;"></i>
+        <p style="color: var(--text-secondary);">Logging out...</p>
+    </div>
+</div>
 
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        Session.Logout();
-        Nav.NavigateTo("/login", forceLoad: true);
+        if (firstRender)
+        {
+            Session.Logout();
+            await Task.Delay(500);
+            Nav.NavigateTo("/login", forceLoad: true);
+        }
     }
 }

@@ -86,8 +86,8 @@
 
     protected override void OnInitialized()
     {
-        if (Session.IsAuthenticated)
-            Nav.NavigateTo(Session.IsOwner ? "/dashboard" : "/my");
+        // Don't auto-redirect — always show login page
+        // User must explicitly login (prevents session leaks between owner/player)
     }
 
     protected override void OnAfterRender(bool firstRender)
