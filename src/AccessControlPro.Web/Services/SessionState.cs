@@ -30,6 +30,7 @@ public class SessionState
 
     public bool IsOwner => Role == "Owner" || Role == "Admin";
     public bool IsPlayer => Role == "Player";
+    public bool IsSuperAdmin => Role == "SuperAdmin";
 
     public void Login(AuthResult result)
     {

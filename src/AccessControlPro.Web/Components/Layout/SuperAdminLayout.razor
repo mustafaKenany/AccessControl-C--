@@ -1,0 +1,61 @@
+@inherits LayoutComponentBase
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+
+<div class="app-container superadmin-container">
+    @if (Session.IsSuperAdmin)
+    {
+        <nav class="sidebar superadmin-sidebar">
+            <div class="sidebar-brand" style="border-bottom-color: rgba(126, 87, 194, 0.3);">
+                <h3 style="color: #7E57C2;">HM-Tech Admin</h3>
+                <span class="user-role">Super Admin</span>
+            </div>
+            <div class="nav-links">
+                <a href="/superadmin/dashboard" class="nav-link sa-nav @ActiveClass("superadmin/dashboard")">
+                    <i class="fas fa-chart-line"></i> <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/superadmin/gyms" class="nav-link sa-nav @ActiveClass("superadmin/gyms")">
+                    <i class="fas fa-dumbbell"></i> <span class="nav-text">Gyms</span>
+                </a>
+                <a href="/superadmin/revenue" class="nav-link sa-nav @ActiveClass("superadmin/revenue")">
+                    <i class="fas fa-dollar-sign"></i> <span class="nav-text">Revenue</span>
+                </a>
+                <a href="/superadmin/health" class="nav-link sa-nav @ActiveClass("superadmin/health")">
+                    <i class="fas fa-heartbeat"></i> <span class="nav-text">System Health</span>
+                </a>
+                <a href="javascript:void(0)" class="nav-link sa-nav logout-link" @onclick="DoLogout"
+                   style="color: #e74c3c; border-top: 1px solid rgba(126, 87, 194, 0.3); margin-top: auto;">
+                    <i class="fas fa-sign-out-alt"></i> <span class="nav-text">Logout</span>
+                </a>
+            </div>
+        </nav>
+        <main class="main-content">
+            @Body
+        </main>
+    }
+    else
+    {
+        @Body
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        if (!Session.IsSuperAdmin)
+            Nav.NavigateTo("/superadmin/login");
+    }
+
+    private string ActiveClass(string href)
+    {
+        var uri = Nav.ToBaseRelativePath(Nav.Uri).TrimEnd('/');
+        var target = href.TrimStart('/').TrimEnd('/');
+        return string.Equals(uri, target, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    }
+
+    private void DoLogout()
+    {
+        Session.Logout();
+        Nav.NavigateTo("/superadmin/login");
+    }
+}

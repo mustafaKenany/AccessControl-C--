@@ -1,0 +1,266 @@
+@page "/superadmin/revenue"
+@layout AccessControlPro.Web.Components.Layout.SuperAdminLayout
+@inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<div class="page-header">
+    <h1 style="color: #7E57C2;">Revenue</h1>
+    <button class="btn-accent btn-sm" style="background: #7E57C2;" @onclick="LoadDataAsync">
+        <i class="fas fa-sync"></i> Refresh
+    </button>
+</div>
+
+@if (_loading)
+{
+    <p class="no-data">Loading revenue data...</p>
+}
+else
+{
+    <div class="stats-grid">
+        <div class="stat-card purple">
+            <div class="stat-number">@_totalMonthly.ToString("C0")</div>
+            <div class="stat-label">Monthly Revenue</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-number">@(_totalMonthly * 12).ToString("C0")</div>
+            <div class="stat-label">Yearly Projection</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-number">@_overdueCount</div>
+            <div class="stat-label">Overdue / Expired</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-number">@_activeCount</div>
+            <div class="stat-label">Paying Gyms</div>
+        </div>
+    </div>
+
+    @* Revenue by Gym *@
+    <div class="content-card">
+        <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">Revenue by Gym</h3>
+        @if (_gymRevenues.Count == 0)
+        {
+            <p class="no-data">No gyms found.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Gym</th>
+                            <th>Owner</th>
+                            <th>Monthly Price</th>
+                            <th>Status</th>
+                            <th>Expires</th>
+                            <th>Revenue Bar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var g in _gymRevenues)
+                        {
+                            <tr>
+                                <td><strong>@g.Name</strong></td>
+                                <td>@g.OwnerName</td>
+                                <td style="color: var(--success); font-weight: 600;">@g.Price.ToString("C2")</td>
+                                <td>
+                                    <span class="badge @(g.IsOverdue ? "badge-expired" : "badge-active")">
+                                        @(g.IsOverdue ? "Overdue" : "Active")
+                                    </span>
+                                </td>
+                                <td>@g.ExpiresAt.ToString("yyyy-MM-dd")</td>
+                                <td style="min-width: 150px;">
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar-fill @(g.IsOverdue ? "progress-danger" : "")"
+                                             style="width: @(g.BarPercent)%;"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    @* Overdue Payments *@
+    @if (_overdueGyms.Count > 0)
+    {
+        <div class="content-card" style="border-color: var(--danger);">
+            <h3 style="color: var(--danger); border-bottom-color: rgba(231, 76, 60, 0.3);">Overdue Payments</h3>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Gym</th>
+                            <th>Owner</th>
+                            <th>Phone</th>
+                            <th>Expired Since</th>
+                            <th>Days Overdue</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var g in _overdueGyms)
+                        {
+                            <tr>
+                                <td><strong>@g.Name</strong></td>
+                                <td>@g.OwnerName</td>
+                                <td>@g.OwnerPhone</td>
+                                <td>@g.ExpiresAt.ToString("yyyy-MM-dd")</td>
+                                <td style="color: var(--danger); font-weight: 600;">@g.DaysOverdue</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(g.OwnerPhone))
+                                    {
+                                        <a href="@GetOverdueWhatsApp(g)" target="_blank" class="btn-whatsapp btn-sm" style="text-decoration: none;">
+                                            <i class="fab fa-whatsapp"></i> Remind
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* Simple text revenue chart *@
+    <div class="content-card">
+        <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">Revenue Distribution</h3>
+        @if (_gymRevenues.Count > 0)
+        {
+            @foreach (var g in _gymRevenues.OrderByDescending(x => x.Price))
+            {
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <span style="min-width: 120px; color: var(--text-secondary); font-size: 0.85rem;">@g.Name</span>
+                    <div style="flex: 1; background: var(--bg-primary); border-radius: 4px; height: 24px; position: relative; border: 1px solid var(--border);">
+                        <div style="height: 100%; background: linear-gradient(90deg, #7E57C2, #9575CD); border-radius: 4px; width: @(g.BarPercent)%; min-width: 2px;"></div>
+                    </div>
+                    <span style="min-width: 80px; text-align: right; font-weight: 600; font-size: 0.85rem;">@g.Price.ToString("C0")</span>
+                </div>
+            }
+        }
+        else
+        {
+            <p class="no-data">No revenue data.</p>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private decimal _totalMonthly;
+    private int _overdueCount;
+    private int _activeCount;
+    private List<GymRevenue> _gymRevenues = new();
+    private List<OverdueGym> _overdueGyms = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsSuperAdmin) { Nav.NavigateTo("/superadmin/login"); return; }
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        _gymRevenues.Clear();
+        _overdueGyms.Clear();
+        _totalMonthly = 0;
+        _overdueCount = 0;
+        _activeCount = 0;
+
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+
+            // Get all gyms with price
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Name"", ""OwnerName"", ""OwnerPhone"", ""SubscriptionPrice"", ""ExpiresAt"", ""IsActive""
+                  FROM ""Gyms"" ORDER BY ""SubscriptionPrice"" DESC", conn);
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            decimal maxPrice = 0;
+            var tempList = new List<GymRevenue>();
+
+            while (await reader.ReadAsync())
+            {
+                var name = reader.IsDBNull(0) ? "" : reader.GetString(0);
+                var owner = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                var phone = reader.IsDBNull(2) ? "" : reader.GetString(2);
+                var price = reader.IsDBNull(3) ? 0 : reader.GetDecimal(3);
+                var expires = reader.IsDBNull(4) ? DateTime.MinValue : reader.GetDateTime(4);
+                var isActive = reader.IsDBNull(5) ? false : reader.GetBoolean(5);
+
+                var isOverdue = !isActive || expires <= DateTime.UtcNow;
+
+                if (!isOverdue && price > 0) _activeCount++;
+                if (isOverdue) _overdueCount++;
+                if (!isOverdue) _totalMonthly += price;
+                if (price > maxPrice) maxPrice = price;
+
+                tempList.Add(new GymRevenue
+                {
+                    Name = name,
+                    OwnerName = owner,
+                    Price = price,
+                    ExpiresAt = expires,
+                    IsOverdue = isOverdue
+                });
+
+                if (isOverdue)
+                {
+                    _overdueGyms.Add(new OverdueGym
+                    {
+                        Name = name,
+                        OwnerName = owner,
+                        OwnerPhone = phone,
+                        ExpiresAt = expires,
+                        DaysOverdue = (int)(DateTime.UtcNow - expires).TotalDays
+                    });
+                }
+            }
+
+            // Calculate bar percentages
+            foreach (var g in tempList)
+            {
+                g.BarPercent = maxPrice > 0 ? (int)(g.Price / maxPrice * 100) : 0;
+            }
+            _gymRevenues = tempList;
+        }
+        catch { }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string GetOverdueWhatsApp(OverdueGym g)
+    {
+        var phone = g.OwnerPhone.Replace("+", "").Replace(" ", "").Replace("-", "");
+        var msg = $"Hello {g.OwnerName}, your gym subscription ({g.Name}) expired on {g.ExpiresAt:yyyy-MM-dd} ({g.DaysOverdue} days ago). Please renew to restore access.";
+        return $"https://wa.me/{phone}?text={Uri.EscapeDataString(msg)}";
+    }
+
+    private class GymRevenue
+    {
+        public string Name { get; set; } = "";
+        public string OwnerName { get; set; } = "";
+        public decimal Price { get; set; }
+        public DateTime ExpiresAt { get; set; }
+        public bool IsOverdue { get; set; }
+        public int BarPercent { get; set; }
+    }
+
+    private class OverdueGym
+    {
+        public string Name { get; set; } = "";
+        public string OwnerName { get; set; } = "";
+        public string OwnerPhone { get; set; } = "";
+        public DateTime ExpiresAt { get; set; }
+        public int DaysOverdue { get; set; }
+    }
+}

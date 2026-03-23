@@ -1,0 +1,371 @@
+@page "/superadmin/health"
+@layout AccessControlPro.Web.Components.Layout.SuperAdminLayout
+@inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<div class="page-header">
+    <h1 style="color: #7E57C2;">System Health</h1>
+    <button class="btn-accent btn-sm" style="background: #7E57C2;" @onclick="LoadDataAsync">
+        <i class="fas fa-sync"></i> Refresh
+    </button>
+</div>
+
+@if (_loading)
+{
+    <p class="no-data">Loading system health...</p>
+}
+else
+{
+    <div class="stats-grid">
+        <div class="stat-card purple">
+            <div class="stat-number" style="font-size: 1.2rem;">@_dbSize</div>
+            <div class="stat-label">Database Size</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-number">@_activeConnections</div>
+            <div class="stat-label">DB Connections</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-number" style="font-size: 1.2rem;">@_uptime</div>
+            <div class="stat-label">Server Uptime</div>
+        </div>
+        <div class="stat-card teal">
+            <div class="stat-number">@_totalSyncs</div>
+            <div class="stat-label">Total Syncs</div>
+        </div>
+    </div>
+
+    <div class="content-grid">
+        @* PostgreSQL Stats *@
+        <div class="content-card">
+            <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">PostgreSQL Stats</h3>
+            <div class="device-info-grid">
+                <div class="device-info-row">
+                    <span class="device-info-label">Database Size</span>
+                    <span class="device-info-value">@_dbSize</span>
+                </div>
+                <div class="device-info-row">
+                    <span class="device-info-label">Active Connections</span>
+                    <span class="device-info-value">@_activeConnections</span>
+                </div>
+                <div class="device-info-row">
+                    <span class="device-info-label">Total Tables</span>
+                    <span class="device-info-value">@_tableCount</span>
+                </div>
+                <div class="device-info-row">
+                    <span class="device-info-label">Total Players</span>
+                    <span class="device-info-value">@_totalPlayers</span>
+                </div>
+                <div class="device-info-row">
+                    <span class="device-info-label">Total Events</span>
+                    <span class="device-info-value">@_totalEvents</span>
+                </div>
+                <div class="device-info-row">
+                    <span class="device-info-label">Total Transactions</span>
+                    <span class="device-info-value">@_totalTransactions</span>
+                </div>
+            </div>
+        </div>
+
+        @* Table Sizes *@
+        <div class="content-card">
+            <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">Table Sizes</h3>
+            @if (_tableSizes.Count > 0)
+            {
+                <div class="device-info-grid">
+                    @foreach (var ts in _tableSizes)
+                    {
+                        <div class="device-info-row">
+                            <span class="device-info-label">@ts.Name</span>
+                            <span class="device-info-value">@ts.Size</span>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="no-data">No data.</p>
+            }
+        </div>
+    </div>
+
+    @* Last Sync Per Gym *@
+    <div class="content-card">
+        <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">Last Sync Per Gym</h3>
+        @if (_gymSyncs.Count == 0)
+        {
+            <p class="no-data">No gyms found.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Gym</th>
+                            <th>Last Sync</th>
+                            <th>Time Ago</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var g in _gymSyncs)
+                        {
+                            <tr>
+                                <td>@g.Name</td>
+                                <td>@(g.LastSync.HasValue ? g.LastSync.Value.ToString("yyyy-MM-dd HH:mm") : "Never")</td>
+                                <td>@g.TimeAgo</td>
+                                <td>
+                                    <span class="badge @g.StatusBadge">@g.StatusText</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    @* Recent Sync Errors *@
+    <div class="content-card" style="border-color: var(--danger);">
+        <h3 style="color: var(--danger); border-bottom-color: rgba(231, 76, 60, 0.3);">Recent Sync Errors</h3>
+        @if (_syncErrors.Count == 0)
+        {
+            <p class="no-data" style="color: var(--success);">No recent errors. All systems operational.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Type</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in _syncErrors)
+                        {
+                            <tr>
+                                <td>@e.SyncedAt.ToString("MM/dd HH:mm")</td>
+                                <td>@e.SyncType</td>
+                                <td style="color: var(--danger); max-width: 400px; overflow: hidden; text-overflow: ellipsis;">@e.Details</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private string _dbSize = "N/A";
+    private int _activeConnections;
+    private string _uptime = "N/A";
+    private int _totalSyncs;
+    private int _tableCount;
+    private int _totalPlayers;
+    private int _totalEvents;
+    private int _totalTransactions;
+    private List<TableSize> _tableSizes = new();
+    private List<GymSync> _gymSyncs = new();
+    private List<SyncError> _syncErrors = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsSuperAdmin) { Nav.NavigateTo("/superadmin/login"); return; }
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        _tableSizes.Clear();
+        _gymSyncs.Clear();
+        _syncErrors.Clear();
+
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+
+            // Database size
+            try
+            {
+                using var cmd = new Npgsql.NpgsqlCommand(
+                    "SELECT pg_size_pretty(pg_database_size(current_database()))", conn);
+                var result = await cmd.ExecuteScalarAsync();
+                _dbSize = result?.ToString() ?? "N/A";
+            }
+            catch { }
+
+            // Active connections
+            try
+            {
+                using var cmd = new Npgsql.NpgsqlCommand(
+                    "SELECT count(*) FROM pg_stat_activity WHERE state = 'active'", conn);
+                var result = await cmd.ExecuteScalarAsync();
+                _activeConnections = Convert.ToInt32(result);
+            }
+            catch { }
+
+            // Server uptime
+            try
+            {
+                using var cmd = new Npgsql.NpgsqlCommand(
+                    "SELECT date_trunc('second', current_timestamp - pg_postmaster_start_time())", conn);
+                var result = await cmd.ExecuteScalarAsync();
+                if (result is TimeSpan ts)
+                    _uptime = $"{ts.Days}d {ts.Hours}h {ts.Minutes}m";
+                else
+                    _uptime = result?.ToString() ?? "N/A";
+            }
+            catch { }
+
+            // Table count
+            try
+            {
+                using var cmd = new Npgsql.NpgsqlCommand(
+                    "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'", conn);
+                var result = await cmd.ExecuteScalarAsync();
+                _tableCount = Convert.ToInt32(result);
+            }
+            catch { }
+
+            // Row counts
+            try
+            {
+                using var cmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT
+                        (SELECT COUNT(*) FROM ""Players"" WHERE ""IsDeleted"" = FALSE),
+                        (SELECT COUNT(*) FROM ""AccessEvents""),
+                        (SELECT COUNT(*) FROM ""Transactions"")", conn);
+                using var r = await cmd.ExecuteReaderAsync();
+                if (await r.ReadAsync())
+                {
+                    _totalPlayers = r.IsDBNull(0) ? 0 : Convert.ToInt32(r.GetValue(0));
+                    _totalEvents = r.IsDBNull(1) ? 0 : Convert.ToInt32(r.GetValue(1));
+                    _totalTransactions = r.IsDBNull(2) ? 0 : Convert.ToInt32(r.GetValue(2));
+                }
+            }
+            catch { }
+
+            // Total syncs
+            try
+            {
+                using var cmd = new Npgsql.NpgsqlCommand(@"SELECT COUNT(*) FROM ""CloudSyncLogs""", conn);
+                var result = await cmd.ExecuteScalarAsync();
+                _totalSyncs = Convert.ToInt32(result);
+            }
+            catch { }
+
+            // Table sizes
+            try
+            {
+                using var cmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT relname AS table_name,
+                             pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size
+                      FROM pg_class c
+                      LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
+                      WHERE n.nspname = 'public' AND c.relkind = 'r'
+                      ORDER BY pg_total_relation_size(c.oid) DESC
+                      LIMIT 15", conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    _tableSizes.Add(new TableSize
+                    {
+                        Name = reader.GetString(0),
+                        Size = reader.GetString(1)
+                    });
+                }
+            }
+            catch { }
+
+            // Last sync per gym
+            try
+            {
+                using var cmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT ""Name"", ""LastSyncAt"" FROM ""Gyms"" ORDER BY ""Name""", conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    var name = reader.IsDBNull(0) ? "" : reader.GetString(0);
+                    var lastSync = reader.IsDBNull(1) ? (DateTime?)null : reader.GetDateTime(1);
+
+                    string timeAgo = "Never";
+                    string statusText = "No Sync";
+                    string statusBadge = "badge-expired";
+
+                    if (lastSync.HasValue)
+                    {
+                        var diff = DateTime.UtcNow - lastSync.Value;
+                        if (diff.TotalMinutes < 60) timeAgo = $"{(int)diff.TotalMinutes}m ago";
+                        else if (diff.TotalHours < 24) timeAgo = $"{(int)diff.TotalHours}h ago";
+                        else timeAgo = $"{(int)diff.TotalDays}d ago";
+
+                        if (diff.TotalHours <= 24) { statusText = "Healthy"; statusBadge = "badge-active"; }
+                        else if (diff.TotalDays <= 7) { statusText = "Stale"; statusBadge = "badge-expiring"; }
+                        else { statusText = "Offline"; statusBadge = "badge-expired"; }
+                    }
+
+                    _gymSyncs.Add(new GymSync
+                    {
+                        Name = name,
+                        LastSync = lastSync,
+                        TimeAgo = timeAgo,
+                        StatusText = statusText,
+                        StatusBadge = statusBadge
+                    });
+                }
+            }
+            catch { }
+
+            // Recent sync errors
+            try
+            {
+                using var cmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT ""SyncType"", ""Details"", ""SyncedAt""
+                      FROM ""CloudSyncLogs""
+                      WHERE ""Status"" != 'Success'
+                      ORDER BY ""SyncedAt"" DESC LIMIT 20", conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    _syncErrors.Add(new SyncError
+                    {
+                        SyncType = reader.IsDBNull(0) ? "" : reader.GetString(0),
+                        Details = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                        SyncedAt = reader.IsDBNull(2) ? DateTime.MinValue : reader.GetDateTime(2)
+                    });
+                }
+            }
+            catch { }
+        }
+        catch { }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private class TableSize { public string Name { get; set; } = ""; public string Size { get; set; } = ""; }
+    private class GymSync
+    {
+        public string Name { get; set; } = "";
+        public DateTime? LastSync { get; set; }
+        public string TimeAgo { get; set; } = "";
+        public string StatusText { get; set; } = "";
+        public string StatusBadge { get; set; } = "";
+    }
+    private class SyncError
+    {
+        public string SyncType { get; set; } = "";
+        public string Details { get; set; } = "";
+        public DateTime SyncedAt { get; set; }
+    }
+}

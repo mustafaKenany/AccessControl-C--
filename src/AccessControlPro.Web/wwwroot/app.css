@@ -1501,3 +1501,71 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; }
     .nav-link { min-width: 40px; padding: 0.4rem; }
     .nav-link i { font-size: 0.9rem; }
 }
+
+/* ============================================ */
+/* === Super Admin Theme (Purple Accent) === */
+/* ============================================ */
+
+.superadmin-container {
+    --accent: #7E57C2;
+    --accent-hover: #9575CD;
+}
+
+.superadmin-sidebar {
+    background: #1A1A2E !important;
+    border-right-color: rgba(126, 87, 194, 0.3) !important;
+}
+
+.superadmin-sidebar .sidebar-brand h3 {
+    color: #7E57C2 !important;
+}
+
+.superadmin-sidebar .nav-link.sa-nav {
+    border-left-color: transparent;
+}
+
+.superadmin-sidebar .nav-link.sa-nav:hover {
+    color: var(--text-primary);
+    background: rgba(126, 87, 194, 0.1);
+    border-left-color: #7E57C2;
+}
+
+.superadmin-sidebar .nav-link.sa-nav.active {
+    color: #7E57C2;
+    background: rgba(126, 87, 194, 0.15);
+    border-left-color: #7E57C2;
+    font-weight: 600;
+}
+
+.superadmin-badge {
+    background: rgba(126, 87, 194, 0.2);
+    color: #7E57C2;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Super Admin form inputs focus with purple */
+.superadmin-container .form-input:focus {
+    border-color: #7E57C2;
+    box-shadow: 0 0 0 2px rgba(126, 87, 194, 0.2);
+}
+
+/* Super Admin mobile adjustments */
+@media (max-width: 768px) {
+    .superadmin-sidebar {
+        background: #1A1A2E !important;
+    }
+
+    .superadmin-sidebar .nav-link.sa-nav {
+        border-left: none !important;
+        border-top: 2px solid transparent;
+    }
+
+    .superadmin-sidebar .nav-link.sa-nav:hover,
+    .superadmin-sidebar .nav-link.sa-nav.active {
+        border-left: none !important;
+        border-top-color: #7E57C2;
+    }
+}

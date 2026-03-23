@@ -1,0 +1,488 @@
+@page "/superadmin/gyms"
+@layout AccessControlPro.Web.Components.Layout.SuperAdminLayout
+@inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<div class="page-header">
+    <h1 style="color: #7E57C2;">Gym Management</h1>
+    <button class="btn-accent" style="background: #7E57C2;" @onclick="() => _showAddForm = !_showAddForm">
+        <i class="fas fa-plus"></i> Add Gym
+    </button>
+</div>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="@(_isError ? "error-msg" : "success-msg")">@_message</div>
+}
+
+@* Add / Edit Gym Form *@
+@if (_showAddForm || _editGym != null)
+{
+    <div class="content-card" style="border-color: #7E57C2; margin-bottom: 1.5rem;">
+        <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">
+            @(_editGym != null ? "Edit Gym" : "Add New Gym")
+        </h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Gym Name</label>
+                <input type="text" @bind="_formName" class="form-input" placeholder="Gym Name" />
+            </div>
+            <div class="form-group">
+                <label>Subdomain</label>
+                <input type="text" @bind="_formSubdomain" class="form-input" placeholder="e.g. mygym" />
+            </div>
+            <div class="form-group">
+                <label>Owner Name</label>
+                <input type="text" @bind="_formOwnerName" class="form-input" placeholder="Owner Name" />
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Owner Phone</label>
+                <input type="tel" @bind="_formOwnerPhone" class="form-input" placeholder="+964..." />
+            </div>
+            <div class="form-group">
+                <label>Owner Email</label>
+                <input type="email" @bind="_formOwnerEmail" class="form-input" placeholder="email@example.com" />
+            </div>
+            <div class="form-group">
+                <label>Subscription Price (Monthly)</label>
+                <input type="number" @bind="_formPrice" class="form-input" placeholder="0" step="0.01" />
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Expiry Date</label>
+                <input type="date" @bind="_formExpiry" class="form-input" />
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <input type="text" @bind="_formNotes" class="form-input" placeholder="Optional notes" />
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn-accent" style="background: #7E57C2;" @onclick="SaveGym" disabled="@_saving">
+                <i class="fas fa-save"></i> @(_saving ? "Saving..." : "Save")
+            </button>
+            <button class="btn-outline" style="color: #7E57C2; border-color: #7E57C2;" @onclick="CancelForm">Cancel</button>
+        </div>
+    </div>
+}
+
+@* Extend Subscription Modal *@
+@if (_extendGymId > 0)
+{
+    <div class="content-card" style="border-color: #7E57C2; margin-bottom: 1.5rem;">
+        <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">
+            Extend Subscription - @_extendGymName
+        </h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+            Current Expiry: <strong>@_extendCurrentExpiry.ToString("yyyy-MM-dd")</strong>
+        </p>
+        <div class="filter-buttons" style="margin-bottom: 1rem;">
+            <button class="filter-btn" @onclick="() => ExtendBy(1)">+1 Month</button>
+            <button class="filter-btn" @onclick="() => ExtendBy(3)">+3 Months</button>
+            <button class="filter-btn" @onclick="() => ExtendBy(6)">+6 Months</button>
+            <button class="filter-btn" @onclick="() => ExtendBy(12)">+1 Year</button>
+        </div>
+        <button class="btn-outline" @onclick="() => _extendGymId = 0">Close</button>
+    </div>
+}
+
+@if (_loading)
+{
+    <p class="no-data">Loading gyms...</p>
+}
+else if (_gyms.Count == 0)
+{
+    <p class="no-data">No gyms registered yet.</p>
+}
+else
+{
+    @* Desktop Table *@
+    <div class="desktop-only">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Subdomain</th>
+                        <th>Owner</th>
+                        <th>Phone</th>
+                        <th>Expiry</th>
+                        <th>Status</th>
+                        <th>Players</th>
+                        <th>Last Sync</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var gym in _gyms)
+                    {
+                        <tr>
+                            <td><strong>@gym.Name</strong></td>
+                            <td>@gym.Subdomain</td>
+                            <td>@gym.OwnerName</td>
+                            <td>@gym.OwnerPhone</td>
+                            <td>@gym.ExpiresAt.ToString("yyyy-MM-dd")</td>
+                            <td>
+                                <span class="badge @GetStatusBadge(gym.ExpiresAt, gym.IsActive)">
+                                    @GetStatusText(gym.ExpiresAt, gym.IsActive)
+                                </span>
+                            </td>
+                            <td>@gym.PlayerCount</td>
+                            <td>@(gym.LastSyncAt.HasValue ? gym.LastSyncAt.Value.ToString("MM/dd HH:mm") : "Never")</td>
+                            <td>
+                                <div style="display: flex; gap: 0.3rem; flex-wrap: wrap;">
+                                    <button class="btn-accent btn-sm" style="background: #7E57C2;" @onclick="() => StartEdit(gym)">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn-accent btn-sm" style="background: var(--success);" @onclick="() => StartExtend(gym)">
+                                        <i class="fas fa-calendar-plus"></i>
+                                    </button>
+                                    <button class="btn-accent btn-sm" style="background: var(--danger);" @onclick="() => ToggleActive(gym)">
+                                        <i class="fas @(gym.IsActive ? "fa-ban" : "fa-check")"></i>
+                                    </button>
+                                    @if (!string.IsNullOrEmpty(gym.OwnerPhone))
+                                    {
+                                        <a href="@GetWhatsAppUrl(gym)" target="_blank" class="btn-whatsapp btn-sm" style="text-decoration: none;">
+                                            <i class="fab fa-whatsapp"></i>
+                                        </a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @* Mobile Cards *@
+    <div class="mobile-only">
+        <div class="mobile-cards">
+            @foreach (var gym in _gyms)
+            {
+                <div class="mobile-card">
+                    <div class="mobile-card-header">
+                        <span class="mobile-card-name">@gym.Name</span>
+                        <span class="badge @GetStatusBadge(gym.ExpiresAt, gym.IsActive)">
+                            @GetStatusText(gym.ExpiresAt, gym.IsActive)
+                        </span>
+                    </div>
+                    <div class="mobile-card-row">
+                        <span class="mobile-card-label">Owner</span>
+                        <span class="mobile-card-value">@gym.OwnerName</span>
+                    </div>
+                    <div class="mobile-card-row">
+                        <span class="mobile-card-label">Expires</span>
+                        <span class="mobile-card-value">@gym.ExpiresAt.ToString("yyyy-MM-dd")</span>
+                    </div>
+                    <div class="mobile-card-row">
+                        <span class="mobile-card-label">Players</span>
+                        <span class="mobile-card-value">@gym.PlayerCount</span>
+                    </div>
+                    <div class="mobile-card-row">
+                        <span class="mobile-card-label">Last Sync</span>
+                        <span class="mobile-card-value">@(gym.LastSyncAt.HasValue ? gym.LastSyncAt.Value.ToString("MM/dd HH:mm") : "Never")</span>
+                    </div>
+                    <div class="mobile-card-divider"></div>
+                    <div class="mobile-card-actions">
+                        <button class="btn-accent btn-sm" style="background: #7E57C2;" @onclick="() => StartEdit(gym)">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn-accent btn-sm" style="background: var(--success);" @onclick="() => StartExtend(gym)">
+                            <i class="fas fa-calendar-plus"></i> Extend
+                        </button>
+                        <button class="btn-accent btn-sm" style="background: var(--danger);" @onclick="() => ToggleActive(gym)">
+                            <i class="fas @(gym.IsActive ? "fa-ban" : "fa-check")"></i> @(gym.IsActive ? "Deactivate" : "Activate")
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _saving;
+    private bool _showAddForm;
+    private string _message = "";
+    private bool _isError;
+    private List<GymRecord> _gyms = new();
+
+    // Form fields
+    private string _formName = "";
+    private string _formSubdomain = "";
+    private string _formOwnerName = "";
+    private string _formOwnerPhone = "";
+    private string _formOwnerEmail = "";
+    private decimal _formPrice;
+    private DateTime _formExpiry = DateTime.UtcNow.AddYears(1);
+    private string _formNotes = "";
+    private GymRecord? _editGym;
+
+    // Extend fields
+    private int _extendGymId;
+    private string _extendGymName = "";
+    private DateTime _extendCurrentExpiry;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsSuperAdmin) { Nav.NavigateTo("/superadmin/login"); return; }
+        await LoadGymsAsync();
+    }
+
+    private async Task LoadGymsAsync()
+    {
+        _loading = true;
+        _gyms.Clear();
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Id"", ""Name"", ""Subdomain"", ""ApiKey"", ""IsActive"", ""ExpiresAt"", ""CreatedAt"",
+                         ""OwnerName"", ""OwnerPhone"", ""OwnerEmail"", ""SubscriptionPrice"", ""Notes"",
+                         ""LastSyncAt"", ""PlayerCount""
+                  FROM ""Gyms"" ORDER BY ""CreatedAt"" DESC", conn);
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                _gyms.Add(new GymRecord
+                {
+                    Id = reader.GetInt32(0),
+                    Name = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                    Subdomain = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                    ApiKey = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                    IsActive = reader.IsDBNull(4) ? false : reader.GetBoolean(4),
+                    ExpiresAt = reader.IsDBNull(5) ? DateTime.MinValue : reader.GetDateTime(5),
+                    CreatedAt = reader.IsDBNull(6) ? DateTime.MinValue : reader.GetDateTime(6),
+                    OwnerName = reader.IsDBNull(7) ? "" : reader.GetString(7),
+                    OwnerPhone = reader.IsDBNull(8) ? "" : reader.GetString(8),
+                    OwnerEmail = reader.IsDBNull(9) ? "" : reader.GetString(9),
+                    SubscriptionPrice = reader.IsDBNull(10) ? 0 : reader.GetDecimal(10),
+                    Notes = reader.IsDBNull(11) ? "" : reader.GetString(11),
+                    LastSyncAt = reader.IsDBNull(12) ? null : reader.GetDateTime(12),
+                    PlayerCount = reader.IsDBNull(13) ? 0 : reader.GetInt32(13)
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error loading gyms: {ex.Message}";
+            _isError = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void StartEdit(GymRecord gym)
+    {
+        _editGym = gym;
+        _formName = gym.Name;
+        _formSubdomain = gym.Subdomain;
+        _formOwnerName = gym.OwnerName;
+        _formOwnerPhone = gym.OwnerPhone;
+        _formOwnerEmail = gym.OwnerEmail;
+        _formPrice = gym.SubscriptionPrice;
+        _formExpiry = gym.ExpiresAt;
+        _formNotes = gym.Notes;
+        _showAddForm = false;
+    }
+
+    private void CancelForm()
+    {
+        _showAddForm = false;
+        _editGym = null;
+        ResetForm();
+    }
+
+    private void ResetForm()
+    {
+        _formName = "";
+        _formSubdomain = "";
+        _formOwnerName = "";
+        _formOwnerPhone = "";
+        _formOwnerEmail = "";
+        _formPrice = 0;
+        _formExpiry = DateTime.UtcNow.AddYears(1);
+        _formNotes = "";
+    }
+
+    private async Task SaveGym()
+    {
+        if (string.IsNullOrWhiteSpace(_formName))
+        {
+            _message = "Gym name is required.";
+            _isError = true;
+            return;
+        }
+
+        _saving = true;
+        _message = "";
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+
+            if (_editGym != null)
+            {
+                // Update
+                using var cmd = new Npgsql.NpgsqlCommand(
+                    @"UPDATE ""Gyms"" SET ""Name"" = @name, ""Subdomain"" = @sub, ""OwnerName"" = @on,
+                      ""OwnerPhone"" = @op, ""OwnerEmail"" = @oe, ""SubscriptionPrice"" = @price,
+                      ""ExpiresAt"" = @exp, ""Notes"" = @notes
+                      WHERE ""Id"" = @id", conn);
+                cmd.Parameters.AddWithValue("name", _formName);
+                cmd.Parameters.AddWithValue("sub", _formSubdomain);
+                cmd.Parameters.AddWithValue("on", _formOwnerName);
+                cmd.Parameters.AddWithValue("op", _formOwnerPhone);
+                cmd.Parameters.AddWithValue("oe", _formOwnerEmail);
+                cmd.Parameters.AddWithValue("price", _formPrice);
+                cmd.Parameters.AddWithValue("exp", _formExpiry);
+                cmd.Parameters.AddWithValue("notes", _formNotes);
+                cmd.Parameters.AddWithValue("id", _editGym.Id);
+                await cmd.ExecuteNonQueryAsync();
+                _message = "Gym updated successfully.";
+            }
+            else
+            {
+                // Insert — auto-generate API key
+                var apiKey = $"HMT-{_formSubdomain}-{Guid.NewGuid().ToString("N")[..8]}".ToUpper();
+                using var cmd = new Npgsql.NpgsqlCommand(
+                    @"INSERT INTO ""Gyms"" (""Name"", ""Subdomain"", ""ApiKey"", ""OwnerName"", ""OwnerPhone"",
+                      ""OwnerEmail"", ""SubscriptionPrice"", ""ExpiresAt"", ""Notes"", ""IsActive"")
+                      VALUES (@name, @sub, @key, @on, @op, @oe, @price, @exp, @notes, TRUE)", conn);
+                cmd.Parameters.AddWithValue("name", _formName);
+                cmd.Parameters.AddWithValue("sub", _formSubdomain);
+                cmd.Parameters.AddWithValue("key", apiKey);
+                cmd.Parameters.AddWithValue("on", _formOwnerName);
+                cmd.Parameters.AddWithValue("op", _formOwnerPhone);
+                cmd.Parameters.AddWithValue("oe", _formOwnerEmail);
+                cmd.Parameters.AddWithValue("price", _formPrice);
+                cmd.Parameters.AddWithValue("exp", _formExpiry);
+                cmd.Parameters.AddWithValue("notes", _formNotes);
+                await cmd.ExecuteNonQueryAsync();
+                _message = $"Gym added. API Key: {apiKey}";
+            }
+
+            _isError = false;
+            _editGym = null;
+            _showAddForm = false;
+            ResetForm();
+            await LoadGymsAsync();
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error: {ex.Message}";
+            _isError = true;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void StartExtend(GymRecord gym)
+    {
+        _extendGymId = gym.Id;
+        _extendGymName = gym.Name;
+        _extendCurrentExpiry = gym.ExpiresAt;
+    }
+
+    private async Task ExtendBy(int months)
+    {
+        try
+        {
+            var baseDate = _extendCurrentExpiry > DateTime.UtcNow ? _extendCurrentExpiry : DateTime.UtcNow;
+            var newExpiry = baseDate.AddMonths(months);
+
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"UPDATE ""Gyms"" SET ""ExpiresAt"" = @exp, ""IsActive"" = TRUE WHERE ""Id"" = @id", conn);
+            cmd.Parameters.AddWithValue("exp", newExpiry);
+            cmd.Parameters.AddWithValue("id", _extendGymId);
+            await cmd.ExecuteNonQueryAsync();
+
+            _message = $"Extended to {newExpiry:yyyy-MM-dd}.";
+            _isError = false;
+            _extendGymId = 0;
+            await LoadGymsAsync();
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error: {ex.Message}";
+            _isError = true;
+        }
+    }
+
+    private async Task ToggleActive(GymRecord gym)
+    {
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"UPDATE ""Gyms"" SET ""IsActive"" = @active WHERE ""Id"" = @id", conn);
+            cmd.Parameters.AddWithValue("active", !gym.IsActive);
+            cmd.Parameters.AddWithValue("id", gym.Id);
+            await cmd.ExecuteNonQueryAsync();
+
+            _message = gym.IsActive ? "Gym deactivated." : "Gym activated.";
+            _isError = false;
+            await LoadGymsAsync();
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error: {ex.Message}";
+            _isError = true;
+        }
+    }
+
+    private string GetWhatsAppUrl(GymRecord gym)
+    {
+        var phone = gym.OwnerPhone.Replace("+", "").Replace(" ", "").Replace("-", "");
+        var daysLeft = (gym.ExpiresAt - DateTime.UtcNow).TotalDays;
+        var msg = daysLeft > 0
+            ? $"Hello {gym.OwnerName}, your gym subscription ({gym.Name}) expires in {(int)daysLeft} days ({gym.ExpiresAt:yyyy-MM-dd}). Please renew to avoid interruption."
+            : $"Hello {gym.OwnerName}, your gym subscription ({gym.Name}) has expired on {gym.ExpiresAt:yyyy-MM-dd}. Please renew to restore access.";
+        return $"https://wa.me/{phone}?text={Uri.EscapeDataString(msg)}";
+    }
+
+    private string GetStatusText(DateTime expires, bool isActive)
+    {
+        if (!isActive) return "Inactive";
+        if (expires <= DateTime.UtcNow) return "Expired";
+        if ((expires - DateTime.UtcNow).TotalDays <= 30) return "Expiring";
+        return "Active";
+    }
+
+    private string GetStatusBadge(DateTime expires, bool isActive)
+    {
+        if (!isActive) return "badge-expired";
+        if (expires <= DateTime.UtcNow) return "badge-expired";
+        if ((expires - DateTime.UtcNow).TotalDays <= 30) return "badge-expiring";
+        return "badge-active";
+    }
+
+    private class GymRecord
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Subdomain { get; set; } = "";
+        public string ApiKey { get; set; } = "";
+        public bool IsActive { get; set; }
+        public DateTime ExpiresAt { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public string OwnerName { get; set; } = "";
+        public string OwnerPhone { get; set; } = "";
+        public string OwnerEmail { get; set; } = "";
+        public decimal SubscriptionPrice { get; set; }
+        public string Notes { get; set; } = "";
+        public DateTime? LastSyncAt { get; set; }
+        public int PlayerCount { get; set; }
+    }
+}

@@ -1,0 +1,110 @@
+@page "/superadmin"
+@page "/superadmin/login"
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject IConfiguration Config
+@rendermode InteractiveServer
+
+<div class="login-container">
+    <div class="login-card" style="border-color: #7E57C2;">
+        <h2 class="login-title" style="color: #7E57C2;">HM-GymManagement</h2>
+        <p class="login-subtitle">Super Admin Panel</p>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="error-msg">@_error</div>
+        }
+
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" @bind="_username" @bind:event="oninput" class="form-input"
+                   placeholder="Enter username" style="border-color: #7E57C2;" />
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" @bind="_password" @bind:event="oninput" class="form-input"
+                   placeholder="Enter password" style="border-color: #7E57C2;"
+                   @onkeydown="HandleKeyDown" />
+        </div>
+
+        <button class="login-btn" style="background: #7E57C2;" @onclick="DoLogin" disabled="@_loading">
+            @if (_loading)
+            {
+                <span>Logging in...</span>
+            }
+            else
+            {
+                <span>Login</span>
+            }
+        </button>
+    </div>
+</div>
+
+@code {
+    private string _username = "";
+    private string _password = "";
+    private string _error = "";
+    private bool _loading;
+    private bool _loginSuccess;
+
+    protected override void OnInitialized()
+    {
+        if (Session.IsSuperAdmin)
+            Nav.NavigateTo("/superadmin/dashboard");
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (_loginSuccess && Session.IsSuperAdmin)
+        {
+            _loginSuccess = false;
+            Nav.NavigateTo("/superadmin/dashboard");
+        }
+    }
+
+    private async Task HandleKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await DoLogin();
+    }
+
+    private Task DoLogin()
+    {
+        _error = "";
+        _loading = true;
+
+        try
+        {
+            var configUser = Config["SuperAdmin:Username"] ?? "";
+            var configPass = Config["SuperAdmin:Password"] ?? "";
+
+            if (string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))
+            {
+                _error = "Username and password are required.";
+                return Task.CompletedTask;
+            }
+
+            if (_username.Trim() == configUser && _password == configPass)
+            {
+                var result = AuthResult.Success("Super Admin", "SuperAdmin", 0);
+                Session.Login(result);
+                _loginSuccess = true;
+                StateHasChanged();
+            }
+            else
+            {
+                _error = "Invalid credentials.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        return Task.CompletedTask;
+    }
+}

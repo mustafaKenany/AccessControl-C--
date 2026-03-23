@@ -142,6 +142,20 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db) =>
         }
         catch { }
 
+        // Update gym's LastSyncAt and PlayerCount
+        try
+        {
+            var playerCount = syncData.Players?.Count ?? 0;
+            using var updateCmd = new Npgsql.NpgsqlCommand(
+                @"UPDATE ""Gyms"" SET ""LastSyncAt"" = @ts, ""PlayerCount"" = @pc
+                  WHERE ""ApiKey"" = @key OR ""Id"" = 1", conn);
+            updateCmd.Parameters.AddWithValue("ts", DateTime.UtcNow);
+            updateCmd.Parameters.AddWithValue("pc", playerCount);
+            updateCmd.Parameters.AddWithValue("key", apiKey ?? "");
+            await updateCmd.ExecuteNonQueryAsync();
+        }
+        catch { }
+
         return Results.Ok(new { success = true, total, errors = syncErrors });
     }
     catch (Exception ex)

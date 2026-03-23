@@ -1,0 +1,252 @@
+@page "/superadmin/dashboard"
+@layout AccessControlPro.Web.Components.Layout.SuperAdminLayout
+@inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<div class="page-header">
+    <h1 style="color: #7E57C2;">Super Admin Dashboard</h1>
+    <span class="last-sync">@DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm") UTC</span>
+</div>
+
+@if (_loading)
+{
+    <p class="no-data">Loading dashboard...</p>
+}
+else
+{
+    <div class="stats-grid">
+        <div class="stat-card purple">
+            <div class="stat-number">@_totalGyms</div>
+            <div class="stat-label">Total Gyms</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-number">@_activeGyms</div>
+            <div class="stat-label">Active Gyms</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-number">@_expiredGyms</div>
+            <div class="stat-label">Expired Gyms</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-number">@_totalPlayers</div>
+            <div class="stat-label">Total Players</div>
+        </div>
+        <div class="stat-card teal">
+            <div class="stat-number">@_monthlyRevenue.ToString("C0")</div>
+            <div class="stat-label">Monthly Revenue</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-number">@_activeSyncs</div>
+            <div class="stat-label">Active Sync (24h)</div>
+        </div>
+    </div>
+
+    <div class="content-grid">
+        <div class="content-card">
+            <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">Recent Sync Logs</h3>
+            @if (_recentSyncs.Count == 0)
+            {
+                <p class="no-data">No sync logs found.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in _recentSyncs)
+                            {
+                                <tr>
+                                    <td>@log.SyncedAt.ToString("MM/dd HH:mm")</td>
+                                    <td>@log.SyncType</td>
+                                    <td>
+                                        <span class="badge @(log.Status == "Success" ? "badge-active" : "badge-expired")">
+                                            @log.Status
+                                        </span>
+                                    </td>
+                                    <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">@log.Details</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="content-card">
+            <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">Gym Overview</h3>
+            @if (_gymSummaries.Count == 0)
+            {
+                <p class="no-data">No gyms registered.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Gym</th>
+                                <th>Status</th>
+                                <th>Expires</th>
+                                <th>Players</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var g in _gymSummaries)
+                            {
+                                <tr>
+                                    <td>@g.Name</td>
+                                    <td>
+                                        <span class="badge @GetStatusBadge(g.ExpiresAt, g.IsActive)">
+                                            @GetStatusText(g.ExpiresAt, g.IsActive)
+                                        </span>
+                                    </td>
+                                    <td>@g.ExpiresAt.ToString("yyyy-MM-dd")</td>
+                                    <td>@g.PlayerCount</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private int _totalGyms, _activeGyms, _expiredGyms, _totalPlayers, _activeSyncs;
+    private decimal _monthlyRevenue;
+    private List<SyncLog> _recentSyncs = new();
+    private List<GymSummary> _gymSummaries = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsSuperAdmin) { Nav.NavigateTo("/superadmin/login"); return; }
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+
+            // Gym stats
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT
+                    COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE ""IsActive"" = TRUE AND ""ExpiresAt"" > NOW()) as active,
+                    COUNT(*) FILTER (WHERE ""IsActive"" = FALSE OR ""ExpiresAt"" <= NOW()) as expired,
+                    COALESCE(SUM(""PlayerCount""), 0) as players,
+                    COALESCE(SUM(""SubscriptionPrice""), 0) as revenue,
+                    COUNT(*) FILTER (WHERE ""LastSyncAt"" > NOW() - INTERVAL '24 hours') as synced
+                  FROM ""Gyms""", conn))
+            {
+                using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    _totalGyms = reader.GetInt32(0);
+                    _activeGyms = reader.GetInt64(1) > int.MaxValue ? int.MaxValue : (int)reader.GetInt64(1);
+                    _expiredGyms = reader.GetInt64(2) > int.MaxValue ? int.MaxValue : (int)reader.GetInt64(2);
+                    _totalPlayers = reader.IsDBNull(3) ? 0 : (int)(long)reader.GetValue(3);
+                    _monthlyRevenue = reader.IsDBNull(4) ? 0 : reader.GetDecimal(4);
+                    _activeSyncs = reader.GetInt64(5) > int.MaxValue ? int.MaxValue : (int)reader.GetInt64(5);
+                }
+            }
+
+            // Also count from Players table
+            try
+            {
+                using var countCmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT COUNT(*) FROM ""Players"" WHERE ""IsDeleted"" = FALSE", conn);
+                var pc = await countCmd.ExecuteScalarAsync();
+                if (pc != null) _totalPlayers = Convert.ToInt32(pc);
+            }
+            catch { }
+
+            // Recent sync logs
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""SyncType"", ""Status"", ""Details"", ""SyncedAt""
+                  FROM ""CloudSyncLogs"" ORDER BY ""SyncedAt"" DESC LIMIT 10", conn))
+            {
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    _recentSyncs.Add(new SyncLog
+                    {
+                        SyncType = reader.IsDBNull(0) ? "" : reader.GetString(0),
+                        Status = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                        Details = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                        SyncedAt = reader.IsDBNull(3) ? DateTime.MinValue : reader.GetDateTime(3)
+                    });
+                }
+            }
+
+            // Gym summaries
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Name"", ""ExpiresAt"", ""IsActive"", ""PlayerCount""
+                  FROM ""Gyms"" ORDER BY ""CreatedAt"" DESC", conn))
+            {
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    _gymSummaries.Add(new GymSummary
+                    {
+                        Name = reader.IsDBNull(0) ? "" : reader.GetString(0),
+                        ExpiresAt = reader.IsDBNull(1) ? DateTime.MinValue : reader.GetDateTime(1),
+                        IsActive = reader.IsDBNull(2) ? false : reader.GetBoolean(2),
+                        PlayerCount = reader.IsDBNull(3) ? 0 : reader.GetInt32(3)
+                    });
+                }
+            }
+        }
+        catch { }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string GetStatusText(DateTime expires, bool isActive)
+    {
+        if (!isActive) return "Inactive";
+        if (expires <= DateTime.UtcNow) return "Expired";
+        if ((expires - DateTime.UtcNow).TotalDays <= 30) return "Expiring";
+        return "Active";
+    }
+
+    private string GetStatusBadge(DateTime expires, bool isActive)
+    {
+        if (!isActive) return "badge-expired";
+        if (expires <= DateTime.UtcNow) return "badge-expired";
+        if ((expires - DateTime.UtcNow).TotalDays <= 30) return "badge-expiring";
+        return "badge-active";
+    }
+
+    private class SyncLog
+    {
+        public string SyncType { get; set; } = "";
+        public string Status { get; set; } = "";
+        public string Details { get; set; } = "";
+        public DateTime SyncedAt { get; set; }
+    }
+
+    private class GymSummary
+    {
+        public string Name { get; set; } = "";
+        public DateTime ExpiresAt { get; set; }
+        public bool IsActive { get; set; }
+        public int PlayerCount { get; set; }
+    }
+}

@@ -162,7 +162,11 @@ CREATE TABLE IF NOT EXISTS ""Gyms"" (
     ""CreatedAt"" TIMESTAMP DEFAULT NOW(),
     ""OwnerName"" VARCHAR(200) DEFAULT '',
     ""OwnerPhone"" VARCHAR(50) DEFAULT '',
-    ""OwnerEmail"" VARCHAR(200) DEFAULT ''
+    ""OwnerEmail"" VARCHAR(200) DEFAULT '',
+    ""SubscriptionPrice"" DECIMAL(18,2) DEFAULT 0,
+    ""Notes"" TEXT DEFAULT '',
+    ""LastSyncAt"" TIMESTAMP NULL,
+    ""PlayerCount"" INT DEFAULT 0
 );
 
 -- Performance indexes
@@ -176,6 +180,17 @@ CREATE INDEX IF NOT EXISTS idx_auditlogs_timestamp ON ""AuditLogs"" (""Timestamp
 CREATE INDEX IF NOT EXISTS idx_users_username ON ""Users"" (""Username"");
 CREATE INDEX IF NOT EXISTS idx_deleted_deletedat ON ""DeletedEmployees"" (""DeletedAt"" DESC);
 CREATE INDEX IF NOT EXISTS idx_qrpasses_code ON ""QrPasses"" (""Code"");
+
+-- Gyms table migration: add columns if missing
+ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""SubscriptionPrice"" DECIMAL(18,2) DEFAULT 0;
+ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""Notes"" TEXT DEFAULT '';
+ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""LastSyncAt"" TIMESTAMP NULL;
+ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""PlayerCount"" INT DEFAULT 0;
+
+-- Seed default gym if none exists
+INSERT INTO ""Gyms"" (""Name"", ""Subdomain"", ""ApiKey"", ""IsActive"", ""ExpiresAt"", ""OwnerName"")
+SELECT 'Default Gym', 'main', 'HMTech-Sync-2026', TRUE, '2027-03-21', 'Admin'
+WHERE NOT EXISTS (SELECT 1 FROM ""Gyms"");
 ";
         using var cmd = new NpgsqlCommand(sql, conn);
         await cmd.ExecuteNonQueryAsync();
