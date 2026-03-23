@@ -1,0 +1,541 @@
+@page "/superadmin/gym/{GymId:int}"
+@layout AccessControlPro.Web.Components.Layout.SuperAdminLayout
+@inject AccessControlPro.Web.Data.GymDbHelper GymDb
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<div class="page-header">
+    <div>
+        <a href="/superadmin/gyms" style="color: #7E57C2; text-decoration: none; font-size: 0.9rem;">
+            <i class="fas fa-arrow-left"></i> Back to Gyms
+        </a>
+        <h1 style="color: #7E57C2; margin-top: 0.25rem;">@_gymName</h1>
+    </div>
+    @if (!string.IsNullOrEmpty(_gymDbName))
+    {
+        <button class="btn-accent" style="background: #E91E63;" @onclick="ImpersonateOwnerAsync">
+            <i class="fas fa-user-secret"></i> Login as Owner
+        </button>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(_errorMsg))
+{
+    <div class="error-msg">@_errorMsg</div>
+}
+
+@if (_loading)
+{
+    <p class="no-data">Loading gym details...</p>
+}
+else
+{
+    @* Gym Info Header *@
+    <div class="content-card" style="border-color: #7E57C2; margin-bottom: 1.5rem;">
+        <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">Gym Information</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Owner</label>
+                <div style="color: var(--text-primary); font-weight: 600;">@_ownerName</div>
+            </div>
+            <div class="form-group">
+                <label>Phone</label>
+                <div style="color: var(--text-primary);">@_ownerPhone</div>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <div style="color: var(--text-primary);">@_ownerEmail</div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Subdomain</label>
+                <div style="color: var(--text-primary);">@_subdomain</div>
+            </div>
+            <div class="form-group">
+                <label>Database</label>
+                <div style="color: var(--text-primary); font-family: monospace;">@_gymDbName</div>
+            </div>
+            <div class="form-group">
+                <label>Expiry</label>
+                <div>
+                    <span class="badge @_expiryBadge">@_expiryText</span>
+                    <span style="color: var(--text-secondary); margin-left: 0.5rem;">@_expiresAt.ToString("yyyy-MM-dd")</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Stats *@
+    <div class="stats-grid">
+        <div class="stat-card purple">
+            <div class="stat-number">@_totalPlayers</div>
+            <div class="stat-label">Total Players</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-number">@_activePlayers</div>
+            <div class="stat-label">Active</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-number">@_expiredPlayers</div>
+            <div class="stat-label">Expired</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-number">@_frozenPlayers</div>
+            <div class="stat-label">Frozen</div>
+        </div>
+        <div class="stat-card teal">
+            <div class="stat-number">@_totalEvents</div>
+            <div class="stat-label">Total Events</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-number">@_totalRevenue.ToString("N0")</div>
+            <div class="stat-label">Total Revenue</div>
+        </div>
+    </div>
+
+    <div class="content-grid">
+        @* Recent Players *@
+        <div class="content-card">
+            <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">Recent Players (Top 20)</h3>
+            @if (_players.Count == 0)
+            {
+                <p class="no-data">No players found.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Card</th>
+                                <th>End Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in _players)
+                            {
+                                <tr>
+                                    <td>@p.Name</td>
+                                    <td>@p.Phone</td>
+                                    <td>@p.CardNo</td>
+                                    <td>@p.EndDate.ToString("yyyy-MM-dd")</td>
+                                    <td>
+                                        <span class="badge @p.StatusBadge">@p.StatusText</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        @* Recent Events *@
+        <div class="content-card">
+            <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">Recent Events (Top 20)</h3>
+            @if (_events.Count == 0)
+            {
+                <p class="no-data">No events found.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Door</th>
+                                <th>Type</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var e in _events)
+                            {
+                                <tr>
+                                    <td>@e.EventDate.ToString("MM/dd HH:mm")</td>
+                                    <td>@e.DoorId</td>
+                                    <td>@e.RecordType</td>
+                                    <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis;">@e.Details</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* Recent Transactions *@
+    <div class="content-card" style="margin-top: 1.5rem;">
+        <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">Recent Transactions (Top 10)</h3>
+        @if (_transactions.Count == 0)
+        {
+            <p class="no-data">No transactions found.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Category</th>
+                            <th>Amount</th>
+                            <th>Description</th>
+                            <th>Recorded By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in _transactions)
+                        {
+                            <tr>
+                                <td>@t.TransactionDate.ToString("MM/dd HH:mm")</td>
+                                <td>@t.Category</td>
+                                <td style="color: @(t.Amount >= 0 ? "var(--success)" : "var(--danger)");">
+                                    @t.Amount.ToString("N0")
+                                </td>
+                                <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis;">@t.Description</td>
+                                <td>@t.RecordedBy</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    @* Sync History *@
+    <div class="content-card" style="margin-top: 1.5rem;">
+        <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">Sync History</h3>
+        @if (_syncLogs.Count == 0)
+        {
+            <p class="no-data">No sync logs found.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in _syncLogs)
+                        {
+                            <tr>
+                                <td>@s.SyncedAt.ToString("MM/dd HH:mm")</td>
+                                <td>@s.SyncType</td>
+                                <td>
+                                    <span class="badge @(s.Status == "Success" ? "badge-active" : "badge-expired")">
+                                        @s.Status
+                                    </span>
+                                </td>
+                                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">@s.Details</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public int GymId { get; set; }
+
+    private bool _loading = true;
+    private string _errorMsg = "";
+
+    // Gym info
+    private string _gymName = "";
+    private string _gymDbName = "";
+    private string _ownerName = "";
+    private string _ownerPhone = "";
+    private string _ownerEmail = "";
+    private string _subdomain = "";
+    private DateTime _expiresAt;
+    private bool _isActive;
+    private string _expiryBadge = "";
+    private string _expiryText = "";
+
+    // Stats
+    private int _totalPlayers, _activePlayers, _expiredPlayers, _frozenPlayers, _totalEvents;
+    private decimal _totalRevenue;
+
+    // Data lists
+    private List<PlayerRow> _players = new();
+    private List<EventRow> _events = new();
+    private List<TransactionRow> _transactions = new();
+    private List<SyncRow> _syncLogs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsSuperAdmin) { Nav.NavigateTo("/superadmin/login"); return; }
+        await LoadGymDetailsAsync();
+    }
+
+    private async Task LoadGymDetailsAsync()
+    {
+        _loading = true;
+        try
+        {
+            // Load gym info from master
+            using var masterConn = await GymDb.GetMasterConnectionAsync();
+            using (var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Name"", ""DatabaseName"", ""OwnerName"", ""OwnerPhone"", ""OwnerEmail"",
+                         ""Subdomain"", ""ExpiresAt"", ""IsActive""
+                  FROM ""Gyms"" WHERE ""Id"" = @id", masterConn))
+            {
+                cmd.Parameters.AddWithValue("id", GymId);
+                using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    _gymName = reader.IsDBNull(0) ? "" : reader.GetString(0);
+                    _gymDbName = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                    _ownerName = reader.IsDBNull(2) ? "" : reader.GetString(2);
+                    _ownerPhone = reader.IsDBNull(3) ? "" : reader.GetString(3);
+                    _ownerEmail = reader.IsDBNull(4) ? "" : reader.GetString(4);
+                    _subdomain = reader.IsDBNull(5) ? "" : reader.GetString(5);
+                    _expiresAt = reader.IsDBNull(6) ? DateTime.MinValue : reader.GetDateTime(6);
+                    _isActive = reader.IsDBNull(7) ? false : reader.GetBoolean(7);
+                }
+                else
+                {
+                    _errorMsg = "Gym not found.";
+                    _loading = false;
+                    return;
+                }
+            }
+
+            // Compute status
+            if (!_isActive) { _expiryBadge = "badge-expired"; _expiryText = "Inactive"; }
+            else if (_expiresAt <= DateTime.UtcNow) { _expiryBadge = "badge-expired"; _expiryText = "Expired"; }
+            else if ((_expiresAt - DateTime.UtcNow).TotalDays <= 30) { _expiryBadge = "badge-expiring"; _expiryText = "Expiring"; }
+            else { _expiryBadge = "badge-active"; _expiryText = "Active"; }
+
+            if (string.IsNullOrEmpty(_gymDbName))
+            {
+                _errorMsg = "No database configured for this gym.";
+                _loading = false;
+                return;
+            }
+
+            // Load data from gym's database
+            try
+            {
+                using var gymConn = await GymDb.GetGymConnectionAsync(_gymDbName);
+
+                // Player stats
+                using (var cmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT
+                        COUNT(*) FILTER (WHERE ""IsDeleted"" = FALSE) as total,
+                        COUNT(*) FILTER (WHERE ""IsDeleted"" = FALSE AND ""IsFrozen"" = FALSE AND ""EndDate"" > NOW()) as active,
+                        COUNT(*) FILTER (WHERE ""IsDeleted"" = FALSE AND ""IsFrozen"" = FALSE AND ""EndDate"" <= NOW()) as expired,
+                        COUNT(*) FILTER (WHERE ""IsDeleted"" = FALSE AND ""IsFrozen"" = TRUE) as frozen
+                      FROM ""Players""", gymConn))
+                {
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        _totalPlayers = Convert.ToInt32(reader.GetValue(0));
+                        _activePlayers = Convert.ToInt32(reader.GetValue(1));
+                        _expiredPlayers = Convert.ToInt32(reader.GetValue(2));
+                        _frozenPlayers = Convert.ToInt32(reader.GetValue(3));
+                    }
+                }
+
+                // Total events
+                using (var cmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT COUNT(*) FROM ""AccessEvents""", gymConn))
+                {
+                    var result = await cmd.ExecuteScalarAsync();
+                    _totalEvents = result != null ? Convert.ToInt32(result) : 0;
+                }
+
+                // Total revenue
+                using (var cmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT COALESCE(SUM(""Amount""), 0) FROM ""Transactions""", gymConn))
+                {
+                    var result = await cmd.ExecuteScalarAsync();
+                    _totalRevenue = result != null ? Convert.ToDecimal(result) : 0;
+                }
+
+                // Recent players
+                using (var cmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT ""FullNameEn"", ""Phone"", ""CardNo"", ""EndDate"", ""IsFrozen"", ""IsDeleted""
+                      FROM ""Players"" WHERE ""IsDeleted"" = FALSE
+                      ORDER BY ""CreatedAt"" DESC LIMIT 20", gymConn))
+                {
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var endDate = reader.IsDBNull(3) ? DateTime.MinValue : reader.GetDateTime(3);
+                        var isFrozen = reader.IsDBNull(4) ? false : reader.GetBoolean(4);
+                        string statusText;
+                        string statusBadge;
+                        if (isFrozen) { statusText = "Frozen"; statusBadge = "badge-expiring"; }
+                        else if (endDate <= DateTime.UtcNow) { statusText = "Expired"; statusBadge = "badge-expired"; }
+                        else { statusText = "Active"; statusBadge = "badge-active"; }
+
+                        _players.Add(new PlayerRow
+                        {
+                            Name = reader.IsDBNull(0) ? "" : reader.GetString(0),
+                            Phone = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                            CardNo = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                            EndDate = endDate,
+                            StatusText = statusText,
+                            StatusBadge = statusBadge
+                        });
+                    }
+                }
+
+                // Recent events
+                using (var cmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT ""EventDate"", ""DoorId"", ""RecordType"", ""Details""
+                      FROM ""AccessEvents"" ORDER BY ""EventDate"" DESC LIMIT 20", gymConn))
+                {
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        _events.Add(new EventRow
+                        {
+                            EventDate = reader.IsDBNull(0) ? DateTime.MinValue : reader.GetDateTime(0),
+                            DoorId = reader.IsDBNull(1) ? 0 : reader.GetInt32(1),
+                            RecordType = reader.IsDBNull(2) ? 0 : reader.GetInt32(2),
+                            Details = reader.IsDBNull(3) ? "" : reader.GetString(3)
+                        });
+                    }
+                }
+
+                // Recent transactions
+                using (var cmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT ""TransactionDate"", ""Category"", ""Amount"", ""Description"", ""RecordedBy""
+                      FROM ""Transactions"" ORDER BY ""TransactionDate"" DESC LIMIT 10", gymConn))
+                {
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        _transactions.Add(new TransactionRow
+                        {
+                            TransactionDate = reader.IsDBNull(0) ? DateTime.MinValue : reader.GetDateTime(0),
+                            Category = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                            Amount = reader.IsDBNull(2) ? 0 : reader.GetDecimal(2),
+                            Description = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                            RecordedBy = reader.IsDBNull(4) ? "" : reader.GetString(4)
+                        });
+                    }
+                }
+
+                // Sync history
+                using (var cmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT ""SyncType"", ""Status"", ""Details"", ""SyncedAt""
+                      FROM ""CloudSyncLogs"" ORDER BY ""SyncedAt"" DESC LIMIT 20", gymConn))
+                {
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        _syncLogs.Add(new SyncRow
+                        {
+                            SyncType = reader.IsDBNull(0) ? "" : reader.GetString(0),
+                            Status = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                            Details = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                            SyncedAt = reader.IsDBNull(3) ? DateTime.MinValue : reader.GetDateTime(3)
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _errorMsg = $"Could not connect to gym database '{_gymDbName}': {ex.Message}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMsg = $"Error loading gym: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ImpersonateOwnerAsync()
+    {
+        if (string.IsNullOrEmpty(_gymDbName)) return;
+        try
+        {
+            using var gymConn = await GymDb.GetGymConnectionAsync(_gymDbName);
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Id"", ""Username"", ""DisplayName"", ""Role""
+                  FROM ""Users"" WHERE ""Role"" = 'Admin' AND ""IsActive"" = TRUE LIMIT 1", gymConn);
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                var result = new AccessControlPro.Web.Services.AuthResult
+                {
+                    IsAuthenticated = true,
+                    UserId = reader.GetInt32(0),
+                    DisplayName = reader.GetString(2) + " (Support View)",
+                    Role = reader.GetString(3),
+                    GymDatabase = _gymDbName,
+                    GymId = GymId
+                };
+                Session.Login(result, _gymDbName, GymId);
+                Nav.NavigateTo("/dashboard", forceLoad: true);
+            }
+            else
+            {
+                _errorMsg = "No active admin user found in this gym's database.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMsg = $"Impersonation failed: {ex.Message}";
+        }
+    }
+
+    private class PlayerRow
+    {
+        public string Name { get; set; } = "";
+        public string Phone { get; set; } = "";
+        public string CardNo { get; set; } = "";
+        public DateTime EndDate { get; set; }
+        public string StatusText { get; set; } = "";
+        public string StatusBadge { get; set; } = "";
+    }
+
+    private class EventRow
+    {
+        public DateTime EventDate { get; set; }
+        public int DoorId { get; set; }
+        public int RecordType { get; set; }
+        public string Details { get; set; } = "";
+    }
+
+    private class TransactionRow
+    {
+        public DateTime TransactionDate { get; set; }
+        public string Category { get; set; } = "";
+        public decimal Amount { get; set; }
+        public string Description { get; set; } = "";
+        public string RecordedBy { get; set; } = "";
+    }
+
+    private class SyncRow
+    {
+        public string SyncType { get; set; } = "";
+        public string Status { get; set; } = "";
+        public string Details { get; set; } = "";
+        public DateTime SyncedAt { get; set; }
+    }
+}

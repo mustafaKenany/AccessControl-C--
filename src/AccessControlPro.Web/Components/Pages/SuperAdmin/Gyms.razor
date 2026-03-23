@@ -8,14 +8,132 @@
 
 <div class="page-header">
     <h1 style="color: #7E57C2;">Gym Management</h1>
-    <button class="btn-accent" style="background: #7E57C2;" @onclick="() => _showAddForm = !_showAddForm">
-        <i class="fas fa-plus"></i> Add Gym
-    </button>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button class="btn-accent btn-sm" style="background: #25D366;" @onclick="ShowRenewalReminders">
+            <i class="fab fa-whatsapp"></i> Renewal Reminders
+        </button>
+        <button class="btn-accent" style="background: #7E57C2;" @onclick="() => _showAddForm = !_showAddForm">
+            <i class="fas fa-plus"></i> Add Gym
+        </button>
+    </div>
 </div>
 
 @if (!string.IsNullOrEmpty(_message))
 {
     <div class="@(_isError ? "error-msg" : "success-msg")">@_message</div>
+}
+
+@* Renewal Reminders Panel *@
+@if (_showReminders)
+{
+    <div class="content-card" style="border-color: #25D366; margin-bottom: 1.5rem;">
+        <h3 style="color: #25D366; border-bottom-color: rgba(37, 211, 102, 0.3);">
+            <i class="fab fa-whatsapp"></i> Renewal Reminders (Expiring within 30 days)
+        </h3>
+        @if (_expiringGyms.Count == 0)
+        {
+            <p class="no-data">No gyms expiring in the next 30 days.</p>
+        }
+        else
+        {
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                <strong>@_expiringGyms.Count</strong> gym(s) expiring soon.
+                <button class="btn-accent btn-sm" style="background: #25D366; margin-left: 0.5rem;" @onclick="RemindAll">
+                    <i class="fab fa-whatsapp"></i> Remind All
+                </button>
+            </p>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Gym</th>
+                            <th>Owner</th>
+                            <th>Phone</th>
+                            <th>Expires</th>
+                            <th>Days Left</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var gym in _expiringGyms)
+                        {
+                            var daysLeft = (int)(gym.ExpiresAt - DateTime.UtcNow).TotalDays;
+                            <tr>
+                                <td><strong>@gym.Name</strong></td>
+                                <td>@gym.OwnerName</td>
+                                <td>@gym.OwnerPhone</td>
+                                <td>@gym.ExpiresAt.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    <span class="badge @(daysLeft <= 7 ? "badge-expired" : "badge-expiring")">
+                                        @daysLeft days
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(gym.OwnerPhone))
+                                    {
+                                        <a href="@GetReminderWhatsAppUrl(gym)" target="_blank"
+                                           class="btn-accent btn-sm" style="background: #25D366; text-decoration: none; color: white;">
+                                            <i class="fab fa-whatsapp"></i> Send
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span style="color: var(--text-secondary);">No phone</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @* Copy-all messages section *@
+            @if (_showAllMessages)
+            {
+                <div style="margin-top: 1rem; padding: 1rem; background: rgba(37, 211, 102, 0.1); border-radius: 8px;">
+                    <h4 style="color: #25D366; margin-bottom: 0.5rem;">All Reminder Messages</h4>
+                    @foreach (var gym in _expiringGyms.Where(g => !string.IsNullOrEmpty(g.OwnerPhone)))
+                    {
+                        var daysLeft = (int)(gym.ExpiresAt - DateTime.UtcNow).TotalDays;
+                        <div style="margin-bottom: 0.75rem; padding: 0.5rem; background: var(--card-bg); border-radius: 4px;">
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem;">
+                                @gym.OwnerPhone
+                            </div>
+                            <div style="white-space: pre-line;">Hi @gym.OwnerName,
+Your gym cloud subscription expires on @gym.ExpiresAt.ToString("yyyy-MM-dd") (@daysLeft days left).
+Please contact us to renew.
+HMTech Solutions</div>
+                            <a href="@GetReminderWhatsAppUrl(gym)" target="_blank"
+                               class="btn-accent btn-sm" style="background: #25D366; text-decoration: none; color: white; margin-top: 0.25rem; display: inline-block;">
+                                <i class="fab fa-whatsapp"></i> Open WhatsApp
+                            </a>
+                        </div>
+                    }
+                </div>
+            }
+        }
+        <div style="margin-top: 1rem;">
+            <button class="btn-outline" @onclick="() => { _showReminders = false; _showAllMessages = false; }">Close</button>
+        </div>
+    </div>
+}
+
+@* Delete Confirmation *@
+@if (_deleteConfirmGymId > 0)
+{
+    <div class="content-card" style="border-color: var(--danger); margin-bottom: 1.5rem;">
+        <h3 style="color: var(--danger); border-bottom-color: rgba(231, 76, 60, 0.3);">
+            <i class="fas fa-exclamation-triangle"></i> Confirm Delete
+        </h3>
+        <p>Are you sure you want to permanently delete <strong>@_deleteConfirmName</strong>?</p>
+        <p style="color: var(--danger);">This will delete ALL data (players, events, finance, everything)!</p>
+        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <button class="btn-accent" style="background: var(--danger);" @onclick="DeleteGymAsync" disabled="@_deleting">
+                <i class="fas fa-trash"></i> @(_deleting ? "Deleting..." : "Yes, Delete Permanently")
+            </button>
+            <button class="btn-outline" @onclick="() => _deleteConfirmGymId = 0">Cancel</button>
+        </div>
+    </div>
 }
 
 @* Add / Edit Gym Form *@
@@ -123,7 +241,7 @@ else
                     @foreach (var gym in _gyms)
                     {
                         <tr>
-                            <td><strong>@gym.Name</strong></td>
+                            <td><strong><a href="/superadmin/gym/@gym.Id" style="color: #7E57C2; text-decoration: none;">@gym.Name</a></strong></td>
                             <td>@gym.Subdomain</td>
                             <td>@gym.OwnerName</td>
                             <td>@gym.OwnerPhone</td>
@@ -137,6 +255,9 @@ else
                             <td>@(gym.LastSyncAt.HasValue ? gym.LastSyncAt.Value.ToString("MM/dd HH:mm") : "Never")</td>
                             <td>
                                 <div style="display: flex; gap: 0.3rem; flex-wrap: wrap;">
+                                    <a href="/superadmin/gym/@gym.Id" class="btn-accent btn-sm" style="background: #5C6BC0; text-decoration: none; color: white;">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
                                     <button class="btn-accent btn-sm" style="background: #7E57C2;" @onclick="() => StartEdit(gym)">
                                         <i class="fas fa-edit"></i>
                                     </button>
@@ -145,6 +266,9 @@ else
                                     </button>
                                     <button class="btn-accent btn-sm" style="background: var(--danger);" @onclick="() => ToggleActive(gym)">
                                         <i class="fas @(gym.IsActive ? "fa-ban" : "fa-check")"></i>
+                                    </button>
+                                    <button class="btn-accent btn-sm" style="background: #c0392b;" @onclick="() => ConfirmDelete(gym.Id, gym.Name)">
+                                        <i class="fas fa-trash"></i>
                                     </button>
                                     @if (!string.IsNullOrEmpty(gym.OwnerPhone))
                                     {
@@ -168,7 +292,9 @@ else
             {
                 <div class="mobile-card">
                     <div class="mobile-card-header">
-                        <span class="mobile-card-name">@gym.Name</span>
+                        <a href="/superadmin/gym/@gym.Id" style="color: #7E57C2; text-decoration: none;">
+                            <span class="mobile-card-name">@gym.Name</span>
+                        </a>
                         <span class="badge @GetStatusBadge(gym.ExpiresAt, gym.IsActive)">
                             @GetStatusText(gym.ExpiresAt, gym.IsActive)
                         </span>
@@ -191,6 +317,9 @@ else
                     </div>
                     <div class="mobile-card-divider"></div>
                     <div class="mobile-card-actions">
+                        <a href="/superadmin/gym/@gym.Id" class="btn-accent btn-sm" style="background: #5C6BC0; text-decoration: none; color: white;">
+                            <i class="fas fa-eye"></i> View
+                        </a>
                         <button class="btn-accent btn-sm" style="background: #7E57C2;" @onclick="() => StartEdit(gym)">
                             <i class="fas fa-edit"></i> Edit
                         </button>
@@ -199,6 +328,9 @@ else
                         </button>
                         <button class="btn-accent btn-sm" style="background: var(--danger);" @onclick="() => ToggleActive(gym)">
                             <i class="fas @(gym.IsActive ? "fa-ban" : "fa-check")"></i> @(gym.IsActive ? "Deactivate" : "Activate")
+                        </button>
+                        <button class="btn-accent btn-sm" style="background: #c0392b;" @onclick="() => ConfirmDelete(gym.Id, gym.Name)">
+                            <i class="fas fa-trash"></i> Delete
                         </button>
                     </div>
                 </div>
@@ -210,6 +342,7 @@ else
 @code {
     private bool _loading = true;
     private bool _saving;
+    private bool _deleting;
     private bool _showAddForm;
     private string _message = "";
     private bool _isError;
@@ -230,6 +363,15 @@ else
     private int _extendGymId;
     private string _extendGymName = "";
     private DateTime _extendCurrentExpiry;
+
+    // Delete fields
+    private int _deleteConfirmGymId;
+    private string _deleteConfirmName = "";
+
+    // Reminder fields
+    private bool _showReminders;
+    private bool _showAllMessages;
+    private List<GymRecord> _expiringGyms = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -456,6 +598,104 @@ else
             _message = $"Error: {ex.Message}";
             _isError = true;
         }
+    }
+
+    // --- Delete Gym ---
+
+    private void ConfirmDelete(int gymId, string name)
+    {
+        _deleteConfirmGymId = gymId;
+        _deleteConfirmName = name;
+    }
+
+    private async Task DeleteGymAsync()
+    {
+        if (_deleteConfirmGymId == 0) return;
+        _deleting = true;
+        _message = "";
+        try
+        {
+            using var masterConn = await GymDb.GetMasterConnectionAsync();
+
+            // Get database name
+            string? dbName = null;
+            using (var getCmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""DatabaseName"" FROM ""Gyms"" WHERE ""Id"" = @id", masterConn))
+            {
+                getCmd.Parameters.AddWithValue("id", _deleteConfirmGymId);
+                dbName = (await getCmd.ExecuteScalarAsync())?.ToString();
+            }
+
+            // Delete from Gyms table
+            using (var delCmd = new Npgsql.NpgsqlCommand(
+                @"DELETE FROM ""Gyms"" WHERE ""Id"" = @id", masterConn))
+            {
+                delCmd.Parameters.AddWithValue("id", _deleteConfirmGymId);
+                await delCmd.ExecuteNonQueryAsync();
+            }
+
+            // Drop database if it exists and is not the master
+            if (!string.IsNullOrEmpty(dbName) && dbName != "gymcloud")
+            {
+                try
+                {
+                    // Terminate all connections to the database first
+                    using (var termCmd = new Npgsql.NpgsqlCommand(
+                        $"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{dbName}' AND pid <> pg_backend_pid()",
+                        masterConn))
+                    {
+                        await termCmd.ExecuteNonQueryAsync();
+                    }
+
+                    using (var dropCmd = new Npgsql.NpgsqlCommand(
+                        $@"DROP DATABASE IF EXISTS ""{dbName}""", masterConn))
+                    {
+                        await dropCmd.ExecuteNonQueryAsync();
+                    }
+                }
+                catch { /* DB might not exist */ }
+            }
+
+            _message = $"Gym '{_deleteConfirmName}' deleted successfully.";
+            _isError = false;
+            _deleteConfirmGymId = 0;
+            _deleteConfirmName = "";
+            await LoadGymsAsync();
+        }
+        catch (Exception ex)
+        {
+            _message = $"Delete failed: {ex.Message}";
+            _isError = true;
+        }
+        finally
+        {
+            _deleting = false;
+        }
+    }
+
+    // --- Renewal Reminders ---
+
+    private void ShowRenewalReminders()
+    {
+        _expiringGyms = _gyms
+            .Where(g => g.IsActive && g.ExpiresAt > DateTime.UtcNow && (g.ExpiresAt - DateTime.UtcNow).TotalDays <= 30)
+            .OrderBy(g => g.ExpiresAt)
+            .ToList();
+        _showReminders = true;
+        _showAllMessages = false;
+    }
+
+    private void RemindAll()
+    {
+        _showAllMessages = true;
+    }
+
+    private string GetReminderWhatsAppUrl(GymRecord gym)
+    {
+        var phone = gym.OwnerPhone.Replace("+", "").Replace(" ", "").Replace("-", "");
+        var daysLeft = (int)(gym.ExpiresAt - DateTime.UtcNow).TotalDays;
+        var msg = $"Hi {gym.OwnerName},\nYour gym cloud subscription expires on {gym.ExpiresAt:yyyy-MM-dd} ({daysLeft} days left).\nPlease contact us to renew.\nHMTech Solutions";
+        return $"https://wa.me/{phone}?text={Uri.EscapeDataString(msg)}";
     }
 
     private string GetWhatsAppUrl(GymRecord gym)
