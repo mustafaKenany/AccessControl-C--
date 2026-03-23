@@ -112,7 +112,7 @@ public class CloudSyncService : ICloudSyncService
             Log($"  JSON size: {jsonBytes.Length / 1024}KB -> compressed: {compressedBytes.Length / 1024}KB");
 
             using var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Add("X-Api-Key", "HMTech-Sync-2026");
+            httpClient.DefaultRequestHeaders.Add("X-Api-Key", LoadApiKey());
             httpClient.Timeout = TimeSpan.FromMinutes(2);
 
             var content = new ByteArrayContent(compressedBytes);
@@ -265,5 +265,25 @@ public class CloudSyncService : ICloudSyncService
         }
         catch { }
         return null;
+    }
+
+    private static string LoadApiKey()
+    {
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            if (File.Exists(path))
+            {
+                var json = File.ReadAllText(path);
+                var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("CloudApiKey", out var key))
+                {
+                    var val = key.GetString();
+                    if (!string.IsNullOrEmpty(val)) return val;
+                }
+            }
+        }
+        catch { }
+        return "HMTech-Sync-2026"; // Default fallback for single gym
     }
 }

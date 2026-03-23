@@ -463,6 +463,7 @@ public partial class SetupWizardWindow : Window
                 ["LogoPath"] = ""
             },
             ["CloudSyncUrl"] = "https://hmtech.solutions/api/sync",
+            ["CloudApiKey"] = "HMTech-Sync-2026",
             ["BackupPath"] = string.IsNullOrWhiteSpace(BackupFolderBox.Text)
                 ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AccessControlPro", "Backups")
                 : BackupFolderBox.Text.Trim()
