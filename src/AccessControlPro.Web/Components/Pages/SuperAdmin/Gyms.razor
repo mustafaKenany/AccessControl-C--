@@ -1,6 +1,7 @@
 @page "/superadmin/gyms"
 @layout AccessControlPro.Web.Components.Layout.SuperAdminLayout
 @inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @rendermode InteractiveServer
@@ -242,7 +243,7 @@ else
         _gyms.Clear();
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            using var conn = await GymDb.GetMasterConnectionAsync();
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT ""Id"", ""Name"", ""Subdomain"", ""ApiKey"", ""IsActive"", ""ExpiresAt"", ""CreatedAt"",
                          ""OwnerName"", ""OwnerPhone"", ""OwnerEmail"", ""SubscriptionPrice"", ""Notes"",
@@ -327,7 +328,7 @@ else
         _message = "";
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            using var conn = await GymDb.GetMasterConnectionAsync();
 
             if (_editGym != null)
             {
@@ -351,15 +352,30 @@ else
             }
             else
             {
-                // Insert — auto-generate API key
+                // Insert — auto-generate API key and database name
                 var apiKey = $"HMT-{_formSubdomain}-{Guid.NewGuid().ToString("N")[..8]}".ToUpper();
+                var sanitizedSubdomain = System.Text.RegularExpressions.Regex.Replace(
+                    _formSubdomain.Trim().ToLower(), "[^a-z0-9_]", "_");
+                var dbName = $"gymcloud_{sanitizedSubdomain}";
+
+                // Create the gym's own database
+                try
+                {
+                    await GymDb.CreateGymDatabaseAsync(dbName);
+                }
+                catch (Npgsql.PostgresException pgEx) when (pgEx.SqlState == "42P04")
+                {
+                    // Database already exists — that's fine, continue
+                }
+
                 using var cmd = new Npgsql.NpgsqlCommand(
-                    @"INSERT INTO ""Gyms"" (""Name"", ""Subdomain"", ""ApiKey"", ""OwnerName"", ""OwnerPhone"",
+                    @"INSERT INTO ""Gyms"" (""Name"", ""Subdomain"", ""ApiKey"", ""DatabaseName"", ""OwnerName"", ""OwnerPhone"",
                       ""OwnerEmail"", ""SubscriptionPrice"", ""ExpiresAt"", ""Notes"", ""IsActive"")
-                      VALUES (@name, @sub, @key, @on, @op, @oe, @price, @exp, @notes, TRUE)", conn);
+                      VALUES (@name, @sub, @key, @dbname, @on, @op, @oe, @price, @exp, @notes, TRUE)", conn);
                 cmd.Parameters.AddWithValue("name", _formName);
                 cmd.Parameters.AddWithValue("sub", _formSubdomain);
                 cmd.Parameters.AddWithValue("key", apiKey);
+                cmd.Parameters.AddWithValue("dbname", dbName);
                 cmd.Parameters.AddWithValue("on", _formOwnerName);
                 cmd.Parameters.AddWithValue("op", _formOwnerPhone);
                 cmd.Parameters.AddWithValue("oe", _formOwnerEmail);
@@ -367,7 +383,7 @@ else
                 cmd.Parameters.AddWithValue("exp", _formExpiry);
                 cmd.Parameters.AddWithValue("notes", _formNotes);
                 await cmd.ExecuteNonQueryAsync();
-                _message = $"Gym added. API Key: {apiKey}";
+                _message = $"Gym added. API Key: {apiKey} | Database: {dbName}";
             }
 
             _isError = false;
@@ -401,7 +417,7 @@ else
             var baseDate = _extendCurrentExpiry > DateTime.UtcNow ? _extendCurrentExpiry : DateTime.UtcNow;
             var newExpiry = baseDate.AddMonths(months);
 
-            using var conn = await Db.GetConnectionAsync();
+            using var conn = await GymDb.GetMasterConnectionAsync();
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"UPDATE ""Gyms"" SET ""ExpiresAt"" = @exp, ""IsActive"" = TRUE WHERE ""Id"" = @id", conn);
             cmd.Parameters.AddWithValue("exp", newExpiry);
@@ -424,7 +440,7 @@ else
     {
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            using var conn = await GymDb.GetMasterConnectionAsync();
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"UPDATE ""Gyms"" SET ""IsActive"" = @active WHERE ""Id"" = @id", conn);
             cmd.Parameters.AddWithValue("active", !gym.IsActive);

@@ -2,6 +2,7 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsOwner)
@@ -202,7 +203,8 @@ else
     {
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
 
             using (var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT d.""Id"", COALESCE(d.""Name"",''), COALESCE(dev.""Name"",'')
@@ -243,7 +245,8 @@ else
             var (from, to) = GetDateRange();
             var isAll = _period == "all";
 
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
 
             var dateWhere = isAll ? "" : @" WHERE e.""EventDate"" >= @from AND e.""EventDate"" < @to";
 

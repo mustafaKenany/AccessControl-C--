@@ -2,6 +2,7 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsPlayer)
@@ -385,7 +386,8 @@ else
     {
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT ""Id"", ""FullNameEn"", ""FullNameAr"", COALESCE(""CardNo"",''), COALESCE(""Phone"",''),
                          COALESCE(""SubscriptionType"",''), ""StartDate"", ""EndDate"",
@@ -422,7 +424,8 @@ else
         try
         {
             var threeMonthsAgo = DateTime.UtcNow.AddMonths(-3);
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT ""Id"", ""Type"", COALESCE(""Category"",''), ""Amount"", COALESCE(""Description"",''),
                          ""TransactionDate"", COALESCE(""RecordedBy"",'')
@@ -456,7 +459,8 @@ else
             var weekStart = now.Date.AddDays(-(int)now.DayOfWeek);
             weekStart = DateTime.SpecifyKind(weekStart, DateTimeKind.Utc);
 
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
 
             // Total count (all time)
             using (var cmd = new Npgsql.NpgsqlCommand(
@@ -519,7 +523,8 @@ else
     {
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT ""Timestamp"", ""Action"", COALESCE(""Details"",''), COALESCE(""DetailsAr"",''), COALESCE(""PerformedBy"",'')
                   FROM ""AuditLogs""

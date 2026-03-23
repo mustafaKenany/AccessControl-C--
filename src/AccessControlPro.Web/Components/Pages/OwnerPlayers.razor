@@ -2,6 +2,7 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @inject IConfiguration Config
 @rendermode InteractiveServer
 
@@ -288,7 +289,8 @@ else
         _gymName = Config["GymName"] ?? "HM Gym";
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
             using var cmd = new Npgsql.NpgsqlCommand(@"SELECT ""GymName"" FROM ""AppSettings"" LIMIT 1", conn);
             var result = await cmd.ExecuteScalarAsync();
             if (result != null && result != DBNull.Value && !string.IsNullOrWhiteSpace(result.ToString()))
@@ -314,7 +316,8 @@ else
     {
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
 
             // Build WHERE clause based on filter
             var now = DateTime.UtcNow;

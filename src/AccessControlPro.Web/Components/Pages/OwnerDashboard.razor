@@ -2,6 +2,7 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsOwner)
@@ -254,7 +255,8 @@ else
             var weekFromNow = now.AddDays(7);
             var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
 
             // Player stats including frozen
             using (var cmd = new Npgsql.NpgsqlCommand(@"

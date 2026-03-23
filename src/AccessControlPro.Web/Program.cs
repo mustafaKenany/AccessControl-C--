@@ -16,6 +16,7 @@ var cloudConn = builder.Configuration.GetConnectionString("CloudConnection")
     ?? "Host=localhost;Database=gymcloud;Username=postgres;Password=GymCloud2026";
 
 builder.Services.AddSingleton(new DbHelper(cloudConn));
+builder.Services.AddSingleton(new GymDbHelper(cloudConn));
 builder.Services.AddSingleton<WebAuthService>();
 builder.Services.AddScoped<SessionState>();
 
@@ -62,7 +63,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAntiforgery();
 
 // Sync API — receives data from WPF app via HTTPS
-app.MapPost("/api/sync", async (HttpContext context, DbHelper db) =>
+app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gymDb) =>
 {
     // Verify API key
     var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
@@ -94,7 +95,15 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db) =>
         if (syncData == null)
             return Results.BadRequest("Invalid sync data");
 
-        using var conn = await db.GetConnectionAsync();
+        // Find the gym's database by API key
+        var dbName = await gymDb.GetDatabaseByApiKeyAsync(apiKey ?? "");
+        if (string.IsNullOrEmpty(dbName))
+        {
+            // Fallback for backward compatibility (single gym)
+            dbName = "gymcloud";
+        }
+
+        using var conn = await gymDb.GetGymConnectionAsync(dbName);
         int total = 0;
 
         // Process each table
@@ -129,7 +138,7 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db) =>
         if (syncErrors.Count > 0)
             details += " | Errors: " + string.Join("; ", syncErrors.Take(10));
 
-        // Log sync
+        // Log sync in the gym's database
         try
         {
             using var logCmd = new Npgsql.NpgsqlCommand(
@@ -142,13 +151,14 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db) =>
         }
         catch { }
 
-        // Update gym's LastSyncAt and PlayerCount
+        // Update gym's LastSyncAt and PlayerCount in master database
         try
         {
             var playerCount = syncData.Players?.Count ?? 0;
+            using var masterConn = await gymDb.GetMasterConnectionAsync();
             using var updateCmd = new Npgsql.NpgsqlCommand(
                 @"UPDATE ""Gyms"" SET ""LastSyncAt"" = @ts, ""PlayerCount"" = @pc
-                  WHERE ""ApiKey"" = @key OR ""Id"" = 1", conn);
+                  WHERE ""ApiKey"" = @key OR ""Id"" = 1", masterConn);
             updateCmd.Parameters.AddWithValue("ts", DateTime.UtcNow);
             updateCmd.Parameters.AddWithValue("pc", playerCount);
             updateCmd.Parameters.AddWithValue("key", apiKey ?? "");
@@ -165,7 +175,7 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db) =>
 });
 
 // Pull users API — local app pulls new users from cloud
-app.MapGet("/api/users", async (HttpContext context, DbHelper db) =>
+app.MapGet("/api/users", async (HttpContext context, GymDbHelper gymDb, DbHelper db) =>
 {
     var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
     if (apiKey != app.Configuration["SyncApiKey"] && apiKey != "HMTech-Sync-2026")
@@ -173,7 +183,15 @@ app.MapGet("/api/users", async (HttpContext context, DbHelper db) =>
 
     try
     {
-        using var conn = await db.GetConnectionAsync();
+        // Find the gym's database by API key
+        var dbName = await gymDb.GetDatabaseByApiKeyAsync(apiKey ?? "");
+        if (string.IsNullOrEmpty(dbName))
+        {
+            // Fallback for backward compatibility (single gym)
+            dbName = "gymcloud";
+        }
+
+        using var conn = await gymDb.GetGymConnectionAsync(dbName);
         using var cmd = new Npgsql.NpgsqlCommand(
             @"SELECT ""Id"", ""Username"", ""PasswordHash"", ""DisplayName"", ""Role"", ""IsActive"", ""Permissions""
               FROM ""Users"" ORDER BY ""Id""", conn);

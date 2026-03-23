@@ -2,6 +2,7 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsPlayer)
@@ -138,7 +139,8 @@ else
 
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
 
             // Load door names
             using (var cmd = new Npgsql.NpgsqlCommand(@"SELECT ""Id"", COALESCE(""Name"",'') FROM ""Doors""", conn))
@@ -193,7 +195,8 @@ else
 
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
 
             // Count
             using (var countCmd = new Npgsql.NpgsqlCommand(

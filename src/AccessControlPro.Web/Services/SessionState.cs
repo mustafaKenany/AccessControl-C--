@@ -27,12 +27,14 @@ public class SessionState
     public string DisplayName => GetCurrent()?.DisplayName ?? "";
     public string Role => GetCurrent()?.Role ?? "";
     public int UserId => GetCurrent()?.UserId ?? 0;
+    public string GymDatabase => GetCurrent()?.GymDatabase ?? "";
+    public int GymId => GetCurrent()?.GymId ?? 0;
 
     public bool IsOwner => Role == "Owner" || Role == "Admin";
     public bool IsPlayer => Role == "Player";
     public bool IsSuperAdmin => Role == "SuperAdmin";
 
-    public void Login(AuthResult result)
+    public void Login(AuthResult result, string gymDatabase = "", int gymId = 0)
     {
         var id = Guid.NewGuid().ToString("N");
         var data = new SessionData
@@ -40,7 +42,9 @@ public class SessionState
             IsAuthenticated = result.IsAuthenticated,
             DisplayName = result.DisplayName,
             Role = result.Role,
-            UserId = result.UserId
+            UserId = result.UserId,
+            GymDatabase = gymDatabase,
+            GymId = gymId
         };
         _sessions[id] = data;
         _currentSessionId = id;
@@ -66,5 +70,7 @@ public class SessionState
         public string DisplayName { get; set; } = "";
         public string Role { get; set; } = "";
         public int UserId { get; set; }
+        public string GymDatabase { get; set; } = "";
+        public int GymId { get; set; }
     }
 }

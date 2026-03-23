@@ -1,6 +1,7 @@
 @page "/superadmin/dashboard"
 @layout AccessControlPro.Web.Components.Layout.SuperAdminLayout
 @inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @rendermode InteractiveServer
@@ -140,7 +141,7 @@ else
         _loading = true;
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            using var conn = await GymDb.GetMasterConnectionAsync();
 
             // Gym stats
             using (var cmd = new Npgsql.NpgsqlCommand(

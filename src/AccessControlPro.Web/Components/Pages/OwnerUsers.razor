@@ -2,6 +2,7 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsOwner)
@@ -428,7 +429,8 @@ else
     {
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT ""Id"", ""Username"", COALESCE(""DisplayName"",''), COALESCE(""Role"",'User'),
                          ""IsActive"", COALESCE(""Permissions"",'')
@@ -468,7 +470,8 @@ else
             var hash = BCrypt.Net.BCrypt.HashPassword(_newPassword);
             var permissions = string.Join(",", _newPermissions);
 
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
 
             // Check if username exists
             using (var checkCmd = new Npgsql.NpgsqlCommand(
@@ -540,7 +543,8 @@ else
             var permissions = string.Join(",", _editPermissions);
             var isActive = _editIsActive == "true";
 
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"UPDATE ""Users"" SET ""DisplayName"" = @d, ""Role"" = @r, ""IsActive"" = @a, ""Permissions"" = @p
                   WHERE ""Id"" = @id", conn);
@@ -585,7 +589,8 @@ else
         {
             var hash = BCrypt.Net.BCrypt.HashPassword(_resetPassword);
 
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"UPDATE ""Users"" SET ""PasswordHash"" = @h WHERE ""Id"" = @id", conn);
             cmd.Parameters.AddWithValue("h", hash);

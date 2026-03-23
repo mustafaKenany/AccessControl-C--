@@ -188,9 +188,12 @@ ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""LastSyncAt"" TIMESTAMP NULL;
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""PlayerCount"" INT DEFAULT 0;
 
 -- Seed default gym if none exists
-INSERT INTO ""Gyms"" (""Name"", ""Subdomain"", ""ApiKey"", ""IsActive"", ""ExpiresAt"", ""OwnerName"")
-SELECT 'Default Gym', 'main', 'HMTech-Sync-2026', TRUE, '2027-03-21', 'Admin'
+INSERT INTO ""Gyms"" (""Name"", ""Subdomain"", ""ApiKey"", ""DatabaseName"", ""IsActive"", ""ExpiresAt"", ""OwnerName"")
+SELECT 'Default Gym', 'main', 'HMTech-Sync-2026', 'gymcloud', TRUE, '2027-03-21', 'Admin'
 WHERE NOT EXISTS (SELECT 1 FROM ""Gyms"");
+
+-- Migration: ensure existing gyms have a DatabaseName
+UPDATE ""Gyms"" SET ""DatabaseName"" = 'gymcloud' WHERE ""DatabaseName"" = '' OR ""DatabaseName"" IS NULL;
 ";
         using var cmd = new NpgsqlCommand(sql, conn);
         await cmd.ExecuteNonQueryAsync();

@@ -2,6 +2,7 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsOwner)
@@ -186,7 +187,8 @@ else
             var validTo = new DateTime(_validTo.Year, _validTo.Month, _validTo.Day, 23, 59, 59, DateTimeKind.Utc);
             var now = DateTime.UtcNow;
 
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"INSERT INTO ""QrPasses"" (""Code"", ""PlayerName"", ""MaxUses"", ""UsedCount"", ""ValidFrom"", ""ValidTo"", ""IsActive"", ""CreatedBy"", ""CreatedAt"")
                   VALUES (@code, @name, @max, 0, @from, @to, TRUE, @by, @at)", conn);
@@ -236,7 +238,8 @@ else
     {
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"UPDATE ""QrPasses"" SET ""IsActive"" = FALSE WHERE ""Id"" = @id", conn);
             cmd.Parameters.AddWithValue("id", id);
@@ -250,7 +253,8 @@ else
     {
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT ""Id"", ""Code"", ""PlayerName"", ""MaxUses"", ""UsedCount"", ""ValidTo"", ""IsActive"", ""CreatedAt""
                   FROM ""QrPasses"" ORDER BY ""CreatedAt"" DESC LIMIT 50", conn);

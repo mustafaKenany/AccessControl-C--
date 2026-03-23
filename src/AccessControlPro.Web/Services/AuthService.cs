@@ -7,15 +7,17 @@ namespace AccessControlPro.Web.Services;
 public class WebAuthService
 {
     private readonly DbHelper _db;
+    private readonly GymDbHelper _gymDb;
 
     // Rate limiting: track failed login attempts per identifier
     private static readonly ConcurrentDictionary<string, (int attempts, DateTime lastAttempt)> _loginAttempts = new();
     private const int MaxAttempts = 5;
     private const int BlockMinutes = 15;
 
-    public WebAuthService(DbHelper db)
+    public WebAuthService(DbHelper db, GymDbHelper gymDb)
     {
         _db = db;
+        _gymDb = gymDb;
     }
 
     private bool IsBlocked(string identifier)
@@ -52,39 +54,77 @@ public class WebAuthService
         if (IsBlocked(identifier))
             return AuthResult.Failed("Too many failed attempts. Please try again in 15 minutes.");
 
-        using var conn = await _db.GetConnectionAsync();
-        using var cmd = new NpgsqlCommand(
-            @"SELECT ""Id"", ""Username"", ""PasswordHash"", ""DisplayName"", ""Role""
-              FROM ""Users"" WHERE ""Username"" = @u AND ""IsActive"" = TRUE", conn);
-        cmd.Parameters.AddWithValue("u", username);
+        // Try to find which gym database has this user
+        string gymDatabase = "";
+        int gymId = 0;
+        NpgsqlConnection? conn = null;
 
-        using var reader = await cmd.ExecuteReaderAsync();
-        if (!await reader.ReadAsync())
-        {
-            RecordFailedAttempt(identifier);
-            return AuthResult.Failed("Invalid username or password.");
-        }
-
-        var hash = reader.GetString(2);
         try
         {
-            if (!BCrypt.Net.BCrypt.Verify(password, hash))
+            var found = await _gymDb.FindUserDatabaseAsync(username);
+            if (found.HasValue)
             {
-                RecordFailedAttempt(identifier);
-                return AuthResult.Failed("Invalid username or password.");
+                gymDatabase = found.Value.dbName ?? "";
+                gymId = found.Value.gymId;
+                conn = await _gymDb.GetGymConnectionAsync(gymDatabase);
+            }
+            else
+            {
+                // Fallback: try master database (backward compatibility for single gym)
+                gymDatabase = "gymcloud";
+                conn = await _db.GetConnectionAsync();
             }
         }
         catch
         {
-            RecordFailedAttempt(identifier);
-            return AuthResult.Failed("Invalid username or password.");
+            // Fallback to default connection
+            gymDatabase = "gymcloud";
+            conn = await _db.GetConnectionAsync();
         }
 
-        ClearAttempts(identifier);
-        return AuthResult.Success(
-            reader.IsDBNull(3) ? reader.GetString(1) : reader.GetString(3),
-            reader.IsDBNull(4) ? "Owner" : reader.GetString(4),
-            reader.GetInt32(0));
+        try
+        {
+            using var cmd = new NpgsqlCommand(
+                @"SELECT ""Id"", ""Username"", ""PasswordHash"", ""DisplayName"", ""Role""
+                  FROM ""Users"" WHERE ""Username"" = @u AND ""IsActive"" = TRUE", conn);
+            cmd.Parameters.AddWithValue("u", username);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (!await reader.ReadAsync())
+            {
+                RecordFailedAttempt(identifier);
+                return AuthResult.Failed("Invalid username or password.");
+            }
+
+            var hash = reader.GetString(2);
+            try
+            {
+                if (!BCrypt.Net.BCrypt.Verify(password, hash))
+                {
+                    RecordFailedAttempt(identifier);
+                    return AuthResult.Failed("Invalid username or password.");
+                }
+            }
+            catch
+            {
+                RecordFailedAttempt(identifier);
+                return AuthResult.Failed("Invalid username or password.");
+            }
+
+            ClearAttempts(identifier);
+            var result = AuthResult.Success(
+                reader.IsDBNull(3) ? reader.GetString(1) : reader.GetString(3),
+                reader.IsDBNull(4) ? "Owner" : reader.GetString(4),
+                reader.GetInt32(0));
+            result.GymDatabase = gymDatabase;
+            result.GymId = gymId;
+            return result;
+        }
+        finally
+        {
+            if (conn != null)
+                await conn.DisposeAsync();
+        }
     }
 
     public async Task<AuthResult> PlayerLoginAsync(string phone, string cardLast4)
@@ -96,34 +136,72 @@ public class WebAuthService
         if (IsBlocked(identifier))
             return AuthResult.Failed("Too many failed attempts. Please try again in 15 minutes.");
 
-        using var conn = await _db.GetConnectionAsync();
-        using var cmd = new NpgsqlCommand(
-            @"SELECT ""Id"", ""FullNameEn"", ""FullNameAr"", ""CardNo""
-              FROM ""Players"" WHERE ""Phone"" = @p AND ""IsDeleted"" = FALSE", conn);
-        cmd.Parameters.AddWithValue("p", phone);
+        // Try to find which gym database has this player
+        string gymDatabase = "";
+        int gymId = 0;
+        NpgsqlConnection? conn = null;
 
-        using var reader = await cmd.ExecuteReaderAsync();
-        if (!await reader.ReadAsync())
+        try
         {
-            RecordFailedAttempt(identifier);
-            return AuthResult.Failed("Player not found. Check your phone number.");
+            var found = await _gymDb.FindPlayerDatabaseAsync(phone);
+            if (found.HasValue)
+            {
+                gymDatabase = found.Value.dbName ?? "";
+                gymId = found.Value.gymId;
+                conn = await _gymDb.GetGymConnectionAsync(gymDatabase);
+            }
+            else
+            {
+                // Fallback: try master database (backward compatibility for single gym)
+                gymDatabase = "gymcloud";
+                conn = await _db.GetConnectionAsync();
+            }
+        }
+        catch
+        {
+            // Fallback to default connection
+            gymDatabase = "gymcloud";
+            conn = await _db.GetConnectionAsync();
         }
 
-        var cardNo = reader.IsDBNull(3) ? "" : reader.GetString(3);
-        if (string.IsNullOrEmpty(cardNo) || !cardNo.EndsWith(cardLast4))
+        try
         {
-            RecordFailedAttempt(identifier);
-            return AuthResult.Failed("Invalid card digits.");
+            using var cmd = new NpgsqlCommand(
+                @"SELECT ""Id"", ""FullNameEn"", ""FullNameAr"", ""CardNo""
+                  FROM ""Players"" WHERE ""Phone"" = @p AND ""IsDeleted"" = FALSE", conn);
+            cmd.Parameters.AddWithValue("p", phone);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (!await reader.ReadAsync())
+            {
+                RecordFailedAttempt(identifier);
+                return AuthResult.Failed("Player not found. Check your phone number.");
+            }
+
+            var cardNo = reader.IsDBNull(3) ? "" : reader.GetString(3);
+            if (string.IsNullOrEmpty(cardNo) || !cardNo.EndsWith(cardLast4))
+            {
+                RecordFailedAttempt(identifier);
+                return AuthResult.Failed("Invalid card digits.");
+            }
+
+            var nameEn = reader.IsDBNull(1) ? "" : reader.GetString(1);
+            var nameAr = reader.IsDBNull(2) ? "" : reader.GetString(2);
+
+            ClearAttempts(identifier);
+            var result = AuthResult.Success(
+                !string.IsNullOrEmpty(nameEn) ? nameEn : nameAr,
+                "Player",
+                reader.GetInt32(0));
+            result.GymDatabase = gymDatabase;
+            result.GymId = gymId;
+            return result;
         }
-
-        var nameEn = reader.IsDBNull(1) ? "" : reader.GetString(1);
-        var nameAr = reader.IsDBNull(2) ? "" : reader.GetString(2);
-
-        ClearAttempts(identifier);
-        return AuthResult.Success(
-            !string.IsNullOrEmpty(nameEn) ? nameEn : nameAr,
-            "Player",
-            reader.GetInt32(0));
+        finally
+        {
+            if (conn != null)
+                await conn.DisposeAsync();
+        }
     }
 }
 
@@ -134,6 +212,8 @@ public class AuthResult
     public string Role { get; set; } = "";
     public int UserId { get; set; }
     public string Error { get; set; } = "";
+    public string GymDatabase { get; set; } = "";
+    public int GymId { get; set; }
 
     public static AuthResult Success(string displayName, string role, int userId)
         => new() { IsAuthenticated = true, DisplayName = displayName, Role = role, UserId = userId };

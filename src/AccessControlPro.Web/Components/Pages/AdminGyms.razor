@@ -2,6 +2,7 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.DbHelper Db
+@inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @inject IConfiguration Config
 @rendermode InteractiveServer
 
@@ -109,7 +110,8 @@ else
         // Try to load from AppSettings table
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
             using var cmd = new Npgsql.NpgsqlCommand(@"SELECT ""GymName"" FROM ""AppSettings"" LIMIT 1", conn);
             var result = await cmd.ExecuteScalarAsync();
             if (result != null && result != DBNull.Value && !string.IsNullOrWhiteSpace(result.ToString()))
@@ -117,13 +119,16 @@ else
         }
         catch { }
 
-        // Try to load from Gyms table
+        // Try to load from Gyms table (always from master DB since Gyms table lives there)
         try
         {
-            using var conn = await Db.GetConnectionAsync();
+            using var conn = await GymDb.GetMasterConnectionAsync();
+            var gymIdFilter = Session.GymId > 0 ? @" AND ""Id"" = @gid" : "";
             using var cmd = new Npgsql.NpgsqlCommand(
-                @"SELECT ""Name"", ""Subdomain"", ""ExpiresAt"", ""OwnerName"", ""OwnerPhone"", ""OwnerEmail""
-                  FROM ""Gyms"" WHERE ""IsActive"" = TRUE LIMIT 1", conn);
+                $@"SELECT ""Name"", ""Subdomain"", ""ExpiresAt"", ""OwnerName"", ""OwnerPhone"", ""OwnerEmail""
+                  FROM ""Gyms"" WHERE ""IsActive"" = TRUE{gymIdFilter} LIMIT 1", conn);
+            if (Session.GymId > 0)
+                cmd.Parameters.AddWithValue("gid", Session.GymId);
             using var r = await cmd.ExecuteReaderAsync();
             if (await r.ReadAsync())
             {

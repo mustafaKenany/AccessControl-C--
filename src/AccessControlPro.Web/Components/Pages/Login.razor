@@ -135,7 +135,7 @@
                     return;
                 }
 
-                Session.Login(result);
+                Session.Login(result, result.GymDatabase, result.GymId);
                 _loginSuccess = true;
                 StateHasChanged();
             }
