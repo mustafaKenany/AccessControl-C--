@@ -1,4 +1,4 @@
-@page "/"
+@page "/home"
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 
@@ -6,7 +6,7 @@
     protected override void OnInitialized()
     {
         if (!Session.IsAuthenticated)
-            Nav.NavigateTo("/login");
+            Nav.NavigateTo("/");
         else if (Session.IsOwner)
             Nav.NavigateTo("/dashboard");
         else
