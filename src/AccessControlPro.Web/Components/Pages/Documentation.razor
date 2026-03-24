@@ -1,0 +1,335 @@
+@page "/docs"
+@layout AccessControlPro.Web.Components.Layout.LandingLayout
+
+<div class="docs-page @(isArabic ? "docs-rtl" : "")">
+    <!-- Language Toggle -->
+    <div class="docs-lang-toggle">
+        <button class="docs-lang-btn @(!isArabic ? "active" : "")" @onclick="() => isArabic = false">English</button>
+        <button class="docs-lang-btn @(isArabic ? "active" : "")" @onclick="() => isArabic = true">العربية</button>
+    </div>
+
+    <div class="docs-layout">
+        <!-- Sidebar TOC -->
+        <nav class="docs-sidebar">
+            <h3 class="docs-sidebar-title">@(isArabic ? "المحتويات" : "Contents")</h3>
+            <ul class="docs-toc">
+                <li><a href="#getting-started">@(isArabic ? "البدء" : "Getting Started")</a></li>
+                <li><a href="#player-management">@(isArabic ? "إدارة اللاعبين" : "Player Management")</a></li>
+                <li><a href="#device-management">@(isArabic ? "إدارة الأجهزة" : "Device Management")</a></li>
+                <li><a href="#door-management">@(isArabic ? "إدارة الأبواب" : "Door Management")</a></li>
+                <li><a href="#realtime-monitor">@(isArabic ? "المراقبة المباشرة" : "Real-Time Monitor")</a></li>
+                <li><a href="#finance">@(isArabic ? "المالية" : "Finance")</a></li>
+                <li><a href="#cloud-portal">@(isArabic ? "البوابة السحابية" : "Cloud Portal")</a></li>
+                <li><a href="#admin-panel">@(isArabic ? "لوحة الإدارة" : "Admin Panel")</a></li>
+                <li><a href="#troubleshooting">@(isArabic ? "استكشاف الأخطاء" : "Troubleshooting")</a></li>
+            </ul>
+            <div class="docs-sidebar-contact">
+                <a href="https://wa.me/9647812573845?text=Hi%2C%20I%20need%20help%20with%20HM-GymManagement" target="_blank" class="docs-help-btn">
+                    <i class="fab fa-whatsapp"></i> @(isArabic ? "تواصل معنا" : "Get Help")
+                </a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="docs-content">
+            <h1 class="docs-title">
+                @if (isArabic)
+                {
+                    <span>توثيق <span class="gradient-text">HM-GymManagement</span></span>
+                }
+                else
+                {
+                    <span><span class="gradient-text">HM-GymManagement</span> Documentation</span>
+                }
+            </h1>
+            <p class="docs-subtitle">
+                @(isArabic ? "الدليل الكامل لنظام إدارة النوادي الرياضية والتحكم بالوصول" : "Complete guide for the gym management and access control system")
+            </p>
+
+            <!-- 1. Getting Started -->
+            <section id="getting-started" class="docs-section">
+                <h2><i class="fas fa-rocket"></i> @(isArabic ? "البدء" : "Getting Started")</h2>
+
+                <h3>@(isArabic ? "متطلبات النظام" : "System Requirements")</h3>
+                <div class="docs-table-wrap">
+                    <table class="docs-table">
+                        <thead>
+                            <tr>
+                                <th>@(isArabic ? "المكون" : "Component")</th>
+                                <th>@(isArabic ? "الحد الأدنى" : "Minimum")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>@(isArabic ? "نظام التشغيل" : "Operating System")</td><td>Windows 10+</td></tr>
+                            <tr><td>@(isArabic ? "قاعدة البيانات" : "Database")</td><td>SQL Server 2019+</td></tr>
+                            <tr><td>@(isArabic ? "بيئة التشغيل" : "Runtime")</td><td>.NET 8 Desktop Runtime</td></tr>
+                            <tr><td>@(isArabic ? "الذاكرة" : "RAM")</td><td>4 GB</td></tr>
+                            <tr><td>@(isArabic ? "مساحة القرص" : "Disk Space")</td><td>500 MB</td></tr>
+                            <tr><td>@(isArabic ? "الشبكة" : "Network")</td><td>@(isArabic ? "شبكة محلية للأجهزة" : "LAN for access control devices")</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>@(isArabic ? "خطوات التثبيت" : "Installation Steps")</h3>
+                <ol class="docs-steps">
+                    <li>@(isArabic ? "قم بتنزيل ملف التثبيت من الرابط المقدم" : "Download the installer from the provided link")</li>
+                    <li>@(isArabic ? "شغّل ملف التثبيت كمسؤول (Run as Administrator)" : "Run the installer as Administrator")</li>
+                    <li>@(isArabic ? "اتبع معالج الإعداد — اختر مجلد التثبيت" : "Follow the setup wizard — choose installation folder")</li>
+                    <li>@(isArabic ? "سيقوم المثبت بتثبيت SQL Server تلقائياً إذا لم يكن موجوداً" : "The installer will automatically install SQL Server if not present")</li>
+                    <li>@(isArabic ? "عند أول تشغيل، أدخل مفتاح الترخيص" : "On first launch, enter the license key provided to you")</li>
+                </ol>
+
+                <h3>@(isArabic ? "معالج الإعداد الأولي" : "Setup Wizard")</h3>
+                <p>@(isArabic ? "عند أول تشغيل، سيظهر معالج الإعداد لتكوين:" : "On first launch, the setup wizard will guide you through:")</p>
+                <ul class="docs-list">
+                    <li>@(isArabic ? "اسم النادي الرياضي واللغة الافتراضية" : "Gym name and default language")</li>
+                    <li>@(isArabic ? "إعداد اتصال قاعدة البيانات" : "Database connection setup")</li>
+                    <li>@(isArabic ? "إنشاء حساب المالك الأول" : "Creating the first owner account")</li>
+                    <li>@(isArabic ? "إعدادات الاشتراك والعملة" : "Subscription and currency settings")</li>
+                </ul>
+
+                <h3>@(isArabic ? "تسجيل الدخول الأول" : "First Login")</h3>
+                <p>@(isArabic ? "استخدم بيانات حساب المالك التي أنشأتها في معالج الإعداد. يمكنك إنشاء مستخدمين إضافيين من لوحة الإدارة." : "Use the owner credentials you created during setup wizard. You can create additional users from the Admin Panel.")</p>
+            </section>
+
+            <!-- 2. Player Management -->
+            <section id="player-management" class="docs-section">
+                <h2><i class="fas fa-users"></i> @(isArabic ? "إدارة اللاعبين" : "Player Management")</h2>
+
+                <h3>@(isArabic ? "إضافة لاعب جديد" : "Add New Player")</h3>
+                <p>@(isArabic ? "اذهب إلى صفحة اللاعبين واضغط على \"إضافة لاعب\". يجب إدخال اسم واحد على الأقل (عربي أو إنجليزي)." : "Navigate to the Players page and click \"Add Player\". At least one name is required (English or Arabic).")</p>
+                <ul class="docs-list">
+                    <li>@(isArabic ? "الاسم (عربي أو إنجليزي — أحدهما مطلوب)" : "Name (Arabic or English — one is required)")</li>
+                    <li>@(isArabic ? "رقم الهاتف، العمر، الطول، الوزن" : "Phone number, age, height, weight")</li>
+                    <li>@(isArabic ? "نوع الاشتراك ومدته" : "Subscription type and duration")</li>
+                    <li>@(isArabic ? "صورة اللاعب (اختياري)" : "Player photo (optional)")</li>
+                </ul>
+
+                <h3>@(isArabic ? "تعديل بيانات اللاعب" : "Edit Player Info")</h3>
+                <p>@(isArabic ? "انقر على اللاعب في القائمة ثم اضغط \"تعديل\". يمكنك تحديث جميع الحقول بما فيها الصورة والملاحظات." : "Click on a player in the list, then press \"Edit\". You can update all fields including photo and notes.")</p>
+
+                <h3>@(isArabic ? "تعيين بطاقة وصول" : "Assign Access Card")</h3>
+                <p>@(isArabic ? "حدد اللاعب واضغط \"تعيين بطاقة\". مرر البطاقة على القارئ أو أدخل رقمها يدوياً. سيتم مزامنة البطاقة مع جميع الأجهزة المتصلة." : "Select the player and click \"Assign Card\". Swipe the card on the reader or enter the card number manually. The card will be synced to all connected devices.")</p>
+
+                <h3>@(isArabic ? "تجديد الاشتراك" : "Renew Subscription")</h3>
+                <p>@(isArabic ? "حدد اللاعب واضغط \"تجديد\". اختر نوع الاشتراك الجديد والمدة. يتم تحديث صلاحية البطاقة تلقائياً على الأجهزة." : "Select the player and click \"Renew\". Choose the new subscription type and duration. Card validity is automatically updated on devices.")</p>
+
+                <h3>@(isArabic ? "تجميد / إلغاء التجميد" : "Freeze / Unfreeze")</h3>
+                <p>@(isArabic ? "التجميد يوقف الاشتراك مؤقتاً مع الحفاظ على الأيام المتبقية. إلغاء التجميد يستأنف الاشتراك من حيث توقف." : "Freezing pauses the subscription while preserving remaining days. Unfreezing resumes the subscription from where it stopped.")</p>
+
+                <h3>@(isArabic ? "حذف لاعب" : "Delete Player")</h3>
+                <p>@(isArabic ? "الحذف العادي ينقل اللاعب إلى سلة المحذوفات ويمكن استعادته. لا يمكن حذف لاعب لديه معاملات مالية مرتبطة." : "Soft delete moves the player to the deleted list and can be restored. Players with linked financial transactions cannot be deleted.")</p>
+
+                <h3>@(isArabic ? "عرض ملف اللاعب" : "View Player Profile")</h3>
+                <p>@(isArabic ? "انقر نقراً مزدوجاً على اللاعب لعرض الملف الكامل: البيانات الشخصية، سجل الزيارات، المعاملات المالية، وحالة البطاقة." : "Double-click a player to view the full profile: personal info, visit history, financial transactions, and card status.")</p>
+            </section>
+
+            <!-- 3. Device Management -->
+            <section id="device-management" class="docs-section">
+                <h2><i class="fas fa-hdd"></i> @(isArabic ? "إدارة الأجهزة" : "Device Management")</h2>
+
+                <h3>@(isArabic ? "البحث عن أجهزة في الشبكة" : "Search Network for Devices")</h3>
+                <p>@(isArabic ? "اذهب إلى صفحة الأجهزة واضغط \"بحث\". سيقوم النظام بفحص الشبكة المحلية والعثور على جميع أجهزة التحكم المتوافقة." : "Go to the Devices page and click \"Search\". The system will scan the local network and find all compatible access control devices.")</p>
+
+                <h3>@(isArabic ? "إضافة جهاز" : "Add Device")</h3>
+                <p>@(isArabic ? "أدخل عنوان IP الجهاز والمنفذ واسم المستخدم وكلمة المرور. يمكنك أيضاً إضافته تلقائياً من نتائج البحث." : "Enter the device IP address, port, username, and password. You can also add it automatically from search results.")</p>
+
+                <h3>@(isArabic ? "الاتصال والاختبار" : "Connect and Test")</h3>
+                <p>@(isArabic ? "بعد إضافة الجهاز، اضغط \"اتصال\" للتحقق. مؤشر الحالة الأخضر يعني أن الجهاز متصل ويعمل." : "After adding the device, press \"Connect\" to verify. A green status indicator means the device is connected and working.")</p>
+
+                <h3>@(isArabic ? "مزامنة الوقت" : "Sync Time")</h3>
+                <p>@(isArabic ? "اضغط \"مزامنة الوقت\" لضبط ساعة الجهاز مع وقت الكمبيوتر. مهم لدقة سجلات الدخول والخروج." : "Press \"Sync Time\" to synchronize the device clock with the computer time. Important for accurate entry/exit logs.")</p>
+
+                <h3>@(isArabic ? "إعادة ضبط المصنع" : "Factory Reset")</h3>
+                <div class="docs-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    @(isArabic ? "تحذير: إعادة ضبط المصنع ستحذف جميع البطاقات والإعدادات من الجهاز. ستحتاج إلى إعادة مزامنة جميع البطاقات." : "Warning: Factory reset will delete all cards and settings from the device. You will need to re-sync all cards.")
+                </div>
+
+                <h3>@(isArabic ? "وضع الجهاز الفردي مقابل المتعدد" : "Single vs Multi Device Mode")</h3>
+                <p>@(isArabic ? "الوضع الفردي: جهاز واحد لباب واحد. الوضع المتعدد: عدة أجهزة مرتبطة ببعضها، والعمليات تتم على جميعها في وقت واحد." : "Single mode: one device per door. Multi mode: multiple devices linked together, operations execute on all simultaneously.")</p>
+            </section>
+
+            <!-- 4. Door Management -->
+            <section id="door-management" class="docs-section">
+                <h2><i class="fas fa-door-open"></i> @(isArabic ? "إدارة الأبواب" : "Door Management")</h2>
+
+                <h3>@(isArabic ? "فتح / إغلاق الأبواب" : "Open / Close Doors")</h3>
+                <p>@(isArabic ? "يمكنك فتح أو إغلاق أي باب عن بُعد من لوحة التحكم. مفيد للزوار أو حالات الطوارئ." : "You can remotely open or close any door from the control panel. Useful for visitors or emergency situations.")</p>
+
+                <h3>@(isArabic ? "تعيين وقت التأخير" : "Set Delay Time")</h3>
+                <p>@(isArabic ? "حدد المدة التي يبقى فيها الباب مفتوحاً بعد تمرير البطاقة (بالثواني). الافتراضي 5 ثوانٍ." : "Set how long the door stays open after a card swipe (in seconds). Default is 5 seconds.")</p>
+
+                <h3>@(isArabic ? "تعيين كلمة مرور" : "Set Password")</h3>
+                <p>@(isArabic ? "يمكنك تعيين كلمة مرور رقمية للباب كبديل للبطاقة. مفيد للموظفين أو حالات فقدان البطاقة." : "You can set a numeric password for the door as an alternative to card. Useful for staff or lost card situations.")</p>
+
+                <h3>@(isArabic ? "تعيين جدول (ساعات العمل)" : "Set Schedule (Working Hours)")</h3>
+                <p>@(isArabic ? "حدد ساعات العمل لكل باب. خارج ساعات العمل، لن تعمل البطاقات إلا للمستخدمين المصرح لهم." : "Define working hours for each door. Outside working hours, cards will not work except for authorized users.")</p>
+
+                <h3>@(isArabic ? "مراقبة حالة الباب" : "Door Status Monitoring")</h3>
+                <p>@(isArabic ? "شاهد حالة جميع الأبواب في الوقت الفعلي: مفتوح، مغلق، أو غير متصل." : "View the real-time status of all doors: open, closed, or disconnected.")</p>
+            </section>
+
+            <!-- 5. Real-Time Monitor -->
+            <section id="realtime-monitor" class="docs-section">
+                <h2><i class="fas fa-desktop"></i> @(isArabic ? "المراقبة المباشرة" : "Real-Time Monitor")</h2>
+
+                <h3>@(isArabic ? "بدء / إيقاف المراقبة" : "Start / Stop Monitoring")</h3>
+                <p>@(isArabic ? "اضغط \"بدء المراقبة\" لتتبع جميع أحداث الدخول والخروج في الوقت الفعلي. سيظهر اسم اللاعب وصورته وحالة بطاقته." : "Press \"Start Monitoring\" to track all entry/exit events in real time. The player's name, photo, and card status will be displayed.")</p>
+
+                <h3>@(isArabic ? "عرض حالة البطاقة" : "Card Status Display")</h3>
+                <div class="docs-table-wrap">
+                    <table class="docs-table">
+                        <thead>
+                            <tr>
+                                <th>@(isArabic ? "الحالة" : "Status")</th>
+                                <th>@(isArabic ? "اللون" : "Color")</th>
+                                <th>@(isArabic ? "المعنى" : "Meaning")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>@(isArabic ? "نشط" : "Active")</td><td class="docs-badge docs-badge-green">@(isArabic ? "أخضر" : "Green")</td><td>@(isArabic ? "الاشتراك ساري المفعول" : "Subscription is valid")</td></tr>
+                            <tr><td>@(isArabic ? "منتهي" : "Expired")</td><td class="docs-badge docs-badge-red">@(isArabic ? "أحمر" : "Red")</td><td>@(isArabic ? "الاشتراك منتهي الصلاحية" : "Subscription has expired")</td></tr>
+                            <tr><td>@(isArabic ? "مجمد" : "Frozen")</td><td class="docs-badge docs-badge-blue">@(isArabic ? "أزرق" : "Blue")</td><td>@(isArabic ? "الاشتراك موقف مؤقتاً" : "Subscription is temporarily paused")</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>@(isArabic ? "إعداد شاشة العرض (بروجكتر)" : "Projector Display Setup")</h3>
+                <p>@(isArabic ? "يمكنك توصيل شاشة عرض أو بروجكتر لعرض أحداث الدخول على شاشة كبيرة عند مدخل النادي. افتح نافذة المراقبة على الشاشة الثانية." : "You can connect a display or projector to show entry events on a large screen at the gym entrance. Open the monitor window on the second screen.")</p>
+
+                <h3>@(isArabic ? "سلوك إعادة التشغيل التلقائي" : "Auto-Restart Behavior")</h3>
+                <p>@(isArabic ? "في حالة انقطاع الاتصال بالجهاز، ستحاول المراقبة المباشرة إعادة الاتصال تلقائياً كل 30 ثانية." : "If the device connection drops, the real-time monitor will automatically attempt to reconnect every 30 seconds.")</p>
+            </section>
+
+            <!-- 6. Finance -->
+            <section id="finance" class="docs-section">
+                <h2><i class="fas fa-wallet"></i> @(isArabic ? "المالية" : "Finance")</h2>
+
+                <h3>@(isArabic ? "عرض الإيرادات والمصروفات" : "View Revenue and Expenses")</h3>
+                <p>@(isArabic ? "صفحة المالية تعرض ملخصاً شاملاً: إجمالي الإيرادات، المصروفات، صافي الربح، والأرصدة المعلقة." : "The Finance page shows a comprehensive summary: total revenue, expenses, net profit, and outstanding balances.")</p>
+
+                <h3>@(isArabic ? "إضافة دخل / مصروف" : "Add Income / Expense")</h3>
+                <p>@(isArabic ? "اضغط \"إضافة معاملة\" واختر النوع (دخل أو مصروف). أدخل المبلغ والفئة والوصف." : "Press \"Add Transaction\" and choose the type (income or expense). Enter the amount, category, and description.")</p>
+
+                <h3>@(isArabic ? "الأرصدة المعلقة" : "Outstanding Balances")</h3>
+                <p>@(isArabic ? "يعرض النظام جميع اللاعبين الذين لديهم مبالغ مستحقة لم تُسدد بعد. يمكنك تصفية القائمة وطباعتها." : "The system shows all players with unpaid due amounts. You can filter and print the list.")</p>
+
+                <h3>@(isArabic ? "تتبع التدفق النقدي" : "Cash Flow Tracking")</h3>
+                <p>@(isArabic ? "تتبع حركة الأموال اليومية والشهرية. تقارير مفصلة مع رسوم بيانية لتحليل الأداء المالي." : "Track daily and monthly money flow. Detailed reports with charts for financial performance analysis.")</p>
+            </section>
+
+            <!-- 7. Cloud Portal -->
+            <section id="cloud-portal" class="docs-section">
+                <h2><i class="fas fa-cloud"></i> @(isArabic ? "البوابة السحابية" : "Cloud Portal")</h2>
+
+                <h3>@(isArabic ? "إعداد المزامنة السحابية" : "Cloud Sync Setup")</h3>
+                <p>@(isArabic ? "من إعدادات التطبيق، أدخل مفتاح المزامنة السحابية المقدم مع اشتراك Pro. سيقوم النظام بمزامنة البيانات تلقائياً." : "From app settings, enter the cloud sync key provided with your Pro subscription. The system will automatically sync data.")</p>
+
+                <h3>@(isArabic ? "لوحة تحكم المالك" : "Owner Dashboard")</h3>
+                <p>@(isArabic ? "ادخل إلى البوابة السحابية عبر المتصفح لمتابعة ناديك من أي مكان: إحصائيات، لاعبين، أحداث، مالية." : "Access the cloud portal via browser to monitor your gym from anywhere: stats, players, events, finance.")</p>
+
+                <h3>@(isArabic ? "بوابة اللاعب (تسجيل الدخول بالهاتف + البطاقة)" : "Player Portal (Phone + Card Login)")</h3>
+                <p>@(isArabic ? "يمكن للاعبين تسجيل الدخول برقم الهاتف ورقم البطاقة لعرض اشتراكهم وزياراتهم والأيام المتبقية." : "Players can log in with their phone number and card number to view their subscription, visits, and remaining days.")</p>
+
+                <h3>@(isArabic ? "تصريح ضيف QR" : "QR Guest Pass")</h3>
+                <p>@(isArabic ? "أنشئ تصاريح مؤقتة للضيوف برمز QR. يمكن مسحه عند الباب للسماح بالدخول لمرة واحدة." : "Create temporary guest passes with QR codes. Can be scanned at the door for one-time entry.")</p>
+
+                <h3>@(isArabic ? "مشاركة عبر واتساب" : "WhatsApp Sharing")</h3>
+                <p>@(isArabic ? "شارك بيانات اللاعب أو تصريح الضيف مباشرة عبر واتساب من خلال الضغط على زر المشاركة." : "Share player details or guest pass directly via WhatsApp by pressing the share button.")</p>
+
+                <h3>@(isArabic ? "إدارة المستخدمين" : "User Management")</h3>
+                <p>@(isArabic ? "أنشئ حسابات لموظفيك مع صلاحيات محددة. يمكنك التحكم بمن يستطيع الوصول للبوابة السحابية." : "Create accounts for your staff with specific permissions. Control who can access the cloud portal.")</p>
+            </section>
+
+            <!-- 8. Admin Panel -->
+            <section id="admin-panel" class="docs-section">
+                <h2><i class="fas fa-cog"></i> @(isArabic ? "لوحة الإدارة" : "Admin Panel")</h2>
+
+                <h3>@(isArabic ? "إدارة المستخدمين (33 صلاحية)" : "User Management (33 Permissions)")</h3>
+                <p>@(isArabic ? "نظام صلاحيات متقدم مع 33 إذناً مختلفاً. أنشئ أدواراً مخصصة (موظف استقبال، مدير، محاسب) مع صلاحيات محددة لكل دور." : "Advanced permission system with 33 different permissions. Create custom roles (receptionist, manager, accountant) with specific permissions for each role.")</p>
+
+                <h3>@(isArabic ? "الفئات والمنتجات" : "Categories and Products")</h3>
+                <p>@(isArabic ? "أضف أنواع الاشتراكات والمنتجات المختلفة. حدد الأسعار والمدد لكل نوع." : "Add subscription types and different products. Set prices and durations for each type.")</p>
+
+                <h3>@(isArabic ? "الموردين وأوامر الشراء" : "Suppliers and Purchase Orders")</h3>
+                <p>@(isArabic ? "تتبع الموردين وأوامر الشراء للمكملات والمعدات. سجل كامل للمشتريات والمدفوعات." : "Track suppliers and purchase orders for supplements and equipment. Complete record of purchases and payments.")</p>
+
+                <h3>@(isArabic ? "التقارير والنسخ الاحتياطي" : "Reports and Backup")</h3>
+                <p>@(isArabic ? "تقارير شاملة قابلة للتصدير. نسخ احتياطي تلقائي يومي لقاعدة البيانات مع إمكانية الاستعادة." : "Comprehensive exportable reports. Automatic daily database backup with restore capability.")</p>
+            </section>
+
+            <!-- 9. Troubleshooting -->
+            <section id="troubleshooting" class="docs-section">
+                <h2><i class="fas fa-tools"></i> @(isArabic ? "استكشاف الأخطاء" : "Troubleshooting")</h2>
+
+                <div class="docs-trouble-item">
+                    <h3>@(isArabic ? "التطبيق لا يعمل" : "App Won't Start")</h3>
+                    <p>@(isArabic ? "تحقق من ملف السجل:" : "Check the log file:")</p>
+                    <code class="docs-code">Logs/startup_log.txt</code>
+                    <p>@(isArabic ? "تأكد من تثبيت .NET 8 Runtime وأن خدمة SQL Server تعمل." : "Make sure .NET 8 Runtime is installed and SQL Server service is running.")</p>
+                </div>
+
+                <div class="docs-trouble-item">
+                    <h3>@(isArabic ? "البطاقة لا تعمل" : "Card Not Working")</h3>
+                    <p>@(isArabic ? "تحقق من ملف السجل:" : "Check the log file:")</p>
+                    <code class="docs-code">Logs/sdk_log.txt</code>
+                    <ul class="docs-list">
+                        <li>@(isArabic ? "تأكد أن البطاقة مُعيّنة للاعب" : "Verify the card is assigned to a player")</li>
+                        <li>@(isArabic ? "تأكد أن الاشتراك لم ينتهِ" : "Verify the subscription hasn't expired")</li>
+                        <li>@(isArabic ? "أعد مزامنة البطاقة مع الجهاز" : "Re-sync the card to the device")</li>
+                    </ul>
+                </div>
+
+                <div class="docs-trouble-item">
+                    <h3>@(isArabic ? "فشل المزامنة السحابية" : "Cloud Sync Failing")</h3>
+                    <p>@(isArabic ? "تحقق من ملف السجل:" : "Check the log file:")</p>
+                    <code class="docs-code">Logs/cloud_sync_log.txt</code>
+                    <ul class="docs-list">
+                        <li>@(isArabic ? "تأكد من اتصال الإنترنت" : "Check internet connection")</li>
+                        <li>@(isArabic ? "تحقق من صلاحية مفتاح المزامنة" : "Verify the sync key is valid")</li>
+                        <li>@(isArabic ? "تأكد أن اشتراك Pro نشط" : "Ensure Pro subscription is active")</li>
+                    </ul>
+                </div>
+
+                <div class="docs-trouble-item">
+                    <h3>@(isArabic ? "الجهاز غير موجود" : "Device Not Found")</h3>
+                    <ul class="docs-list">
+                        <li>@(isArabic ? "تأكد أن الجهاز والكمبيوتر على نفس الشبكة المحلية" : "Ensure device and computer are on the same LAN")</li>
+                        <li>@(isArabic ? "تحقق من كابل الشبكة ومؤشرات LED" : "Check network cable and LED indicators")</li>
+                        <li>@(isArabic ? "جرب إعادة تشغيل الجهاز" : "Try restarting the device")</li>
+                        <li>@(isArabic ? "تحقق من عنوان IP الجهاز" : "Verify device IP address")</li>
+                    </ul>
+                </div>
+
+                <div class="docs-trouble-item">
+                    <h3>@(isArabic ? "تأخير المراقبة المباشرة" : "Real-Time Monitor Delay")</h3>
+                    <p>@(isArabic ? "المراقبة المباشرة تعيد الاتصال تلقائياً كل 30 ثانية في حالة الانقطاع. إذا استمر التأخير:" : "The real-time monitor auto-restarts every 30 seconds on disconnect. If delay persists:")</p>
+                    <ul class="docs-list">
+                        <li>@(isArabic ? "أوقف المراقبة وأعد تشغيلها" : "Stop and restart the monitor")</li>
+                        <li>@(isArabic ? "تحقق من اتصال الجهاز" : "Check device connectivity")</li>
+                        <li>@(isArabic ? "أعد تشغيل التطبيق" : "Restart the application")</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Help Section -->
+            <section class="docs-section docs-help-section">
+                <h2><i class="fas fa-headset"></i> @(isArabic ? "تحتاج مساعدة؟" : "Need Help?")</h2>
+                <p>@(isArabic ? "تواصل مع فريق الدعم عبر واتساب أو البريد الإلكتروني" : "Contact our support team via WhatsApp or email")</p>
+                <div class="docs-help-buttons">
+                    <a href="https://wa.me/9647812573845?text=Hi%2C%20I%20need%20help%20with%20HM-GymManagement" target="_blank" class="docs-help-wa">
+                        <i class="fab fa-whatsapp"></i> @(isArabic ? "واتساب" : "WhatsApp")
+                    </a>
+                    <a href="mailto:mustafa.kenany2022@gmail.com" class="docs-help-email">
+                        <i class="fas fa-envelope"></i> @(isArabic ? "البريد الإلكتروني" : "Email")
+                    </a>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+@code {
+    private bool isArabic = false;
+}
