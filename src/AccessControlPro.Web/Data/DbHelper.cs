@@ -221,10 +221,11 @@ CREATE TABLE IF NOT EXISTS ""PosShifts"" (
 CREATE TABLE IF NOT EXISTS ""FreezeHistories"" (
     ""Id"" SERIAL PRIMARY KEY,
     ""EmployeeId"" INT DEFAULT 0,
-    ""FreezeStartDate"" TIMESTAMP NULL,
-    ""FreezeEndDate"" TIMESTAMP NULL,
+    ""FreezeStart"" TIMESTAMP NULL,
+    ""FreezeEnd"" TIMESTAMP NULL,
+    ""FreezeDays"" INT DEFAULT 0,
     ""Reason"" VARCHAR(500) DEFAULT '',
-    ""FrozenBy"" VARCHAR(100) DEFAULT ''
+    ""CreatedAt"" TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS ""Products"" (
@@ -232,18 +233,21 @@ CREATE TABLE IF NOT EXISTS ""Products"" (
     ""Name"" VARCHAR(200) DEFAULT '',
     ""NameAr"" VARCHAR(200) DEFAULT '',
     ""Price"" DECIMAL(18,2) DEFAULT 0,
-    ""Cost"" DECIMAL(18,2) DEFAULT 0,
     ""Stock"" INT DEFAULT 0,
     ""Barcode"" VARCHAR(100) DEFAULT '',
-    ""CategoryId"" INT DEFAULT 0,
-    ""IsActive"" BOOLEAN DEFAULT TRUE
+    ""Category"" VARCHAR(200) DEFAULT '',
+    ""IsActive"" BOOLEAN DEFAULT TRUE,
+    ""CreatedAt"" TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS ""TimeGroups"" (
     ""Id"" SERIAL PRIMARY KEY,
-    ""Name"" VARCHAR(200) DEFAULT '',
+    ""NameEn"" VARCHAR(200) DEFAULT '',
     ""NameAr"" VARCHAR(200) DEFAULT '',
-    ""Description"" TEXT DEFAULT ''
+    ""HardwareIndex"" INT DEFAULT 1,
+    ""IsDefault"" BOOLEAN DEFAULT FALSE,
+    ""ScheduleJson"" TEXT DEFAULT '{}',
+    ""CreatedAt"" TIMESTAMP DEFAULT NOW()
 );
 
 -- Performance indexes

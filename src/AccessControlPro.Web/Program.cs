@@ -65,9 +65,15 @@ app.UseAntiforgery();
 // Sync API — receives data from WPF app via HTTPS
 app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gymDb) =>
 {
-    // Verify API key
+    // Verify API key — accept config key, default key, OR any valid gym key
     var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
-    if (apiKey != app.Configuration["SyncApiKey"] && apiKey != "HMTech-Sync-2026")
+    var isValidKey = apiKey == app.Configuration["SyncApiKey"] || apiKey == "HMTech-Sync-2026";
+    if (!isValidKey && !string.IsNullOrEmpty(apiKey))
+    {
+        var gymDb2 = await gymDb.GetDatabaseByApiKeyAsync(apiKey);
+        isValidKey = !string.IsNullOrEmpty(gymDb2);
+    }
+    if (!isValidKey)
     {
         return Results.Unauthorized();
     }
@@ -190,7 +196,10 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
 app.MapGet("/api/users", async (HttpContext context, GymDbHelper gymDb, DbHelper db) =>
 {
     var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
-    if (apiKey != app.Configuration["SyncApiKey"] && apiKey != "HMTech-Sync-2026")
+    var isValid = apiKey == app.Configuration["SyncApiKey"] || apiKey == "HMTech-Sync-2026";
+    if (!isValid && !string.IsNullOrEmpty(apiKey))
+        isValid = !string.IsNullOrEmpty(await gymDb.GetDatabaseByApiKeyAsync(apiKey));
+    if (!isValid)
         return Results.Unauthorized();
 
     try
@@ -236,7 +245,10 @@ app.MapGet("/api/users", async (HttpContext context, GymDbHelper gymDb, DbHelper
 app.MapGet("/api/qr-pool", async (HttpContext context, GymDbHelper gymDb) =>
 {
     var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
-    if (apiKey != app.Configuration["SyncApiKey"] && apiKey != "HMTech-Sync-2026")
+    var isValid = apiKey == app.Configuration["SyncApiKey"] || apiKey == "HMTech-Sync-2026";
+    if (!isValid && !string.IsNullOrEmpty(apiKey))
+        isValid = !string.IsNullOrEmpty(await gymDb.GetDatabaseByApiKeyAsync(apiKey));
+    if (!isValid)
         return Results.Unauthorized();
 
     try

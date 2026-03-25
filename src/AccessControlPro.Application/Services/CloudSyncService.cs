@@ -118,13 +118,13 @@ public class CloudSyncService : ICloudSyncService
                 "TotalSales, TotalCashSales, TotalCardSales, Variance, Status FROM PosShifts");
 
             payload["freezeHistories"] = await ReadTableAsync(local,
-                "SELECT Id, EmployeeId, FreezeStartDate, FreezeEndDate, Reason, FrozenBy FROM FreezeHistories");
+                "SELECT Id, EmployeeId, FreezeStart, FreezeEnd, FreezeDays, Reason, CreatedAt FROM FreezeHistories");
 
             payload["products"] = await ReadTableAsync(local,
-                "SELECT Id, Name, NameAr, Price, Cost, Stock, Barcode, CategoryId, IsActive FROM Products");
+                "SELECT Id, Name, NameAr, Price, Stock, Barcode, Category, IsActive, CreatedAt FROM Products");
 
             payload["timeGroups"] = await ReadTableAsync(local,
-                "SELECT Id, Name, NameAr, Description FROM TimeGroups");
+                "SELECT Id, NameEn, NameAr, HardwareIndex, IsDefault, ScheduleJson, CreatedAt FROM TimeGroups");
 
             // Log table counts
             foreach (var kvp in payload)
