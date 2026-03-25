@@ -5,6 +5,8 @@
 @inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @rendermode InteractiveServer
 
+@* TODO: Currently checks Session.IsOwner only. When granular cloud permissions are added,
+   enforce AppPermission checks per page (e.g., AdminManageUsers for this page). *@
 @if (!Session.IsAuthenticated || !Session.IsOwner)
 {
     <p>Redirecting...</p>
@@ -340,13 +342,17 @@ else
     private int _resetPasswordUserId;
     private string _resetPassword = "";
 
-    // Exact same permissions as local WPF app (AppPermission.cs)
+    // Exact same permissions as local WPF app (AppPermission.cs) — all 46 permissions across all groups
     private readonly (string groupEn, string groupAr, (string key, string en, string ar)[] perms)[] _permissionGroups =
     [
         ("App Access", "الوصول للتطبيقات", [
             ("AccessMainApp", "Main App", "التطبيق الرئيسي"),
             ("AccessPOS", "POS App", "نقطة البيع"),
-            ("AccessAdmin", "Admin Panel", "لوحة الإدارة")
+            ("AccessAdmin", "Admin Panel", "لوحة الإدارة"),
+            ("AccessCloud", "Cloud Access", "الوصول السحابي")
+        ]),
+        ("Dashboard", "لوحة القيادة", [
+            ("Dashboard.View", "View Dashboard", "عرض لوحة القيادة")
         ]),
         ("Players", "اللاعبون", [
             ("Players.View", "View Players", "عرض اللاعبين"),
@@ -383,6 +389,21 @@ else
             ("CashFlow.View", "View Cash Flow", "عرض التدفق النقدي"),
             ("CashFlow.Manage", "Manage Cash Flow", "إدارة التدفق النقدي")
         ]),
+        ("POS", "نقطة البيع", [
+            ("POS.Sales", "POS Sales", "مبيعات نقطة البيع"),
+            ("POS.ManageShift", "Manage Shift", "إدارة الوردية"),
+            ("POS.ApplyDiscount", "Apply Discount", "تطبيق خصم"),
+            ("POS.PrintReceipt", "Print Receipt", "طباعة إيصال"),
+            ("POS.ViewSummary", "View Summary", "عرض الملخص")
+        ]),
+        ("Time Groups", "مجموعات الوقت", [
+            ("TimeGroups.View", "View Time Groups", "عرض مجموعات الوقت"),
+            ("TimeGroups.Manage", "Manage Time Groups", "إدارة مجموعات الوقت")
+        ]),
+        ("Subscription Plans", "خطط الاشتراك", [
+            ("SubscriptionPlans.View", "View Plans", "عرض الخطط"),
+            ("SubscriptionPlans.Manage", "Manage Plans", "إدارة الخطط")
+        ]),
         ("Logs", "السجلات", [
             ("Logs.View", "View Logs", "عرض السجلات")
         ]),
@@ -397,6 +418,10 @@ else
         ]),
         ("QR Pass", "تصريح QR", [
             ("QrPass.Manage", "Manage QR Pass", "إدارة تصاريح QR")
+        ]),
+        ("Backup", "النسخ الاحتياطي", [
+            ("Backup.View", "View Backups", "عرض النسخ الاحتياطية"),
+            ("Backup.Manage", "Manage Backups", "إدارة النسخ الاحتياطية")
         ]),
         ("Admin", "الإدارة", [
             ("Admin.ManageUsers", "Manage Users", "إدارة المستخدمين"),

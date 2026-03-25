@@ -35,6 +35,7 @@ public partial class MainViewModel : ObservableObject
     public string CurrentUserDisplayName => _currentUser.DisplayName ?? _currentUser.Username ?? "";
 
     // Permission-based visibility for sidebar navigation
+    public bool CanViewDashboard => _currentUser.HasPermission(AppPermission.DashboardView);
     public bool CanViewDevices => _currentUser.HasPermission(AppPermission.DevicesView);
     public bool CanViewDoors => _currentUser.HasPermission(AppPermission.DoorsView);
     public bool CanViewPlayers => _currentUser.HasPermission(AppPermission.PlayersView);
@@ -42,9 +43,11 @@ public partial class MainViewModel : ObservableObject
     public bool CanViewFinance => _currentUser.HasPermission(AppPermission.FinanceView);
     public bool CanViewCashFlow => _currentUser.HasPermission(AppPermission.CashFlowView);
     public bool CanViewLogs => _currentUser.HasPermission(AppPermission.LogsView);
-    public bool CanViewDeletedRecords => _currentUser.HasPermission(AppPermission.DeletedRecordsView);
+    public bool CanViewDeleted => _currentUser.HasPermission(AppPermission.DeletedRecordsView);
+    public bool CanViewDeletedRecords => CanViewDeleted; // Alias for XAML binding compatibility
     public bool CanViewMonitor => _currentUser.HasPermission(AppPermission.MonitorView);
-    public bool CanViewQrPass => _currentUser.HasPermission(AppPermission.PlayersView);
+    public bool CanViewDataMigration => _currentUser.HasPermission(AppPermission.DataMigration);
+    public bool CanViewQrPass => _currentUser.HasPermission(AppPermission.QrPassManage);
 
     public MainViewModel(
         DashboardViewModel dashboardViewModel,
@@ -88,6 +91,7 @@ public partial class MainViewModel : ObservableObject
         // Enforce permission check before navigation
         var allowed = page switch
         {
+            "Dashboard" => CanViewDashboard,
             "Devices" => CanViewDevices,
             "Doors" => CanViewDoors,
             "Employees" => CanViewPlayers,
@@ -95,9 +99,9 @@ public partial class MainViewModel : ObservableObject
             "Finance" => CanViewFinance,
             "CashFlow" => CanViewCashFlow,
             "Logs" => CanViewLogs,
-            "DeletedRecords" => CanViewDeletedRecords,
+            "DeletedRecords" => CanViewDeleted,
             "QrPass" => CanViewQrPass,
-            _ => true // Dashboard always allowed
+            _ => true
         };
 
         if (!allowed) return;

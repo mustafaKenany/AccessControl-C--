@@ -7,6 +7,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using AccessControlPro.Application.DTOs;
 using AccessControlPro.Application.Interfaces;
+using AccessControlPro.Application.Services;
 using AccessControlPro.Domain.Enums;
 using AccessControlPro.WPF.Helpers;
 using AccessControlPro.WPF.Views;
@@ -21,6 +22,7 @@ public partial class PosViewModel : ObservableObject
     private readonly IPosService _posService;
     private readonly IEmployeeService _employeeService;
     private readonly IAppSettingsService _settingsService;
+    private readonly CurrentUserService _currentUser;
 
     public LanguageManager Lang => LanguageManager.Instance;
 
@@ -65,11 +67,14 @@ public partial class PosViewModel : ObservableObject
 
     private bool _isInitialized;
 
-    public PosViewModel(IPosService posService, IEmployeeService employeeService, IAppSettingsService settingsService)
+    [ObservableProperty] private string _statusMessage = string.Empty;
+
+    public PosViewModel(IPosService posService, IEmployeeService employeeService, IAppSettingsService settingsService, CurrentUserService currentUser)
     {
         _posService = posService;
         _employeeService = employeeService;
         _settingsService = settingsService;
+        _currentUser = currentUser;
     }
 
     public async Task InitializeAsync()
@@ -293,6 +298,12 @@ public partial class PosViewModel : ObservableObject
     {
         if (item == null) return;
 
+        if (!_currentUser.HasPermission(AppPermission.POSApplyDiscount))
+        {
+            StatusMessage = "No permission to apply discounts";
+            return;
+        }
+
         var dialog = new Views.DiscountDialog(item.Price * item.Quantity);
         dialog.Owner = System.Windows.Application.Current.MainWindow;
         if (dialog.ShowDialog() == true)
@@ -432,6 +443,13 @@ public partial class PosViewModel : ObservableObject
     private void PrintLastReceipt()
     {
         if (_lastSaleItems == null || _lastSaleItems.Count == 0) return;
+
+        if (!_currentUser.HasPermission(AppPermission.POSPrintReceipt))
+        {
+            StatusMessage = "No permission to print receipts";
+            return;
+        }
+
         PrintReceipt(_lastSaleItems, _lastSaleTotal, _lastSaleMethod, _lastSaleDiscount,
             SelectedPlayer?.FullNameEn);
     }
@@ -439,6 +457,12 @@ public partial class PosViewModel : ObservableObject
     public void PrintReceipt(List<CartItemDto> items, decimal total, PaymentMethod method,
         decimal discount = 0, string? playerName = null)
     {
+        if (!_currentUser.HasPermission(AppPermission.POSPrintReceipt))
+        {
+            StatusMessage = "No permission to print receipts";
+            return;
+        }
+
         var printDialog = new PrintDialog();
         if (printDialog.ShowDialog() != true) return;
 
@@ -602,6 +626,12 @@ public partial class PosViewModel : ObservableObject
     [RelayCommand]
     private async Task LoadDailySummaryAsync()
     {
+        if (!_currentUser.HasPermission(AppPermission.POSViewSummary))
+        {
+            StatusMessage = "No permission to view daily summary";
+            return;
+        }
+
         try
         {
             DailySummary = await _posService.GetDailySummaryAsync(DateTime.Today);
@@ -694,6 +724,12 @@ public partial class PosViewModel : ObservableObject
     [RelayCommand]
     private async Task OpenShiftAsync()
     {
+        if (!_currentUser.HasPermission(AppPermission.POSManageShift))
+        {
+            StatusMessage = "No permission to manage shifts";
+            return;
+        }
+
         var dialog = new Views.AmountInputDialog(Lang.PosOpeningCash, Lang.PosEnterAmount);
         dialog.Owner = System.Windows.Application.Current.MainWindow;
         if (dialog.ShowDialog() != true) return;
@@ -713,6 +749,12 @@ public partial class PosViewModel : ObservableObject
     [RelayCommand]
     private async Task CloseShiftAsync()
     {
+        if (!_currentUser.HasPermission(AppPermission.POSManageShift))
+        {
+            StatusMessage = "No permission to manage shifts";
+            return;
+        }
+
         var dialog = new Views.AmountInputDialog(Lang.PosClosingCash, Lang.PosEnterAmount);
         dialog.Owner = System.Windows.Application.Current.MainWindow;
         if (dialog.ShowDialog() != true) return;

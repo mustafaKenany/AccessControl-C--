@@ -61,6 +61,31 @@ public static class AppPermission
     // QR Pass
     public const string QrPassManage = "QrPass.Manage";
 
+    // Dashboard
+    public const string DashboardView = "Dashboard.View";
+
+    // POS
+    public const string POSSales = "POS.Sales";
+    public const string POSManageShift = "POS.ManageShift";
+    public const string POSApplyDiscount = "POS.ApplyDiscount";
+    public const string POSPrintReceipt = "POS.PrintReceipt";
+    public const string POSViewSummary = "POS.ViewSummary";
+
+    // Time Groups
+    public const string TimeGroupsView = "TimeGroups.View";
+    public const string TimeGroupsManage = "TimeGroups.Manage";
+
+    // Subscription Plans
+    public const string SubscriptionPlansView = "SubscriptionPlans.View";
+    public const string SubscriptionPlansManage = "SubscriptionPlans.Manage";
+
+    // Backup
+    public const string BackupView = "Backup.View";
+    public const string BackupManage = "Backup.Manage";
+
+    // Cloud Access
+    public const string AccessCloud = "AccessCloud";
+
     // Admin Panel
     public const string AdminManageUsers = "Admin.ManageUsers";
     public const string AdminManageSettings = "Admin.ManageSettings";
@@ -70,7 +95,8 @@ public static class AppPermission
     /// </summary>
     public static readonly string[] All =
     [
-        AccessMainApp, AccessPOS, AccessAdmin,
+        AccessMainApp, AccessPOS, AccessAdmin, AccessCloud,
+        DashboardView,
         PlayersView, PlayersAdd, PlayersEdit, PlayersDelete,
         PlayersAssignCard, PlayersRemoveCard, PlayersReassignCard, PlayersFreeze, PlayersRenew, PlayersReports,
         DevicesView, DevicesAdd, DevicesEdit, DevicesDelete, DevicesConnect,
@@ -82,6 +108,10 @@ public static class AppPermission
         DeletedRecordsView,
         MonitorView,
         DataMigration, QrPassManage,
+        POSSales, POSManageShift, POSApplyDiscount, POSPrintReceipt, POSViewSummary,
+        TimeGroupsView, TimeGroupsManage,
+        SubscriptionPlansView, SubscriptionPlansManage,
+        BackupView, BackupManage,
         AdminManageUsers, AdminManageSettings
     ];
 
@@ -91,6 +121,7 @@ public static class AppPermission
     public static readonly string[] DefaultUser =
     [
         AccessMainApp,
+        DashboardView,
         PlayersView,
         DevicesView,
         DoorsView,
@@ -102,18 +133,23 @@ public static class AppPermission
     /// </summary>
     public static readonly (string GroupKey, string[] Permissions)[] Groups =
     [
-        ("AppAccess", [AccessMainApp, AccessPOS, AccessAdmin]),
+        ("AppAccess", [AccessMainApp, AccessPOS, AccessAdmin, AccessCloud]),
+        ("Dashboard", [DashboardView]),
         ("Players", [PlayersView, PlayersAdd, PlayersEdit, PlayersDelete, PlayersAssignCard, PlayersRemoveCard, PlayersReassignCard, PlayersFreeze, PlayersRenew, PlayersReports]),
         ("Devices", [DevicesView, DevicesAdd, DevicesEdit, DevicesDelete, DevicesConnect]),
         ("Doors", [DoorsView, DoorsOpenClose, DoorsSettings]),
         ("Events", [EventsView]),
         ("Finance", [FinanceView, FinanceManage]),
         ("CashFlow", [CashFlowView, CashFlowManage]),
+        ("POS", [POSSales, POSManageShift, POSApplyDiscount, POSPrintReceipt, POSViewSummary]),
+        ("TimeGroups", [TimeGroupsView, TimeGroupsManage]),
+        ("SubscriptionPlans", [SubscriptionPlansView, SubscriptionPlansManage]),
         ("Logs", [LogsView]),
         ("DeletedRecords", [DeletedRecordsView]),
         ("Monitor", [MonitorView]),
         ("DataMigration", [DataMigration]),
         ("QrPass", [QrPassManage]),
+        ("Backup", [BackupView, BackupManage]),
         ("Admin", [AdminManageUsers, AdminManageSettings])
     ];
 }
