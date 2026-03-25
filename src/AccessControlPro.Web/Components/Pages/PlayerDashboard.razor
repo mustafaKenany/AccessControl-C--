@@ -361,7 +361,7 @@ else
     {
         if (!Session.IsAuthenticated || !Session.IsPlayer)
         {
-            Nav.NavigateTo("/login");
+            Nav.NavigateTo("/login", forceLoad: true);
             return;
         }
 

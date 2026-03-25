@@ -446,7 +446,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        if (!Session.IsSuperAdmin) { Nav.NavigateTo("/superadmin/login"); return; }
+        if (!Session.IsSuperAdmin) { Nav.NavigateTo("/superadmin/login", forceLoad: true); return; }
         await LoadGymsAsync();
     }
 

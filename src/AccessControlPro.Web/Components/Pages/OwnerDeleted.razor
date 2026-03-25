@@ -150,7 +150,7 @@ else
     {
         if (!Session.IsAuthenticated || !Session.IsOwner)
         {
-            Nav.NavigateTo("/login");
+            Nav.NavigateTo("/login", forceLoad: true);
             return;
         }
 

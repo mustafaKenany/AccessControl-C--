@@ -11,13 +11,20 @@
 </div>
 
 @code {
+    private bool _wasSuperAdmin;
+
+    protected override void OnInitialized()
+    {
+        _wasSuperAdmin = Session.IsSuperAdmin;
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             Session.Logout();
             await Task.Delay(500);
-            Nav.NavigateTo("/login", forceLoad: true);
+            Nav.NavigateTo(_wasSuperAdmin ? "/superadmin/login" : "/login", forceLoad: true);
         }
     }
 }

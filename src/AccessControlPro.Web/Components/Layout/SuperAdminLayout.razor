@@ -43,7 +43,7 @@
     protected override void OnInitialized()
     {
         if (!Session.IsSuperAdmin)
-            Nav.NavigateTo("/superadmin/login");
+            Nav.NavigateTo("/superadmin/login", forceLoad: true);
     }
 
     private string ActiveClass(string href)
@@ -56,6 +56,6 @@
     private void DoLogout()
     {
         Session.Logout();
-        Nav.NavigateTo("/superadmin/login");
+        Nav.NavigateTo("/superadmin/login", forceLoad: true);
     }
 }
