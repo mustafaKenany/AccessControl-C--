@@ -127,6 +127,8 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
             total += await SyncHelper.UpsertRowsAsync(conn, "AppSettings", syncData.AppSettings);
         if (syncData.AccessCards?.Count > 0)
             total += await SyncHelper.UpsertRowsAsync(conn, "AccessCards", syncData.AccessCards);
+        if (syncData.QrPool?.Count > 0)
+            total += await SyncHelper.UpsertRowsAsync(conn, "QrPool", syncData.QrPool);
 
         // Invalidate cached data after sync
         QueryCache.InvalidateAll();
@@ -217,6 +219,52 @@ app.MapGet("/api/users", async (HttpContext context, GymDbHelper gymDb, DbHelper
     catch (Exception ex)
     {
         return Results.Problem($"Failed to get users: {ex.Message}");
+    }
+});
+
+// QR Pool API — local app pulls cloud-assigned QR codes
+app.MapGet("/api/qr-pool", async (HttpContext context, GymDbHelper gymDb) =>
+{
+    var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
+    if (apiKey != app.Configuration["SyncApiKey"] && apiKey != "HMTech-Sync-2026")
+        return Results.Unauthorized();
+
+    try
+    {
+        var dbName = await gymDb.GetDatabaseByApiKeyAsync(apiKey ?? "");
+        if (string.IsNullOrEmpty(dbName)) dbName = "gymcloud";
+
+        using var conn = await gymDb.GetGymConnectionAsync(dbName);
+        using var cmd = new Npgsql.NpgsqlCommand(
+            @"SELECT ""Code"", ""Status"", ""Source"", ""GuestName"", ""GuestPhone"", ""Reason"",
+                     ""MaxUses"", ""UsedCount"", ""ValidTo"", ""DoorPermissions"", ""AssignedAt""
+              FROM ""QrPool"" WHERE ""Status"" = 1 AND ""Source"" = 'Cloud'", conn);
+
+        var entries = new List<Dictionary<string, object?>>();
+        using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            entries.Add(new Dictionary<string, object?>
+            {
+                ["Code"] = reader.GetString(0),
+                ["Status"] = reader.GetInt32(1),
+                ["Source"] = reader.GetString(2),
+                ["GuestName"] = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                ["GuestPhone"] = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                ["Reason"] = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                ["MaxUses"] = reader.GetInt32(6),
+                ["UsedCount"] = reader.GetInt32(7),
+                ["ValidTo"] = reader.GetDateTime(8),
+                ["DoorPermissions"] = reader.IsDBNull(9) ? "01010000" : reader.GetString(9),
+                ["AssignedAt"] = reader.IsDBNull(10) ? null : (object)reader.GetDateTime(10)
+            });
+        }
+
+        return Results.Ok(entries);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to get QR pool: {ex.Message}");
     }
 });
 

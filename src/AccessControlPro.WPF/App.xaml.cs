@@ -167,6 +167,7 @@ public partial class App : System.Windows.Application
         services.AddScoped<IMigrationService, MigrationService>();
         services.AddScoped<IExpiryMonitorService, ExpiryMonitorService>();
         services.AddScoped<IQrPassService, QrPassService>();
+        services.AddSingleton<IQrPoolService>(sp => new QrPoolService(connectionString));
         services.AddScoped<Domain.Interfaces.IMonitorLockService, AccessControlPro.Infrastructure.Persistence.MonitorLockService>();
         services.AddScoped<ITimeGroupService, TimeGroupService>();
         // POS moved to separate AccessControlPro.POS app
@@ -298,6 +299,28 @@ public partial class App : System.Windows.Application
 
         try
         {
+            // Auto-generate QR pool if empty (local pool: 50001001-50003500)
+            try
+            {
+                using var qrScope = _serviceProvider.CreateScope();
+                var qrPool = qrScope.ServiceProvider.GetRequiredService<IQrPoolService>();
+                var available = Task.Run(() => qrPool.GetAvailableCountAsync()).GetAwaiter().GetResult();
+                if (available == 0)
+                {
+                    StartupLog("Generating initial QR pool (3500 local codes)...");
+                    var generated = Task.Run(() => qrPool.GeneratePoolAsync(3500, 50001001, "Local")).GetAwaiter().GetResult();
+                    StartupLog($"QR pool generated: {generated} codes");
+                }
+                else if (available < 500)
+                {
+                    StartupLog($"QR pool low ({available} available)");
+                }
+            }
+            catch (Exception qrEx)
+            {
+                StartupLog($"QR pool error (non-critical): {qrEx.Message}");
+            }
+
             StartupLog("DB migration OK. Loading login...");
             // Prevent auto-shutdown when LoginWindow closes (it's the only window at that point)
             ShutdownMode = ShutdownMode.OnExplicitShutdown;

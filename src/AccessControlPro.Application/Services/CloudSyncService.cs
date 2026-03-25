@@ -45,7 +45,7 @@ public class CloudSyncService : ICloudSyncService
             using var local = new SqlConnection(_localConnectionString);
             await local.OpenAsync();
 
-            // Step 0: Pull new users from cloud BEFORE push (so they survive the push)
+            // Step 0: Pull new users and QR assignments from cloud BEFORE push
             try
             {
                 await PullCloudUsersAsync(local, cloudUrl);
@@ -53,6 +53,15 @@ public class CloudSyncService : ICloudSyncService
             catch (Exception pullEx)
             {
                 Log($"Pre-pull users error (non-critical): {pullEx.Message}");
+            }
+
+            try
+            {
+                await PullCloudQrAssignmentsAsync(local, cloudUrl);
+            }
+            catch (Exception pullEx)
+            {
+                Log($"Pre-pull QR assignments error (non-critical): {pullEx.Message}");
             }
 
             var payload = new Dictionary<string, List<Dictionary<string, object?>>>();
@@ -94,6 +103,11 @@ public class CloudSyncService : ICloudSyncService
 
             payload["accessCards"] = await ReadTableAsync(local,
                 "SELECT Id, EmployeeId, CardNumber, IsActive, ValidFrom, ValidTo, EffectiveTimes, CreatedAt FROM AccessCards");
+
+            payload["qrPool"] = await ReadTableAsync(local,
+                "SELECT Id, Code, Status, Source, GuestName, GuestPhone, Reason, " +
+                "AssignedAt, UsedAt, ExpiredAt, MaxUses, UsedCount, ValidFrom, ValidTo, " +
+                "DoorPermissions, CreatedAt, IsUploadedToDevice FROM QrPool");
 
             // Log table counts
             foreach (var kvp in payload)
@@ -241,6 +255,93 @@ public class CloudSyncService : ICloudSyncService
             Log($"Pull users: {added} new user(s) added from cloud");
         else
             Log("Pull users: no new users to add (all exist locally)");
+    }
+
+    private async Task PullCloudQrAssignmentsAsync(SqlConnection local, string cloudUrl)
+    {
+        Log("Pull QR assignments: starting...");
+
+        using var pullClient = new HttpClient();
+        pullClient.DefaultRequestHeaders.Add("X-Api-Key", LoadApiKey());
+        pullClient.Timeout = TimeSpan.FromSeconds(30);
+
+        var pullUrl = cloudUrl.Replace("/api/sync", "/api/qr-pool");
+        var pullResponse = await pullClient.GetAsync(pullUrl);
+
+        if (!pullResponse.IsSuccessStatusCode)
+        {
+            Log($"Pull QR assignments: API returned {pullResponse.StatusCode}");
+            return;
+        }
+
+        var json = await pullResponse.Content.ReadAsStringAsync();
+        var cloudEntries = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(json);
+
+        if (cloudEntries == null || cloudEntries.Count == 0)
+        {
+            Log("Pull QR assignments: no entries from cloud");
+            return;
+        }
+
+        Log($"Pull QR assignments: received {cloudEntries.Count} entries from cloud");
+        int added = 0;
+
+        foreach (var entry in cloudEntries)
+        {
+            try
+            {
+                var code = entry.ContainsKey("Code") ? entry["Code"].GetString() ?? "" : "";
+                if (string.IsNullOrEmpty(code)) continue;
+
+                // Check if code already exists locally
+                using var checkCmd = new SqlCommand("SELECT COUNT(*) FROM QrPool WHERE Code = @c", local);
+                checkCmd.Parameters.AddWithValue("@c", code);
+                var exists = (int)(await checkCmd.ExecuteScalarAsync() ?? 0) > 0;
+
+                if (!exists)
+                {
+                    // INSERT cloud-assigned QR code into local pool
+                    using var insertCmd = new SqlCommand(
+                        @"INSERT INTO QrPool (Code, Status, Source, GuestName, GuestPhone, Reason,
+                          DoorPermissions, MaxUses, UsedCount, ValidFrom, ValidTo, AssignedAt, CreatedAt, IsUploadedToDevice)
+                          VALUES (@code, @status, 'Cloud', @name, @phone, @reason,
+                          @perms, @max, @used, GETUTCDATE(), @validTo, @assigned, GETUTCDATE(), 0)", local);
+                    insertCmd.Parameters.AddWithValue("@code", code);
+                    insertCmd.Parameters.AddWithValue("@status", entry.ContainsKey("Status") ? entry["Status"].GetInt32() : 1);
+                    insertCmd.Parameters.AddWithValue("@name", entry.ContainsKey("GuestName") ? entry["GuestName"].GetString() ?? "" : "");
+                    insertCmd.Parameters.AddWithValue("@phone", entry.ContainsKey("GuestPhone") ? entry["GuestPhone"].GetString() ?? "" : "");
+                    insertCmd.Parameters.AddWithValue("@reason", entry.ContainsKey("Reason") ? entry["Reason"].GetString() ?? "" : "");
+                    insertCmd.Parameters.AddWithValue("@perms", entry.ContainsKey("DoorPermissions") ? entry["DoorPermissions"].GetString() ?? "01010000" : "01010000");
+                    insertCmd.Parameters.AddWithValue("@max", entry.ContainsKey("MaxUses") ? entry["MaxUses"].GetInt32() : 2);
+                    insertCmd.Parameters.AddWithValue("@used", entry.ContainsKey("UsedCount") ? entry["UsedCount"].GetInt32() : 0);
+
+                    if (entry.ContainsKey("ValidTo") && entry["ValidTo"].ValueKind == JsonValueKind.String
+                        && DateTime.TryParse(entry["ValidTo"].GetString(), out var vt))
+                        insertCmd.Parameters.AddWithValue("@validTo", vt);
+                    else
+                        insertCmd.Parameters.AddWithValue("@validTo", DateTime.UtcNow.AddYears(1));
+
+                    if (entry.ContainsKey("AssignedAt") && entry["AssignedAt"].ValueKind == JsonValueKind.String
+                        && DateTime.TryParse(entry["AssignedAt"].GetString(), out var aa))
+                        insertCmd.Parameters.AddWithValue("@assigned", aa);
+                    else
+                        insertCmd.Parameters.AddWithValue("@assigned", DBNull.Value);
+
+                    await insertCmd.ExecuteNonQueryAsync();
+                    added++;
+                    Log($"Pull QR: added code '{code}' from cloud");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Pull QR: error adding entry: {ex.Message}");
+            }
+        }
+
+        if (added > 0)
+            Log($"Pull QR assignments: {added} new code(s) added from cloud");
+        else
+            Log("Pull QR assignments: no new codes to add (all exist locally)");
     }
 
     private static string? LoadCloudSyncUrl()

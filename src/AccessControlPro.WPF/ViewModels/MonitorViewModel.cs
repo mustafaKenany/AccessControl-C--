@@ -384,6 +384,16 @@ public partial class MonitorViewModel : ObservableObject
             var deviceName = door?.Device?.Name ?? evt.DeviceSN;
             var doorName = door?.Name ?? $"Door {evt.DoorNumber}";
 
+            // Detect QR code vs regular card (QR codes start with "5000")
+            bool isQrCode = evt.CardNumber?.StartsWith("5000") ?? false;
+
+            // For QR events, override player name to show "QR Guest"
+            if (isQrCode && string.IsNullOrEmpty(playerName))
+            {
+                var lang2 = LanguageManager.Instance;
+                playerName = lang2.IsArabic ? "ضيف QR" : "QR Guest";
+            }
+
             // Update UI on dispatcher thread
             var dto = new AccessEventDto
             {
@@ -391,7 +401,7 @@ public partial class MonitorViewModel : ObservableObject
                 DoorName = doorName,
                 CardNumber = evt.CardNumber,
                 PlayerName = playerName,
-                EventType = ((Domain.Enums.RecordType)evt.RecordType).ToString(),
+                EventType = isQrCode ? "QR" : ((Domain.Enums.RecordType)evt.RecordType).ToString(),
                 EventDescription = GetEventDescription(evt.EventCode),
                 Direction = direction,
                 IsEntry = isEntry,

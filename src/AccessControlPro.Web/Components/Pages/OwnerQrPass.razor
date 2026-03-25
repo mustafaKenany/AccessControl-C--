@@ -183,23 +183,50 @@ else
 
         try
         {
-            var code = GenerateSecureCode();
-            var validTo = new DateTime(_validTo.Year, _validTo.Month, _validTo.Day, 23, 59, 59, DateTimeKind.Utc);
-            var now = DateTime.UtcNow;
-
             var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
             using var conn = await GymDb.GetGymConnectionAsync(_dbName);
-            using var cmd = new Npgsql.NpgsqlCommand(
+
+            // Pick available code from cloud pool (50003501-50006000)
+            string? code;
+            using (var pickCmd = new Npgsql.NpgsqlCommand(
+                @"SELECT ""Code"" FROM ""QrPool"" WHERE ""Status"" = 0 AND ""Source"" = 'Cloud' ORDER BY RANDOM() LIMIT 1", conn))
+            {
+                code = (await pickCmd.ExecuteScalarAsync())?.ToString();
+            }
+
+            if (string.IsNullOrEmpty(code))
+            {
+                _errorMsg = L("No QR codes available. Pool needs regeneration.", "لا توجد رموز QR متاحة. يجب إعادة إنشاء المجموعة.");
+                return;
+            }
+
+            var validTo = new DateTime(_validTo.Year, _validTo.Month, _validTo.Day, 23, 59, 59, DateTimeKind.Utc);
+
+            // Assign the code from pool
+            using (var updateCmd = new Npgsql.NpgsqlCommand(
+                @"UPDATE ""QrPool"" SET ""Status"" = 1, ""GuestName"" = @name, ""GuestPhone"" = '',
+                  ""Reason"" = 'Guest Pass', ""MaxUses"" = @max, ""AssignedAt"" = NOW(),
+                  ""ValidTo"" = @to WHERE ""Code"" = @code", conn))
+            {
+                updateCmd.Parameters.AddWithValue("name", _guestName.Trim());
+                updateCmd.Parameters.AddWithValue("max", _maxUses);
+                updateCmd.Parameters.AddWithValue("to", validTo);
+                updateCmd.Parameters.AddWithValue("code", code);
+                await updateCmd.ExecuteNonQueryAsync();
+            }
+
+            // Also insert into QrPasses for backward compatibility
+            using (var legacyCmd = new Npgsql.NpgsqlCommand(
                 @"INSERT INTO ""QrPasses"" (""Code"", ""PlayerName"", ""MaxUses"", ""UsedCount"", ""ValidFrom"", ""ValidTo"", ""IsActive"", ""CreatedBy"", ""CreatedAt"")
-                  VALUES (@code, @name, @max, 0, @from, @to, TRUE, @by, @at)", conn);
-            cmd.Parameters.AddWithValue("code", code);
-            cmd.Parameters.AddWithValue("name", _guestName.Trim());
-            cmd.Parameters.AddWithValue("max", _maxUses);
-            cmd.Parameters.AddWithValue("from", now);
-            cmd.Parameters.AddWithValue("to", validTo);
-            cmd.Parameters.AddWithValue("by", Session.DisplayName);
-            cmd.Parameters.AddWithValue("at", now);
-            await cmd.ExecuteNonQueryAsync();
+                  VALUES (@code, @name, @max, 0, NOW(), @to, TRUE, @by, NOW())", conn))
+            {
+                legacyCmd.Parameters.AddWithValue("code", code);
+                legacyCmd.Parameters.AddWithValue("name", _guestName.Trim());
+                legacyCmd.Parameters.AddWithValue("max", _maxUses);
+                legacyCmd.Parameters.AddWithValue("to", validTo);
+                legacyCmd.Parameters.AddWithValue("by", Session.DisplayName);
+                await legacyCmd.ExecuteNonQueryAsync();
+            }
 
             // Build QR content - just the numeric code
             _createdCode = code;
@@ -240,10 +267,31 @@ else
         {
             var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
             using var conn = await GymDb.GetGymConnectionAsync(_dbName);
+
+            // Deactivate in QrPool
             using var cmd = new Npgsql.NpgsqlCommand(
-                @"UPDATE ""QrPasses"" SET ""IsActive"" = FALSE WHERE ""Id"" = @id", conn);
+                @"UPDATE ""QrPool"" SET ""Status"" = 3, ""ExpiredAt"" = NOW() WHERE ""Id"" = @id", conn);
             cmd.Parameters.AddWithValue("id", id);
             await cmd.ExecuteNonQueryAsync();
+
+            // Also deactivate in QrPasses if exists
+            try
+            {
+                // Get code by pool ID
+                using var getCmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT ""Code"" FROM ""QrPool"" WHERE ""Id"" = @id", conn);
+                getCmd.Parameters.AddWithValue("id", id);
+                var code = (await getCmd.ExecuteScalarAsync())?.ToString();
+                if (!string.IsNullOrEmpty(code))
+                {
+                    using var legacyCmd = new Npgsql.NpgsqlCommand(
+                        @"UPDATE ""QrPasses"" SET ""IsActive"" = FALSE WHERE ""Code"" = @code", conn);
+                    legacyCmd.Parameters.AddWithValue("code", code);
+                    await legacyCmd.ExecuteNonQueryAsync();
+                }
+            }
+            catch { }
+
             await LoadPassesAsync();
         }
         catch { }
@@ -255,15 +303,21 @@ else
         {
             var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
             using var conn = await GymDb.GetGymConnectionAsync(_dbName);
+
+            // Load from QrPool (primary source for pool-based passes)
             using var cmd = new Npgsql.NpgsqlCommand(
-                @"SELECT ""Id"", ""Code"", ""PlayerName"", ""MaxUses"", ""UsedCount"", ""ValidTo"", ""IsActive"", ""CreatedAt""
-                  FROM ""QrPasses"" ORDER BY ""CreatedAt"" DESC LIMIT 50", conn);
+                @"SELECT ""Id"", ""Code"", ""GuestName"", ""MaxUses"", ""UsedCount"", ""ValidTo"",
+                         CASE WHEN ""Status"" IN (0,1) THEN TRUE ELSE FALSE END AS ""IsActive"",
+                         COALESCE(""AssignedAt"", ""CreatedAt"") AS ""CreatedAt""
+                  FROM ""QrPool"" WHERE ""Status"" IN (1, 2, 3) AND ""Source"" = 'Cloud'
+                  ORDER BY ""AssignedAt"" DESC NULLS LAST LIMIT 50", conn);
             using var r = await cmd.ExecuteReaderAsync();
             _passes = new List<QrPass>();
             while (await r.ReadAsync())
             {
                 _passes.Add(new QrPass(
-                    r.GetInt32(0), r.GetString(1), r.GetString(2),
+                    r.GetInt32(0), r.GetString(1),
+                    r.IsDBNull(2) ? "" : r.GetString(2),
                     r.GetInt32(3), r.GetInt32(4), r.GetDateTime(5),
                     r.GetBoolean(6), r.GetDateTime(7)));
             }

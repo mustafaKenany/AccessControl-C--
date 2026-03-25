@@ -33,4 +33,7 @@ public class SyncPayload
 
     [JsonPropertyName("accessCards")]
     public List<Dictionary<string, object?>>? AccessCards { get; set; }
+
+    [JsonPropertyName("qrPool")]
+    public List<Dictionary<string, object?>>? QrPool { get; set; }
 }

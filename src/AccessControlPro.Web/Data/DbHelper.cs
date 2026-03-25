@@ -140,6 +140,27 @@ CREATE TABLE IF NOT EXISTS ""QrPasses"" (
     ""CreatedAt"" TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS ""QrPool"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""Code"" VARCHAR(20) NOT NULL,
+    ""Status"" INT DEFAULT 0,
+    ""Source"" VARCHAR(10) DEFAULT 'Cloud',
+    ""GuestName"" VARCHAR(200) DEFAULT '',
+    ""GuestPhone"" VARCHAR(50) DEFAULT '',
+    ""Reason"" VARCHAR(500) DEFAULT '',
+    ""AssignedAt"" TIMESTAMP NULL,
+    ""UsedAt"" TIMESTAMP NULL,
+    ""ExpiredAt"" TIMESTAMP NULL,
+    ""MaxUses"" INT DEFAULT 2,
+    ""UsedCount"" INT DEFAULT 0,
+    ""ValidFrom"" TIMESTAMP DEFAULT NOW(),
+    ""ValidTo"" TIMESTAMP DEFAULT (NOW() + INTERVAL '1 year'),
+    ""DoorPermissions"" VARCHAR(20) DEFAULT '01010000',
+    ""CreatedAt"" TIMESTAMP DEFAULT NOW(),
+    ""IsUploadedToDevice"" BOOLEAN DEFAULT FALSE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_qrpool_code ON ""QrPool"" (""Code"");
+
 CREATE TABLE IF NOT EXISTS ""AccessCards"" (
     ""Id"" SERIAL PRIMARY KEY,
     ""EmployeeId"" INT DEFAULT 0,

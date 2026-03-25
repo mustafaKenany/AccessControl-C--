@@ -459,6 +459,31 @@ public static class DatabaseMigrator
                 VALUES ('24/7 Full Access', N'وصول كامل 24/7', 1, 1, '{}');
             END",
 
+            // v4.1: QrPool table — pre-generated QR codes as virtual cards for guest access
+            @"IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'QrPool')
+            BEGIN
+                CREATE TABLE QrPool (
+                    Id INT IDENTITY(1,1) PRIMARY KEY,
+                    Code VARCHAR(20) NOT NULL,
+                    Status INT NOT NULL DEFAULT 0,
+                    Source VARCHAR(10) NOT NULL DEFAULT 'Local',
+                    GuestName NVARCHAR(200) DEFAULT '',
+                    GuestPhone VARCHAR(50) DEFAULT '',
+                    Reason NVARCHAR(500) DEFAULT '',
+                    AssignedAt DATETIME2 NULL,
+                    UsedAt DATETIME2 NULL,
+                    ExpiredAt DATETIME2 NULL,
+                    MaxUses INT DEFAULT 2,
+                    UsedCount INT DEFAULT 0,
+                    ValidFrom DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                    ValidTo DATETIME2 NOT NULL,
+                    DoorPermissions VARCHAR(20) DEFAULT '01010000',
+                    CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                    IsUploadedToDevice BIT DEFAULT 0
+                );
+                CREATE UNIQUE INDEX IX_QrPool_Code ON QrPool(Code);
+            END",
+
             // v3.6: Fix FK on AccessEvents.CardId → SET NULL on delete (allows employee/card deletion without constraint errors)
             @"DECLARE @fkName NVARCHAR(200);
               SELECT @fkName = fk.name

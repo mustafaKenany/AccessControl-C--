@@ -13,7 +13,7 @@ public static class SyncHelper
     {
         "Players", "AccessEvents", "Devices", "Doors", "Transactions",
         "Users", "AuditLogs", "DeletedEmployees", "AppSettings", "AccessCards",
-        "CloudSyncLogs", "QrPasses", "Gyms"
+        "CloudSyncLogs", "QrPasses", "QrPool", "Gyms"
     };
 
     // Column name must be alphanumeric/underscore only
@@ -153,7 +153,8 @@ public static class SyncHelper
                name == "Timestamp" || name == "EventDate" ||
                name == "CreatedAt" || name == "DeletedAt" ||
                name == "FreezeStartDate" || name == "ValidFrom" || name == "ValidTo" ||
-               name == "TransactionDate" || name == "SyncedAt" || name == "ExpiresAt";
+               name == "TransactionDate" || name == "SyncedAt" || name == "ExpiresAt" ||
+               name == "AssignedAt" || name == "ExpiredAt" || name == "UsedAt";
     }
 
     private static bool IsTimeColumn(string name)

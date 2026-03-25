@@ -72,7 +72,13 @@ else
                                 <td>@ev.EventDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                                 <td>@GetDeviceName(ev.DoorId)</td>
                                 <td>@(string.IsNullOrEmpty(ev.DoorName) ? GetDoorName(ev.DoorId) : ev.DoorName)</td>
-                                <td>@(string.IsNullOrEmpty(ev.CardNumber) ? "-" : ev.CardNumber)</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(ev.CardNumber) && ev.CardNumber.StartsWith("5000"))
+                                    {
+                                        <span class="badge badge-active" style="font-size:0.7em;margin-right:4px;">QR</span>
+                                    }
+                                    @(string.IsNullOrEmpty(ev.CardNumber) ? "-" : ev.CardNumber)
+                                </td>
                                 <td>@GetPlayerDisplay(ev)</td>
                                 <td>
                                     <span class="badge @GetEventBadgeClass(ev.EventCode)">
@@ -109,7 +115,13 @@ else
                         </div>
                         <div class="mobile-card-row">
                             <span class="mobile-card-label">@L("Card", "البطاقة")</span>
-                            <span class="mobile-card-value">@(string.IsNullOrEmpty(ev.CardNumber) ? "-" : ev.CardNumber)</span>
+                            <span class="mobile-card-value">
+                                @if (!string.IsNullOrEmpty(ev.CardNumber) && ev.CardNumber.StartsWith("5000"))
+                                {
+                                    <span class="badge badge-active" style="font-size:0.7em;margin-right:4px;">QR</span>
+                                }
+                                @(string.IsNullOrEmpty(ev.CardNumber) ? "-" : ev.CardNumber)
+                            </span>
                         </div>
                         @if (!string.IsNullOrEmpty(ev.Details))
                         {
@@ -342,6 +354,10 @@ else
 
     private string GetPlayerDisplay(EventRow ev)
     {
+        // QR code detection — card numbers starting with 5000 are QR guest passes
+        if (!string.IsNullOrEmpty(ev.CardNumber) && ev.CardNumber.StartsWith("5000"))
+            return L("QR Guest", "ضيف QR");
+
         // Prefer JOIN-based player name from query
         if (!string.IsNullOrEmpty(ev.PlayerNameAr) && SessionState.IsArabic)
             return ev.PlayerNameAr;
