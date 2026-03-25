@@ -264,6 +264,7 @@ public partial class App : System.Windows.Application
                 "HM-GymManagement is already running.",
                 "Already Running", MsgType.Info);
             Shutdown();
+            Environment.Exit(0);
             return;
         }
 
@@ -285,11 +286,22 @@ public partial class App : System.Windows.Application
         try
         {
             StartupLog("Migrating database...");
-            // Auto-create/migrate database on startup
+            // Auto-create/migrate database on startup (skip if already at current version)
             using (var scope = _serviceProvider.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                DatabaseMigrator.EnsureSchemaUpToDate(db);
+                var migrationMarker = Path.Combine(AppContext.BaseDirectory, ".migration_v");
+                var currentVersion = "4.4";
+                if (File.Exists(migrationMarker) && File.ReadAllText(migrationMarker).Trim() == currentVersion)
+                {
+                    StartupLog("DB migration skipped (already at v" + currentVersion + ")");
+                }
+                else
+                {
+                    DatabaseMigrator.EnsureSchemaUpToDate(db);
+                    File.WriteAllText(migrationMarker, currentVersion);
+                    StartupLog("DB migration completed to v" + currentVersion);
+                }
             }
         }
         catch (Exception ex)
@@ -321,52 +333,6 @@ public partial class App : System.Windows.Application
 
         try
         {
-            // Auto-generate QR pool if empty (local pool: 50001001-50003500)
-            try
-            {
-                using var qrScope = _serviceProvider.CreateScope();
-                var qrPool = qrScope.ServiceProvider.GetRequiredService<IQrPoolService>();
-                var available = Task.Run(() => qrPool.GetAvailableCountAsync()).GetAwaiter().GetResult();
-                int generated = 0;
-                if (available == 0)
-                {
-                    StartupLog("Generating initial QR pool (3500 local codes)...");
-                    generated = Task.Run(() => qrPool.GeneratePoolAsync(3500, 50001001, "Local")).GetAwaiter().GetResult();
-                    StartupLog($"QR pool generated: {generated} codes");
-                }
-                else if (available < 500)
-                {
-                    StartupLog($"QR pool low ({available} available)");
-                }
-
-                // Upload un-uploaded QR codes to device on first startup
-                if (generated > 0 || available > 0)
-                {
-                    try
-                    {
-                        var deviceRepo = qrScope.ServiceProvider.GetRequiredService<IDeviceRepository>();
-                        var allDevices = Task.Run(() => deviceRepo.GetAllAsync()).GetAwaiter().GetResult().ToList();
-                        if (allDevices.Count > 0)
-                        {
-                            var sdk = _serviceProvider.GetRequiredService<IAccessControlSdk>();
-                            var deviceInfos = allDevices.Select(d => new DeviceInfo
-                            {
-                                IP = d.IP, MAC = d.MAC, SerialNumber = d.SerialNumber,
-                                TCPPort = d.TCPPort, Password = d.Password,
-                                Gateway = d.Gateway, SubnetMask = d.SubnetMask
-                            }).ToList();
-                            var (uploaded, _, _) = Task.Run(() => qrPool.SyncQrPoolToDeviceAsync(sdk, deviceInfos)).GetAwaiter().GetResult();
-                            StartupLog($"QR Pool initial upload: {uploaded} codes uploaded to {allDevices.Count} device(s)");
-                        }
-                    }
-                    catch (Exception ex) { StartupLog($"QR Pool initial upload error: {ex.Message}"); }
-                }
-            }
-            catch (Exception qrEx)
-            {
-                StartupLog($"QR pool error (non-critical): {qrEx.Message}");
-            }
-
             StartupLog("DB migration OK. Loading login...");
             // Prevent auto-shutdown when LoginWindow closes (it's the only window at that point)
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -473,6 +439,56 @@ public partial class App : System.Windows.Application
             MainWindow = mainWindow;
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             mainWindow.Show();
+
+            // QR Pool: generate and upload in background (non-blocking)
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(5000); // Wait 5 seconds for app to fully initialize
+                try
+                {
+                    using var qrScope = _serviceProvider.CreateScope();
+                    var qrPool = qrScope.ServiceProvider.GetRequiredService<IQrPoolService>();
+                    var available = await qrPool.GetAvailableCountAsync();
+                    int generated = 0;
+                    if (available == 0)
+                    {
+                        StartupLog("Generating initial QR pool (3500 local codes)...");
+                        generated = await qrPool.GeneratePoolAsync(3500, 50001001, "Local");
+                        StartupLog($"QR pool generated: {generated} codes");
+                    }
+                    else if (available < 500)
+                    {
+                        StartupLog($"QR pool low ({available} available)");
+                    }
+
+                    // Upload un-uploaded QR codes to device
+                    if (generated > 0 || available > 0)
+                    {
+                        try
+                        {
+                            var deviceRepo = qrScope.ServiceProvider.GetRequiredService<IDeviceRepository>();
+                            var allDevices = (await deviceRepo.GetAllAsync()).ToList();
+                            if (allDevices.Count > 0)
+                            {
+                                var sdk = _serviceProvider.GetRequiredService<IAccessControlSdk>();
+                                var deviceInfos = allDevices.Select(d => new DeviceInfo
+                                {
+                                    IP = d.IP, MAC = d.MAC, SerialNumber = d.SerialNumber,
+                                    TCPPort = d.TCPPort, Password = d.Password,
+                                    Gateway = d.Gateway, SubnetMask = d.SubnetMask
+                                }).ToList();
+                                var (uploaded, _, _) = await qrPool.SyncQrPoolToDeviceAsync(sdk, deviceInfos);
+                                StartupLog($"QR Pool initial upload: {uploaded} codes uploaded to {allDevices.Count} device(s)");
+                            }
+                        }
+                        catch (Exception ex) { StartupLog($"QR Pool initial upload error: {ex.Message}"); }
+                    }
+                }
+                catch (Exception qrEx)
+                {
+                    StartupLog($"QR pool error (non-critical): {qrEx.Message}");
+                }
+            });
 
             // Execute pending operation after restart (fresh SDK session)
             if (PendingOperationHelper.HasPending())
@@ -836,7 +852,17 @@ public partial class App : System.Windows.Application
 
         _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();
-        _serviceProvider.Dispose();
+
+        // Dispose services safely
+        try { _serviceProvider.Dispose(); } catch { }
+
+        // Force exit after 3 seconds (kills any lingering SDK/background threads)
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(3000);
+            Environment.Exit(0);
+        });
+
         base.OnExit(e);
     }
 
