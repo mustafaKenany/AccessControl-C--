@@ -16,6 +16,7 @@ public interface IQrPoolService
     Task<List<QrPoolEntry>> GetAssignedAsync();
     Task DeactivateAsync(string code);
     Task<(int uploaded, int deleted, int generated)> SyncQrPoolToDeviceAsync(IAccessControlSdk sdk, List<DeviceInfo> devices);
+    Task<int> GetPendingUploadCountAsync();
 }
 
 public class QrPoolService : IQrPoolService
@@ -299,6 +300,15 @@ public class QrPoolService : IQrPoolService
         }
 
         return (uploaded, deleted, generated);
+    }
+
+    public async Task<int> GetPendingUploadCountAsync()
+    {
+        using var conn = new SqlConnection(_connectionString);
+        await conn.OpenAsync();
+        using var cmd = new SqlCommand(
+            "SELECT COUNT(*) FROM QrPool WHERE IsUploadedToDevice = 0 AND Status IN (0, 1)", conn);
+        return (int)(await cmd.ExecuteScalarAsync() ?? 0);
     }
 
     private static QrPoolEntry ReadEntry(SqlDataReader reader)

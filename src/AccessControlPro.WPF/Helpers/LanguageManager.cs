@@ -899,6 +899,9 @@ public class LanguageManager : INotifyPropertyChanged
     public string TgNameRequired => GetString("TgNameRequired");
     public string TgScheduleLabel => GetString("TgScheduleLabel");
 
+    // Device Notification Bar
+    public string BtnSync => GetString("BtnSync");
+
     private string GetString(string name)
     {
         return _resourceManager.GetString(name, _currentCulture) ?? name;
@@ -1665,6 +1668,8 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(TgDeleted));
         OnPropertyChanged(nameof(TgNameRequired));
         OnPropertyChanged(nameof(TgScheduleLabel));
+        // Device Notification Bar
+        OnPropertyChanged(nameof(BtnSync));
     }
 
     private void OnPropertyChanged(string propertyName)

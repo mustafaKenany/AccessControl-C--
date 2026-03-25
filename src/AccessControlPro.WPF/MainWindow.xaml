@@ -304,7 +304,82 @@
             </Border>
 
             <!-- ═══════════ Main Content Area ═══════════ -->
-            <ContentControl Grid.Column="1" Content="{Binding CurrentView}" Margin="0">
+            <DockPanel Grid.Column="1">
+
+                <!-- Device Notification Bar -->
+                <Border DockPanel.Dock="Top"
+                        Visibility="{Binding ShowDeviceNotification, Converter={StaticResource BoolToVisibility}}"
+                        Margin="12,10,12,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="#1AFFB946"/>
+                            <Setter Property="BorderBrush" Value="#FFB946"/>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Setter Property="CornerRadius" Value="8"/>
+                            <Setter Property="Padding" Value="12,8"/>
+                        </Style>
+                    </Border.Style>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Message -->
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding DeviceNotificationMessage}"
+                                       Foreground="#FFB946" FontWeight="Bold" FontSize="13"/>
+                            <TextBlock Text="{Binding DeviceNotificationDetail}"
+                                       Foreground="#8899A6" FontSize="11"/>
+                        </StackPanel>
+
+                        <!-- Sync Button -->
+                        <Button Grid.Column="1" Command="{Binding SyncDeviceCommand}"
+                                Cursor="Hand" Margin="10,0,0,0"
+                                Background="#FFB946" Padding="15,6" BorderThickness="0">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="bg" Background="#FFB946" CornerRadius="6"
+                                                        Padding="15,6" Cursor="Hand">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="bg" Property="Background" Value="#FFCB5C"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter TargetName="bg" Property="Opacity" Value="0.5"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="Refresh" Width="12" Height="12" Foreground="White" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding Lang.BtnSync, FallbackValue='Sync Now'}" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Operation Progress Bar (shown during sync) -->
+                <Border DockPanel.Dock="Top"
+                        Visibility="{Binding IsDeviceOperationRunning, Converter={StaticResource BoolToVisibility}}"
+                        Background="#0E2E30" CornerRadius="8" Padding="12,8" Margin="12,8,12,0">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Spinner" Width="14" Height="14" Foreground="#44A1A0"
+                                         Margin="0,0,10,0" Spin="True"/>
+                        <TextBlock Text="{Binding DeviceOperationProgress}" Foreground="#E0E6ED" FontSize="13"/>
+                    </StackPanel>
+                </Border>
+
+            <ContentControl Content="{Binding CurrentView}" Margin="0">
                 <ContentControl.Resources>
                     <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
                         <views:DashboardView/>
@@ -338,6 +413,7 @@
                     </DataTemplate>
                 </ContentControl.Resources>
             </ContentControl>
+            </DockPanel>
         </Grid>
     </Border>
 </Window>

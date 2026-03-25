@@ -1,11 +1,17 @@
+using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Windows;
 using AccessControlPro.Application.Services;
+using AccessControlPro.Domain.Entities;
 using AccessControlPro.Domain.Enums;
+using AccessControlPro.Domain.Interfaces;
+using AccessControlPro.SDK.Models;
+using AccessControlPro.SDK.Wrapper;
 using AccessControlPro.WPF.Helpers;
 using AccessControlPro.WPF.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AccessControlPro.WPF.ViewModels;
 
@@ -23,12 +29,28 @@ public partial class MainViewModel : ObservableObject
     private readonly QrPassViewModel _qrPassViewModel;
     private readonly MonitorViewModel _monitorViewModel;
     private readonly CurrentUserService _currentUser;
+    private readonly IServiceProvider _serviceProvider;
 
     [ObservableProperty]
     private object? _currentView;
 
     [ObservableProperty]
     private string _currentPage = "Dashboard";
+
+    [ObservableProperty]
+    private bool _showDeviceNotification;
+
+    [ObservableProperty]
+    private string _deviceNotificationMessage = "";
+
+    [ObservableProperty]
+    private string _deviceNotificationDetail = "";
+
+    [ObservableProperty]
+    private bool _isDeviceOperationRunning;
+
+    [ObservableProperty]
+    private string _deviceOperationProgress = "";
 
     public LanguageManager Lang => LanguageManager.Instance;
 
@@ -61,7 +83,8 @@ public partial class MainViewModel : ObservableObject
         CashFlowViewModel cashFlowViewModel,
         QrPassViewModel qrPassViewModel,
         MonitorViewModel monitorViewModel,
-        CurrentUserService currentUser)
+        CurrentUserService currentUser,
+        IServiceProvider serviceProvider)
     {
         _dashboardViewModel = dashboardViewModel;
         _devicesViewModel = devicesViewModel;
@@ -75,6 +98,7 @@ public partial class MainViewModel : ObservableObject
         _qrPassViewModel = qrPassViewModel;
         _monitorViewModel = monitorViewModel;
         _currentUser = currentUser;
+        _serviceProvider = serviceProvider;
         CurrentView = dashboardViewModel;
         _ = _dashboardViewModel.InitializeAsync();
     }
@@ -176,6 +200,125 @@ public partial class MainViewModel : ObservableObject
         }
 
         monitorWindow.Show();
+    }
+
+    public async Task CheckPendingDeviceOperationsAsync()
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var qrPool = scope.ServiceProvider.GetRequiredService<IQrPoolService>();
+
+            var pendingCount = await qrPool.GetPendingUploadCountAsync();
+
+            if (pendingCount > 0)
+            {
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    ShowDeviceNotification = true;
+                    DeviceNotificationMessage = Lang.IsArabic
+                        ? $"\u26a0\ufe0f {pendingCount} \u0631\u0645\u0632 QR \u0628\u062d\u0627\u062c\u0629 \u0644\u0644\u0631\u0641\u0639 \u0625\u0644\u0649 \u0627\u0644\u062c\u0647\u0627\u0632"
+                        : $"\u26a0\ufe0f {pendingCount} QR codes need to be uploaded to device";
+                    DeviceNotificationDetail = Lang.IsArabic
+                        ? "\u0627\u0636\u063a\u0637 \u0647\u0646\u0627 \u0644\u0644\u0645\u0632\u0627\u0645\u0646\u0629"
+                        : "Click here to sync";
+                });
+            }
+            else
+            {
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    ShowDeviceNotification = false;
+                });
+            }
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    private async Task SyncDeviceAsync()
+    {
+        IsDeviceOperationRunning = true;
+        DeviceOperationProgress = Lang.IsArabic ? "\u062c\u0627\u0631\u064a \u0641\u062d\u0635 \u0627\u0644\u0623\u062c\u0647\u0632\u0629..." : "Checking devices...";
+
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var deviceRepo = scope.ServiceProvider.GetRequiredService<IDeviceRepository>();
+            var allDevices = (await deviceRepo.GetAllAsync()).ToList();
+
+            if (allDevices.Count == 0)
+            {
+                DeviceOperationProgress = Lang.IsArabic ? "\u0644\u0627 \u062a\u0648\u062c\u062f \u0623\u062c\u0647\u0632\u0629 \u0645\u0633\u062c\u0644\u0629" : "No devices registered";
+                await Task.Delay(2000);
+                IsDeviceOperationRunning = false;
+                return;
+            }
+
+            DeviceOperationProgress = Lang.IsArabic
+                ? $"\u062c\u0627\u0631\u064a \u0641\u062d\u0635 {allDevices.Count} \u062c\u0647\u0627\u0632..."
+                : $"Pinging {allDevices.Count} device(s)...";
+
+            var onlineDevices = new List<(Device dev, DeviceInfo info)>();
+            foreach (var d in allDevices)
+            {
+                try
+                {
+                    using var ping = new Ping();
+                    var reply = await ping.SendPingAsync(d.IP, 2000);
+                    if (reply.Status == IPStatus.Success)
+                    {
+                        onlineDevices.Add((d, new DeviceInfo
+                        {
+                            IP = d.IP, MAC = d.MAC, SerialNumber = d.SerialNumber,
+                            TCPPort = d.TCPPort, Password = d.Password,
+                            Gateway = d.Gateway, SubnetMask = d.SubnetMask
+                        }));
+                    }
+                }
+                catch { }
+            }
+
+            if (onlineDevices.Count == 0)
+            {
+                DeviceOperationProgress = Lang.IsArabic
+                    ? "\u274c \u062c\u0645\u064a\u0639 \u0627\u0644\u0623\u062c\u0647\u0632\u0629 \u063a\u064a\u0631 \u0645\u062a\u0635\u0644\u0629. \u062a\u0623\u0643\u062f \u0645\u0646 \u0627\u0644\u0627\u062a\u0635\u0627\u0644 \u0648\u062d\u0627\u0648\u0644 \u0645\u0631\u0629 \u0623\u062e\u0631\u0649"
+                    : "\u274c All devices are offline. Check connection and try again.";
+                await Task.Delay(3000);
+                IsDeviceOperationRunning = false;
+                return;
+            }
+
+            DeviceOperationProgress = Lang.IsArabic
+                ? $"\u062c\u0627\u0631\u064a \u0631\u0641\u0639 \u0631\u0645\u0648\u0632 QR \u0625\u0644\u0649 {onlineDevices.Count} \u062c\u0647\u0627\u0632..."
+                : $"Uploading QR codes to {onlineDevices.Count} device(s)...";
+
+            var qrPool = scope.ServiceProvider.GetRequiredService<IQrPoolService>();
+            var sdk = _serviceProvider.GetRequiredService<IAccessControlSdk>();
+            var deviceInfos = onlineDevices.Select(d => d.info).ToList();
+
+            var (uploaded, deleted, generated) = await Task.Run(() =>
+                qrPool.SyncQrPoolToDeviceAsync(sdk, deviceInfos));
+
+            DeviceOperationProgress = Lang.IsArabic
+                ? $"\u2705 \u062a\u0645 \u0631\u0641\u0639 {uploaded} \u0631\u0645\u0632\u060c \u062d\u0630\u0641 {deleted}\u060c \u0625\u0646\u0634\u0627\u0621 {generated}"
+                : $"\u2705 Uploaded {uploaded}, cleaned {deleted}, generated {generated}";
+
+            ShowDeviceNotification = false;
+            await Task.Delay(3000);
+        }
+        catch (Exception ex)
+        {
+            DeviceOperationProgress = Lang.IsArabic
+                ? $"\u274c \u062e\u0637\u0623: {ex.Message}"
+                : $"\u274c Error: {ex.Message}";
+            await Task.Delay(3000);
+        }
+        finally
+        {
+            IsDeviceOperationRunning = false;
+            DeviceOperationProgress = "";
+        }
     }
 
     #region Multi-Monitor Win32

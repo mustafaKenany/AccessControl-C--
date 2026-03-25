@@ -831,4 +831,5 @@ Card sync errors on some devices:
   <data name="PosShiftReport" xml:space="preserve"><value>Shift Report</value></data>
   <data name="PosExpectedCash" xml:space="preserve"><value>Expected Cash</value></data>
   <data name="PosByPaymentMethod" xml:space="preserve"><value>By Payment Method</value></data>
+  <data name="BtnSync" xml:space="preserve"><value>Sync Now</value></data>
 </root>

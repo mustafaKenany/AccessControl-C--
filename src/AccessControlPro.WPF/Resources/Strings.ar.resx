@@ -837,4 +837,5 @@
   <data name="PosShiftReport" xml:space="preserve"><value>تقرير الوردية</value></data>
   <data name="PosExpectedCash" xml:space="preserve"><value>النقد المتوقع</value></data>
   <data name="PosByPaymentMethod" xml:space="preserve"><value>حسب طريقة الدفع</value></data>
+  <data name="BtnSync" xml:space="preserve"><value>مزامنة الآن</value></data>
 </root>

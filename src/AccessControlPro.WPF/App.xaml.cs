@@ -440,6 +440,18 @@ public partial class App : System.Windows.Application
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             mainWindow.Show();
 
+            // Check for pending device operations (shows notification bar after 3s)
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(3000);
+                try
+                {
+                    var mainVm = _serviceProvider.GetRequiredService<MainViewModel>();
+                    await mainVm.CheckPendingDeviceOperationsAsync();
+                }
+                catch { }
+            });
+
             // QR Pool: generate and upload in background (non-blocking)
             _ = Task.Run(async () =>
             {
