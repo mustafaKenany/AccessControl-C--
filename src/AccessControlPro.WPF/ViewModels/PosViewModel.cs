@@ -1,4 +1,10 @@
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Printing;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
 using AccessControlPro.Application.DTOs;
 using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Domain.Enums;
@@ -6,6 +12,7 @@ using AccessControlPro.WPF.Helpers;
 using AccessControlPro.WPF.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Win32;
 
 namespace AccessControlPro.WPF.ViewModels;
 
@@ -13,6 +20,7 @@ public partial class PosViewModel : ObservableObject
 {
     private readonly IPosService _posService;
     private readonly IEmployeeService _employeeService;
+    private readonly IAppSettingsService _settingsService;
 
     public LanguageManager Lang => LanguageManager.Instance;
 
@@ -21,6 +29,7 @@ public partial class PosViewModel : ObservableObject
     [ObservableProperty] private EmployeeDto? _selectedPlayer;
     [ObservableProperty] private decimal _playerCardBalance;
     [ObservableProperty] private decimal _cartTotal;
+    [ObservableProperty] private decimal _cartSubtotal;
     [ObservableProperty] private string _playerInfoText = string.Empty;
     [ObservableProperty] private bool _hasSelectedPlayer;
     [ObservableProperty] private string _barcodeInput = string.Empty;
@@ -28,7 +37,27 @@ public partial class PosViewModel : ObservableObject
     [ObservableProperty] private int _todaySalesCount;
     [ObservableProperty] private decimal _todaySalesTotal;
 
+    // Discount
+    [ObservableProperty] private decimal _orderDiscountAmount;
+    [ObservableProperty] private string _orderDiscountReason = string.Empty;
+
+    // Shift
+    [ObservableProperty] private bool _hasOpenShift;
+    [ObservableProperty] private string _shiftStatusText = string.Empty;
+
+    // Daily Summary
+    [ObservableProperty] private DailySummaryDto? _dailySummary;
+    [ObservableProperty] private bool _showDailySummary;
+
+    // Last sale data for receipt
+    private List<CartItemDto>? _lastSaleItems;
+    private decimal _lastSaleTotal;
+    private PaymentMethod _lastSaleMethod;
+    private decimal _lastSaleDiscount;
+    [ObservableProperty] private bool _hasLastSale;
+
     private List<ProductDto> _allProducts = new();
+    private string _gymName = string.Empty;
 
     public ObservableCollection<ProductDto> FilteredProducts { get; } = new();
     public ObservableCollection<CartItemDto> CartItems { get; } = new();
@@ -36,10 +65,11 @@ public partial class PosViewModel : ObservableObject
 
     private bool _isInitialized;
 
-    public PosViewModel(IPosService posService, IEmployeeService employeeService)
+    public PosViewModel(IPosService posService, IEmployeeService employeeService, IAppSettingsService settingsService)
     {
         _posService = posService;
         _employeeService = employeeService;
+        _settingsService = settingsService;
     }
 
     public async Task InitializeAsync()
@@ -48,6 +78,13 @@ public partial class PosViewModel : ObservableObject
         _isInitialized = true;
         await LoadProductsAsync();
         await LoadTodaySalesAsync();
+        await LoadShiftStatusAsync();
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            _gymName = !string.IsNullOrEmpty(settings.GymName) ? settings.GymName : "GYM";
+        }
+        catch { _gymName = "GYM"; }
     }
 
     [RelayCommand]
@@ -246,7 +283,23 @@ public partial class PosViewModel : ObservableObject
     private void ClearCart()
     {
         CartItems.Clear();
+        OrderDiscountAmount = 0;
+        OrderDiscountReason = string.Empty;
         UpdateCartTotal();
+    }
+
+    [RelayCommand]
+    private void ApplyItemDiscount(CartItemDto? item)
+    {
+        if (item == null) return;
+
+        var dialog = new Views.DiscountDialog(item.Price * item.Quantity);
+        dialog.Owner = System.Windows.Application.Current.MainWindow;
+        if (dialog.ShowDialog() == true)
+        {
+            item.DiscountAmount = dialog.DiscountValue;
+            RefreshCartItem(item);
+        }
     }
 
     [RelayCommand]
@@ -273,9 +326,15 @@ public partial class PosViewModel : ObservableObject
         try
         {
             var saleItems = CartItems.ToList();
-            var saleTotal = CartTotal;
+            var subtotal = saleItems.Sum(i => i.Price * i.Quantity);
+            var itemDiscounts = saleItems.Sum(i => i.DiscountAmount);
+            var totalDiscount = OrderDiscountAmount + itemDiscounts;
+            var saleTotal = subtotal - totalDiscount;
+            if (saleTotal < 0) saleTotal = 0;
+
             var success = await _posService.SellAsync(
-                saleItems, method, SelectedPlayer?.Id);
+                saleItems, method, SelectedPlayer?.Id,
+                OrderDiscountAmount, OrderDiscountReason);
 
             if (!success)
             {
@@ -283,7 +342,16 @@ public partial class PosViewModel : ObservableObject
                 return;
             }
 
+            // Store last sale for receipt
+            _lastSaleItems = saleItems;
+            _lastSaleTotal = saleTotal;
+            _lastSaleMethod = method;
+            _lastSaleDiscount = totalDiscount;
+            HasLastSale = true;
+
             CartItems.Clear();
+            OrderDiscountAmount = 0;
+            OrderDiscountReason = string.Empty;
             UpdateCartTotal();
             await LoadProductsAsync();
             await LoadTodaySalesAsync();
@@ -294,7 +362,7 @@ public partial class PosViewModel : ObservableObject
                 PlayerInfoText = $"{SelectedPlayer.FullNameEn}  |  {Lang.PosCardBalance}: {PlayerCardBalance:N0}";
             }
 
-            // Show receipt dialog
+            // Show receipt dialog with print option
             var receiptDialog = new Views.ReceiptDialog(saleItems, saleTotal, method,
                 SelectedPlayer?.FullNameEn);
             receiptDialog.Owner = System.Windows.Application.Current.MainWindow;
@@ -333,7 +401,15 @@ public partial class PosViewModel : ObservableObject
 
     private void UpdateCartTotal()
     {
-        CartTotal = CartItems.Sum(c => c.Total);
+        CartSubtotal = CartItems.Sum(c => c.Price * c.Quantity);
+        var itemDiscounts = CartItems.Sum(c => c.DiscountAmount);
+        CartTotal = CartSubtotal - itemDiscounts - OrderDiscountAmount;
+        if (CartTotal < 0) CartTotal = 0;
+    }
+
+    partial void OnOrderDiscountAmountChanged(decimal value)
+    {
+        UpdateCartTotal();
     }
 
     private async Task LoadTodaySalesAsync()
@@ -343,6 +419,322 @@ public partial class PosViewModel : ObservableObject
             var (count, total) = await _posService.GetTodaySalesAsync();
             TodaySalesCount = count;
             TodaySalesTotal = total;
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
+        }
+    }
+
+    // ── Receipt Printing ──
+
+    [RelayCommand]
+    private void PrintLastReceipt()
+    {
+        if (_lastSaleItems == null || _lastSaleItems.Count == 0) return;
+        PrintReceipt(_lastSaleItems, _lastSaleTotal, _lastSaleMethod, _lastSaleDiscount,
+            SelectedPlayer?.FullNameEn);
+    }
+
+    public void PrintReceipt(List<CartItemDto> items, decimal total, PaymentMethod method,
+        decimal discount = 0, string? playerName = null)
+    {
+        var printDialog = new PrintDialog();
+        if (printDialog.ShowDialog() != true) return;
+
+        var doc = CreateReceiptDocument(items, total, method, discount, playerName);
+        var paginator = ((IDocumentPaginatorSource)doc).DocumentPaginator;
+        printDialog.PrintDocument(paginator, "POS Receipt");
+    }
+
+    private FlowDocument CreateReceiptDocument(List<CartItemDto> items, decimal total,
+        PaymentMethod method, decimal discount, string? playerName)
+    {
+        var doc = new FlowDocument
+        {
+            PageWidth = 280,
+            ColumnWidth = 280,
+            PagePadding = new Thickness(10),
+            FontFamily = new FontFamily("Consolas")
+        };
+
+        // Header
+        doc.Blocks.Add(new Paragraph(new Run(_gymName))
+        {
+            TextAlignment = TextAlignment.Center,
+            FontSize = 16,
+            FontWeight = FontWeights.Bold,
+            Margin = new Thickness(0, 0, 0, 4)
+        });
+
+        doc.Blocks.Add(new Paragraph(new Run(DateTime.Now.ToString("yyyy-MM-dd  HH:mm:ss")))
+        {
+            TextAlignment = TextAlignment.Center,
+            FontSize = 10,
+            Margin = new Thickness(0, 0, 0, 4)
+        });
+
+        if (!string.IsNullOrEmpty(playerName))
+        {
+            doc.Blocks.Add(new Paragraph(new Run(playerName))
+            {
+                TextAlignment = TextAlignment.Center,
+                FontSize = 11,
+                Margin = new Thickness(0, 0, 0, 4)
+            });
+        }
+
+        doc.Blocks.Add(new Paragraph(new Run(new string('-', 32)))
+        {
+            TextAlignment = TextAlignment.Center,
+            FontSize = 10,
+            Margin = new Thickness(0, 4, 0, 4)
+        });
+
+        // Items
+        foreach (var item in items)
+        {
+            var line = $"{item.ProductName}";
+            doc.Blocks.Add(new Paragraph(new Run(line))
+            {
+                FontSize = 11,
+                Margin = new Thickness(0, 2, 0, 0)
+            });
+
+            var detail = $"  {item.Quantity} x {item.Price:N0} = {item.Price * item.Quantity:N0}";
+            if (item.DiscountAmount > 0)
+                detail += $" (-{item.DiscountAmount:N0})";
+            doc.Blocks.Add(new Paragraph(new Run(detail))
+            {
+                FontSize = 10,
+                Margin = new Thickness(0, 0, 0, 2)
+            });
+        }
+
+        doc.Blocks.Add(new Paragraph(new Run(new string('-', 32)))
+        {
+            TextAlignment = TextAlignment.Center,
+            FontSize = 10,
+            Margin = new Thickness(0, 4, 0, 4)
+        });
+
+        // Discount
+        if (discount > 0)
+        {
+            doc.Blocks.Add(new Paragraph(new Run($"Discount: -{discount:N0}"))
+            {
+                FontSize = 11,
+                Margin = new Thickness(0, 0, 0, 2)
+            });
+        }
+
+        // Total
+        doc.Blocks.Add(new Paragraph(new Run($"TOTAL: {total:N0}"))
+        {
+            FontSize = 14,
+            FontWeight = FontWeights.Bold,
+            TextAlignment = TextAlignment.Center,
+            Margin = new Thickness(0, 4, 0, 4)
+        });
+
+        // Payment method
+        var methodText = method == PaymentMethod.Cash ? "CASH" : "CARD BALANCE";
+        doc.Blocks.Add(new Paragraph(new Run($"Paid: {methodText}"))
+        {
+            TextAlignment = TextAlignment.Center,
+            FontSize = 10,
+            Margin = new Thickness(0, 2, 0, 8)
+        });
+
+        // Footer
+        doc.Blocks.Add(new Paragraph(new Run("Thank you!"))
+        {
+            TextAlignment = TextAlignment.Center,
+            FontSize = 11,
+            FontWeight = FontWeights.Bold
+        });
+
+        return doc;
+    }
+
+    [RelayCommand]
+    private void SaveLastReceiptAsText()
+    {
+        if (_lastSaleItems == null || _lastSaleItems.Count == 0) return;
+
+        var dialog = new SaveFileDialog
+        {
+            Filter = "Text files (*.txt)|*.txt",
+            FileName = $"Receipt_{DateTime.Now:yyyyMMdd_HHmmss}.txt"
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        var lines = new List<string>
+        {
+            _gymName,
+            DateTime.Now.ToString("yyyy-MM-dd  HH:mm:ss"),
+            new string('-', 32)
+        };
+
+        foreach (var item in _lastSaleItems)
+        {
+            lines.Add($"{item.ProductName}");
+            var detail = $"  {item.Quantity} x {item.Price:N0} = {item.Price * item.Quantity:N0}";
+            if (item.DiscountAmount > 0)
+                detail += $" (-{item.DiscountAmount:N0})";
+            lines.Add(detail);
+        }
+
+        lines.Add(new string('-', 32));
+        if (_lastSaleDiscount > 0)
+            lines.Add($"Discount: -{_lastSaleDiscount:N0}");
+        lines.Add($"TOTAL: {_lastSaleTotal:N0}");
+        lines.Add($"Paid: {(_lastSaleMethod == PaymentMethod.Cash ? "CASH" : "CARD BALANCE")}");
+        lines.Add("");
+        lines.Add("Thank you!");
+
+        File.WriteAllLines(dialog.FileName, lines);
+    }
+
+    // ── Daily Summary ──
+
+    [RelayCommand]
+    private async Task LoadDailySummaryAsync()
+    {
+        try
+        {
+            DailySummary = await _posService.GetDailySummaryAsync(DateTime.Today);
+            ShowDailySummary = true;
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
+        }
+    }
+
+    [RelayCommand]
+    private void HideDailySummary()
+    {
+        ShowDailySummary = false;
+    }
+
+    [RelayCommand]
+    private void PrintDailySummary()
+    {
+        if (DailySummary == null) return;
+
+        var printDialog = new PrintDialog();
+        if (printDialog.ShowDialog() != true) return;
+
+        var doc = new FlowDocument
+        {
+            PageWidth = 280,
+            ColumnWidth = 280,
+            PagePadding = new Thickness(10),
+            FontFamily = new FontFamily("Consolas")
+        };
+
+        doc.Blocks.Add(new Paragraph(new Run($"{_gymName} - {Lang.PosDailySummary}"))
+        {
+            TextAlignment = TextAlignment.Center,
+            FontSize = 14,
+            FontWeight = FontWeights.Bold,
+            Margin = new Thickness(0, 0, 0, 4)
+        });
+
+        doc.Blocks.Add(new Paragraph(new Run(DailySummary.Date.ToString("yyyy-MM-dd")))
+        {
+            TextAlignment = TextAlignment.Center,
+            FontSize = 11,
+            Margin = new Thickness(0, 0, 0, 8)
+        });
+
+        doc.Blocks.Add(new Paragraph(new Run(new string('-', 32))) { TextAlignment = TextAlignment.Center, FontSize = 10 });
+
+        var lines = new[]
+        {
+            $"{Lang.PosTotalTransactions}: {DailySummary.TotalTransactions}",
+            $"{Lang.PosTotalItemsSold}: {DailySummary.TotalItemsSold}",
+            $"{Lang.PosTodaySales}: {DailySummary.TotalSales:N0}",
+            $"{Lang.PosCashSales}: {DailySummary.TotalCashSales:N0}",
+            $"{Lang.PosCardSales}: {DailySummary.TotalCardSales:N0}",
+            $"{Lang.PosTotalDiscounts}: {DailySummary.TotalDiscounts:N0}"
+        };
+
+        foreach (var line in lines)
+        {
+            doc.Blocks.Add(new Paragraph(new Run(line)) { FontSize = 11, Margin = new Thickness(0, 2, 0, 0) });
+        }
+
+        var paginator = ((IDocumentPaginatorSource)doc).DocumentPaginator;
+        printDialog.PrintDocument(paginator, "Daily Summary");
+    }
+
+    // ── Shift Management ──
+
+    private async Task LoadShiftStatusAsync()
+    {
+        try
+        {
+            var shift = await _posService.GetOpenShiftAsync();
+            HasOpenShift = shift != null;
+            if (shift != null)
+            {
+                ShiftStatusText = $"{Lang.PosShiftOpen} - {shift.OpenedBy} ({shift.OpenedAt.ToLocalTime():HH:mm})";
+            }
+            else
+            {
+                ShiftStatusText = string.Empty;
+            }
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    private async Task OpenShiftAsync()
+    {
+        var dialog = new Views.AmountInputDialog(Lang.PosOpeningCash, Lang.PosEnterAmount);
+        dialog.Owner = System.Windows.Application.Current.MainWindow;
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            var shift = await _posService.OpenShiftAsync(dialog.Amount);
+            HasOpenShift = true;
+            ShiftStatusText = $"{Lang.PosShiftOpen} - {shift.OpenedBy} ({shift.OpenedAt.ToLocalTime():HH:mm})";
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task CloseShiftAsync()
+    {
+        var dialog = new Views.AmountInputDialog(Lang.PosClosingCash, Lang.PosEnterAmount);
+        dialog.Owner = System.Windows.Application.Current.MainWindow;
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            var shift = await _posService.CloseShiftAsync(dialog.Amount);
+            HasOpenShift = false;
+            ShiftStatusText = string.Empty;
+
+            // Show shift report
+            var expected = shift.OpeningCash + shift.TotalCashSales;
+            var reportMsg = $"{Lang.PosShiftReport}\n\n" +
+                $"{Lang.PosOpeningCash}: {shift.OpeningCash:N0}\n" +
+                $"{Lang.PosTodaySales}: {shift.TotalSales:N0}\n" +
+                $"{Lang.PosCashSales}: {shift.TotalCashSales:N0}\n" +
+                $"{Lang.PosCardSales}: {shift.TotalCardSales:N0}\n" +
+                $"{Lang.PosExpectedCash}: {expected:N0}\n" +
+                $"{Lang.PosClosingCash}: {shift.ClosingCash:N0}\n" +
+                $"{Lang.PosVariance}: {shift.Variance:N0}";
+
+            CustomMessageBox.Show(reportMsg, Lang.PosShiftClosed, MsgType.Info);
         }
         catch (Exception ex)
         {

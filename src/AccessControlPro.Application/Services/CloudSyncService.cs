@@ -109,6 +109,10 @@ public class CloudSyncService : ICloudSyncService
                 "AssignedAt, UsedAt, ExpiredAt, MaxUses, UsedCount, ValidFrom, ValidTo, " +
                 "DoorPermissions, CreatedAt, IsUploadedToDevice FROM QrPool");
 
+            payload["subscriptionPlans"] = await ReadTableAsync(local,
+                "SELECT Id, NameEn, NameAr, Duration, DurationType, Price, MaxVisits, " +
+                "EffectiveTimes, IsActive, SortOrder, CreatedAt FROM SubscriptionPlans");
+
             // Log table counts
             foreach (var kvp in payload)
                 Log($"  {kvp.Key}: {kvp.Value.Count} rows read");

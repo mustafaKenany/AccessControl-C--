@@ -19,6 +19,8 @@ public partial class AdminMainViewModel : ObservableObject
     private readonly BackupViewModel _backupViewModel;
     private readonly ReportsViewModel _reportsViewModel;
     private readonly TimeGroupViewModel _timeGroupViewModel;
+    private readonly QrPoolViewModel _qrPoolViewModel;
+    private readonly SubscriptionPlansViewModel _subscriptionPlansViewModel;
     private readonly CurrentUserService _currentUser;
 
     [ObservableProperty]
@@ -44,6 +46,8 @@ public partial class AdminMainViewModel : ObservableObject
         BackupViewModel backupViewModel,
         ReportsViewModel reportsViewModel,
         TimeGroupViewModel timeGroupViewModel,
+        QrPoolViewModel qrPoolViewModel,
+        SubscriptionPlansViewModel subscriptionPlansViewModel,
         CurrentUserService currentUser)
     {
         _usersViewModel = usersViewModel;
@@ -58,6 +62,8 @@ public partial class AdminMainViewModel : ObservableObject
         _backupViewModel = backupViewModel;
         _reportsViewModel = reportsViewModel;
         _timeGroupViewModel = timeGroupViewModel;
+        _qrPoolViewModel = qrPoolViewModel;
+        _subscriptionPlansViewModel = subscriptionPlansViewModel;
         _currentUser = currentUser;
         CurrentView = dashboardViewModel;
     }
@@ -87,6 +93,8 @@ public partial class AdminMainViewModel : ObservableObject
             "Backup" => _backupViewModel,
             "Reports" => _reportsViewModel,
             "TimeGroups" => _timeGroupViewModel,
+            "QrPool" => _qrPoolViewModel,
+            "SubscriptionPlans" => _subscriptionPlansViewModel,
             _ => CurrentView
         };
 
@@ -112,5 +120,9 @@ public partial class AdminMainViewModel : ObservableObject
             await _reportsViewModel.LoadAsync();
         else if (page == "TimeGroups")
             await _timeGroupViewModel.LoadAsync();
+        else if (page == "QrPool")
+            await _qrPoolViewModel.LoadAsync();
+        else if (page == "SubscriptionPlans")
+            await _subscriptionPlansViewModel.LoadAsync();
     }
 }

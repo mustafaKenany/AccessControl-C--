@@ -1,0 +1,340 @@
+<UserControl x:Class="AccessControlPro.Admin.Views.SubscriptionPlansView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="http://schemas.fontawesome.io/icons/"
+             xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers;assembly=AccessControlPro.WPF"
+             Background="{StaticResource BgDarkBrush}">
+
+    <UserControl.Resources>
+        <helpers:BindingProxy x:Key="Proxy" Data="{Binding}"/>
+    </UserControl.Resources>
+
+    <Grid Margin="24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,16">
+            <StackPanel DockPanel.Dock="Left">
+                <TextBlock FontSize="24" Foreground="{StaticResource TextPrimaryBrush}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="Subscription Plans"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                    <Setter Property="Text" Value="&#x062E;&#x0637;&#x0637; &#x0627;&#x0644;&#x0627;&#x0634;&#x062A;&#x0631;&#x0627;&#x0643;"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="Define subscription plans used by the main app"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                    <Setter Property="Text" Value="&#x062A;&#x0639;&#x0631;&#x064A;&#x0641; &#x062E;&#x0637;&#x0637; &#x0627;&#x0644;&#x0627;&#x0634;&#x062A;&#x0631;&#x0627;&#x0643; &#x0627;&#x0644;&#x0645;&#x0633;&#x062A;&#x062E;&#x062F;&#x0645;&#x0629; &#x0641;&#x064A; &#x0627;&#x0644;&#x062A;&#x0637;&#x0628;&#x064A;&#x0642; &#x0627;&#x0644;&#x0631;&#x0626;&#x064A;&#x0633;&#x064A;"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Content -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="380"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Plans Table -->
+            <Border Grid.Column="0" Style="{StaticResource DashboardCard}" Margin="0,0,8,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <DataGrid Grid.Row="0"
+                              ItemsSource="{Binding Plans}"
+                              SelectedItem="{Binding SelectedPlan}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              RowBackground="#0E2A2D"
+                              AlternatingRowBackground="#112F32"
+                              Foreground="{StaticResource TextPrimaryBrush}"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="#15FFFFFF"
+                              HeadersVisibility="Column"
+                              SelectionMode="Single"
+                              CanUserResizeRows="False"
+                              FontFamily="{StaticResource CairoFont}"
+                              FontSize="13"
+                              FontWeight="Bold">
+
+                        <DataGrid.ColumnHeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#143436"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+                                <Setter Property="FontSize" Value="13"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Padding" Value="14,10"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="DataGridColumnHeader">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                                  TextBlock.Foreground="{TemplateBinding Foreground}"
+                                                                  TextBlock.FontFamily="{TemplateBinding FontFamily}"
+                                                                  TextBlock.FontSize="{TemplateBinding FontSize}"
+                                                                  TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </DataGrid.ColumnHeaderStyle>
+
+                        <DataGrid.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="Padding" Value="14,8"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="DataGridCell">
+                                            <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                                <ContentPresenter VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </DataGrid.CellStyle>
+
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="#" Binding="{Binding SortOrder}" Width="50"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.NameEn, Source={StaticResource Proxy}}"
+                                                Binding="{Binding NameEn}" Width="*"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.NameAr, Source={StaticResource Proxy}}"
+                                                Binding="{Binding NameAr}" Width="*"/>
+                            <DataGridTemplateColumn Header="Duration" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Foreground="{StaticResource TextPrimaryBrush}">
+                                            <TextBlock.Text>
+                                                <MultiBinding StringFormat="{}{0} {1}">
+                                                    <Binding Path="Duration"/>
+                                                    <Binding Path="DurationType"/>
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Price" Binding="{Binding Price, StringFormat={}{0:N0}}" Width="100"/>
+                            <DataGridTextColumn Header="Max Visits" Binding="{Binding MaxVisits}" Width="90"/>
+                            <DataGridTemplateColumn Header="Status" Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Cursor="Hand" Background="Transparent" BorderThickness="0"
+                                                Command="{Binding Data.ToggleActiveCommand, Source={StaticResource Proxy}}"
+                                                CommandParameter="{Binding}">
+                                            <Border CornerRadius="10" Padding="10,4">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="#302ECC71"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                                                <Setter Property="Background" Value="#30E74C3C"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <TextBlock FontSize="11" HorizontalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="Active"/>
+                                                            <Setter Property="Foreground" Value="#2ECC71"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                                                    <Setter Property="Text" Value="Inactive"/>
+                                                                    <Setter Property="Foreground" Value="#E74C3C"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Border>
+                                        </Button>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Loading -->
+                    <StackPanel Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
+                        <fa:ImageAwesome Icon="Spinner" Width="24" Height="24"
+                                         Foreground="{StaticResource PrimaryLightBrush}"
+                                         SpinDuration="1" Spin="True" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Right: Add/Edit Panel -->
+            <Border Grid.Column="1" Style="{StaticResource DashboardCard}" Margin="8,0,0,0">
+                <StackPanel>
+                    <!-- Panel Title -->
+                    <DockPanel Margin="0,0,0,20">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                            <fa:ImageAwesome Icon="PlusCircle" Width="16" Height="16"
+                                             Foreground="{StaticResource PrimaryLightBrush}"
+                                             VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBlock FontSize="16" Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Add Plan"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                <Setter Property="Text" Value="Edit Plan"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                        <Button DockPanel.Dock="Right" Background="Transparent" BorderThickness="0"
+                                Cursor="Hand" Command="{Binding CancelEditCommand}"
+                                HorizontalAlignment="Right"
+                                Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                            <fa:ImageAwesome Icon="Times" Width="14" Height="14"
+                                             Foreground="{StaticResource TextMutedBrush}"/>
+                        </Button>
+                    </DockPanel>
+
+                    <!-- Name (EN) -->
+                    <TextBlock Text="{Binding Lang.NameEn}" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                    <TextBox Text="{Binding EditNameEn, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"/>
+
+                    <!-- Name (AR) -->
+                    <TextBlock Text="{Binding Lang.NameAr}" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                    <TextBox Text="{Binding EditNameAr, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"
+                             FlowDirection="RightToLeft"/>
+
+                    <!-- Duration + Type -->
+                    <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Duration"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                        <Setter Property="Text" Value="&#x0627;&#x0644;&#x0645;&#x062F;&#x0629;"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding EditDuration, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}"/>
+                        <ComboBox Grid.Column="2" ItemsSource="{Binding DurationTypes}"
+                                  SelectedItem="{Binding SelectedDurationType}"
+                                  Style="{StaticResource DarkComboBox}"/>
+                    </Grid>
+
+                    <!-- Price -->
+                    <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Price"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                        <Setter Property="Text" Value="&#x0627;&#x0644;&#x0633;&#x0639;&#x0631;"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBox Text="{Binding EditPrice, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"/>
+
+                    <!-- Max Visits -->
+                    <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Max Visits (0 = unlimited)"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                        <Setter Property="Text" Value="&#x0627;&#x0644;&#x062D;&#x062F; &#x0627;&#x0644;&#x0623;&#x0642;&#x0635;&#x0649; &#x0644;&#x0644;&#x0632;&#x064A;&#x0627;&#x0631;&#x0627;&#x062A; (0 = &#x063A;&#x064A;&#x0631; &#x0645;&#x062D;&#x062F;&#x0648;&#x062F;)"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBox Text="{Binding EditMaxVisits, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"/>
+
+                    <!-- Effective Times -->
+                    <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Effective Times (hardware)"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                        <Setter Property="Text" Value="&#x0623;&#x0648;&#x0642;&#x0627;&#x062A; &#x0627;&#x0644;&#x0641;&#x0639;&#x0627;&#x0644;&#x064A;&#x0629;"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBox Text="{Binding EditEffectiveTimes, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"/>
+
+                    <Border Height="1" Background="#15FFFFFF" Margin="0,4,0,14"/>
+
+                    <!-- Buttons -->
+                    <StackPanel Orientation="Horizontal">
+                        <Button Style="{StaticResource PrimaryButton}" Padding="20,10"
+                                Command="{Binding SaveCommand}" Margin="0,0,10,0" Cursor="Hand">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="Check" Width="12" Height="12"
+                                                 Foreground="White" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding Lang.Submit}" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SecondaryButton}" Padding="20,10"
+                                Command="{Binding DeleteCommand}" Cursor="Hand"
+                                Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="Trash" Width="12" Height="12"
+                                                 Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding Lang.Delete}" FontSize="13"
+                                           Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

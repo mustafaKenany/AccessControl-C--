@@ -228,6 +228,26 @@
                                 </StackPanel>
                             </Button>
 
+                            <Button Style="{StaticResource SidebarButton}"
+                                    Command="{Binding NavigateToCommand}" CommandParameter="QrPool">
+                                <StackPanel Orientation="Horizontal">
+                                    <fa:ImageAwesome Icon="Qrcode" Width="16" Height="16"
+                                                     Foreground="{StaticResource TextMutedBrush}"
+                                                     VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                    <TextBlock Text="QR Pool" FontSize="14" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Style="{StaticResource SidebarButton}"
+                                    Command="{Binding NavigateToCommand}" CommandParameter="SubscriptionPlans">
+                                <StackPanel Orientation="Horizontal">
+                                    <fa:ImageAwesome Icon="IdCard" Width="16" Height="16"
+                                                     Foreground="{StaticResource TextMutedBrush}"
+                                                     VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                    <TextBlock Text="Subscription Plans" FontSize="14" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
                             <Border Height="1" Background="#15FFFFFF" Margin="8,8"/>
 
                             <Button Style="{StaticResource SidebarButton}"
@@ -322,6 +342,12 @@
                     </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:TimeGroupViewModel}">
                         <views:TimeGroupView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:QrPoolViewModel}">
+                        <views:QrPoolView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:SubscriptionPlansViewModel}">
+                        <views:SubscriptionPlansView/>
                     </DataTemplate>
                 </ContentControl.Resources>
             </ContentControl>

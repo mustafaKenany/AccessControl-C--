@@ -12,6 +12,7 @@ public class PosService : IPosService
     private readonly ITransactionRepository _transactionRepo;
     private readonly IEmployeeRepository _employeeRepo;
     private readonly IStockMovementRepository _stockMovementRepo;
+    private readonly IPosShiftRepository _shiftRepo;
     private readonly CurrentUserService _currentUser;
 
     public PosService(
@@ -19,12 +20,14 @@ public class PosService : IPosService
         ITransactionRepository transactionRepo,
         IEmployeeRepository employeeRepo,
         IStockMovementRepository stockMovementRepo,
+        IPosShiftRepository shiftRepo,
         CurrentUserService currentUser)
     {
         _productRepo = productRepo;
         _transactionRepo = transactionRepo;
         _employeeRepo = employeeRepo;
         _stockMovementRepo = stockMovementRepo;
+        _shiftRepo = shiftRepo;
         _currentUser = currentUser;
     }
 
@@ -108,7 +111,8 @@ public class PosService : IPosService
         await _productRepo.DeleteAsync(id);
     }
 
-    public async Task<bool> SellAsync(List<CartItemDto> items, PaymentMethod method, int? employeeId = null)
+    public async Task<bool> SellAsync(List<CartItemDto> items, PaymentMethod method, int? employeeId = null,
+        decimal discountAmount = 0, string discountReason = "")
     {
         if (items == null || items.Count == 0)
             return false;
@@ -124,9 +128,13 @@ public class PosService : IPosService
         if (method == PaymentMethod.CardBalance && !employeeId.HasValue)
             throw new ArgumentException("Employee ID is required for card balance payment.");
 
-        var totalAmount = items.Sum(i => i.Total);
+        var subtotal = items.Sum(i => i.Price * i.Quantity);
+        var itemDiscounts = items.Sum(i => i.DiscountAmount);
+        var totalDiscount = discountAmount + itemDiscounts;
+        var totalAmount = subtotal - totalDiscount;
+        if (totalAmount < 0) totalAmount = 0;
 
-        // Pre-validate ALL stock before any deduction — single batch query instead of N queries
+        // Pre-validate ALL stock before any deduction
         var productIds = items.Select(i => i.ProductId).Distinct();
         var products = await _productRepo.GetByIdsAsync(productIds);
         var productMap = products.ToDictionary(p => p.Id);
@@ -150,7 +158,7 @@ public class PosService : IPosService
             await _employeeRepo.UpdateAsync(employee);
         }
 
-        // Deduct stock + record stock movements (all pre-validated)
+        // Deduct stock + record stock movements
         foreach (var item in items)
         {
             var product = productMap[item.ProductId];
@@ -179,6 +187,8 @@ public class PosService : IPosService
             Description = description,
             RelatedEmployeeId = employeeId,
             PaymentMethod = method,
+            DiscountAmount = totalDiscount,
+            DiscountReason = discountReason,
             CreatedBy = _currentUser.Username ?? "System"
         });
 
@@ -225,5 +235,111 @@ public class PosService : IPosService
 
         var list = transactions.ToList();
         return (list.Count, list.Sum(t => t.Amount));
+    }
+
+    public async Task<DailySummaryDto> GetDailySummaryAsync(DateTime date)
+    {
+        var startOfDay = date.Date;
+        var endOfDay = startOfDay.AddDays(1);
+
+        var (transactions, _) = await _transactionRepo.GetPagedAsync(
+            1, int.MaxValue, TransactionType.Income,
+            from: startOfDay, to: endOfDay, category: "POS Sale");
+
+        var list = transactions.ToList();
+
+        var cashSales = list.Where(t => t.PaymentMethod == PaymentMethod.Cash).Sum(t => t.Amount);
+        var cardSales = list.Where(t => t.PaymentMethod == PaymentMethod.CardBalance).Sum(t => t.Amount);
+        var totalDiscounts = list.Sum(t => t.DiscountAmount);
+
+        // Count items from descriptions (format: "ProductName x2, ProductName x1")
+        var totalItems = 0;
+        foreach (var t in list)
+        {
+            if (string.IsNullOrEmpty(t.Description)) continue;
+            var parts = t.Description.Split(',');
+            foreach (var part in parts)
+            {
+                var xIdx = part.LastIndexOf(" x", StringComparison.Ordinal);
+                if (xIdx >= 0 && int.TryParse(part[(xIdx + 2)..].Trim(), out var qty))
+                    totalItems += qty;
+                else
+                    totalItems += 1;
+            }
+        }
+
+        // Group by category (we parse product names from descriptions)
+        // Since all POS sales are category "POS Sale", group by payment method instead
+        var byCategory = new List<CategorySummaryDto>
+        {
+            new() { Category = "Cash", Count = list.Count(t => t.PaymentMethod == PaymentMethod.Cash), Total = cashSales },
+            new() { Category = "Card Balance", Count = list.Count(t => t.PaymentMethod == PaymentMethod.CardBalance), Total = cardSales }
+        };
+
+        return new DailySummaryDto
+        {
+            Date = date.Date,
+            TotalTransactions = list.Count,
+            TotalSales = list.Sum(t => t.Amount),
+            TotalCashSales = cashSales,
+            TotalCardSales = cardSales,
+            TotalDiscounts = totalDiscounts,
+            TotalItemsSold = totalItems,
+            ByCategory = byCategory.Where(c => c.Count > 0).ToList()
+        };
+    }
+
+    // ── Shift Management ──
+
+    public async Task<PosShift?> GetOpenShiftAsync()
+    {
+        return await _shiftRepo.GetOpenShiftAsync();
+    }
+
+    public async Task<PosShift> OpenShiftAsync(decimal openingCash)
+    {
+        // Close any stale open shifts first
+        var staleShifts = await _shiftRepo.GetAllOpenShiftsAsync();
+        foreach (var stale in staleShifts)
+        {
+            stale.Status = "Closed";
+            stale.ClosedAt = DateTime.UtcNow;
+        }
+        if (staleShifts.Count > 0)
+            await _shiftRepo.UpdateRangeAsync(staleShifts);
+
+        var shift = new PosShift
+        {
+            OpenedBy = _currentUser.Username ?? "System",
+            OpenedAt = DateTime.UtcNow,
+            OpeningCash = openingCash,
+            Status = "Open"
+        };
+
+        await _shiftRepo.AddAsync(shift);
+        return shift;
+    }
+
+    public async Task<PosShift> CloseShiftAsync(decimal closingCash)
+    {
+        var shift = await GetOpenShiftAsync()
+            ?? throw new InvalidOperationException("No open shift found.");
+
+        // Calculate sales during shift
+        var (transactions, _) = await _transactionRepo.GetPagedAsync(
+            1, int.MaxValue, TransactionType.Income,
+            from: shift.OpenedAt, to: DateTime.UtcNow, category: "POS Sale");
+
+        var txList = transactions.ToList();
+        shift.TotalSales = txList.Sum(t => t.Amount);
+        shift.TotalCashSales = txList.Where(t => t.PaymentMethod == PaymentMethod.Cash).Sum(t => t.Amount);
+        shift.TotalCardSales = txList.Where(t => t.PaymentMethod == PaymentMethod.CardBalance).Sum(t => t.Amount);
+        shift.ClosingCash = closingCash;
+        shift.Variance = closingCash - (shift.OpeningCash + shift.TotalCashSales);
+        shift.ClosedAt = DateTime.UtcNow;
+        shift.Status = "Closed";
+
+        await _shiftRepo.UpdateAsync(shift);
+        return shift;
     }
 }

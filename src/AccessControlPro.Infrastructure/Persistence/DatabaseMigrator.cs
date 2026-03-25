@@ -498,6 +498,48 @@ public static class DatabaseMigrator
                   ALTER TABLE AccessEvents ADD CONSTRAINT FK_AccessEvents_CardId
                       FOREIGN KEY (CardId) REFERENCES AccessCards(Id) ON DELETE SET NULL;
               END;",
+
+            // v4.2: PosShifts table — cash drawer shift tracking
+            @"IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'PosShifts')
+              CREATE TABLE PosShifts (
+                  Id INT IDENTITY(1,1) PRIMARY KEY,
+                  OpenedBy NVARCHAR(100) NOT NULL DEFAULT '',
+                  OpenedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                  ClosedAt DATETIME2 NULL,
+                  OpeningCash DECIMAL(18,2) NOT NULL DEFAULT 0,
+                  ClosingCash DECIMAL(18,2) NOT NULL DEFAULT 0,
+                  TotalSales DECIMAL(18,2) NOT NULL DEFAULT 0,
+                  TotalCashSales DECIMAL(18,2) NOT NULL DEFAULT 0,
+                  TotalCardSales DECIMAL(18,2) NOT NULL DEFAULT 0,
+                  Variance DECIMAL(18,2) NOT NULL DEFAULT 0,
+                  Status NVARCHAR(20) NOT NULL DEFAULT 'Open'
+              );",
+
+            // v4.2: Discount columns on Transactions for POS discounts
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Transactions') AND name = 'DiscountAmount')
+              ALTER TABLE Transactions ADD DiscountAmount DECIMAL(18,2) NOT NULL DEFAULT 0;",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Transactions') AND name = 'DiscountReason')
+              ALTER TABLE Transactions ADD DiscountReason NVARCHAR(200) NOT NULL DEFAULT '';",
+
+            // v4.3: SubscriptionPlans table — admin-defined subscription plans
+            @"IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'SubscriptionPlans')
+            BEGIN
+              CREATE TABLE SubscriptionPlans (
+                  Id INT IDENTITY(1,1) PRIMARY KEY,
+                  NameEn NVARCHAR(200) NOT NULL,
+                  NameAr NVARCHAR(200) NOT NULL DEFAULT '',
+                  Duration INT NOT NULL DEFAULT 30,
+                  DurationType NVARCHAR(20) NOT NULL DEFAULT 'Days',
+                  Price DECIMAL(18,2) NOT NULL DEFAULT 0,
+                  MaxVisits INT NOT NULL DEFAULT 0,
+                  EffectiveTimes INT NOT NULL DEFAULT 65535,
+                  IsActive BIT NOT NULL DEFAULT 1,
+                  SortOrder INT NOT NULL DEFAULT 0,
+                  CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+              );
+              CREATE INDEX IX_SubscriptionPlans_IsActive ON SubscriptionPlans(IsActive, SortOrder);
+            END",
         };
 
         var failedMigrations = new List<string>();

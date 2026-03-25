@@ -15,6 +15,7 @@
             <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>
             <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
             <conv:StockToBoolConverter x:Key="StockToBool"/>
+            <conv:GreaterThanZeroToVisibilityConverter x:Key="GreaterThanZeroToVisibility"/>
 
             <Style TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>

@@ -109,6 +109,9 @@ public partial class App : System.Windows.Application
         // Backup
         services.AddSingleton<IBackupService>(sp => new BackupService(connectionString));
 
+        // QR Pool
+        services.AddSingleton<IQrPoolService>(sp => new QrPoolService(connectionString));
+
         services.AddTransient<AdminMainViewModel>();
         services.AddTransient<UsersViewModel>();
         services.AddTransient<SettingsViewModel>();
@@ -122,6 +125,13 @@ public partial class App : System.Windows.Application
         services.AddTransient<BackupViewModel>();
         services.AddTransient<ReportsViewModel>();
         services.AddTransient<TimeGroupViewModel>();
+
+        services.AddTransient<QrPoolViewModel>(sp =>
+            new QrPoolViewModel(
+                sp.GetRequiredService<IQrPoolService>(),
+                connectionString));
+        services.AddTransient<SubscriptionPlansViewModel>(sp =>
+            new SubscriptionPlansViewModel(connectionString));
 
         services.AddTransient<AdminMainWindow>();
     }

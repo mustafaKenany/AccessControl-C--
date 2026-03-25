@@ -1,4 +1,5 @@
 using AccessControlPro.Application.DTOs;
+using AccessControlPro.Domain.Entities;
 using AccessControlPro.Domain.Enums;
 
 namespace AccessControlPro.Application.Interfaces;
@@ -15,7 +16,8 @@ public interface IPosService
     Task<ProductDto?> GetByBarcodeAsync(string barcode);
 
     // Sales
-    Task<bool> SellAsync(List<CartItemDto> items, PaymentMethod method, int? employeeId = null);
+    Task<bool> SellAsync(List<CartItemDto> items, PaymentMethod method, int? employeeId = null,
+        decimal discountAmount = 0, string discountReason = "");
 
     // Card balance
     Task<decimal> GetCardBalanceAsync(int employeeId);
@@ -23,6 +25,14 @@ public interface IPosService
 
     // Today's sales summary
     Task<(int Count, decimal Total)> GetTodaySalesAsync();
+
+    // Daily summary (end of day report)
+    Task<DailySummaryDto> GetDailySummaryAsync(DateTime date);
+
+    // Shift management
+    Task<PosShift?> GetOpenShiftAsync();
+    Task<PosShift> OpenShiftAsync(decimal openingCash);
+    Task<PosShift> CloseShiftAsync(decimal closingCash);
 }
 
 public class CartItemDto
@@ -31,5 +41,25 @@ public class CartItemDto
     public string ProductName { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public int Quantity { get; set; }
-    public decimal Total => Price * Quantity;
+    public decimal DiscountAmount { get; set; }
+    public decimal Total => (Price * Quantity) - DiscountAmount;
+}
+
+public class DailySummaryDto
+{
+    public DateTime Date { get; set; }
+    public int TotalTransactions { get; set; }
+    public decimal TotalSales { get; set; }
+    public decimal TotalCashSales { get; set; }
+    public decimal TotalCardSales { get; set; }
+    public decimal TotalDiscounts { get; set; }
+    public int TotalItemsSold { get; set; }
+    public List<CategorySummaryDto> ByCategory { get; set; } = new();
+}
+
+public class CategorySummaryDto
+{
+    public string Category { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public decimal Total { get; set; }
 }

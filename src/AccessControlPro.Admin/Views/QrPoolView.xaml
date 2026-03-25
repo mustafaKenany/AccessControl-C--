@@ -1,0 +1,401 @@
+<UserControl x:Class="AccessControlPro.Admin.Views.QrPoolView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="http://schemas.fontawesome.io/icons/"
+             xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers;assembly=AccessControlPro.WPF"
+             Background="{StaticResource BgDarkBrush}">
+
+    <UserControl.Resources>
+        <helpers:BindingProxy x:Key="Proxy" Data="{Binding}"/>
+    </UserControl.Resources>
+
+    <Grid Margin="24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,16">
+            <StackPanel DockPanel.Dock="Left">
+                <TextBlock FontSize="24" Foreground="{StaticResource TextPrimaryBrush}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="QR Pool Management"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                    <Setter Property="Text" Value="&#x0625;&#x062F;&#x0627;&#x0631;&#x0629; &#x0645;&#x062C;&#x0645;&#x0648;&#x0639;&#x0629; QR"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="Manage QR code pool for guest access"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                    <Setter Property="Text" Value="&#x0625;&#x062F;&#x0627;&#x0631;&#x0629; &#x0631;&#x0645;&#x0648;&#x0632; QR &#x0644;&#x0648;&#x0635;&#x0648;&#x0644; &#x0627;&#x0644;&#x0636;&#x064A;&#x0648;&#x0641;"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Style="{StaticResource SecondaryButton}" Padding="14,8" Margin="0,0,8,0"
+                        Command="{Binding CleanupExpiredCommand}" Cursor="Hand">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Eraser" Width="12" Height="12"
+                                         Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Cleanup Expired"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                            <Setter Property="Text" Value="&#x062A;&#x0646;&#x0638;&#x064A;&#x0641;"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource PrimaryButton}" Padding="14,8" Margin="0,0,8,0"
+                        Command="{Binding ToggleAssignFormCommand}" Cursor="Hand">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="UserPlus" Width="12" Height="12"
+                                         Foreground="White" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock FontSize="12" Foreground="White" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Assign to Guest"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                            <Setter Property="Text" Value="&#x062A;&#x0639;&#x064A;&#x064A;&#x0646; &#x0644;&#x0636;&#x064A;&#x0641;"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource SecondaryButton}" Padding="14,8"
+                        Command="{Binding RefreshCommand}" Cursor="Hand">
+                    <fa:ImageAwesome Icon="Refresh" Width="14" Height="14"
+                                     Foreground="{StaticResource PrimaryLightBrush}"/>
+                </Button>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Stats Cards -->
+        <UniformGrid Grid.Row="1" Columns="5" Margin="0,0,0,12">
+            <!-- Available -->
+            <Border Style="{StaticResource DashboardCard}" Margin="0,0,6,0" Padding="16,12">
+                <StackPanel>
+                    <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Available"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                        <Setter Property="Text" Value="&#x0645;&#x062A;&#x0627;&#x062D;"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding AvailableCodes}" FontSize="28" FontWeight="Bold"
+                               Foreground="#2ECC71" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+            <!-- Assigned -->
+            <Border Style="{StaticResource DashboardCard}" Margin="3,0,3,0" Padding="16,12">
+                <StackPanel>
+                    <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Assigned"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                        <Setter Property="Text" Value="&#x0645;&#x0639;&#x064A;&#x0651;&#x0646;"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding AssignedCodes}" FontSize="28" FontWeight="Bold"
+                               Foreground="#3498DB" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+            <!-- Used -->
+            <Border Style="{StaticResource DashboardCard}" Margin="3,0,3,0" Padding="16,12">
+                <StackPanel>
+                    <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Used"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                        <Setter Property="Text" Value="&#x0645;&#x0633;&#x062A;&#x062E;&#x062F;&#x0645;"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding UsedCodes}" FontSize="28" FontWeight="Bold"
+                               Foreground="#F39C12" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+            <!-- Expired -->
+            <Border Style="{StaticResource DashboardCard}" Margin="3,0,3,0" Padding="16,12">
+                <StackPanel>
+                    <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Expired"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                        <Setter Property="Text" Value="&#x0645;&#x0646;&#x062A;&#x0647;&#x064A;"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding ExpiredCodes}" FontSize="28" FontWeight="Bold"
+                               Foreground="#E74C3C" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+            <!-- Total -->
+            <Border Style="{StaticResource DashboardCard}" Margin="6,0,0,0" Padding="16,12">
+                <StackPanel>
+                    <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}" Text="{Binding Lang.Total}"/>
+                    <TextBlock Text="{Binding TotalCodes}" FontSize="28" FontWeight="Bold"
+                               Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+
+        <!-- Warning Banner -->
+        <Border Grid.Row="2" CornerRadius="8" Padding="14,10" Margin="0,0,0,12"
+                Background="#30E74C3C"
+                Visibility="{Binding NeedsRegeneration, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+                <fa:ImageAwesome Icon="ExclamationTriangle" Width="16" Height="16"
+                                 Foreground="#E74C3C" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock FontSize="13" Foreground="#E74C3C" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="Warning: Available QR codes are below 500. Pool regeneration is needed."/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                    <Setter Property="Text" Value="&#x062A;&#x062D;&#x0630;&#x064A;&#x0631;: &#x0631;&#x0645;&#x0648;&#x0632; QR &#x0627;&#x0644;&#x0645;&#x062A;&#x0627;&#x062D;&#x0629; &#x0623;&#x0642;&#x0644; &#x0645;&#x0646; 500. &#x064A;&#x062C;&#x0628; &#x0625;&#x0639;&#x0627;&#x062F;&#x0629; &#x062A;&#x0648;&#x0644;&#x064A;&#x062F; &#x0627;&#x0644;&#x0645;&#x062C;&#x0645;&#x0648;&#x0639;&#x0629;."/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- Assign Form (collapsible) -->
+        <Border Grid.Row="3" Style="{StaticResource DashboardCard}" Margin="0,0,0,12"
+                Visibility="{Binding ShowAssignForm, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+                <TextBlock FontSize="15" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="Assign QR Code to Guest"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                    <Setter Property="Text" Value="&#x062A;&#x0639;&#x064A;&#x064A;&#x0646; &#x0631;&#x0645;&#x0632; QR &#x0644;&#x0636;&#x064A;&#x0641;"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <WrapPanel>
+                    <StackPanel Margin="0,0,16,8">
+                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Guest Name *"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                            <Setter Property="Text" Value="&#x0627;&#x0633;&#x0645; &#x0627;&#x0644;&#x0636;&#x064A;&#x0641; *"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBox Text="{Binding GuestName, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}" Width="200"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,16,8">
+                        <TextBlock Text="{Binding Lang.Phone}" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding GuestPhone, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}" Width="160"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,16,8">
+                        <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Reason"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                            <Setter Property="Text" Value="&#x0627;&#x0644;&#x0633;&#x0628;&#x0628;"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBox Text="{Binding GuestReason, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}" Width="200"/>
+                    </StackPanel>
+                    <Button Style="{StaticResource PrimaryButton}" Padding="20,8" Cursor="Hand"
+                            Command="{Binding AssignCommand}" VerticalAlignment="Bottom" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal">
+                            <fa:ImageAwesome Icon="Check" Width="12" Height="12"
+                                             Foreground="White" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock FontSize="13" Foreground="White" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Assign"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                                <Setter Property="Text" Value="&#x062A;&#x0639;&#x064A;&#x064A;&#x0646;"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Assigned Codes Table -->
+        <Border Grid.Row="4" Style="{StaticResource DashboardCard}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" FontSize="15" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="Assigned Codes"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                    <Setter Property="Text" Value="&#x0627;&#x0644;&#x0631;&#x0645;&#x0648;&#x0632; &#x0627;&#x0644;&#x0645;&#x0639;&#x064A;&#x0651;&#x0646;&#x0629;"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <DataGrid Grid.Row="1"
+                          ItemsSource="{Binding AssignedList}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          RowBackground="#0E2A2D"
+                          AlternatingRowBackground="#112F32"
+                          Foreground="{StaticResource TextPrimaryBrush}"
+                          GridLinesVisibility="Horizontal"
+                          HorizontalGridLinesBrush="#15FFFFFF"
+                          HeadersVisibility="Column"
+                          SelectionMode="Single"
+                          CanUserResizeRows="False"
+                          FontFamily="{StaticResource CairoFont}"
+                          FontSize="13"
+                          FontWeight="Bold">
+
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#143436"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+                            <Setter Property="FontSize" Value="13"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Padding" Value="14,10"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridColumnHeader">
+                                        <Border Background="{TemplateBinding Background}"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                              TextBlock.Foreground="{TemplateBinding Foreground}"
+                                                              TextBlock.FontFamily="{TemplateBinding FontFamily}"
+                                                              TextBlock.FontSize="{TemplateBinding FontSize}"
+                                                              TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Padding" Value="14,8"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridCell">
+                                        <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                            <ContentPresenter VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.CellStyle>
+
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="120"/>
+                        <DataGridTextColumn Header="Guest Name" Binding="{Binding GuestName}" Width="*"/>
+                        <DataGridTextColumn Header="Phone" Binding="{Binding GuestPhone}" Width="130"/>
+                        <DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="*"/>
+                        <DataGridTextColumn Header="Assigned At" Binding="{Binding AssignedAt, StringFormat={}{0:yyyy-MM-dd HH:mm}}" Width="150"/>
+                        <DataGridTextColumn Header="Uses" Binding="{Binding UsedCount}" Width="60"/>
+                        <DataGridTemplateColumn Header="Actions" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Style="{StaticResource SecondaryButton}" Padding="8,4" Cursor="Hand"
+                                            Command="{Binding Data.DeactivateCommand, Source={StaticResource Proxy}}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <fa:ImageAwesome Icon="Ban" Width="10" Height="10"
+                                                             Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                            <TextBlock Text="Deactivate" FontSize="11"
+                                                       Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Loading -->
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
+                    <fa:ImageAwesome Icon="Spinner" Width="24" Height="24"
+                                     Foreground="{StaticResource PrimaryLightBrush}"
+                                     SpinDuration="1" Spin="True" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

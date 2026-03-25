@@ -583,6 +583,38 @@ public class LanguageManager : INotifyPropertyChanged
     public string PosTodaySales => GetString("PosTodaySales");
     public string PosInsufficientStock => GetString("PosInsufficientStock");
 
+    // POS Extended Features
+    public string PosPrintReceipt => GetString("PosPrintReceipt");
+    public string PosSaveReceipt => GetString("PosSaveReceipt");
+    public string PosDailySummary => GetString("PosDailySummary");
+    public string PosTotalTransactions => GetString("PosTotalTransactions");
+    public string PosTotalItemsSold => GetString("PosTotalItemsSold");
+    public string PosCashSales => GetString("PosCashSales");
+    public string PosCardSales => GetString("PosCardSales");
+    public string PosTotalDiscounts => GetString("PosTotalDiscounts");
+    public string PosPrintSummary => GetString("PosPrintSummary");
+    public string PosOpenShift => GetString("PosOpenShift");
+    public string PosCloseShift => GetString("PosCloseShift");
+    public string PosOpeningCash => GetString("PosOpeningCash");
+    public string PosClosingCash => GetString("PosClosingCash");
+    public string PosVariance => GetString("PosVariance");
+    public string PosShiftOpen => GetString("PosShiftOpen");
+    public string PosShiftClosed => GetString("PosShiftClosed");
+    public string PosNoOpenShift => GetString("PosNoOpenShift");
+    public string PosDiscountLabel => GetString("PosDiscountLabel");
+    public string PosDiscountPercent => GetString("PosDiscountPercent");
+    public string PosDiscountAmount => GetString("PosDiscountAmount");
+    public string PosDiscountReason => GetString("PosDiscountReason");
+    public string PosOrderDiscount => GetString("PosOrderDiscount");
+    public string PosSubtotal => GetString("PosSubtotal");
+    public string PosSales => GetString("PosSales");
+    public string PosSummary => GetString("PosSummary");
+    public string PosShiftTab => GetString("PosShiftTab");
+    public string PosEnterAmount => GetString("PosEnterAmount");
+    public string PosShiftReport => GetString("PosShiftReport");
+    public string PosExpectedCash => GetString("PosExpectedCash");
+    public string PosByPaymentMethod => GetString("PosByPaymentMethod");
+
     // Stock Movements
     public string SmTitle => GetString("SmTitle");
     public string SmProduct => GetString("SmProduct");
@@ -1340,6 +1372,37 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(PosReceipt));
         OnPropertyChanged(nameof(PosTodaySales));
         OnPropertyChanged(nameof(PosInsufficientStock));
+        // POS Extended Features
+        OnPropertyChanged(nameof(PosPrintReceipt));
+        OnPropertyChanged(nameof(PosSaveReceipt));
+        OnPropertyChanged(nameof(PosDailySummary));
+        OnPropertyChanged(nameof(PosTotalTransactions));
+        OnPropertyChanged(nameof(PosTotalItemsSold));
+        OnPropertyChanged(nameof(PosCashSales));
+        OnPropertyChanged(nameof(PosCardSales));
+        OnPropertyChanged(nameof(PosTotalDiscounts));
+        OnPropertyChanged(nameof(PosPrintSummary));
+        OnPropertyChanged(nameof(PosOpenShift));
+        OnPropertyChanged(nameof(PosCloseShift));
+        OnPropertyChanged(nameof(PosOpeningCash));
+        OnPropertyChanged(nameof(PosClosingCash));
+        OnPropertyChanged(nameof(PosVariance));
+        OnPropertyChanged(nameof(PosShiftOpen));
+        OnPropertyChanged(nameof(PosShiftClosed));
+        OnPropertyChanged(nameof(PosNoOpenShift));
+        OnPropertyChanged(nameof(PosDiscountLabel));
+        OnPropertyChanged(nameof(PosDiscountPercent));
+        OnPropertyChanged(nameof(PosDiscountAmount));
+        OnPropertyChanged(nameof(PosDiscountReason));
+        OnPropertyChanged(nameof(PosOrderDiscount));
+        OnPropertyChanged(nameof(PosSubtotal));
+        OnPropertyChanged(nameof(PosSales));
+        OnPropertyChanged(nameof(PosSummary));
+        OnPropertyChanged(nameof(PosShiftTab));
+        OnPropertyChanged(nameof(PosEnterAmount));
+        OnPropertyChanged(nameof(PosShiftReport));
+        OnPropertyChanged(nameof(PosExpectedCash));
+        OnPropertyChanged(nameof(PosByPaymentMethod));
         // Stock Movements
         OnPropertyChanged(nameof(SmTitle));
         OnPropertyChanged(nameof(SmProduct));

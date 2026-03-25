@@ -80,9 +80,30 @@
             <TextBlock x:Name="PaymentText" FontSize="13" Foreground="{StaticResource TextMutedBrush}"
                        HorizontalAlignment="Center" Margin="0,4,0,16"/>
 
-            <!-- Close Button -->
+            <!-- Buttons: Print, Save, Close -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,4">
+                <Button Style="{StaticResource SecondaryButton}" Padding="14,10"
+                        Click="PrintClick" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Print" Width="12" Height="12"
+                                         Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding PosPrintReceipt, Source={x:Static helpers:LanguageManager.Instance}}"
+                                   FontSize="12" Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource SecondaryButton}" Padding="14,10"
+                        Click="SaveTextClick" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Save" Width="12" Height="12"
+                                         Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding PosSaveReceipt, Source={x:Static helpers:LanguageManager.Instance}}"
+                                   FontSize="12" Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+
             <Button Style="{StaticResource PrimaryButton}" Padding="0,12"
-                    Click="CloseClick" HorizontalContentAlignment="Center">
+                    Click="CloseClick" HorizontalContentAlignment="Center" Margin="0,8,0,0">
                 <TextBlock Text="{Binding OK, Source={x:Static helpers:LanguageManager.Instance}}" FontSize="14"/>
             </Button>
         </StackPanel>

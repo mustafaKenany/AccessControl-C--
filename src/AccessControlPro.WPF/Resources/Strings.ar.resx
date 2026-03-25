@@ -806,4 +806,35 @@
   <data name="TgDeleted" xml:space="preserve"><value>تم حذف مجموعة الوقت.</value></data>
   <data name="TgNameRequired" xml:space="preserve"><value>الاسم مطلوب.</value></data>
   <data name="TgScheduleLabel" xml:space="preserve"><value>الجدول</value></data>
+  <!-- POS Extended Features -->
+  <data name="PosPrintReceipt" xml:space="preserve"><value>طباعة الإيصال</value></data>
+  <data name="PosSaveReceipt" xml:space="preserve"><value>حفظ كنص</value></data>
+  <data name="PosDailySummary" xml:space="preserve"><value>ملخص يومي</value></data>
+  <data name="PosTotalTransactions" xml:space="preserve"><value>إجمالي المعاملات</value></data>
+  <data name="PosTotalItemsSold" xml:space="preserve"><value>إجمالي العناصر المباعة</value></data>
+  <data name="PosCashSales" xml:space="preserve"><value>مبيعات نقدية</value></data>
+  <data name="PosCardSales" xml:space="preserve"><value>مبيعات بطاقة</value></data>
+  <data name="PosTotalDiscounts" xml:space="preserve"><value>إجمالي الخصومات</value></data>
+  <data name="PosPrintSummary" xml:space="preserve"><value>طباعة الملخص</value></data>
+  <data name="PosOpenShift" xml:space="preserve"><value>فتح وردية</value></data>
+  <data name="PosCloseShift" xml:space="preserve"><value>إغلاق وردية</value></data>
+  <data name="PosOpeningCash" xml:space="preserve"><value>النقد الافتتاحي</value></data>
+  <data name="PosClosingCash" xml:space="preserve"><value>النقد الختامي</value></data>
+  <data name="PosVariance" xml:space="preserve"><value>الفرق</value></data>
+  <data name="PosShiftOpen" xml:space="preserve"><value>الوردية مفتوحة</value></data>
+  <data name="PosShiftClosed" xml:space="preserve"><value>تم إغلاق الوردية</value></data>
+  <data name="PosNoOpenShift" xml:space="preserve"><value>لا توجد وردية مفتوحة. يرجى فتح وردية أولاً.</value></data>
+  <data name="PosDiscountLabel" xml:space="preserve"><value>خصم</value></data>
+  <data name="PosDiscountPercent" xml:space="preserve"><value>نسبة الخصم</value></data>
+  <data name="PosDiscountAmount" xml:space="preserve"><value>مبلغ الخصم</value></data>
+  <data name="PosDiscountReason" xml:space="preserve"><value>سبب الخصم</value></data>
+  <data name="PosOrderDiscount" xml:space="preserve"><value>خصم الطلب</value></data>
+  <data name="PosSubtotal" xml:space="preserve"><value>المجموع الفرعي</value></data>
+  <data name="PosSales" xml:space="preserve"><value>المبيعات</value></data>
+  <data name="PosSummary" xml:space="preserve"><value>الملخص</value></data>
+  <data name="PosShiftTab" xml:space="preserve"><value>الوردية</value></data>
+  <data name="PosEnterAmount" xml:space="preserve"><value>أدخل المبلغ</value></data>
+  <data name="PosShiftReport" xml:space="preserve"><value>تقرير الوردية</value></data>
+  <data name="PosExpectedCash" xml:space="preserve"><value>النقد المتوقع</value></data>
+  <data name="PosByPaymentMethod" xml:space="preserve"><value>حسب طريقة الدفع</value></data>
 </root>

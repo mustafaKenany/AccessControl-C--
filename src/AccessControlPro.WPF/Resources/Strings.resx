@@ -800,4 +800,35 @@ Card sync errors on some devices:
   <data name="TgDeleted" xml:space="preserve"><value>Time group deleted.</value></data>
   <data name="TgNameRequired" xml:space="preserve"><value>A name is required.</value></data>
   <data name="TgScheduleLabel" xml:space="preserve"><value>Schedule</value></data>
+  <!-- POS Extended Features -->
+  <data name="PosPrintReceipt" xml:space="preserve"><value>Print Receipt</value></data>
+  <data name="PosSaveReceipt" xml:space="preserve"><value>Save as Text</value></data>
+  <data name="PosDailySummary" xml:space="preserve"><value>Daily Summary</value></data>
+  <data name="PosTotalTransactions" xml:space="preserve"><value>Total Transactions</value></data>
+  <data name="PosTotalItemsSold" xml:space="preserve"><value>Total Items Sold</value></data>
+  <data name="PosCashSales" xml:space="preserve"><value>Cash Sales</value></data>
+  <data name="PosCardSales" xml:space="preserve"><value>Card Sales</value></data>
+  <data name="PosTotalDiscounts" xml:space="preserve"><value>Total Discounts</value></data>
+  <data name="PosPrintSummary" xml:space="preserve"><value>Print Summary</value></data>
+  <data name="PosOpenShift" xml:space="preserve"><value>Open Shift</value></data>
+  <data name="PosCloseShift" xml:space="preserve"><value>Close Shift</value></data>
+  <data name="PosOpeningCash" xml:space="preserve"><value>Opening Cash</value></data>
+  <data name="PosClosingCash" xml:space="preserve"><value>Closing Cash</value></data>
+  <data name="PosVariance" xml:space="preserve"><value>Variance</value></data>
+  <data name="PosShiftOpen" xml:space="preserve"><value>Shift is Open</value></data>
+  <data name="PosShiftClosed" xml:space="preserve"><value>Shift Closed</value></data>
+  <data name="PosNoOpenShift" xml:space="preserve"><value>No open shift. Please open a shift first.</value></data>
+  <data name="PosDiscountLabel" xml:space="preserve"><value>Discount</value></data>
+  <data name="PosDiscountPercent" xml:space="preserve"><value>Discount %</value></data>
+  <data name="PosDiscountAmount" xml:space="preserve"><value>Discount Amount</value></data>
+  <data name="PosDiscountReason" xml:space="preserve"><value>Discount Reason</value></data>
+  <data name="PosOrderDiscount" xml:space="preserve"><value>Order Discount</value></data>
+  <data name="PosSubtotal" xml:space="preserve"><value>Subtotal</value></data>
+  <data name="PosSales" xml:space="preserve"><value>Sales</value></data>
+  <data name="PosSummary" xml:space="preserve"><value>Summary</value></data>
+  <data name="PosShiftTab" xml:space="preserve"><value>Shift</value></data>
+  <data name="PosEnterAmount" xml:space="preserve"><value>Enter amount</value></data>
+  <data name="PosShiftReport" xml:space="preserve"><value>Shift Report</value></data>
+  <data name="PosExpectedCash" xml:space="preserve"><value>Expected Cash</value></data>
+  <data name="PosByPaymentMethod" xml:space="preserve"><value>By Payment Method</value></data>
 </root>

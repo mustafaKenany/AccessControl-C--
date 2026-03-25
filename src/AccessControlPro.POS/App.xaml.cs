@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Threading;
 using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Application.Services;
 using AccessControlPro.Infrastructure;
@@ -19,6 +20,7 @@ public partial class App : System.Windows.Application
     private static Mutex? _singleInstanceMutex;
     private readonly ServiceProvider _serviceProvider;
     private static readonly string CrashLogPath = Path.Combine(AppContext.BaseDirectory, "pos_crash_log.txt");
+    private DispatcherTimer? _cloudSyncTimer;
 
     public App()
     {
@@ -83,6 +85,25 @@ public partial class App : System.Windows.Application
         return "Server=localhost;Database=AccessControlPro;User Id=sa;Password=123;TrustServerCertificate=True;";
     }
 
+    private static string? LoadCloudSyncUrl()
+    {
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            if (!File.Exists(path)) return null;
+            var json = File.ReadAllText(path);
+            var doc = JsonDocument.Parse(json);
+
+            if (doc.RootElement.TryGetProperty("CloudSyncUrl", out var syncUrl))
+            {
+                var val = syncUrl.GetString();
+                if (!string.IsNullOrEmpty(val)) return val;
+            }
+        }
+        catch { }
+        return null;
+    }
+
     private static void ConfigureServices(IServiceCollection services)
     {
         var connectionString = LoadConnectionString();
@@ -97,6 +118,9 @@ public partial class App : System.Windows.Application
         services.AddScoped<ILookupService, LookupService>();
         services.AddScoped<IPosService, PosService>();
         services.AddScoped<IEmployeeService, EmployeeService>();
+
+        // Cloud sync
+        services.AddSingleton<ICloudSyncService>(sp => new CloudSyncService(connectionString));
 
         // Reuse PosViewModel from main WPF project
         services.AddTransient<PosViewModel>();
@@ -229,6 +253,9 @@ public partial class App : System.Windows.Application
             MainWindow = mainWindow;
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             mainWindow.Show();
+
+            // ── Cloud sync timer ──
+            StartCloudSync();
         }
         catch (Exception ex)
         {
@@ -237,6 +264,46 @@ public partial class App : System.Windows.Application
                 $"Login error:\n{ex.Message}",
                 "Startup Error", MsgType.Error);
             Shutdown();
+        }
+    }
+
+    private void StartCloudSync()
+    {
+        try
+        {
+            var cloudSync = new CloudSyncService(LoadConnectionString());
+            if (cloudSync.IsCloudEnabled())
+            {
+                _cloudSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(5) };
+                _cloudSyncTimer.Tick += async (_, _) =>
+                {
+                    try
+                    {
+                        var result = await Task.Run(() => cloudSync.SyncToCloudAsync());
+                        WriteCrashLog("CloudSync", new Exception(result));
+                    }
+                    catch (Exception ex)
+                    {
+                        WriteCrashLog("CloudSync_Error", ex);
+                    }
+                };
+                _cloudSyncTimer.Start();
+
+                // Run initial sync after 30 seconds
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(30000);
+                    try
+                    {
+                        var result = await cloudSync.SyncToCloudAsync();
+                    }
+                    catch { }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            WriteCrashLog("CloudSync_Init", ex);
         }
     }
 
@@ -295,6 +362,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _cloudSyncTimer?.Stop();
         _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();
         _serviceProvider.Dispose();

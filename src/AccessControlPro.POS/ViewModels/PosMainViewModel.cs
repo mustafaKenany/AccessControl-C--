@@ -1,3 +1,4 @@
+using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Application.Services;
 using AccessControlPro.WPF.Helpers;
 using AccessControlPro.WPF.ViewModels;
@@ -18,6 +19,11 @@ public partial class PosMainViewModel : ObservableObject
     [ObservableProperty]
     private object? _currentView;
 
+    [ObservableProperty]
+    private int _selectedTab;
+
+    public PosViewModel PosVm => _posViewModel;
+
     public PosMainViewModel(PosViewModel posViewModel, CurrentUserService currentUser)
     {
         _posViewModel = posViewModel;
@@ -34,5 +40,26 @@ public partial class PosMainViewModel : ObservableObject
     private void ToggleLanguage()
     {
         Lang.SwitchLanguage();
+    }
+
+    [RelayCommand]
+    private void ShowSales()
+    {
+        SelectedTab = 0;
+        CurrentView = _posViewModel;
+    }
+
+    [RelayCommand]
+    private async Task ShowSummaryAsync()
+    {
+        SelectedTab = 1;
+        if (_posViewModel.LoadDailySummaryCommand.CanExecute(null))
+            await _posViewModel.LoadDailySummaryCommand.ExecuteAsync(null);
+    }
+
+    [RelayCommand]
+    private void ShowShift()
+    {
+        SelectedTab = 2;
     }
 }

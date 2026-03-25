@@ -4,6 +4,8 @@
         xmlns:fa="http://schemas.fontawesome.io/icons/"
         xmlns:wpfViews="clr-namespace:AccessControlPro.WPF.Views;assembly=AccessControlPro.WPF"
         xmlns:wpfVm="clr-namespace:AccessControlPro.WPF.ViewModels;assembly=AccessControlPro.WPF"
+        xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers;assembly=AccessControlPro.WPF"
+        xmlns:conv="clr-namespace:AccessControlPro.WPF.Converters;assembly=AccessControlPro.WPF"
         Title="Access Control Pro - POS Terminal"
         Height="768" Width="1280"
         MinHeight="600" MinWidth="900"
@@ -57,6 +59,105 @@
                             <TextBlock Text="{Binding CurrentUserDisplayName}"
                                        FontSize="13" Foreground="{StaticResource PrimaryLightBrush}"
                                        VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Tab Buttons -->
+                        <Border Width="1" Height="28" Background="#20FFFFFF" Margin="16,0"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,0,0">
+                            <!-- Sales Tab -->
+                            <Button Cursor="Hand" Margin="0,0,4,0"
+                                    Command="{Binding ShowSalesCommand}">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bg" CornerRadius="8" Padding="14,6"
+                                                Background="Transparent">
+                                            <StackPanel Orientation="Horizontal">
+                                                <fa:ImageAwesome Icon="ShoppingCart" Width="12" Height="12"
+                                                                 Foreground="{StaticResource TextMutedBrush}"
+                                                                 VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBlock Text="{Binding Lang.PosSales}"
+                                                           FontSize="13" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bg" Property="Background" Value="#20FFFFFF"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding SelectedTab}" Value="0">
+                                                <Setter TargetName="bg" Property="Background" Value="#3044A1A0"/>
+                                            </DataTrigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <!-- Summary Tab -->
+                            <Button Cursor="Hand" Margin="0,0,4,0"
+                                    Command="{Binding ShowSummaryCommand}">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bg" CornerRadius="8" Padding="14,6"
+                                                Background="Transparent">
+                                            <StackPanel Orientation="Horizontal">
+                                                <fa:ImageAwesome Icon="BarChart" Width="12" Height="12"
+                                                                 Foreground="{StaticResource TextMutedBrush}"
+                                                                 VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBlock Text="{Binding Lang.PosSummary}"
+                                                           FontSize="13" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bg" Property="Background" Value="#20FFFFFF"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding SelectedTab}" Value="1">
+                                                <Setter TargetName="bg" Property="Background" Value="#3044A1A0"/>
+                                            </DataTrigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <!-- Shift Tab -->
+                            <Button Cursor="Hand"
+                                    Command="{Binding ShowShiftCommand}">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bg" CornerRadius="8" Padding="14,6"
+                                                Background="Transparent">
+                                            <StackPanel Orientation="Horizontal">
+                                                <fa:ImageAwesome Icon="ClockOutline" Width="12" Height="12"
+                                                                 Foreground="{StaticResource TextMutedBrush}"
+                                                                 VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBlock Text="{Binding Lang.PosShiftTab}"
+                                                           FontSize="13" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bg" Property="Background" Value="#20FFFFFF"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding SelectedTab}" Value="2">
+                                                <Setter TargetName="bg" Property="Background" Value="#3044A1A0"/>
+                                            </DataTrigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Shift Status -->
+                        <Border Width="1" Height="28" Background="#20FFFFFF" Margin="16,0"
+                                Visibility="{Binding PosVm.HasOpenShift, Converter={StaticResource BoolToVisibility}}"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                    Visibility="{Binding PosVm.HasOpenShift, Converter={StaticResource BoolToVisibility}}">
+                            <Border Width="8" Height="8" CornerRadius="4" Background="#4CAF50" Margin="0,0,6,0"
+                                    VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding PosVm.ShiftStatusText}"
+                                       FontSize="11" Foreground="#4CAF50" VerticalAlignment="Center"/>
                         </StackPanel>
                     </StackPanel>
 
@@ -143,14 +244,246 @@
                 </DockPanel>
             </Border>
 
-            <!-- POS Content - Reuse PosView from WPF project -->
-            <ContentControl Grid.Row="1" Content="{Binding CurrentView}">
-                <ContentControl.Resources>
-                    <DataTemplate DataType="{x:Type wpfVm:PosViewModel}">
-                        <wpfViews:PosView/>
-                    </DataTemplate>
-                </ContentControl.Resources>
-            </ContentControl>
+            <!-- Tab Content -->
+            <Grid Grid.Row="1">
+                <!-- Tab 0: Sales (PosView) -->
+                <ContentControl Content="{Binding CurrentView}">
+                    <ContentControl.Visibility>
+                        <Binding Path="SelectedTab">
+                            <Binding.Converter>
+                                <conv:IntToVisibilityConverter TargetValue="0"/>
+                            </Binding.Converter>
+                        </Binding>
+                    </ContentControl.Visibility>
+                    <ContentControl.Resources>
+                        <DataTemplate DataType="{x:Type wpfVm:PosViewModel}">
+                            <wpfViews:PosView/>
+                        </DataTemplate>
+                    </ContentControl.Resources>
+                </ContentControl>
+
+                <!-- Tab 1: Daily Summary -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="32,24">
+                    <ScrollViewer.Visibility>
+                        <Binding Path="SelectedTab">
+                            <Binding.Converter>
+                                <conv:IntToVisibilityConverter TargetValue="1"/>
+                            </Binding.Converter>
+                        </Binding>
+                    </ScrollViewer.Visibility>
+
+                    <StackPanel MaxWidth="700" HorizontalAlignment="Center">
+                        <!-- Title -->
+                        <TextBlock Text="{Binding Lang.PosDailySummary}" FontSize="26" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,20"
+                                   HorizontalAlignment="Center"/>
+
+                        <TextBlock Text="{Binding PosVm.DailySummary.Date, StringFormat='{}{0:yyyy-MM-dd}'}"
+                                   FontSize="14" Foreground="{StaticResource TextMutedBrush}"
+                                   HorizontalAlignment="Center" Margin="0,0,0,24"/>
+
+                        <!-- Summary Cards Row 1 -->
+                        <UniformGrid Columns="3" Margin="0,0,0,16">
+                            <!-- Total Sales -->
+                            <Border Style="{StaticResource DashboardCard}" Margin="0,0,8,0" Padding="20">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <fa:ImageAwesome Icon="Money" Width="24" Height="24"
+                                                     Foreground="{StaticResource PrimaryLightBrush}" Margin="0,0,0,8"
+                                                     HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Lang.PosTodaySales}" FontSize="12"
+                                               Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding PosVm.DailySummary.TotalSales, StringFormat='{}{0:N0}'}"
+                                               FontSize="28" FontWeight="Bold"
+                                               Foreground="{StaticResource PrimaryLightBrush}" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <!-- Total Transactions -->
+                            <Border Style="{StaticResource DashboardCard}" Margin="4,0,4,0" Padding="20">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <fa:ImageAwesome Icon="Exchange" Width="24" Height="24"
+                                                     Foreground="#FFB946" Margin="0,0,0,8"
+                                                     HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Lang.PosTotalTransactions}" FontSize="12"
+                                               Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding PosVm.DailySummary.TotalTransactions}"
+                                               FontSize="28" FontWeight="Bold"
+                                               Foreground="#FFB946" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <!-- Total Items -->
+                            <Border Style="{StaticResource DashboardCard}" Margin="8,0,0,0" Padding="20">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <fa:ImageAwesome Icon="Cubes" Width="24" Height="24"
+                                                     Foreground="#AB7AFF" Margin="0,0,0,8"
+                                                     HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Lang.PosTotalItemsSold}" FontSize="12"
+                                               Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding PosVm.DailySummary.TotalItemsSold}"
+                                               FontSize="28" FontWeight="Bold"
+                                               Foreground="#AB7AFF" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <!-- Summary Cards Row 2 -->
+                        <UniformGrid Columns="3" Margin="0,0,0,16">
+                            <!-- Cash Sales -->
+                            <Border Style="{StaticResource DashboardCard}" Margin="0,0,8,0" Padding="20">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <fa:ImageAwesome Icon="Money" Width="20" Height="20"
+                                                     Foreground="#4CAF50" Margin="0,0,0,8"
+                                                     HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Lang.PosCashSales}" FontSize="12"
+                                               Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding PosVm.DailySummary.TotalCashSales, StringFormat='{}{0:N0}'}"
+                                               FontSize="22" FontWeight="Bold"
+                                               Foreground="#4CAF50" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <!-- Card Sales -->
+                            <Border Style="{StaticResource DashboardCard}" Margin="4,0,4,0" Padding="20">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <fa:ImageAwesome Icon="CreditCard" Width="20" Height="20"
+                                                     Foreground="#2196F3" Margin="0,0,0,8"
+                                                     HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Lang.PosCardSales}" FontSize="12"
+                                               Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding PosVm.DailySummary.TotalCardSales, StringFormat='{}{0:N0}'}"
+                                               FontSize="22" FontWeight="Bold"
+                                               Foreground="#2196F3" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <!-- Discounts -->
+                            <Border Style="{StaticResource DashboardCard}" Margin="8,0,0,0" Padding="20">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <fa:ImageAwesome Icon="Tags" Width="20" Height="20"
+                                                     Foreground="#F7685B" Margin="0,0,0,8"
+                                                     HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Lang.PosTotalDiscounts}" FontSize="12"
+                                               Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding PosVm.DailySummary.TotalDiscounts, StringFormat='{}{0:N0}'}"
+                                               FontSize="22" FontWeight="Bold"
+                                               Foreground="#F7685B" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <!-- Print Summary Button -->
+                        <Button Style="{StaticResource PrimaryButton}" Padding="20,12"
+                                Command="{Binding PosVm.PrintDailySummaryCommand}"
+                                HorizontalAlignment="Center" Margin="0,12,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="Print" Width="14" Height="14"
+                                                 Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Lang.PosPrintSummary}" FontSize="14"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Tab 2: Shift Management -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="32,24">
+                    <ScrollViewer.Visibility>
+                        <Binding Path="SelectedTab">
+                            <Binding.Converter>
+                                <conv:IntToVisibilityConverter TargetValue="2"/>
+                            </Binding.Converter>
+                        </Binding>
+                    </ScrollViewer.Visibility>
+
+                    <StackPanel MaxWidth="500" HorizontalAlignment="Center">
+                        <!-- Title -->
+                        <TextBlock Text="{Binding Lang.PosShiftTab}" FontSize="26" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,24"
+                                   HorizontalAlignment="Center"/>
+
+                        <!-- Shift Status Icon -->
+                        <Border Width="80" Height="80" CornerRadius="40" HorizontalAlignment="Center"
+                                Margin="0,0,0,16">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#30F7685B"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PosVm.HasOpenShift}" Value="True">
+                                            <Setter Property="Background" Value="#304CAF50"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <fa:ImageAwesome Width="32" Height="32"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <fa:ImageAwesome.Style>
+                                    <Style TargetType="fa:ImageAwesome">
+                                        <Setter Property="Icon" Value="Lock"/>
+                                        <Setter Property="Foreground" Value="#F7685B"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding PosVm.HasOpenShift}" Value="True">
+                                                <Setter Property="Icon" Value="Unlock"/>
+                                                <Setter Property="Foreground" Value="#4CAF50"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </fa:ImageAwesome.Style>
+                            </fa:ImageAwesome>
+                        </Border>
+
+                        <!-- Status Text -->
+                        <TextBlock FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,8">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="Text" Value="{Binding Lang.PosNoOpenShift}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PosVm.HasOpenShift}" Value="True">
+                                            <Setter Property="Text" Value="{Binding PosVm.ShiftStatusText}"/>
+                                            <Setter Property="Foreground" Value="#4CAF50"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <!-- Open Shift Button -->
+                        <Button Style="{StaticResource PrimaryButton}" Padding="24,14"
+                                Command="{Binding PosVm.OpenShiftCommand}"
+                                HorizontalAlignment="Center" Margin="0,24,0,0"
+                                Visibility="{Binding PosVm.HasOpenShift, Converter={StaticResource InverseBoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="Unlock" Width="16" Height="16"
+                                                 Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Lang.PosOpenShift}" FontSize="16"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Close Shift Button -->
+                        <Button Padding="24,14"
+                                Command="{Binding PosVm.CloseShiftCommand}"
+                                HorizontalAlignment="Center" Margin="0,24,0,0"
+                                Visibility="{Binding PosVm.HasOpenShift, Converter={StaticResource BoolToVisibility}}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bg" CornerRadius="12" Padding="24,14"
+                                            Background="#30F7685B" Cursor="Hand">
+                                        <StackPanel Orientation="Horizontal">
+                                            <fa:ImageAwesome Icon="Lock" Width="16" Height="16"
+                                                             Foreground="#F7685B" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Lang.PosCloseShift}" FontSize="16"
+                                                       Foreground="#F7685B"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bg" Property="Background" Value="#50F7685B"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
         </Grid>
     </Border>
 </Window>

@@ -28,6 +28,7 @@ public class AppDbContext : DbContext
     public DbSet<QrPass> QrPasses => Set<QrPass>();
     public DbSet<MonitorLock> MonitorLocks => Set<MonitorLock>();
     public DbSet<TimeGroup> TimeGroups => Set<TimeGroup>();
+    public DbSet<PosShift> PosShifts => Set<PosShift>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

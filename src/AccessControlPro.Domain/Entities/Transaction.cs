@@ -13,6 +13,8 @@ public class Transaction
     public PaymentMethod PaymentMethod { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public decimal DiscountAmount { get; set; }
+    public string DiscountReason { get; set; } = string.Empty;
 
     public Employee? RelatedEmployee { get; set; }
 }
