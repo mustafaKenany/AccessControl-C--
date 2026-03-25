@@ -76,7 +76,7 @@ public partial class QrPassViewModel : ObservableObject
     [RelayCommand]
     private async Task CreatePassAsync()
     {
-        // Load devices for the dialog
+        // Load devices for auto-selection (no user selection needed)
         var devices = await _deviceService.GetAllDevicesAsync();
         var dialog = new CreateQrPassDialog(devices);
         dialog.Owner = System.Windows.Application.Current.MainWindow;
@@ -85,6 +85,7 @@ public partial class QrPassViewModel : ObservableObject
         IsLoading = true;
         try
         {
+            // Hardcoded: 365 days, 2 uses, auto-select first device
             var pass = await _qrPassService.CreatePassAsync(
                 dialog.PlayerName, dialog.Phone, dialog.Fee,
                 dialog.MaxUses, dialog.ValidDays,

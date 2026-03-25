@@ -1,53 +1,35 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
-using System.Windows.Controls;
 using AccessControlPro.Application.DTOs;
 
 namespace AccessControlPro.WPF.Views;
 
 public partial class CreateQrPassDialog : Window
 {
+    private readonly List<DeviceDto> _devices;
+
     public string PlayerName => NameTextBox.Text.Trim();
     public string Phone => PhoneTextBox.Text.Trim();
-    public decimal Fee => decimal.TryParse(FeeTextBox.Text.Trim(), out var f) ? f : 0;
-    public int ValidDays => int.TryParse(ValidDaysTextBox.Text.Trim(), out var d) && d > 0 ? d : 1;
-    public int MaxUses => int.TryParse(MaxUsesTextBox.Text.Trim(), out var m) && m > 0 ? m : 5;
+    public decimal Fee => decimal.TryParse(FeeTextBox.Text.Trim(), out var f) ? f : 5000;
 
-    public int? SelectedDeviceId
-    {
-        get
-        {
-            var device = DeviceCombo.SelectedItem as DeviceDto;
-            return device?.Id;
-        }
-    }
+    // Hardcoded defaults
+    public int ValidDays => 365;       // 1 year
+    public int MaxUses => 2;           // enter + exit
+    public string DoorPermissions => "01010000"; // all doors
 
-    public string SelectedDeviceName
-    {
-        get
-        {
-            var device = DeviceCombo.SelectedItem as DeviceDto;
-            return device?.Name ?? string.Empty;
-        }
-    }
+    // Auto-select first device (all devices will be synced)
+    public int? SelectedDeviceId => _devices.FirstOrDefault()?.Id;
+    public string SelectedDeviceName => _devices.FirstOrDefault()?.Name ?? string.Empty;
+    public int SelectedDoorNumber => 1;
 
-    public int SelectedDoorNumber
-    {
-        get
-        {
-            var item = DoorCombo.SelectedItem as ComboBoxItem;
-            if (item?.Tag is string tag && int.TryParse(tag, out var door))
-                return door;
-            return 1;
-        }
-    }
+    public IReadOnlyList<DeviceDto> AllDevices => _devices;
 
     public CreateQrPassDialog(IEnumerable<DeviceDto> devices)
     {
+        _devices = devices?.ToList() ?? new List<DeviceDto>();
         InitializeComponent();
-        DeviceCombo.ItemsSource = devices;
-        if (DeviceCombo.Items.Count > 0)
-            DeviceCombo.SelectedIndex = 0;
+        FeeTextBox.Text = "5000";
     }
 
     private void CreateClick(object sender, RoutedEventArgs e)
@@ -56,12 +38,6 @@ public partial class CreateQrPassDialog : Window
         {
             CustomMessageBox.Show("Player name is required", "Validation", MsgType.Warning, this);
             NameTextBox.Focus();
-            return;
-        }
-
-        if (DeviceCombo.SelectedItem == null)
-        {
-            CustomMessageBox.Show("Please select a device", "Validation", MsgType.Warning, this);
             return;
         }
 

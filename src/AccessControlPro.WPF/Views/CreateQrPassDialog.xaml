@@ -4,7 +4,7 @@
         xmlns:fa="http://schemas.fontawesome.io/icons/"
         xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers"
         Title="Create QR Pass"
-        Width="440" SizeToContent="Height" MaxHeight="620"
+        Width="440" SizeToContent="Height" MaxHeight="420"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None" AllowsTransparency="True"
         Background="Transparent"
@@ -39,41 +39,15 @@
             <!-- Fee -->
             <TextBlock Text="{Binding Fee, Source={x:Static helpers:LanguageManager.Instance}}"
                        Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,4"/>
-            <TextBox x:Name="FeeTextBox" Style="{StaticResource DarkTextBox}" Text="0" Margin="0,0,0,12"/>
-
-            <!-- Valid Days + Max Uses side by side -->
-            <Grid Margin="0,0,0,12">
+            <Grid Margin="0,0,0,20">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="{Binding QrValidDays, Source={x:Static helpers:LanguageManager.Instance}}"
-                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,4"/>
-                    <TextBox x:Name="ValidDaysTextBox" Style="{StaticResource DarkTextBox}" Text="1"/>
-                </StackPanel>
-                <StackPanel Grid.Column="2">
-                    <TextBlock Text="{Binding QrMaxUses, Source={x:Static helpers:LanguageManager.Instance}}"
-                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,4"/>
-                    <TextBox x:Name="MaxUsesTextBox" Style="{StaticResource DarkTextBox}" Text="5"/>
-                </StackPanel>
+                <TextBox x:Name="FeeTextBox" Style="{StaticResource DarkTextBox}" Text="5000" Grid.Column="0"/>
+                <TextBlock Text="IQD" Grid.Column="1" VerticalAlignment="Center"
+                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="8,0,0,0"/>
             </Grid>
-
-            <!-- Device Selection -->
-            <TextBlock Text="{Binding SelectDevice, Source={x:Static helpers:LanguageManager.Instance}}"
-                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,4"/>
-            <ComboBox x:Name="DeviceCombo" Style="{StaticResource DarkComboBox}"
-                      Margin="0,0,0,12" DisplayMemberPath="Name"/>
-
-            <!-- Door Number -->
-            <TextBlock Text="Door Number" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,4"/>
-            <ComboBox x:Name="DoorCombo" Style="{StaticResource DarkComboBox}" Margin="0,0,0,20">
-                <ComboBoxItem Content="Door 1" Tag="1" IsSelected="True"/>
-                <ComboBoxItem Content="Door 2" Tag="2"/>
-                <ComboBoxItem Content="Door 3" Tag="3"/>
-                <ComboBoxItem Content="Door 4" Tag="4"/>
-            </ComboBox>
 
             <!-- Buttons -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
