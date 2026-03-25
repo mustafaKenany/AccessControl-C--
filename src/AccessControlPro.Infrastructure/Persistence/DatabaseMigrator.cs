@@ -540,6 +540,19 @@ public static class DatabaseMigrator
               );
               CREATE INDEX IX_SubscriptionPlans_IsActive ON SubscriptionPlans(IsActive, SortOrder);
             END",
+
+            // v4.4: Additional indexes for new tables
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_QrPool_Status' AND object_id = OBJECT_ID('QrPool'))
+              CREATE INDEX IX_QrPool_Status ON QrPool(Status);",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PosShifts_Status' AND object_id = OBJECT_ID('PosShifts'))
+              CREATE INDEX IX_PosShifts_Status ON PosShifts(Status);",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FreezeHistories_EmployeeId' AND object_id = OBJECT_ID('FreezeHistories'))
+              CREATE INDEX IX_FreezeHistories_EmployeeId ON FreezeHistories(EmployeeId);",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Transactions_CreatedAt_Desc' AND object_id = OBJECT_ID('Transactions'))
+              CREATE INDEX IX_Transactions_CreatedAt_Desc ON Transactions(CreatedAt DESC);",
         };
 
         var failedMigrations = new List<string>();

@@ -218,6 +218,34 @@ CREATE TABLE IF NOT EXISTS ""PosShifts"" (
     ""Status"" VARCHAR(20) DEFAULT 'Open'
 );
 
+CREATE TABLE IF NOT EXISTS ""FreezeHistories"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""EmployeeId"" INT DEFAULT 0,
+    ""FreezeStartDate"" TIMESTAMP NULL,
+    ""FreezeEndDate"" TIMESTAMP NULL,
+    ""Reason"" VARCHAR(500) DEFAULT '',
+    ""FrozenBy"" VARCHAR(100) DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS ""Products"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""Name"" VARCHAR(200) DEFAULT '',
+    ""NameAr"" VARCHAR(200) DEFAULT '',
+    ""Price"" DECIMAL(18,2) DEFAULT 0,
+    ""Cost"" DECIMAL(18,2) DEFAULT 0,
+    ""Stock"" INT DEFAULT 0,
+    ""Barcode"" VARCHAR(100) DEFAULT '',
+    ""CategoryId"" INT DEFAULT 0,
+    ""IsActive"" BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS ""TimeGroups"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""Name"" VARCHAR(200) DEFAULT '',
+    ""NameAr"" VARCHAR(200) DEFAULT '',
+    ""Description"" TEXT DEFAULT ''
+);
+
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_players_isdeleted ON ""Players"" (""IsDeleted"");
 CREATE INDEX IF NOT EXISTS idx_players_phone ON ""Players"" (""Phone"");
@@ -229,6 +257,12 @@ CREATE INDEX IF NOT EXISTS idx_auditlogs_timestamp ON ""AuditLogs"" (""Timestamp
 CREATE INDEX IF NOT EXISTS idx_users_username ON ""Users"" (""Username"");
 CREATE INDEX IF NOT EXISTS idx_deleted_deletedat ON ""DeletedEmployees"" (""DeletedAt"" DESC);
 CREATE INDEX IF NOT EXISTS idx_qrpasses_code ON ""QrPasses"" (""Code"");
+CREATE INDEX IF NOT EXISTS idx_freezehistories_employeeid ON ""FreezeHistories"" (""EmployeeId"");
+CREATE INDEX IF NOT EXISTS idx_products_isactive ON ""Products"" (""IsActive"");
+CREATE INDEX IF NOT EXISTS idx_timegroups_name ON ""TimeGroups"" (""Name"");
+CREATE INDEX IF NOT EXISTS idx_qrpool_status ON ""QrPool"" (""Status"");
+CREATE INDEX IF NOT EXISTS idx_posshifts_status ON ""PosShifts"" (""Status"");
+CREATE INDEX IF NOT EXISTS idx_subscriptionplans_isactive ON ""SubscriptionPlans"" (""IsActive"");
 
 -- Gyms table migration: add columns if missing
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""SubscriptionPrice"" DECIMAL(18,2) DEFAULT 0;

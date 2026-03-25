@@ -117,6 +117,15 @@ public class CloudSyncService : ICloudSyncService
                 "SELECT Id, OpenedBy, OpenedAt, ClosedAt, OpeningCash, ClosingCash, " +
                 "TotalSales, TotalCashSales, TotalCardSales, Variance, Status FROM PosShifts");
 
+            payload["freezeHistories"] = await ReadTableAsync(local,
+                "SELECT Id, EmployeeId, FreezeStartDate, FreezeEndDate, Reason, FrozenBy FROM FreezeHistories");
+
+            payload["products"] = await ReadTableAsync(local,
+                "SELECT Id, Name, NameAr, Price, Cost, Stock, Barcode, CategoryId, IsActive FROM Products");
+
+            payload["timeGroups"] = await ReadTableAsync(local,
+                "SELECT Id, Name, NameAr, Description FROM TimeGroups");
+
             // Log table counts
             foreach (var kvp in payload)
                 Log($"  {kvp.Key}: {kvp.Value.Count} rows read");

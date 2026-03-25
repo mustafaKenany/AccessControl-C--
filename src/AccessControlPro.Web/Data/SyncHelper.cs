@@ -13,7 +13,8 @@ public static class SyncHelper
     {
         "Players", "AccessEvents", "Devices", "Doors", "Transactions",
         "Users", "AuditLogs", "DeletedEmployees", "AppSettings", "AccessCards",
-        "CloudSyncLogs", "QrPasses", "QrPool", "Gyms", "SubscriptionPlans", "PosShifts"
+        "CloudSyncLogs", "QrPasses", "QrPool", "Gyms", "SubscriptionPlans", "PosShifts",
+        "FreezeHistories", "Products", "TimeGroups"
     };
 
     // Column name must be alphanumeric/underscore only
@@ -152,7 +153,7 @@ public static class SyncHelper
                name.Contains("At", StringComparison.OrdinalIgnoreCase) ||
                name == "Timestamp" || name == "EventDate" ||
                name == "CreatedAt" || name == "DeletedAt" ||
-               name == "FreezeStartDate" || name == "ValidFrom" || name == "ValidTo" ||
+               name == "FreezeStartDate" || name == "FreezeEndDate" || name == "ValidFrom" || name == "ValidTo" ||
                name == "TransactionDate" || name == "SyncedAt" || name == "ExpiresAt" ||
                name == "AssignedAt" || name == "ExpiredAt" || name == "UsedAt" ||
                name == "OpenedAt" || name == "ClosedAt";
@@ -178,6 +179,6 @@ public static class SyncHelper
                name.Contains("Opening", StringComparison.OrdinalIgnoreCase) ||
                name.Contains("Closing", StringComparison.OrdinalIgnoreCase) ||
                name.Contains("Discount", StringComparison.OrdinalIgnoreCase) ||
-               name == "Price";
+               name == "Price" || name == "Cost" || name == "Stock";
     }
 }

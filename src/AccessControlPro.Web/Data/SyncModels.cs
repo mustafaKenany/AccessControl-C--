@@ -42,4 +42,13 @@ public class SyncPayload
 
     [JsonPropertyName("posShifts")]
     public List<Dictionary<string, object?>>? PosShifts { get; set; }
+
+    [JsonPropertyName("freezeHistories")]
+    public List<Dictionary<string, object?>>? FreezeHistories { get; set; }
+
+    [JsonPropertyName("products")]
+    public List<Dictionary<string, object?>>? Products { get; set; }
+
+    [JsonPropertyName("timeGroups")]
+    public List<Dictionary<string, object?>>? TimeGroups { get; set; }
 }
