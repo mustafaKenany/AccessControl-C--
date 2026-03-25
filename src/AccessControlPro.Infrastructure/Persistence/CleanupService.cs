@@ -151,6 +151,18 @@ public class CleanupService : ICleanupService
                     Log($"Cleaned up {auditCount} old audit logs (older than {auditCutoff:yyyy-MM-dd})");
             }
             catch { /* AuditLogs table may not exist */ }
+
+            // Cleanup QR Pool: delete DB records older than 6 months that are used/expired
+            try
+            {
+                var qrCutoff = DateTime.Now.AddMonths(-6);
+                var qrCleanup = await db.Database.ExecuteSqlRawAsync(
+                    "DELETE FROM QrPool WHERE (Status = 2 OR Status = 3) AND CreatedAt < {0}", qrCutoff);
+
+                if (qrCleanup > 0)
+                    Log($"Cleaned up {qrCleanup} old QR pool entries (>6 months)");
+            }
+            catch { /* QrPool table may not exist */ }
         }
         catch (Exception ex)
         {

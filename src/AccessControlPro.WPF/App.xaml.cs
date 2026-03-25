@@ -10,6 +10,8 @@ using AccessControlPro.Domain.Interfaces;
 using AccessControlPro.Domain.Entities;
 using AccessControlPro.Infrastructure;
 using AccessControlPro.Infrastructure.Persistence;
+using AccessControlPro.SDK.Models;
+using AccessControlPro.SDK.Wrapper;
 using AccessControlPro.WPF.Helpers;
 using AccessControlPro.WPF.ViewModels;
 using AccessControlPro.WPF.Views;
@@ -27,6 +29,7 @@ public partial class App : System.Windows.Application
     private DispatcherTimer? _backupTimer;
     private DispatcherTimer? _cloudSyncTimer;
     private DispatcherTimer? _cleanupDailyTimer;
+    private DispatcherTimer? _qrPoolTimer;
     private static readonly string CrashLogPath = Path.Combine(AppContext.BaseDirectory, "crash_log.txt");
 
     public App()
@@ -305,15 +308,39 @@ public partial class App : System.Windows.Application
                 using var qrScope = _serviceProvider.CreateScope();
                 var qrPool = qrScope.ServiceProvider.GetRequiredService<IQrPoolService>();
                 var available = Task.Run(() => qrPool.GetAvailableCountAsync()).GetAwaiter().GetResult();
+                int generated = 0;
                 if (available == 0)
                 {
                     StartupLog("Generating initial QR pool (3500 local codes)...");
-                    var generated = Task.Run(() => qrPool.GeneratePoolAsync(3500, 50001001, "Local")).GetAwaiter().GetResult();
+                    generated = Task.Run(() => qrPool.GeneratePoolAsync(3500, 50001001, "Local")).GetAwaiter().GetResult();
                     StartupLog($"QR pool generated: {generated} codes");
                 }
                 else if (available < 500)
                 {
                     StartupLog($"QR pool low ({available} available)");
+                }
+
+                // Upload un-uploaded QR codes to device on first startup
+                if (generated > 0 || available > 0)
+                {
+                    try
+                    {
+                        var deviceRepo = qrScope.ServiceProvider.GetRequiredService<IDeviceRepository>();
+                        var allDevices = Task.Run(() => deviceRepo.GetAllAsync()).GetAwaiter().GetResult().ToList();
+                        if (allDevices.Count > 0)
+                        {
+                            var sdk = _serviceProvider.GetRequiredService<IAccessControlSdk>();
+                            var deviceInfos = allDevices.Select(d => new DeviceInfo
+                            {
+                                IP = d.IP, MAC = d.MAC, SerialNumber = d.SerialNumber,
+                                TCPPort = d.TCPPort, Password = d.Password,
+                                Gateway = d.Gateway, SubnetMask = d.SubnetMask
+                            }).ToList();
+                            var (uploaded, _, _) = Task.Run(() => qrPool.SyncQrPoolToDeviceAsync(sdk, deviceInfos)).GetAwaiter().GetResult();
+                            StartupLog($"QR Pool initial upload: {uploaded} codes uploaded to {allDevices.Count} device(s)");
+                        }
+                    }
+                    catch (Exception ex) { StartupLog($"QR Pool initial upload error: {ex.Message}"); }
                 }
             }
             catch (Exception qrEx)
@@ -591,6 +618,62 @@ public partial class App : System.Windows.Application
                     });
                 }
             }
+
+            // QR Pool device sync timer — checks every 12 hours, runs on 1st and 15th of each month
+            _qrPoolTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(12) };
+            _qrPoolTimer.Tick += async (_, _) =>
+            {
+                var day = DateTime.Now.Day;
+                if (day == 1 || day == 15)
+                {
+                    // Check if already ran today
+                    var markerPath = Path.Combine(AppContext.BaseDirectory, ".qr_pool_sync");
+                    var lastRun = File.Exists(markerPath) ? File.ReadAllText(markerPath).Trim() : "";
+                    var todayKey = DateTime.Now.ToString("yyyy-MM-dd");
+                    if (lastRun == todayKey) return;
+
+                    try
+                    {
+                        File.WriteAllText(markerPath, todayKey);
+                        StartupLog("QR Pool sync: starting device upload...");
+
+                        // Show warning to user
+                        Dispatcher.Invoke(() =>
+                        {
+                            CustomMessageBox.Show(
+                                LanguageManager.Instance.IsArabic
+                                    ? "جاري مزامنة رموز QR مع الجهاز... يرجى الانتظار"
+                                    : "Syncing QR codes to device... Please wait",
+                                "QR Sync",
+                                MsgType.Info,
+                                MainWindow);
+                        });
+
+                        using var scope = _serviceProvider.CreateScope();
+                        var qrPool = scope.ServiceProvider.GetRequiredService<IQrPoolService>();
+                        var sdk = _serviceProvider.GetRequiredService<IAccessControlSdk>();
+                        var deviceRepo = scope.ServiceProvider.GetRequiredService<IDeviceRepository>();
+
+                        var allDevices = (await deviceRepo.GetAllAsync()).ToList();
+                        var deviceInfos = allDevices.Select(d => new DeviceInfo
+                        {
+                            IP = d.IP, MAC = d.MAC, SerialNumber = d.SerialNumber,
+                            TCPPort = d.TCPPort, Password = d.Password,
+                            Gateway = d.Gateway, SubnetMask = d.SubnetMask
+                        }).ToList();
+
+                        var (uploaded, deleted, generated) = await Task.Run(() =>
+                            qrPool.SyncQrPoolToDeviceAsync(sdk, deviceInfos));
+
+                        StartupLog($"QR Pool sync complete: {uploaded} uploaded, {deleted} cleaned, {generated} generated");
+                    }
+                    catch (Exception ex)
+                    {
+                        StartupLog($"QR Pool sync error: {ex.Message}");
+                    }
+                }
+            };
+            _qrPoolTimer.Start();
         }
         catch (Exception ex)
         {
@@ -690,6 +773,8 @@ public partial class App : System.Windows.Application
         _cloudSyncTimer = null;
         _cleanupDailyTimer?.Stop();
         _cleanupDailyTimer = null;
+        _qrPoolTimer?.Stop();
+        _qrPoolTimer = null;
 
         // Stop SDK monitoring and shutdown to prevent background thread crashes
         try

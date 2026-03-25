@@ -1,4 +1,6 @@
 using AccessControlPro.Domain.Entities;
+using AccessControlPro.SDK.Models;
+using AccessControlPro.SDK.Wrapper;
 using Microsoft.Data.SqlClient;
 
 namespace AccessControlPro.Application.Services;
@@ -13,6 +15,7 @@ public interface IQrPoolService
     Task<int> CleanupExpiredAsync();
     Task<List<QrPoolEntry>> GetAssignedAsync();
     Task DeactivateAsync(string code);
+    Task<(int uploaded, int deleted, int generated)> SyncQrPoolToDeviceAsync(IAccessControlSdk sdk, List<DeviceInfo> devices);
 }
 
 public class QrPoolService : IQrPoolService
@@ -177,6 +180,103 @@ public class QrPoolService : IQrPoolService
         if (await reader.ReadAsync())
             return ReadEntry(reader);
         return null;
+    }
+
+    public async Task<(int uploaded, int deleted, int generated)> SyncQrPoolToDeviceAsync(
+        IAccessControlSdk sdk, List<DeviceInfo> devices)
+    {
+        int uploaded = 0, deleted = 0, generated = 0;
+
+        using var conn = new SqlConnection(_connectionString);
+        await conn.OpenAsync();
+
+        // Step 1: Delete expired/used codes from device
+        // Find codes that are Status=2 (Used) or Status=3 (Expired) and still IsUploadedToDevice=1
+        using (var cmd = new SqlCommand(
+            "SELECT Code FROM QrPool WHERE (Status = 2 OR Status = 3) AND IsUploadedToDevice = 1", conn))
+        {
+            using var reader = await cmd.ExecuteReaderAsync();
+            var expiredCodes = new List<string>();
+            while (await reader.ReadAsync())
+                expiredCodes.Add(reader.GetString(0));
+            await reader.CloseAsync();
+
+            // Mark them as not uploaded (they'll expire on device naturally via effectiveTimes)
+            foreach (var code in expiredCodes)
+            {
+                using var updateCmd = new SqlCommand(
+                    "UPDATE QrPool SET IsUploadedToDevice = 0 WHERE Code = @c", conn);
+                updateCmd.Parameters.AddWithValue("@c", code);
+                await updateCmd.ExecuteNonQueryAsync();
+                deleted++;
+            }
+        }
+
+        // Step 2: Check available count, generate if needed
+        int available;
+        using (var countCmd = new SqlCommand(
+            "SELECT COUNT(*) FROM QrPool WHERE Status = 0 AND Source = 'Local'", conn))
+        {
+            available = (int)(await countCmd.ExecuteScalarAsync() ?? 0);
+        }
+
+        if (available < 500)
+        {
+            // Find max existing code
+            int maxCode = 50001001;
+            using (var maxCmd = new SqlCommand(
+                "SELECT MAX(CAST(Code AS INT)) FROM QrPool WHERE Source = 'Local'", conn))
+            {
+                var result = await maxCmd.ExecuteScalarAsync();
+                if (result != null && result != DBNull.Value)
+                    maxCode = Convert.ToInt32(result) + 1;
+            }
+
+            generated = await GeneratePoolAsync(3500 - available, maxCode, "Local");
+        }
+
+        // Step 3: Upload un-uploaded codes to all devices
+        using (var cmd = new SqlCommand(
+            "SELECT Code, DoorPermissions, ValidTo FROM QrPool WHERE IsUploadedToDevice = 0 AND Status IN (0, 1) AND Source = 'Local'", conn))
+        {
+            using var reader = await cmd.ExecuteReaderAsync();
+            var codesToUpload = new List<(string code, string doors, DateTime validTo)>();
+            while (await reader.ReadAsync())
+            {
+                codesToUpload.Add((
+                    reader.GetString(0),
+                    reader.IsDBNull(1) ? "01010000" : reader.GetString(1),
+                    reader.GetDateTime(2)
+                ));
+            }
+            await reader.CloseAsync();
+
+            foreach (var (code, doors, validTo) in codesToUpload)
+            {
+                bool success = false;
+                foreach (var device in devices)
+                {
+                    try
+                    {
+                        var permitTime = validTo.ToString("yyyy-MM-dd HH:mm:ss");
+                        sdk.AddAccessCard(device, code, "", 0, doors, permitTime, 2, 0, false);
+                        success = true;
+                    }
+                    catch { /* device might be offline */ }
+                }
+
+                if (success)
+                {
+                    using var updateCmd = new SqlCommand(
+                        "UPDATE QrPool SET IsUploadedToDevice = 1 WHERE Code = @c", conn);
+                    updateCmd.Parameters.AddWithValue("@c", code);
+                    await updateCmd.ExecuteNonQueryAsync();
+                    uploaded++;
+                }
+            }
+        }
+
+        return (uploaded, deleted, generated);
     }
 
     private static QrPoolEntry ReadEntry(SqlDataReader reader)
