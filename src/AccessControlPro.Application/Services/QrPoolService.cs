@@ -21,11 +21,32 @@ public interface IQrPoolService
 public class QrPoolService : IQrPoolService
 {
     private readonly string _connectionString;
+    private readonly int _configPoolSize;
+    private readonly int _configRangeStart;
 
     public QrPoolService(string connectionString)
     {
         _connectionString = connectionString;
+        _configPoolSize = 3500;
+        _configRangeStart = 50001001;
     }
+
+    /// <summary>
+    /// Creates a QrPoolService with configurable pool size and range start.
+    /// Use this constructor when QR settings come from cloud/Super Admin config.
+    /// </summary>
+    public QrPoolService(string connectionString, int poolSize, int rangeStart)
+    {
+        _connectionString = connectionString;
+        _configPoolSize = poolSize > 0 ? poolSize : 3500;
+        _configRangeStart = rangeStart > 0 ? rangeStart : 50001001;
+    }
+
+    /// <summary>Configured pool size (from appsettings or Super Admin)</summary>
+    public int ConfigPoolSize => _configPoolSize;
+
+    /// <summary>Configured range start (from appsettings or Super Admin)</summary>
+    public int ConfigRangeStart => _configRangeStart;
 
     public async Task<int> GeneratePoolAsync(int count = 3500, int startFrom = 50001001, string source = "Local")
     {
@@ -223,7 +244,7 @@ public class QrPoolService : IQrPoolService
         if (available < 500)
         {
             // Find max existing code
-            int maxCode = 50001001;
+            int maxCode = _configRangeStart;
             using (var maxCmd = new SqlCommand(
                 "SELECT MAX(CAST(Code AS INT)) FROM QrPool WHERE Source = 'Local'", conn))
             {
@@ -232,7 +253,8 @@ public class QrPoolService : IQrPoolService
                     maxCode = Convert.ToInt32(result) + 1;
             }
 
-            generated = await GeneratePoolAsync(3500 - available, maxCode, "Local");
+            var localPoolSize = (int)(_configPoolSize * 0.6);
+            generated = await GeneratePoolAsync(localPoolSize - available, maxCode, "Local");
         }
 
         // Step 3: Upload un-uploaded codes to all devices

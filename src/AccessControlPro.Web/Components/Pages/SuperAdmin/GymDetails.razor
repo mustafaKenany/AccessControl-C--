@@ -67,6 +67,61 @@ else
         </div>
     </div>
 
+    @* QR Pool Stats *@
+    @if (_qrPoolEnabled)
+    {
+        <div class="content-card" style="border-color: #7E57C2; margin-bottom: 1.5rem;">
+            <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">
+                <i class="fas fa-qrcode"></i> QR Pool
+            </h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Status</label>
+                    <div><span class="badge badge-active">Enabled</span></div>
+                </div>
+                <div class="form-group">
+                    <label>Pool Size</label>
+                    <div style="color: var(--text-primary); font-weight: 600;">@_qrPoolSize.ToString("N0") codes</div>
+                </div>
+                <div class="form-group">
+                    <label>Code Range</label>
+                    <div style="color: var(--text-primary); font-family: monospace;">@_qrRangeStart - @(_qrRangeStart + _qrPoolSize - 1)</div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Local Range (60%)</label>
+                    <div style="color: var(--text-primary); font-family: monospace;">@_qrRangeStart - @(_qrRangeStart + (int)(_qrPoolSize * 0.6) - 1)</div>
+                </div>
+                <div class="form-group">
+                    <label>Cloud Range (40%)</label>
+                    <div style="color: var(--text-primary); font-family: monospace;">@(_qrRangeStart + (int)(_qrPoolSize * 0.6)) - @(_qrRangeStart + _qrPoolSize - 1)</div>
+                </div>
+                <div class="form-group">
+                    <label>Monthly Fee</label>
+                    <div style="color: var(--success); font-weight: 600;">@_qrMonthlyFee.ToString("C2")</div>
+                </div>
+            </div>
+            @if (_qrAvailableCount >= 0)
+            {
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Available Cloud Codes</label>
+                        <div style="color: var(--text-primary); font-weight: 600;">@_qrAvailableCount</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Assigned Codes</label>
+                        <div style="color: #E91E63; font-weight: 600;">@_qrAssignedCount</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Used/Expired Codes</label>
+                        <div style="color: var(--text-secondary); font-weight: 600;">@_qrUsedCount</div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
     @* Stats *@
     <div class="stats-grid">
         <div class="stat-card purple">
@@ -268,6 +323,15 @@ else
     private string _expiryBadge = "";
     private string _expiryText = "";
 
+    // QR Pool info
+    private bool _qrPoolEnabled;
+    private int _qrPoolSize;
+    private int _qrRangeStart;
+    private decimal _qrMonthlyFee;
+    private int _qrAvailableCount = -1;
+    private int _qrAssignedCount;
+    private int _qrUsedCount;
+
     // Stats
     private int _totalPlayers, _activePlayers, _expiredPlayers, _frozenPlayers, _totalEvents;
     private decimal _totalRevenue;
@@ -293,7 +357,8 @@ else
             using var masterConn = await GymDb.GetMasterConnectionAsync();
             using (var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT ""Name"", ""DatabaseName"", ""OwnerName"", ""OwnerPhone"", ""OwnerEmail"",
-                         ""Subdomain"", ""ExpiresAt"", ""IsActive""
+                         ""Subdomain"", ""ExpiresAt"", ""IsActive"",
+                         ""QrPoolEnabled"", ""QrPoolSize"", ""QrRangeStart"", ""QrMonthlyFee""
                   FROM ""Gyms"" WHERE ""Id"" = @id", masterConn))
             {
                 cmd.Parameters.AddWithValue("id", GymId);
@@ -308,6 +373,10 @@ else
                     _subdomain = reader.IsDBNull(5) ? "" : reader.GetString(5);
                     _expiresAt = reader.IsDBNull(6) ? DateTime.MinValue : reader.GetDateTime(6);
                     _isActive = reader.IsDBNull(7) ? false : reader.GetBoolean(7);
+                    _qrPoolEnabled = reader.IsDBNull(8) ? false : reader.GetBoolean(8);
+                    _qrPoolSize = reader.IsDBNull(9) ? 0 : reader.GetInt32(9);
+                    _qrRangeStart = reader.IsDBNull(10) ? 0 : reader.GetInt32(10);
+                    _qrMonthlyFee = reader.IsDBNull(11) ? 0 : reader.GetDecimal(11);
                 }
                 else
                 {
@@ -452,6 +521,30 @@ else
                             SyncedAt = reader.IsDBNull(3) ? DateTime.MinValue : reader.GetDateTime(3)
                         });
                     }
+                }
+
+                // QR Pool stats (if enabled)
+                if (_qrPoolEnabled)
+                {
+                    try
+                    {
+                        using (var cmd = new Npgsql.NpgsqlCommand(
+                            @"SELECT
+                                COUNT(*) FILTER (WHERE ""Status"" = 0) as available,
+                                COUNT(*) FILTER (WHERE ""Status"" = 1) as assigned,
+                                COUNT(*) FILTER (WHERE ""Status"" IN (2, 3)) as used_expired
+                              FROM ""QrPool""", gymConn))
+                        {
+                            using var reader = await cmd.ExecuteReaderAsync();
+                            if (await reader.ReadAsync())
+                            {
+                                _qrAvailableCount = Convert.ToInt32(reader.GetValue(0));
+                                _qrAssignedCount = Convert.ToInt32(reader.GetValue(1));
+                                _qrUsedCount = Convert.ToInt32(reader.GetValue(2));
+                            }
+                        }
+                    }
+                    catch { /* QrPool table might not exist yet */ }
                 }
             }
             catch (Exception ex)

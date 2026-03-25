@@ -170,7 +170,26 @@ public partial class App : System.Windows.Application
         services.AddScoped<IMigrationService, MigrationService>();
         services.AddScoped<IExpiryMonitorService, ExpiryMonitorService>();
         services.AddScoped<IQrPassService, QrPassService>();
-        services.AddSingleton<IQrPoolService>(sp => new QrPoolService(connectionString));
+        services.AddSingleton<IQrPoolService>(sp =>
+        {
+            var qrPoolSize = 3500;
+            var qrRangeStart = 50001001;
+            try
+            {
+                var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+                if (File.Exists(settingsPath))
+                {
+                    var json = File.ReadAllText(settingsPath);
+                    var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("QrPoolSize", out var sizeEl))
+                        qrPoolSize = sizeEl.GetInt32();
+                    if (doc.RootElement.TryGetProperty("QrRangeStart", out var startEl))
+                        qrRangeStart = startEl.GetInt32();
+                }
+            }
+            catch { /* use defaults */ }
+            return new QrPoolService(connectionString, qrPoolSize, qrRangeStart);
+        });
         services.AddScoped<Domain.Interfaces.IMonitorLockService, AccessControlPro.Infrastructure.Persistence.MonitorLockService>();
         services.AddScoped<ITimeGroupService, TimeGroupService>();
         // POS moved to separate AccessControlPro.POS app

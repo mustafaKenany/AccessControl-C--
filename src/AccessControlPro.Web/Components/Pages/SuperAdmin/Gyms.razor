@@ -181,6 +181,48 @@ HMTech Solutions</div>
                 <input type="text" @bind="_formNotes" class="form-input" placeholder="Optional notes" />
             </div>
         </div>
+
+        @* QR Pool Settings (Extra Paid Feature) *@
+        <div style="margin-top: 0.75rem; padding: 0.75rem; border: 1px solid rgba(126, 87, 194, 0.3); border-radius: 8px; background: rgba(126, 87, 194, 0.05);">
+            <h4 style="color: #7E57C2; margin: 0 0 0.75rem 0; font-size: 0.95rem;">
+                <i class="fas fa-qrcode"></i> QR Pool (Extra Paid Feature)
+            </h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>QR Pool</label>
+                    <select @bind="_formQrEnabled" class="form-input">
+                        <option value="false">Disabled (no extra fee)</option>
+                        <option value="true">Enabled (extra fee)</option>
+                    </select>
+                </div>
+                @if (_formQrEnabled == "true")
+                {
+                    <div class="form-group">
+                        <label>QR Pool Size</label>
+                        <select @bind="_formQrPoolSize" class="form-input">
+                            <option value="3000">3,000 codes</option>
+                            <option value="5000">5,000 codes</option>
+                            <option value="10000">10,000 codes</option>
+                            <option value="15000">15,000 codes</option>
+                            <option value="20000">20,000 codes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>QR Monthly Fee ($)</label>
+                        <input type="number" @bind="_formQrMonthlyFee" class="form-input" placeholder="5.00" step="0.01" />
+                    </div>
+                }
+            </div>
+            @if (_formQrEnabled == "true")
+            {
+                <p style="color: var(--text-secondary); font-size: 0.8rem; margin: 0.5rem 0 0 0;">
+                    <i class="fas fa-info-circle"></i>
+                    QR range will be auto-calculated. Each gym gets a unique non-overlapping range of up to 20,000 codes.
+                    Split: 60% local + 40% cloud.
+                </p>
+            }
+        </div>
+
         <div class="form-actions">
             <button class="btn-accent" style="background: #7E57C2;" @onclick="SaveGym" disabled="@_saving">
                 <i class="fas fa-save"></i> @(_saving ? "Saving..." : "Save")
@@ -232,6 +274,7 @@ else
                         <th>Phone</th>
                         <th>Expiry</th>
                         <th>Status</th>
+                        <th>QR Pool</th>
                         <th>Players</th>
                         <th>Last Sync</th>
                         <th>Actions</th>
@@ -250,6 +293,18 @@ else
                                 <span class="badge @GetStatusBadge(gym.ExpiresAt, gym.IsActive)">
                                     @GetStatusText(gym.ExpiresAt, gym.IsActive)
                                 </span>
+                            </td>
+                            <td>
+                                @if (gym.QrPoolEnabled)
+                                {
+                                    <span style="color: var(--success); font-weight: 600;">
+                                        <i class="fas fa-qrcode"></i> @gym.QrPoolSize.ToString("N0")
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary);">--</span>
+                                }
                             </td>
                             <td>@gym.PlayerCount</td>
                             <td>@(gym.LastSyncAt.HasValue ? gym.LastSyncAt.Value.ToString("MM/dd HH:mm") : "Never")</td>
@@ -308,6 +363,19 @@ else
                         <span class="mobile-card-value">@gym.ExpiresAt.ToString("yyyy-MM-dd")</span>
                     </div>
                     <div class="mobile-card-row">
+                        <span class="mobile-card-label">QR Pool</span>
+                        <span class="mobile-card-value">
+                            @if (gym.QrPoolEnabled)
+                            {
+                                <span style="color: var(--success);"><i class="fas fa-qrcode"></i> @gym.QrPoolSize.ToString("N0")</span>
+                            }
+                            else
+                            {
+                                <span>--</span>
+                            }
+                        </span>
+                    </div>
+                    <div class="mobile-card-row">
                         <span class="mobile-card-label">Players</span>
                         <span class="mobile-card-value">@gym.PlayerCount</span>
                     </div>
@@ -357,6 +425,9 @@ else
     private decimal _formPrice;
     private DateTime _formExpiry = DateTime.UtcNow.AddYears(1);
     private string _formNotes = "";
+    private string _formQrEnabled = "false";
+    private string _formQrPoolSize = "3000";
+    private decimal _formQrMonthlyFee;
     private GymRecord? _editGym;
 
     // Extend fields
@@ -389,7 +460,8 @@ else
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT ""Id"", ""Name"", ""Subdomain"", ""ApiKey"", ""IsActive"", ""ExpiresAt"", ""CreatedAt"",
                          ""OwnerName"", ""OwnerPhone"", ""OwnerEmail"", ""SubscriptionPrice"", ""Notes"",
-                         ""LastSyncAt"", ""PlayerCount""
+                         ""LastSyncAt"", ""PlayerCount"",
+                         ""QrPoolEnabled"", ""QrPoolSize"", ""QrRangeStart"", ""QrMonthlyFee""
                   FROM ""Gyms"" ORDER BY ""CreatedAt"" DESC", conn);
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -409,7 +481,11 @@ else
                     SubscriptionPrice = reader.IsDBNull(10) ? 0 : reader.GetDecimal(10),
                     Notes = reader.IsDBNull(11) ? "" : reader.GetString(11),
                     LastSyncAt = reader.IsDBNull(12) ? null : reader.GetDateTime(12),
-                    PlayerCount = reader.IsDBNull(13) ? 0 : reader.GetInt32(13)
+                    PlayerCount = reader.IsDBNull(13) ? 0 : reader.GetInt32(13),
+                    QrPoolEnabled = reader.IsDBNull(14) ? false : reader.GetBoolean(14),
+                    QrPoolSize = reader.IsDBNull(15) ? 0 : reader.GetInt32(15),
+                    QrRangeStart = reader.IsDBNull(16) ? 0 : reader.GetInt32(16),
+                    QrMonthlyFee = reader.IsDBNull(17) ? 0 : reader.GetDecimal(17)
                 });
             }
         }
@@ -435,6 +511,9 @@ else
         _formPrice = gym.SubscriptionPrice;
         _formExpiry = gym.ExpiresAt;
         _formNotes = gym.Notes;
+        _formQrEnabled = gym.QrPoolEnabled ? "true" : "false";
+        _formQrPoolSize = gym.QrPoolSize > 0 ? gym.QrPoolSize.ToString() : "3000";
+        _formQrMonthlyFee = gym.QrMonthlyFee;
         _showAddForm = false;
     }
 
@@ -455,6 +534,9 @@ else
         _formPrice = 0;
         _formExpiry = DateTime.UtcNow.AddYears(1);
         _formNotes = "";
+        _formQrEnabled = "false";
+        _formQrPoolSize = "3000";
+        _formQrMonthlyFee = 0;
     }
 
     private async Task SaveGym()
@@ -475,10 +557,16 @@ else
             if (_editGym != null)
             {
                 // Update
+                var qrEnabled = _formQrEnabled == "true";
+                var qrPoolSize = qrEnabled ? int.Parse(_formQrPoolSize) : 0;
+                var qrRangeStart = qrEnabled ? 50000001 + (_editGym.Id * 20000) : 0;
+                var qrMonthlyFee = qrEnabled ? _formQrMonthlyFee : 0;
+
                 using var cmd = new Npgsql.NpgsqlCommand(
                     @"UPDATE ""Gyms"" SET ""Name"" = @name, ""Subdomain"" = @sub, ""OwnerName"" = @on,
                       ""OwnerPhone"" = @op, ""OwnerEmail"" = @oe, ""SubscriptionPrice"" = @price,
-                      ""ExpiresAt"" = @exp, ""Notes"" = @notes
+                      ""ExpiresAt"" = @exp, ""Notes"" = @notes,
+                      ""QrPoolEnabled"" = @qr, ""QrPoolSize"" = @qrsize, ""QrRangeStart"" = @qrstart, ""QrMonthlyFee"" = @qrfee
                       WHERE ""Id"" = @id", conn);
                 cmd.Parameters.AddWithValue("name", _formName);
                 cmd.Parameters.AddWithValue("sub", _formSubdomain);
@@ -488,6 +576,10 @@ else
                 cmd.Parameters.AddWithValue("price", _formPrice);
                 cmd.Parameters.AddWithValue("exp", _formExpiry);
                 cmd.Parameters.AddWithValue("notes", _formNotes);
+                cmd.Parameters.AddWithValue("qr", qrEnabled);
+                cmd.Parameters.AddWithValue("qrsize", qrPoolSize);
+                cmd.Parameters.AddWithValue("qrstart", qrRangeStart);
+                cmd.Parameters.AddWithValue("qrfee", qrMonthlyFee);
                 cmd.Parameters.AddWithValue("id", _editGym.Id);
                 await cmd.ExecuteNonQueryAsync();
                 _message = "Gym updated successfully.";
@@ -510,10 +602,17 @@ else
                     // Database already exists — that's fine, continue
                 }
 
+                var qrEnabled = _formQrEnabled == "true";
+                var qrPoolSize = qrEnabled ? int.Parse(_formQrPoolSize) : 0;
+                var qrMonthlyFee = qrEnabled ? _formQrMonthlyFee : 0;
+
                 using var cmd = new Npgsql.NpgsqlCommand(
                     @"INSERT INTO ""Gyms"" (""Name"", ""Subdomain"", ""ApiKey"", ""DatabaseName"", ""OwnerName"", ""OwnerPhone"",
-                      ""OwnerEmail"", ""SubscriptionPrice"", ""ExpiresAt"", ""Notes"", ""IsActive"")
-                      VALUES (@name, @sub, @key, @dbname, @on, @op, @oe, @price, @exp, @notes, TRUE)", conn);
+                      ""OwnerEmail"", ""SubscriptionPrice"", ""ExpiresAt"", ""Notes"", ""IsActive"",
+                      ""QrPoolEnabled"", ""QrPoolSize"", ""QrRangeStart"", ""QrMonthlyFee"")
+                      VALUES (@name, @sub, @key, @dbname, @on, @op, @oe, @price, @exp, @notes, TRUE,
+                      @qr, @qrsize, 0, @qrfee)
+                      RETURNING ""Id""", conn);
                 cmd.Parameters.AddWithValue("name", _formName);
                 cmd.Parameters.AddWithValue("sub", _formSubdomain);
                 cmd.Parameters.AddWithValue("key", apiKey);
@@ -524,8 +623,28 @@ else
                 cmd.Parameters.AddWithValue("price", _formPrice);
                 cmd.Parameters.AddWithValue("exp", _formExpiry);
                 cmd.Parameters.AddWithValue("notes", _formNotes);
-                await cmd.ExecuteNonQueryAsync();
+                cmd.Parameters.AddWithValue("qr", qrEnabled);
+                cmd.Parameters.AddWithValue("qrsize", qrPoolSize);
+                cmd.Parameters.AddWithValue("qrfee", qrMonthlyFee);
+                var newGymId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                // Set QR range start based on gym ID
+                if (qrEnabled)
+                {
+                    var qrRangeStart = 50000001 + (newGymId * 20000);
+                    using var updateQrCmd = new Npgsql.NpgsqlCommand(
+                        @"UPDATE ""Gyms"" SET ""QrRangeStart"" = @start WHERE ""Id"" = @id", conn);
+                    updateQrCmd.Parameters.AddWithValue("start", qrRangeStart);
+                    updateQrCmd.Parameters.AddWithValue("id", newGymId);
+                    await updateQrCmd.ExecuteNonQueryAsync();
+
+                    // Generate cloud QR pool in the gym's database
+                    await GenerateCloudQrPoolAsync(dbName, qrRangeStart, qrPoolSize);
+                }
+
                 _message = $"Gym added. API Key: {apiKey} | Database: {dbName}";
+                if (qrEnabled)
+                    _message += $" | QR Pool: {qrPoolSize} codes";
             }
 
             _isError = false;
@@ -724,6 +843,31 @@ else
         return "badge-active";
     }
 
+    private async Task GenerateCloudQrPoolAsync(string dbName, int qrRangeStart, int qrPoolSize)
+    {
+        try
+        {
+            var cloudStart = qrRangeStart + (int)(qrPoolSize * 0.6);
+            var cloudCount = qrPoolSize - (int)(qrPoolSize * 0.6);
+
+            using var gymConn = await GymDb.GetGymConnectionAsync(dbName);
+            for (int i = 0; i < cloudCount; i++)
+            {
+                var code = (cloudStart + i).ToString();
+                try
+                {
+                    using var insertCmd = new Npgsql.NpgsqlCommand(
+                        @"INSERT INTO ""QrPool"" (""Code"", ""Status"", ""Source"", ""ValidFrom"", ""ValidTo"", ""CreatedAt"")
+                          VALUES (@c, 0, 'Cloud', NOW(), NOW() + INTERVAL '1 year', NOW()) ON CONFLICT DO NOTHING", gymConn);
+                    insertCmd.Parameters.AddWithValue("c", code);
+                    await insertCmd.ExecuteNonQueryAsync();
+                }
+                catch { /* skip duplicates */ }
+            }
+        }
+        catch { /* gym DB might not be ready */ }
+    }
+
     private class GymRecord
     {
         public int Id { get; set; }
@@ -740,5 +884,9 @@ else
         public string Notes { get; set; } = "";
         public DateTime? LastSyncAt { get; set; }
         public int PlayerCount { get; set; }
+        public bool QrPoolEnabled { get; set; }
+        public int QrPoolSize { get; set; }
+        public int QrRangeStart { get; set; }
+        public decimal QrMonthlyFee { get; set; }
     }
 }

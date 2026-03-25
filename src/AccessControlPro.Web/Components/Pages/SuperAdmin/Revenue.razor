@@ -22,7 +22,7 @@ else
     <div class="stats-grid">
         <div class="stat-card purple">
             <div class="stat-number">@_totalMonthly.ToString("C0")</div>
-            <div class="stat-label">Monthly Revenue</div>
+            <div class="stat-label">Total Monthly Revenue</div>
         </div>
         <div class="stat-card green">
             <div class="stat-number">@(_totalMonthly * 12).ToString("C0")</div>
@@ -35,6 +35,33 @@ else
         <div class="stat-card blue">
             <div class="stat-number">@_activeCount</div>
             <div class="stat-label">Paying Gyms</div>
+        </div>
+    </div>
+
+    @* Revenue Breakdown *@
+    <div class="content-card" style="margin-bottom: 1.5rem;">
+        <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">Revenue Breakdown</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Subscription Revenue</label>
+                <div style="color: var(--success); font-weight: 600; font-size: 1.2rem;">@_subscriptionRevenue.ToString("C0")/month</div>
+            </div>
+            <div class="form-group">
+                <label>QR Pool Revenue</label>
+                <div style="color: #E91E63; font-weight: 600; font-size: 1.2rem;">
+                    @_qrRevenue.ToString("C0")/month
+                    @if (_qrGymCount > 0)
+                    {
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 400;">
+                            (@_qrGymCount gym@(_qrGymCount > 1 ? "s" : ""))
+                        </span>
+                    }
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Total</label>
+                <div style="color: #7E57C2; font-weight: 600; font-size: 1.2rem;">@_totalMonthly.ToString("C0")/month</div>
+            </div>
         </div>
     </div>
 
@@ -53,7 +80,9 @@ else
                         <tr>
                             <th>Gym</th>
                             <th>Owner</th>
-                            <th>Monthly Price</th>
+                            <th>Subscription</th>
+                            <th>QR Fee</th>
+                            <th>Total</th>
                             <th>Status</th>
                             <th>Expires</th>
                             <th>Revenue Bar</th>
@@ -66,6 +95,10 @@ else
                                 <td><strong>@g.Name</strong></td>
                                 <td>@g.OwnerName</td>
                                 <td style="color: var(--success); font-weight: 600;">@g.Price.ToString("C2")</td>
+                                <td style="color: @(g.QrFee > 0 ? "#E91E63" : "var(--text-secondary)"); font-weight: @(g.QrFee > 0 ? "600" : "400");">
+                                    @(g.QrFee > 0 ? g.QrFee.ToString("C2") : "--")
+                                </td>
+                                <td style="color: #7E57C2; font-weight: 600;">@((g.Price + g.QrFee).ToString("C2"))</td>
                                 <td>
                                     <span class="badge @(g.IsOverdue ? "badge-expired" : "badge-active")">
                                         @(g.IsOverdue ? "Overdue" : "Active")
@@ -133,14 +166,21 @@ else
         <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">Revenue Distribution</h3>
         @if (_gymRevenues.Count > 0)
         {
-            @foreach (var g in _gymRevenues.OrderByDescending(x => x.Price))
+            @foreach (var g in _gymRevenues.OrderByDescending(x => x.Price + x.QrFee))
             {
+                var total = g.Price + g.QrFee;
                 <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
                     <span style="min-width: 120px; color: var(--text-secondary); font-size: 0.85rem;">@g.Name</span>
                     <div style="flex: 1; background: var(--bg-primary); border-radius: 4px; height: 24px; position: relative; border: 1px solid var(--border);">
                         <div style="height: 100%; background: linear-gradient(90deg, #7E57C2, #9575CD); border-radius: 4px; width: @(g.BarPercent)%; min-width: 2px;"></div>
                     </div>
-                    <span style="min-width: 80px; text-align: right; font-weight: 600; font-size: 0.85rem;">@g.Price.ToString("C0")</span>
+                    <span style="min-width: 80px; text-align: right; font-weight: 600; font-size: 0.85rem;">
+                        @total.ToString("C0")
+                        @if (g.QrFee > 0)
+                        {
+                            <span style="font-size: 0.7rem; color: #E91E63;"> +QR</span>
+                        }
+                    </span>
                 </div>
             }
         }
@@ -154,6 +194,9 @@ else
 @code {
     private bool _loading = true;
     private decimal _totalMonthly;
+    private decimal _subscriptionRevenue;
+    private decimal _qrRevenue;
+    private int _qrGymCount;
     private int _overdueCount;
     private int _activeCount;
     private List<GymRevenue> _gymRevenues = new();
@@ -171,6 +214,9 @@ else
         _gymRevenues.Clear();
         _overdueGyms.Clear();
         _totalMonthly = 0;
+        _subscriptionRevenue = 0;
+        _qrRevenue = 0;
+        _qrGymCount = 0;
         _overdueCount = 0;
         _activeCount = 0;
 
@@ -178,13 +224,14 @@ else
         {
             using var conn = await GymDb.GetMasterConnectionAsync();
 
-            // Get all gyms with price
+            // Get all gyms with price and QR fee
             using var cmd = new Npgsql.NpgsqlCommand(
-                @"SELECT ""Name"", ""OwnerName"", ""OwnerPhone"", ""SubscriptionPrice"", ""ExpiresAt"", ""IsActive""
+                @"SELECT ""Name"", ""OwnerName"", ""OwnerPhone"", ""SubscriptionPrice"", ""ExpiresAt"", ""IsActive"",
+                         ""QrPoolEnabled"", ""QrMonthlyFee""
                   FROM ""Gyms"" ORDER BY ""SubscriptionPrice"" DESC", conn);
             using var reader = await cmd.ExecuteReaderAsync();
 
-            decimal maxPrice = 0;
+            decimal maxTotal = 0;
             var tempList = new List<GymRevenue>();
 
             while (await reader.ReadAsync())
@@ -195,19 +242,29 @@ else
                 var price = reader.IsDBNull(3) ? 0 : reader.GetDecimal(3);
                 var expires = reader.IsDBNull(4) ? DateTime.MinValue : reader.GetDateTime(4);
                 var isActive = reader.IsDBNull(5) ? false : reader.GetBoolean(5);
+                var qrEnabled = reader.IsDBNull(6) ? false : reader.GetBoolean(6);
+                var qrFee = (qrEnabled && !reader.IsDBNull(7)) ? reader.GetDecimal(7) : 0;
 
                 var isOverdue = !isActive || expires <= DateTime.UtcNow;
+                var gymTotal = price + qrFee;
 
-                if (!isOverdue && price > 0) _activeCount++;
+                if (!isOverdue && (price > 0 || qrFee > 0)) _activeCount++;
                 if (isOverdue) _overdueCount++;
-                if (!isOverdue) _totalMonthly += price;
-                if (price > maxPrice) maxPrice = price;
+                if (!isOverdue)
+                {
+                    _subscriptionRevenue += price;
+                    _qrRevenue += qrFee;
+                    _totalMonthly += gymTotal;
+                    if (qrFee > 0) _qrGymCount++;
+                }
+                if (gymTotal > maxTotal) maxTotal = gymTotal;
 
                 tempList.Add(new GymRevenue
                 {
                     Name = name,
                     OwnerName = owner,
                     Price = price,
+                    QrFee = qrFee,
                     ExpiresAt = expires,
                     IsOverdue = isOverdue
                 });
@@ -225,10 +282,11 @@ else
                 }
             }
 
-            // Calculate bar percentages
+            // Calculate bar percentages based on total (subscription + QR)
             foreach (var g in tempList)
             {
-                g.BarPercent = maxPrice > 0 ? (int)(g.Price / maxPrice * 100) : 0;
+                var total = g.Price + g.QrFee;
+                g.BarPercent = maxTotal > 0 ? (int)(total / maxTotal * 100) : 0;
             }
             _gymRevenues = tempList;
         }
@@ -251,6 +309,7 @@ else
         public string Name { get; set; } = "";
         public string OwnerName { get; set; } = "";
         public decimal Price { get; set; }
+        public decimal QrFee { get; set; }
         public DateTime ExpiresAt { get; set; }
         public bool IsOverdue { get; set; }
         public int BarPercent { get; set; }
