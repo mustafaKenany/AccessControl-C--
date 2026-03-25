@@ -463,7 +463,7 @@ public partial class SetupWizardWindow : Window
                 ["LogoPath"] = ""
             },
             ["CloudSyncUrl"] = "https://hmtech.solutions/api/sync",
-            ["CloudApiKey"] = "HMTech-Sync-2026",
+            ["CloudApiKey"] = string.IsNullOrWhiteSpace(CloudApiKeyBox.Text) ? "HMTech-Sync-2026" : CloudApiKeyBox.Text.Trim(),
             ["QrRangeStart"] = 50001001,
             ["QrPoolSize"] = 3500,
             ["DeviceMode"] = (DeviceModeCombo?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag?.ToString() ?? "Single",

@@ -401,6 +401,12 @@
                             <ComboBoxItem Content="Multi Device (date-based only)" Tag="Multi"/>
                         </ComboBox>
 
+                        <!-- Cloud API Key -->
+                        <TextBlock Text="Cloud API Key (from Super Admin):" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,4"/>
+                        <TextBox x:Name="CloudApiKeyBox" FontSize="14" Background="#1E2D3D" Foreground="White"
+                                 BorderBrush="#2A3A4A" BorderThickness="1" Padding="10,8" Margin="0,0,0,12"
+                                 Text="HMTech-Sync-2026"/>
+
                         <!-- Backup Folder -->
                         <TextBlock Text="Backup Folder:" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,4"/>
                         <TextBox x:Name="BackupFolderBox" FontSize="14" Background="#1E2D3D" Foreground="White"

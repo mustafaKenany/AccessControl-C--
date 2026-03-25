@@ -65,6 +65,25 @@ else
                 </div>
             </div>
         </div>
+        <div class="form-row" style="margin-top: 0.5rem;">
+            <div class="form-group" style="grid-column: span 3;">
+                <label><i class="fas fa-key" style="color: #FFB946;"></i> API Key (give this to gym for local software)</label>
+                <div style="color: #FFB946; font-family: monospace; font-size: 1.1rem; background: rgba(255,185,70,0.1); padding: 0.5rem 1rem; border-radius: 6px; border: 1px dashed #FFB946; user-select: all;">@_apiKey</div>
+            </div>
+        </div>
+        @if (_qrRangeStart > 0)
+        {
+            <div class="form-row" style="margin-top: 0.5rem;">
+                <div class="form-group">
+                    <label>QR Range Start</label>
+                    <div style="color: var(--text-primary); font-family: monospace;">@_qrRangeStart</div>
+                </div>
+                <div class="form-group">
+                    <label>QR Pool Size</label>
+                    <div style="color: var(--text-primary);">@_qrPoolSize</div>
+                </div>
+            </div>
+        }
     </div>
 
     @* QR Pool Stats *@
@@ -318,6 +337,8 @@ else
     private string _ownerPhone = "";
     private string _ownerEmail = "";
     private string _subdomain = "";
+    private string _apiKey = "";
+    private int _qrRangeStart;
     private DateTime _expiresAt;
     private bool _isActive;
     private string _expiryBadge = "";
@@ -358,7 +379,7 @@ else
             using (var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT ""Name"", ""DatabaseName"", ""OwnerName"", ""OwnerPhone"", ""OwnerEmail"",
                          ""Subdomain"", ""ExpiresAt"", ""IsActive"",
-                         ""QrPoolEnabled"", ""QrPoolSize"", ""QrRangeStart"", ""QrMonthlyFee""
+                         ""QrPoolEnabled"", ""QrPoolSize"", ""QrRangeStart"", ""QrMonthlyFee"", ""ApiKey""
                   FROM ""Gyms"" WHERE ""Id"" = @id", masterConn))
             {
                 cmd.Parameters.AddWithValue("id", GymId);
@@ -377,6 +398,7 @@ else
                     _qrPoolSize = reader.IsDBNull(9) ? 0 : reader.GetInt32(9);
                     _qrRangeStart = reader.IsDBNull(10) ? 0 : reader.GetInt32(10);
                     _qrMonthlyFee = reader.IsDBNull(11) ? 0 : reader.GetDecimal(11);
+                    _apiKey = reader.IsDBNull(12) ? "" : reader.GetString(12);
                 }
                 else
                 {
