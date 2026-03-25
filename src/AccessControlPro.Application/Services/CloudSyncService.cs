@@ -113,6 +113,10 @@ public class CloudSyncService : ICloudSyncService
                 "SELECT Id, NameEn, NameAr, Duration, DurationType, Price, MaxVisits, " +
                 "EffectiveTimes, IsActive, SortOrder, CreatedAt FROM SubscriptionPlans");
 
+            payload["posShifts"] = await ReadTableAsync(local,
+                "SELECT Id, OpenedBy, OpenedAt, ClosedAt, OpeningCash, ClosingCash, " +
+                "TotalSales, TotalCashSales, TotalCardSales, Variance, Status FROM PosShifts");
+
             // Log table counts
             foreach (var kvp in payload)
                 Log($"  {kvp.Key}: {kvp.Value.Count} rows read");

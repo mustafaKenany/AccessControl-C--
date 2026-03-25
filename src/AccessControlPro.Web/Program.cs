@@ -129,6 +129,10 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
             total += await SyncHelper.UpsertRowsAsync(conn, "AccessCards", syncData.AccessCards);
         if (syncData.QrPool?.Count > 0)
             total += await SyncHelper.UpsertRowsAsync(conn, "QrPool", syncData.QrPool);
+        if (syncData.SubscriptionPlans?.Count > 0)
+            total += await SyncHelper.UpsertRowsAsync(conn, "SubscriptionPlans", syncData.SubscriptionPlans);
+        if (syncData.PosShifts?.Count > 0)
+            total += await SyncHelper.UpsertRowsAsync(conn, "PosShifts", syncData.PosShifts);
 
         // Invalidate cached data after sync
         QueryCache.InvalidateAll();

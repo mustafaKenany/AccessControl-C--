@@ -190,6 +190,34 @@ CREATE TABLE IF NOT EXISTS ""Gyms"" (
     ""PlayerCount"" INT DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS ""SubscriptionPlans"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""NameEn"" VARCHAR(200) NOT NULL DEFAULT '',
+    ""NameAr"" VARCHAR(200) DEFAULT '',
+    ""Duration"" INT DEFAULT 30,
+    ""DurationType"" VARCHAR(20) DEFAULT 'Days',
+    ""Price"" DECIMAL(18,2) DEFAULT 0,
+    ""MaxVisits"" INT DEFAULT 0,
+    ""EffectiveTimes"" INT DEFAULT 65535,
+    ""IsActive"" BOOLEAN DEFAULT TRUE,
+    ""SortOrder"" INT DEFAULT 0,
+    ""CreatedAt"" TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ""PosShifts"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""OpenedBy"" VARCHAR(100) DEFAULT '',
+    ""OpenedAt"" TIMESTAMP DEFAULT NOW(),
+    ""ClosedAt"" TIMESTAMP NULL,
+    ""OpeningCash"" DECIMAL(18,2) DEFAULT 0,
+    ""ClosingCash"" DECIMAL(18,2) DEFAULT 0,
+    ""TotalSales"" DECIMAL(18,2) DEFAULT 0,
+    ""TotalCashSales"" DECIMAL(18,2) DEFAULT 0,
+    ""TotalCardSales"" DECIMAL(18,2) DEFAULT 0,
+    ""Variance"" DECIMAL(18,2) DEFAULT 0,
+    ""Status"" VARCHAR(20) DEFAULT 'Open'
+);
+
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_players_isdeleted ON ""Players"" (""IsDeleted"");
 CREATE INDEX IF NOT EXISTS idx_players_phone ON ""Players"" (""Phone"");

@@ -13,7 +13,7 @@ public static class SyncHelper
     {
         "Players", "AccessEvents", "Devices", "Doors", "Transactions",
         "Users", "AuditLogs", "DeletedEmployees", "AppSettings", "AccessCards",
-        "CloudSyncLogs", "QrPasses", "QrPool", "Gyms"
+        "CloudSyncLogs", "QrPasses", "QrPool", "Gyms", "SubscriptionPlans", "PosShifts"
     };
 
     // Column name must be alphanumeric/underscore only
@@ -154,7 +154,8 @@ public static class SyncHelper
                name == "CreatedAt" || name == "DeletedAt" ||
                name == "FreezeStartDate" || name == "ValidFrom" || name == "ValidTo" ||
                name == "TransactionDate" || name == "SyncedAt" || name == "ExpiresAt" ||
-               name == "AssignedAt" || name == "ExpiredAt" || name == "UsedAt";
+               name == "AssignedAt" || name == "ExpiredAt" || name == "UsedAt" ||
+               name == "OpenedAt" || name == "ClosedAt";
     }
 
     private static bool IsTimeColumn(string name)
@@ -170,6 +171,13 @@ public static class SyncHelper
                name.Contains("Height", StringComparison.OrdinalIgnoreCase) ||
                name.Contains("Weight", StringComparison.OrdinalIgnoreCase) ||
                name.Contains("Balance", StringComparison.OrdinalIgnoreCase) ||
-               name == "SubscriptionFee" || name == "AmountPaid";
+               name == "SubscriptionFee" || name == "AmountPaid" ||
+               name.Contains("Cash", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Sales", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Variance", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Opening", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Closing", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Discount", StringComparison.OrdinalIgnoreCase) ||
+               name == "Price";
     }
 }

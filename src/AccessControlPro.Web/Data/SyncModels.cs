@@ -36,4 +36,10 @@ public class SyncPayload
 
     [JsonPropertyName("qrPool")]
     public List<Dictionary<string, object?>>? QrPool { get; set; }
+
+    [JsonPropertyName("subscriptionPlans")]
+    public List<Dictionary<string, object?>>? SubscriptionPlans { get; set; }
+
+    [JsonPropertyName("posShifts")]
+    public List<Dictionary<string, object?>>? PosShifts { get; set; }
 }
