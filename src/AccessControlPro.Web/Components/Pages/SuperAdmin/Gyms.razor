@@ -708,6 +708,11 @@ else
             cmd.Parameters.AddWithValue("id", gym.Id);
             await cmd.ExecuteNonQueryAsync();
 
+            if (gym.IsActive)
+            {
+                // Gym was active, now deactivated — clear all sessions for this gym
+                SessionState.ClearSessionsForGym(gym.Id);
+            }
             _message = gym.IsActive ? "Gym deactivated." : "Gym activated.";
             _isError = false;
             await LoadGymsAsync();
@@ -774,6 +779,9 @@ else
                 }
                 catch { /* DB might not exist */ }
             }
+
+            // Clear all sessions for the deleted gym
+            SessionState.ClearSessionsForGym(_deleteConfirmGymId);
 
             _message = $"Gym '{_deleteConfirmName}' deleted successfully.";
             _isError = false;

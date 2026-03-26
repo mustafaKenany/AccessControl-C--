@@ -82,6 +82,32 @@ public class WebAuthService
             conn = await _db.GetConnectionAsync();
         }
 
+        // Check if gym is active and exists in master
+        if (gymDatabase != "gymcloud")
+        {
+            try
+            {
+                using var masterConn = await _gymDb.GetMasterConnectionAsync();
+
+                using var existsCmd = new NpgsqlCommand(
+                    @"SELECT ""IsActive"" FROM ""Gyms"" WHERE ""DatabaseName"" = @db", masterConn);
+                existsCmd.Parameters.AddWithValue("db", gymDatabase);
+                var isActiveResult = await existsCmd.ExecuteScalarAsync();
+
+                if (isActiveResult == null)
+                {
+                    if (conn != null) await conn.DisposeAsync();
+                    return AuthResult.Failed("Your gym account has been removed. Contact support.");
+                }
+                if (isActiveResult is bool active && !active)
+                {
+                    if (conn != null) await conn.DisposeAsync();
+                    return AuthResult.Failed("Your gym account has been deactivated. Contact support.");
+                }
+            }
+            catch { /* If master check fails, allow login attempt to proceed */ }
+        }
+
         try
         {
             using var cmd = new NpgsqlCommand(
@@ -162,6 +188,32 @@ public class WebAuthService
             // Fallback to default connection
             gymDatabase = "gymcloud";
             conn = await _db.GetConnectionAsync();
+        }
+
+        // Check if gym is active and exists in master
+        if (gymDatabase != "gymcloud")
+        {
+            try
+            {
+                using var masterConn = await _gymDb.GetMasterConnectionAsync();
+
+                using var existsCmd = new NpgsqlCommand(
+                    @"SELECT ""IsActive"" FROM ""Gyms"" WHERE ""DatabaseName"" = @db", masterConn);
+                existsCmd.Parameters.AddWithValue("db", gymDatabase);
+                var isActiveResult = await existsCmd.ExecuteScalarAsync();
+
+                if (isActiveResult == null)
+                {
+                    if (conn != null) await conn.DisposeAsync();
+                    return AuthResult.Failed("Your gym account has been removed. Contact support.");
+                }
+                if (isActiveResult is bool active && !active)
+                {
+                    if (conn != null) await conn.DisposeAsync();
+                    return AuthResult.Failed("Your gym account has been deactivated. Contact support.");
+                }
+            }
+            catch { /* If master check fails, allow login attempt to proceed */ }
         }
 
         try

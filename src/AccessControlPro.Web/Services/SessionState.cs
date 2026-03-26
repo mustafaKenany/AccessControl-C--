@@ -59,6 +59,22 @@ public class SessionState
         _sessions.Clear();
     }
 
+    public static void ClearSessionsForGym(int gymId)
+    {
+        var toRemove = _sessions.Where(s => s.Value.GymId == gymId).Select(s => s.Key).ToList();
+        foreach (var key in toRemove)
+            _sessions.TryRemove(key, out _);
+        // Also clear current session if it matches
+        if (GetCurrent()?.GymId == gymId)
+            _currentSessionId = "";
+    }
+
+    public static void ClearAllSessions()
+    {
+        _sessions.Clear();
+        _currentSessionId = "";
+    }
+
     private static SessionData? GetCurrent()
     {
         if (string.IsNullOrEmpty(_currentSessionId)) return null;
