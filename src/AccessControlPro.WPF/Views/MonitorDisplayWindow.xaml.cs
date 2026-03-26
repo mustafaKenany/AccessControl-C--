@@ -83,10 +83,10 @@ public partial class MonitorDisplayWindow : Window
                 || (employee.MaxVisits > 0 && employee.UsedVisits >= employee.MaxVisits);
             bool isFrozen = employee.IsFrozen;
 
-            if (isFrozen)
-                SetStatus($"{Lang.DispFrozenCard}\n{direction}", "#FFB946", FontAwesomeIcon.PauseCircle);
-            else if (isExpired)
+            if (isExpired)
                 SetStatus($"{Lang.DispExpiredCard}\n{direction}", "#F7685B", FontAwesomeIcon.TimesCircle);
+            else if (isFrozen)
+                SetStatus($"{Lang.DispFrozenCard}\n{direction}", "#FFB946", FontAwesomeIcon.PauseCircle);
             else
                 SetStatus($"{Lang.DispSuccessPass}\n{direction}", "#2ED47A", FontAwesomeIcon.CheckCircle);
 

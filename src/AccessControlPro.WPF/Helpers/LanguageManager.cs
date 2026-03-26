@@ -696,6 +696,10 @@ public class LanguageManager : INotifyPropertyChanged
     public string DispCardRepeat => GetString("DispCardRepeat");
     public string DispInvalidCard => GetString("DispInvalidCard");
     public string DispButtonOpen => GetString("DispButtonOpen");
+    public string DispCardOpenAlt => GetString("DispCardOpenAlt");
+    public string DispCardRejected => GetString("DispCardRejected");
+    public string DispCardNotFound => GetString("DispCardNotFound");
+    public string DispCardExpiredHW => GetString("DispCardExpiredHW");
     public string DispRemoteOpen => GetString("DispRemoteOpen");
     public string DispRemoteClose => GetString("DispRemoteClose");
     public string DispDoorOpened => GetString("DispDoorOpened");
@@ -1481,6 +1485,10 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(DispCardRepeat));
         OnPropertyChanged(nameof(DispInvalidCard));
         OnPropertyChanged(nameof(DispButtonOpen));
+        OnPropertyChanged(nameof(DispCardOpenAlt));
+        OnPropertyChanged(nameof(DispCardRejected));
+        OnPropertyChanged(nameof(DispCardNotFound));
+        OnPropertyChanged(nameof(DispCardExpiredHW));
         OnPropertyChanged(nameof(DispRemoteOpen));
         OnPropertyChanged(nameof(DispRemoteClose));
         OnPropertyChanged(nameof(DispDoorOpened));

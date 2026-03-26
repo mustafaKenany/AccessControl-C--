@@ -612,6 +612,10 @@
   <data name="DispCardRepeat" xml:space="preserve"><value>تكرار بطاقة</value></data>
   <data name="DispInvalidCard" xml:space="preserve"><value>بطاقة غير صالحة</value></data>
   <data name="DispButtonOpen" xml:space="preserve"><value>فتح بالزر</value></data>
+  <data name="DispCardOpenAlt" xml:space="preserve"><value>فتح بالبطاقة</value></data>
+  <data name="DispCardRejected" xml:space="preserve"><value>بطاقة مرفوضة</value></data>
+  <data name="DispCardNotFound" xml:space="preserve"><value>بطاقة غير مسجلة</value></data>
+  <data name="DispCardExpiredHW" xml:space="preserve"><value>بطاقة منتهية</value></data>
   <data name="DispRemoteOpen" xml:space="preserve"><value>فتح عن بعد</value></data>
   <data name="DispRemoteClose" xml:space="preserve"><value>إغلاق عن بعد</value></data>
   <data name="DispDoorOpened" xml:space="preserve"><value>الباب مفتوح</value></data>

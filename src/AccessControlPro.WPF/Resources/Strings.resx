@@ -606,6 +606,10 @@
   <data name="DispCardRepeat" xml:space="preserve"><value>Card Repeat</value></data>
   <data name="DispInvalidCard" xml:space="preserve"><value>Invalid Card</value></data>
   <data name="DispButtonOpen" xml:space="preserve"><value>Button Open</value></data>
+  <data name="DispCardOpenAlt" xml:space="preserve"><value>Card Open</value></data>
+  <data name="DispCardRejected" xml:space="preserve"><value>Card Rejected</value></data>
+  <data name="DispCardNotFound" xml:space="preserve"><value>Card Not Found</value></data>
+  <data name="DispCardExpiredHW" xml:space="preserve"><value>Card Expired</value></data>
   <data name="DispRemoteOpen" xml:space="preserve"><value>Remote Open</value></data>
   <data name="DispRemoteClose" xml:space="preserve"><value>Remote Close</value></data>
   <data name="DispDoorOpened" xml:space="preserve"><value>Door Opened</value></data>

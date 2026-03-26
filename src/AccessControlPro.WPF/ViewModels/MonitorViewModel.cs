@@ -452,8 +452,12 @@ public partial class MonitorViewModel : ObservableObject
             5 => lang.DispExpiredCard,
             6 => lang.DispInvalidCard,
             10 => lang.DispButtonOpen,
+            11 => lang.DispCardOpenAlt,
+            19 => lang.DispCardRejected,
             20 => lang.DispRemoteOpen,
             21 => lang.DispRemoteClose,
+            22 => lang.DispCardNotFound,
+            25 => lang.DispCardExpiredHW,
             30 => lang.DispDoorOpened,
             31 => lang.DispDoorClosed,
             _ => $"Event {code}"
