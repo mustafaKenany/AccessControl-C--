@@ -100,7 +100,7 @@
         if (_loginSuccess && Session.IsAuthenticated)
         {
             _loginSuccess = false;
-            Nav.NavigateTo(Session.IsOwner ? "/dashboard" : "/my");
+            Nav.NavigateTo(Session.IsOwner ? "/dashboard" : "/my", forceLoad: true);
         }
     }
 

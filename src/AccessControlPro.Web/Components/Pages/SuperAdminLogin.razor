@@ -51,7 +51,7 @@
     protected override void OnInitialized()
     {
         if (Session.IsSuperAdmin)
-            Nav.NavigateTo("/superadmin/dashboard");
+            Nav.NavigateTo("/superadmin/dashboard", forceLoad: true);
     }
 
     protected override void OnAfterRender(bool firstRender)
@@ -59,7 +59,7 @@
         if (_loginSuccess && Session.IsSuperAdmin)
         {
             _loginSuccess = false;
-            Nav.NavigateTo("/superadmin/dashboard");
+            Nav.NavigateTo("/superadmin/dashboard", forceLoad: true);
         }
     }
 
