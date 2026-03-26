@@ -4,6 +4,7 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject IConfiguration Config
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <div class="login-container">
@@ -95,12 +96,13 @@
         }
     }
 
-    protected override void OnAfterRender(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_loginSuccess && Session.IsAuthenticated)
         {
             _loginSuccess = false;
-            Nav.NavigateTo(Session.IsOwner ? "/dashboard" : "/my", forceLoad: true);
+            var url = Session.IsOwner ? "/dashboard" : "/my";
+            await JS.InvokeVoidAsync("eval", $"window.location.href = '{url}'");
         }
     }
 

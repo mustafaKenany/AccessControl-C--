@@ -4,6 +4,7 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject IConfiguration Config
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <div class="login-container">
@@ -48,18 +49,17 @@
     private bool _loading;
     private bool _loginSuccess;
 
-    protected override void OnInitialized()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (Session.IsSuperAdmin)
-            Nav.NavigateTo("/superadmin/dashboard", forceLoad: true);
-    }
-
-    protected override void OnAfterRender(bool firstRender)
-    {
+        if (firstRender && Session.IsSuperAdmin)
+        {
+            await JS.InvokeVoidAsync("eval", "window.location.href = '/superadmin/dashboard'");
+            return;
+        }
         if (_loginSuccess && Session.IsSuperAdmin)
         {
             _loginSuccess = false;
-            Nav.NavigateTo("/superadmin/dashboard", forceLoad: true);
+            await JS.InvokeVoidAsync("eval", "window.location.href = '/superadmin/dashboard'");
         }
     }
 
