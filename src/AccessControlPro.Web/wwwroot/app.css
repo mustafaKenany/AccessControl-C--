@@ -3092,3 +3092,63 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; }
         display: none;
     }
 }
+
+/* ==============================================
+   LANGUAGE TOGGLE BUTTON
+   ============================================== */
+.lang-btn {
+    background: rgba(68, 161, 160, 0.15);
+    color: #44A1A0;
+    border: 1px solid rgba(68, 161, 160, 0.3);
+    padding: 0.4rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.lang-btn:hover {
+    background: rgba(68, 161, 160, 0.25);
+    color: #fff;
+}
+
+.lang-btn-mobile {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .lang-btn-mobile {
+        display: inline-flex;
+    }
+}
+
+/* ==============================================
+   ADDITIONAL MOBILE RESPONSIVE FIXES
+   ============================================== */
+@media (max-width: 768px) {
+    /* Super Admin pages */
+    .superadmin-container .stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .superadmin-container .data-table {
+        font-size: 0.75rem;
+    }
+
+    /* Login form */
+    .login-card {
+        max-width: 100%;
+        padding: 1.5rem;
+    }
+    .login-container {
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Super Admin pages */
+    .superadmin-container .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}

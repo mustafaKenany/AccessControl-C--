@@ -1,5 +1,7 @@
 @page "/docs"
 @layout AccessControlPro.Web.Components.Layout.LandingLayout
+@inject IJSRuntime JS
+@rendermode InteractiveServer
 
 <div class="docs-page @(isArabic ? "docs-rtl" : "")">
     <!-- Language Toggle -->
@@ -13,15 +15,15 @@
         <nav class="docs-sidebar">
             <h3 class="docs-sidebar-title">@(isArabic ? "المحتويات" : "Contents")</h3>
             <ul class="docs-toc">
-                <li><a href="#getting-started">@(isArabic ? "البدء" : "Getting Started")</a></li>
-                <li><a href="#player-management">@(isArabic ? "إدارة اللاعبين" : "Player Management")</a></li>
-                <li><a href="#device-management">@(isArabic ? "إدارة الأجهزة" : "Device Management")</a></li>
-                <li><a href="#door-management">@(isArabic ? "إدارة الأبواب" : "Door Management")</a></li>
-                <li><a href="#realtime-monitor">@(isArabic ? "المراقبة المباشرة" : "Real-Time Monitor")</a></li>
-                <li><a href="#finance">@(isArabic ? "المالية" : "Finance")</a></li>
-                <li><a href="#cloud-portal">@(isArabic ? "البوابة السحابية" : "Cloud Portal")</a></li>
-                <li><a href="#admin-panel">@(isArabic ? "لوحة الإدارة" : "Admin Panel")</a></li>
-                <li><a href="#troubleshooting">@(isArabic ? "استكشاف الأخطاء" : "Troubleshooting")</a></li>
+                <li><a href="#getting-started" @onclick='() => ScrollTo("getting-started")' @onclick:preventDefault>@(isArabic ? "البدء" : "Getting Started")</a></li>
+                <li><a href="#player-management" @onclick='() => ScrollTo("player-management")' @onclick:preventDefault>@(isArabic ? "إدارة اللاعبين" : "Player Management")</a></li>
+                <li><a href="#device-management" @onclick='() => ScrollTo("device-management")' @onclick:preventDefault>@(isArabic ? "إدارة الأجهزة" : "Device Management")</a></li>
+                <li><a href="#door-management" @onclick='() => ScrollTo("door-management")' @onclick:preventDefault>@(isArabic ? "إدارة الأبواب" : "Door Management")</a></li>
+                <li><a href="#realtime-monitor" @onclick='() => ScrollTo("realtime-monitor")' @onclick:preventDefault>@(isArabic ? "المراقبة المباشرة" : "Real-Time Monitor")</a></li>
+                <li><a href="#finance" @onclick='() => ScrollTo("finance")' @onclick:preventDefault>@(isArabic ? "المالية" : "Finance")</a></li>
+                <li><a href="#cloud-portal" @onclick='() => ScrollTo("cloud-portal")' @onclick:preventDefault>@(isArabic ? "البوابة السحابية" : "Cloud Portal")</a></li>
+                <li><a href="#admin-panel" @onclick='() => ScrollTo("admin-panel")' @onclick:preventDefault>@(isArabic ? "لوحة الإدارة" : "Admin Panel")</a></li>
+                <li><a href="#troubleshooting" @onclick='() => ScrollTo("troubleshooting")' @onclick:preventDefault>@(isArabic ? "استكشاف الأخطاء" : "Troubleshooting")</a></li>
             </ul>
             <div class="docs-sidebar-contact">
                 <a href="https://wa.me/9647812573845?text=Hi%2C%20I%20need%20help%20with%20HM-GymManagement" target="_blank" class="docs-help-btn">
@@ -332,4 +334,9 @@
 
 @code {
     private bool isArabic = false;
+
+    private async Task ScrollTo(string id)
+    {
+        await JS.InvokeVoidAsync("eval", $"document.getElementById('{id}')?.scrollIntoView({{behavior: 'smooth'}})");
+    }
 }

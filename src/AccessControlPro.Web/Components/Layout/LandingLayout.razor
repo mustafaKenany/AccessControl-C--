@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
+@inject AccessControlPro.Web.Services.SessionState Session
 
-<div class="landing-page">
+<div class="landing-page" dir="@SessionState.Dir">
     <nav class="landing-nav">
         <div class="landing-nav-inner">
             <a href="/" class="landing-nav-brand">
@@ -8,27 +9,31 @@
                 <span>HM-GymManagement</span>
             </a>
             <div class="landing-nav-links">
-                <a href="#features">Features</a>
-                <a href="#how-it-works">How It Works</a>
-                <a href="#pricing">Pricing</a>
-                <a href="#screenshots">Screenshots</a>
-                <a href="#contact">Contact</a>
-                <a href="/docs">Docs</a>
+                <a href="#features">@L("Features", "المميزات")</a>
+                <a href="#how-it-works">@L("How It Works", "كيف يعمل")</a>
+                <a href="#pricing">@L("Pricing", "الأسعار")</a>
+                <a href="#screenshots">@L("Screenshots", "لقطات")</a>
+                <a href="#contact">@L("Contact", "تواصل")</a>
+                <a href="/docs">@L("Docs", "التوثيق")</a>
+                <button class="lang-btn" @onclick="ToggleLang">@(SessionState.IsArabic ? "EN" : "عربي")</button>
                 <a href="/login" class="landing-nav-login">
-                    <i class="fas fa-sign-in-alt"></i> Login
+                    <i class="fas fa-sign-in-alt"></i> @L("Login", "دخول")
                 </a>
             </div>
-            <a href="/login" class="landing-nav-login-mobile">
-                <i class="fas fa-sign-in-alt"></i> Login
-            </a>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <button class="lang-btn lang-btn-mobile" @onclick="ToggleLang">@(SessionState.IsArabic ? "EN" : "عربي")</button>
+                <a href="/login" class="landing-nav-login-mobile">
+                    <i class="fas fa-sign-in-alt"></i> @L("Login", "دخول")
+                </a>
+            </div>
         </div>
     </nav>
     @Body
     <footer class="landing-footer">
         <div class="landing-footer-inner">
             <div class="footer-col">
-                <h4>About</h4>
-                <p>HM-GymManagement by HM-Tech IT Solutions. A complete gym management and access control solution built for modern fitness businesses.</p>
+                <h4>@L("About", "حول")</h4>
+                <p>@L("HM-GymManagement by HM-Tech IT Solutions. A complete gym management and access control solution built for modern fitness businesses.", "HM-GymManagement من HM-Tech IT Solutions. حل متكامل لإدارة النوادي والتحكم بالوصول مصمم لأعمال اللياقة الحديثة.")</p>
                 <div class="landing-footer-social">
                     <a href="#" title="Facebook"><i class="fab fa-facebook-f"></i></a>
                     <a href="#" title="Instagram"><i class="fab fa-instagram"></i></a>
@@ -38,26 +43,36 @@
                 </div>
             </div>
             <div class="footer-col">
-                <h4>Quick Links</h4>
+                <h4>@L("Quick Links", "روابط سريعة")</h4>
                 <ul>
-                    <li><a href="#features"><i class="fas fa-chevron-right"></i> Features</a></li>
-                    <li><a href="#pricing"><i class="fas fa-chevron-right"></i> Pricing</a></li>
-                    <li><a href="#contact"><i class="fas fa-chevron-right"></i> Contact</a></li>
-                    <li><a href="/docs"><i class="fas fa-chevron-right"></i> Documentation</a></li>
-                    <li><a href="/login"><i class="fas fa-chevron-right"></i> Login</a></li>
+                    <li><a href="#features"><i class="fas fa-chevron-right"></i> @L("Features", "المميزات")</a></li>
+                    <li><a href="#pricing"><i class="fas fa-chevron-right"></i> @L("Pricing", "الأسعار")</a></li>
+                    <li><a href="#contact"><i class="fas fa-chevron-right"></i> @L("Contact", "تواصل")</a></li>
+                    <li><a href="/docs"><i class="fas fa-chevron-right"></i> @L("Documentation", "التوثيق")</a></li>
+                    <li><a href="/login"><i class="fas fa-chevron-right"></i> @L("Login", "دخول")</a></li>
                 </ul>
             </div>
             <div class="footer-col">
-                <h4>Contact</h4>
+                <h4>@L("Contact", "تواصل")</h4>
                 <ul>
                     <li><a href="tel:+9647812573845"><i class="fas fa-phone"></i> +964 781 257 3845</a></li>
                     <li><a href="mailto:mustafa.kenany2022@gmail.com"><i class="fas fa-envelope"></i> mustafa.kenany2022@gmail.com</a></li>
-                    <li><a href="https://wa.me/9647812573845" target="_blank"><i class="fab fa-whatsapp"></i> WhatsApp</a></li>
+                    <li><a href="https://wa.me/9647812573845" target="_blank"><i class="fab fa-whatsapp"></i> @L("WhatsApp", "واتساب")</a></li>
                 </ul>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 HM-Tech IT Solutions. All rights reserved.</p>
+            <p>&copy; 2026 HM-Tech IT Solutions. @L("All rights reserved.", "جميع الحقوق محفوظة.")</p>
         </div>
     </footer>
 </div>
+
+@code {
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+
+    private void ToggleLang()
+    {
+        SessionState.ToggleLanguage();
+        StateHasChanged();
+    }
+}

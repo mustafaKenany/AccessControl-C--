@@ -16,7 +16,12 @@ else
 {
     <div class="page-header">
         <h1><i class="fas fa-users"></i> @L("Players", "اللاعبون")</h1>
-        <span class="last-sync">@L("Total", "الإجمالي"): @_totalCount</span>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <button class="btn-outline btn-sm" @onclick="RefreshData" disabled="@_refreshing" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                <i class="fas fa-sync-alt @(_refreshing ? "fa-spin" : "")"></i> @L("Refresh", "تحديث")
+            </button>
+            <span class="last-sync">@L("Total", "الإجمالي"): @_totalCount</span>
+        </div>
     </div>
 
     <div class="search-bar" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
@@ -271,6 +276,7 @@ else
     private int TotalPages => _totalCount == 0 ? 1 : (int)Math.Ceiling((double)_totalCount / PageSize);
 
     private string _gymName = "";
+    private bool _refreshing;
 
     private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
@@ -393,6 +399,21 @@ else
     private void ToggleExpand(int id)
     {
         _expandedId = _expandedId == id ? null : id;
+    }
+
+    private async Task RefreshData()
+    {
+        _refreshing = true;
+        StateHasChanged();
+        try
+        {
+            _page = 1;
+            await LoadPlayersAsync();
+        }
+        finally
+        {
+            _refreshing = false;
+        }
     }
 
     private async Task SetFilter(string filter)

@@ -55,6 +55,8 @@ public class SessionState
         if (!string.IsNullOrEmpty(_currentSessionId))
             _sessions.TryRemove(_currentSessionId, out _);
         _currentSessionId = "";
+        // Clear all sessions to ensure clean state across circuit restarts
+        _sessions.Clear();
     }
 
     private static SessionData? GetCurrent()

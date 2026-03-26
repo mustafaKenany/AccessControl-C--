@@ -2,7 +2,7 @@
 @layout AccessControlPro.Web.Components.Layout.LandingLayout
 
 <!-- Hero Section -->
-<section class="landing-hero">
+<section class="landing-hero" dir="@SessionState.Dir">
     <div class="hero-bg-effects">
         <div class="hero-glow hero-glow-1"></div>
         <div class="hero-glow hero-glow-2"></div>
@@ -10,213 +10,210 @@
     </div>
     <div class="hero-content">
         <div class="hero-badge">
-            <i class="fas fa-bolt"></i> Next-Generation Gym Management
+            <i class="fas fa-bolt"></i> @L("Next-Generation Gym Management", "الجيل الجديد من إدارة النوادي")
         </div>
         <h1 class="hero-title">
             <span class="gradient-text">HM-GymManagement</span>
         </h1>
         <p class="hero-subtitle">
-            Complete Gym & Access Control Management System
-        </p>
-        <p class="hero-subtitle-ar">
-            نظام إدارة النوادي الرياضية والتحكم بالوصول
+            @L("Complete Gym & Access Control Management System", "نظام إدارة النوادي الرياضية والتحكم بالوصول")
         </p>
         <div class="hero-buttons">
             <a href="https://wa.me/9647812573845?text=Hi%2C%20I%27m%20interested%20in%20HM-GymManagement%20software.%20I%27d%20like%20to%20request%20a%20demo."
                target="_blank" class="btn-whatsapp">
-                <i class="fab fa-whatsapp"></i> Request Free Demo
+                <i class="fab fa-whatsapp"></i> @L("Request Free Demo", "طلب عرض مجاني")
             </a>
             <a href="/login" class="btn-outline">
-                <i class="fas fa-sign-in-alt"></i> Login / تسجيل الدخول
+                <i class="fas fa-sign-in-alt"></i> @L("Login", "تسجيل الدخول")
             </a>
         </div>
         <div class="hero-stats">
             <div class="hero-stat">
                 <span class="hero-stat-number">500+</span>
-                <span class="hero-stat-label">Active Gyms</span>
+                <span class="hero-stat-label">@L("Active Gyms", "نادي نشط")</span>
             </div>
             <div class="hero-stat-divider"></div>
             <div class="hero-stat">
                 <span class="hero-stat-number">50K+</span>
-                <span class="hero-stat-label">Members Managed</span>
+                <span class="hero-stat-label">@L("Members Managed", "عضو مُدار")</span>
             </div>
             <div class="hero-stat-divider"></div>
             <div class="hero-stat">
                 <span class="hero-stat-number">99.9%</span>
-                <span class="hero-stat-label">Uptime</span>
+                <span class="hero-stat-label">@L("Uptime", "وقت التشغيل")</span>
             </div>
         </div>
     </div>
 </section>
 
 <!-- Features Section -->
-<section id="features" class="landing-section">
+<section id="features" class="landing-section" dir="@SessionState.Dir">
     <div class="section-header">
-        <span class="section-tag"><i class="fas fa-star"></i> Features</span>
-        <h2>Everything You Need to <span class="gradient-text">Run Your Gym</span></h2>
-        <p class="section-desc">Powerful tools designed for modern fitness businesses</p>
+        <span class="section-tag"><i class="fas fa-star"></i> @L("Features", "المميزات")</span>
+        <h2>@L("Everything You Need to", "كل ما تحتاجه") <span class="gradient-text">@L("Run Your Gym", "لإدارة ناديك")</span></h2>
+        <p class="section-desc">@L("Powerful tools designed for modern fitness businesses", "أدوات قوية مصممة لأعمال اللياقة البدنية الحديثة")</p>
     </div>
     <div class="features-grid">
         <div class="feature-card fade-in">
             <div class="feature-icon-wrap" style="--icon-color: #4FC3F7;">
                 <i class="fas fa-dumbbell"></i>
             </div>
-            <h3>Player Management</h3>
-            <p>Register, renew, freeze, and track subscriptions. Full player profiles with photos, cards, and history.</p>
+            <h3>@L("Player Management", "إدارة اللاعبين")</h3>
+            <p>@L("Register, renew, freeze, and track subscriptions. Full player profiles with photos, cards, and history.", "تسجيل، تجديد، تجميد، ومتابعة الاشتراكات. ملفات لاعبين كاملة مع الصور والبطاقات والسجل.")</p>
         </div>
         <div class="feature-card fade-in">
             <div class="feature-icon-wrap" style="--icon-color: #2ED47A;">
                 <i class="fas fa-fingerprint"></i>
             </div>
-            <h3>Access Control</h3>
-            <p>RFID card management, door control, real-time entry/exit monitoring with hardware integration.</p>
+            <h3>@L("Access Control", "التحكم بالوصول")</h3>
+            <p>@L("RFID card management, door control, real-time entry/exit monitoring with hardware integration.", "إدارة بطاقات RFID، التحكم بالأبواب، مراقبة الدخول/الخروج مع تكامل الأجهزة.")</p>
         </div>
         <div class="feature-card fade-in">
             <div class="feature-icon-wrap" style="--icon-color: #FFB74D;">
                 <i class="fas fa-wallet"></i>
             </div>
-            <h3>Finance</h3>
-            <p>Track income, expenses, cash flow, and payments. Complete financial reports and analytics.</p>
+            <h3>@L("Finance", "المالية")</h3>
+            <p>@L("Track income, expenses, cash flow, and payments. Complete financial reports and analytics.", "تتبع الدخل والمصروفات والتدفق النقدي والمدفوعات. تقارير مالية وتحليلات شاملة.")</p>
         </div>
         <div class="feature-card fade-in">
             <div class="feature-icon-wrap" style="--icon-color: #E57373;">
                 <i class="fas fa-chart-pie"></i>
             </div>
-            <h3>Cloud Portal</h3>
-            <p>Monitor your gym from anywhere, any device. Real-time dashboard accessible via web browser.</p>
+            <h3>@L("Cloud Portal", "البوابة السحابية")</h3>
+            <p>@L("Monitor your gym from anywhere, any device. Real-time dashboard accessible via web browser.", "راقب ناديك من أي مكان وأي جهاز. لوحة تحكم فورية عبر المتصفح.")</p>
         </div>
         <div class="feature-card fade-in">
             <div class="feature-icon-wrap" style="--icon-color: #CE93D8;">
                 <i class="fas fa-users-cog"></i>
             </div>
-            <h3>Multi-User</h3>
-            <p>Role-based permissions with admin panel. Receptionist, manager, and owner access levels.</p>
+            <h3>@L("Multi-User", "تعدد المستخدمين")</h3>
+            <p>@L("Role-based permissions with admin panel. Receptionist, manager, and owner access levels.", "صلاحيات حسب الأدوار مع لوحة إدارة. مستويات وصول للموظف والمدير والمالك.")</p>
         </div>
         <div class="feature-card fade-in">
             <div class="feature-icon-wrap" style="--icon-color: #44A1A0;">
                 <i class="fas fa-mobile-alt"></i>
             </div>
-            <h3>Mobile App</h3>
-            <p>Players check their subscription status, visit history, and remaining days on their phone.</p>
+            <h3>@L("Mobile App", "تطبيق الجوال")</h3>
+            <p>@L("Players check their subscription status, visit history, and remaining days on their phone.", "يتحقق اللاعبون من حالة اشتراكهم وسجل الزيارات والأيام المتبقية من هواتفهم.")</p>
         </div>
         <div class="feature-card fade-in">
             <div class="feature-icon-wrap" style="--icon-color: #F06292;">
                 <i class="fas fa-bell"></i>
             </div>
-            <h3>Smart Alerts</h3>
-            <p>Expiry reminders via WhatsApp, automated backup, and intelligent notifications.</p>
+            <h3>@L("Smart Alerts", "تنبيهات ذكية")</h3>
+            <p>@L("Expiry reminders via WhatsApp, automated backup, and intelligent notifications.", "تذكيرات انتهاء عبر واتساب، نسخ احتياطي تلقائي، وإشعارات ذكية.")</p>
         </div>
         <div class="feature-card fade-in">
             <div class="feature-icon-wrap" style="--icon-color: #81C784;">
                 <i class="fas fa-language"></i>
             </div>
-            <h3>Bilingual</h3>
-            <p>Full Arabic and English support. Switch languages instantly throughout the entire system.</p>
+            <h3>@L("Bilingual", "ثنائي اللغة")</h3>
+            <p>@L("Full Arabic and English support. Switch languages instantly throughout the entire system.", "دعم كامل للعربية والإنجليزية. تبديل اللغات فوراً في جميع أنحاء النظام.")</p>
         </div>
     </div>
 </section>
 
 <!-- How It Works Section -->
-<section id="how-it-works" class="landing-section landing-section-alt">
+<section id="how-it-works" class="landing-section landing-section-alt" dir="@SessionState.Dir">
     <div class="section-header">
-        <span class="section-tag"><i class="fas fa-cogs"></i> How It Works</span>
-        <h2>Get Started in <span class="gradient-text">3 Simple Steps</span></h2>
-        <p class="section-desc">Up and running in under 30 minutes</p>
+        <span class="section-tag"><i class="fas fa-cogs"></i> @L("How It Works", "كيف يعمل")</span>
+        <h2>@L("Get Started in", "ابدأ في") <span class="gradient-text">@L("3 Simple Steps", "3 خطوات بسيطة")</span></h2>
+        <p class="section-desc">@L("Up and running in under 30 minutes", "جاهز للعمل في أقل من 30 دقيقة")</p>
     </div>
     <div class="steps-container">
         <div class="steps-line"></div>
         <div class="step-card fade-in">
             <div class="step-number">1</div>
             <div class="step-icon"><i class="fas fa-download"></i></div>
-            <h3>Install Software</h3>
-            <p>Install HM-GymManagement software at your gym. Quick setup in under 30 minutes.</p>
+            <h3>@L("Install Software", "تثبيت البرنامج")</h3>
+            <p>@L("Install HM-GymManagement software at your gym. Quick setup in under 30 minutes.", "ثبّت برنامج HM-GymManagement في ناديك. إعداد سريع في أقل من 30 دقيقة.")</p>
         </div>
         <div class="step-card fade-in">
             <div class="step-number">2</div>
             <div class="step-icon"><i class="fas fa-plug"></i></div>
-            <h3>Connect Devices</h3>
-            <p>Connect your access control devices — RFID readers, turnstiles, and door controllers.</p>
+            <h3>@L("Connect Devices", "ربط الأجهزة")</h3>
+            <p>@L("Connect your access control devices — RFID readers, turnstiles, and door controllers.", "اربط أجهزة التحكم بالوصول — قارئات RFID، البوابات الدوارة، ووحدات التحكم بالأبواب.")</p>
         </div>
         <div class="step-card fade-in">
             <div class="step-number">3</div>
             <div class="step-icon"><i class="fas fa-rocket"></i></div>
-            <h3>Manage Everything</h3>
-            <p>Manage players, finances, and access control from one unified platform.</p>
+            <h3>@L("Manage Everything", "أدِر كل شيء")</h3>
+            <p>@L("Manage players, finances, and access control from one unified platform.", "أدِر اللاعبين والمالية والتحكم بالوصول من منصة واحدة موحدة.")</p>
         </div>
     </div>
 </section>
 
 <!-- Pricing Section -->
-<section id="pricing" class="landing-section">
+<section id="pricing" class="landing-section" dir="@SessionState.Dir">
     <div class="section-header">
-        <span class="section-tag"><i class="fas fa-tags"></i> Pricing</span>
-        <h2>Simple, Transparent <span class="gradient-text">Pricing</span></h2>
-        <p class="section-desc">Choose the plan that fits your gym</p>
+        <span class="section-tag"><i class="fas fa-tags"></i> @L("Pricing", "الأسعار")</span>
+        <h2>@L("Simple, Transparent", "أسعار بسيطة") <span class="gradient-text">@L("Pricing", "وشفافة")</span></h2>
+        <p class="section-desc">@L("Choose the plan that fits your gym", "اختر الخطة المناسبة لناديك")</p>
     </div>
     <div class="pricing-grid">
         <div class="pricing-card fade-in">
             <div class="pricing-header">
-                <h3>Basic</h3>
+                <h3>@L("Basic", "أساسي")</h3>
                 <div class="pricing-price">$200</div>
-                <div class="pricing-period">One-time payment</div>
+                <div class="pricing-period">@L("One-time payment", "دفعة واحدة")</div>
             </div>
             <ul class="pricing-features">
-                <li><i class="fas fa-check"></i> Local desktop software</li>
-                <li><i class="fas fa-check"></i> Player management</li>
-                <li><i class="fas fa-check"></i> Access control integration</li>
-                <li><i class="fas fa-check"></i> Finance tracking</li>
-                <li><i class="fas fa-check"></i> Multi-user support</li>
-                <li><i class="fas fa-check"></i> Bilingual (AR/EN)</li>
+                <li><i class="fas fa-check"></i> @L("Local desktop software", "برنامج سطح مكتب محلي")</li>
+                <li><i class="fas fa-check"></i> @L("Player management", "إدارة اللاعبين")</li>
+                <li><i class="fas fa-check"></i> @L("Access control integration", "تكامل التحكم بالوصول")</li>
+                <li><i class="fas fa-check"></i> @L("Finance tracking", "تتبع مالي")</li>
+                <li><i class="fas fa-check"></i> @L("Multi-user support", "دعم تعدد المستخدمين")</li>
+                <li><i class="fas fa-check"></i> @L("Bilingual (AR/EN)", "ثنائي اللغة (عربي/إنجليزي)")</li>
             </ul>
             <a href="https://wa.me/9647812573845?text=Hi%2C%20I%27m%20interested%20in%20HM-GymManagement%20Basic%20plan"
-               target="_blank" class="pricing-btn">Get Started</a>
+               target="_blank" class="pricing-btn">@L("Get Started", "ابدأ الآن")</a>
         </div>
         <div class="pricing-card pricing-featured fade-in">
-            <div class="pricing-badge">Most Popular</div>
+            <div class="pricing-badge">@L("Most Popular", "الأكثر شيوعاً")</div>
             <div class="pricing-header">
-                <h3>Pro</h3>
-                <div class="pricing-price">$200 <span class="pricing-plus">+ $10/mo</span></div>
-                <div class="pricing-period">Setup + monthly subscription</div>
+                <h3>@L("Pro", "احترافي")</h3>
+                <div class="pricing-price">$200 <span class="pricing-plus">+ $10/@L("mo", "شهر")</span></div>
+                <div class="pricing-period">@L("Setup + monthly subscription", "إعداد + اشتراك شهري")</div>
             </div>
             <ul class="pricing-features">
-                <li><i class="fas fa-check"></i> Everything in Basic</li>
-                <li><i class="fas fa-check"></i> Cloud portal access</li>
-                <li><i class="fas fa-check"></i> Mobile app for players</li>
-                <li><i class="fas fa-check"></i> Real-time cloud sync</li>
-                <li><i class="fas fa-check"></i> WhatsApp notifications</li>
-                <li><i class="fas fa-check"></i> Automated backups</li>
-                <li><i class="fas fa-check"></i> Priority email support</li>
+                <li><i class="fas fa-check"></i> @L("Everything in Basic", "كل مميزات الأساسي")</li>
+                <li><i class="fas fa-check"></i> @L("Cloud portal access", "وصول للبوابة السحابية")</li>
+                <li><i class="fas fa-check"></i> @L("Mobile app for players", "تطبيق جوال للاعبين")</li>
+                <li><i class="fas fa-check"></i> @L("Real-time cloud sync", "مزامنة سحابية فورية")</li>
+                <li><i class="fas fa-check"></i> @L("WhatsApp notifications", "إشعارات واتساب")</li>
+                <li><i class="fas fa-check"></i> @L("Automated backups", "نسخ احتياطي تلقائي")</li>
+                <li><i class="fas fa-check"></i> @L("Priority email support", "دعم بريد إلكتروني أولوي")</li>
             </ul>
             <a href="https://wa.me/9647812573845?text=Hi%2C%20I%27m%20interested%20in%20HM-GymManagement%20Pro%20plan"
-               target="_blank" class="pricing-btn pricing-btn-featured">Get Started</a>
+               target="_blank" class="pricing-btn pricing-btn-featured">@L("Get Started", "ابدأ الآن")</a>
         </div>
         <div class="pricing-card fade-in">
             <div class="pricing-header">
-                <h3>Enterprise</h3>
-                <div class="pricing-price">$500 <span class="pricing-plus">+ $20/mo</span></div>
-                <div class="pricing-period">Setup + monthly subscription</div>
+                <h3>@L("Enterprise", "مؤسسات")</h3>
+                <div class="pricing-price">$500 <span class="pricing-plus">+ $20/@L("mo", "شهر")</span></div>
+                <div class="pricing-period">@L("Setup + monthly subscription", "إعداد + اشتراك شهري")</div>
             </div>
             <ul class="pricing-features">
-                <li><i class="fas fa-check"></i> Everything in Pro</li>
-                <li><i class="fas fa-check"></i> Multi-branch support</li>
-                <li><i class="fas fa-check"></i> Advanced analytics</li>
-                <li><i class="fas fa-check"></i> Custom reports</li>
-                <li><i class="fas fa-check"></i> Priority phone support</li>
-                <li><i class="fas fa-check"></i> On-site installation</li>
-                <li><i class="fas fa-check"></i> Staff training included</li>
+                <li><i class="fas fa-check"></i> @L("Everything in Pro", "كل مميزات الاحترافي")</li>
+                <li><i class="fas fa-check"></i> @L("Multi-branch support", "دعم الفروع المتعددة")</li>
+                <li><i class="fas fa-check"></i> @L("Advanced analytics", "تحليلات متقدمة")</li>
+                <li><i class="fas fa-check"></i> @L("Custom reports", "تقارير مخصصة")</li>
+                <li><i class="fas fa-check"></i> @L("Priority phone support", "دعم هاتفي أولوي")</li>
+                <li><i class="fas fa-check"></i> @L("On-site installation", "تثبيت في الموقع")</li>
+                <li><i class="fas fa-check"></i> @L("Staff training included", "تدريب الموظفين مشمول")</li>
             </ul>
             <a href="https://wa.me/9647812573845?text=Hi%2C%20I%27m%20interested%20in%20HM-GymManagement%20Enterprise%20plan"
-               target="_blank" class="pricing-btn">Get Started</a>
+               target="_blank" class="pricing-btn">@L("Get Started", "ابدأ الآن")</a>
         </div>
     </div>
 </section>
 
 <!-- Screenshots Section -->
-<section id="screenshots" class="landing-section landing-section-alt">
+<section id="screenshots" class="landing-section landing-section-alt" dir="@SessionState.Dir">
     <div class="section-header">
-        <span class="section-tag"><i class="fas fa-images"></i> Screenshots</span>
-        <h2>See It in <span class="gradient-text">Action</span></h2>
-        <p class="section-desc">A glimpse of the beautiful interface</p>
+        <span class="section-tag"><i class="fas fa-images"></i> @L("Screenshots", "لقطات الشاشة")</span>
+        <h2>@L("See It in", "شاهده") <span class="gradient-text">@L("Action", "أثناء العمل")</span></h2>
+        <p class="section-desc">@L("A glimpse of the beautiful interface", "نظرة على الواجهة الجميلة")</p>
     </div>
     <div class="screenshots-grid">
         <div class="screenshot-card fade-in">
@@ -224,102 +221,106 @@
                 <div class="screenshot-toolbar">
                     <span class="ss-dot"></span><span class="ss-dot"></span><span class="ss-dot"></span>
                 </div>
-                <div class="screenshot-content">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Dashboard</span>
+                <div style="padding: 2rem; text-align: center; color: var(--text-secondary); aspect-ratio: 16/10; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <i class="fas fa-chart-line" style="font-size: 3rem; color: #44A1A0; margin-bottom: 1rem;"></i>
+                    <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">@L("Dashboard", "لوحة التحكم")</h4>
+                    <p>@L("Real-time statistics and analytics", "إحصائيات وتحليلات لحظية")</p>
                 </div>
             </div>
-            <div class="screenshot-label">Smart dashboard with real-time stats, door status, and recent events</div>
+            <div class="screenshot-label">@L("Smart dashboard with real-time stats, door status, and recent events", "لوحة تحكم ذكية مع إحصائيات فورية وحالة الأبواب وآخر الأحداث")</div>
         </div>
         <div class="screenshot-card fade-in">
             <div class="screenshot-mockup" style="--ss-color-1: #2ED47A; --ss-color-2: #1A4A4D;">
                 <div class="screenshot-toolbar">
                     <span class="ss-dot"></span><span class="ss-dot"></span><span class="ss-dot"></span>
                 </div>
-                <div class="screenshot-content">
-                    <i class="fas fa-users"></i>
-                    <span>Players Management</span>
+                <div style="padding: 2rem; text-align: center; color: var(--text-secondary); aspect-ratio: 16/10; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <i class="fas fa-users" style="font-size: 3rem; color: #2ED47A; margin-bottom: 1rem;"></i>
+                    <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">@L("Players", "اللاعبون")</h4>
+                    <p>@L("Complete player management", "إدارة كاملة للاعبين")</p>
                 </div>
             </div>
-            <div class="screenshot-label">Complete player management with cards, subscriptions, and bilingual support</div>
+            <div class="screenshot-label">@L("Complete player management with cards, subscriptions, and bilingual support", "إدارة كاملة للاعبين مع البطاقات والاشتراكات ودعم ثنائي اللغة")</div>
         </div>
         <div class="screenshot-card fade-in">
             <div class="screenshot-mockup" style="--ss-color-1: #FFB74D; --ss-color-2: #1A4A4D;">
                 <div class="screenshot-toolbar">
                     <span class="ss-dot"></span><span class="ss-dot"></span><span class="ss-dot"></span>
                 </div>
-                <div class="screenshot-content">
-                    <i class="fas fa-wallet"></i>
-                    <span>Finance & Cash Flow</span>
+                <div style="padding: 2rem; text-align: center; color: var(--text-secondary); aspect-ratio: 16/10; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <i class="fas fa-desktop" style="font-size: 3rem; color: #FFB74D; margin-bottom: 1rem;"></i>
+                    <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">@L("Monitor", "المراقبة")</h4>
+                    <p>@L("Live access monitoring", "مراقبة الدخول المباشرة")</p>
                 </div>
             </div>
-            <div class="screenshot-label">Track revenue, expenses, and outstanding balances with detailed reports</div>
+            <div class="screenshot-label">@L("Track revenue, expenses, and outstanding balances with detailed reports", "تتبع الإيرادات والمصروفات والأرصدة المعلقة مع تقارير مفصلة")</div>
         </div>
         <div class="screenshot-card fade-in">
             <div class="screenshot-mockup" style="--ss-color-1: #CE93D8; --ss-color-2: #1A4A4D;">
                 <div class="screenshot-toolbar">
                     <span class="ss-dot"></span><span class="ss-dot"></span><span class="ss-dot"></span>
                 </div>
-                <div class="screenshot-content">
-                    <i class="fas fa-clipboard-list"></i>
-                    <span>Audit Logs</span>
+                <div style="padding: 2rem; text-align: center; color: var(--text-secondary); aspect-ratio: 16/10; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <i class="fas fa-wallet" style="font-size: 3rem; color: #CE93D8; margin-bottom: 1rem;"></i>
+                    <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">@L("Finance", "المالية")</h4>
+                    <p>@L("Financial tracking", "تتبع مالي متكامل")</p>
                 </div>
             </div>
-            <div class="screenshot-label">Complete activity tracking with action badges, entity details, and user attribution</div>
+            <div class="screenshot-label">@L("Complete activity tracking with action badges, entity details, and user attribution", "تتبع كامل للنشاط مع شارات الإجراءات وتفاصيل الكيانات ونسب المستخدم")</div>
         </div>
     </div>
 </section>
 
 <!-- Contact/Demo Section -->
-<section id="contact" class="landing-section">
+<section id="contact" class="landing-section" dir="@SessionState.Dir">
     <div class="section-header">
-        <span class="section-tag"><i class="fas fa-headset"></i> Get In Touch</span>
-        <h2>Ready to <span class="gradient-text">Get Started?</span></h2>
-        <p class="section-desc">Request a free demo and see HM-GymManagement in action</p>
+        <span class="section-tag"><i class="fas fa-headset"></i> @L("Get In Touch", "تواصل معنا")</span>
+        <h2>@L("Ready to", "مستعد لـ") <span class="gradient-text">@L("Get Started?", "البدء؟")</span></h2>
+        <p class="section-desc">@L("Request a free demo and see HM-GymManagement in action", "اطلب عرضاً مجانياً وشاهد HM-GymManagement أثناء العمل")</p>
     </div>
     <div class="contact-container">
         <div class="contact-form-card">
-            <h3><i class="fas fa-paper-plane"></i> Request Free Demo</h3>
-            <p>Fill in your details and we'll get back to you via WhatsApp</p>
+            <h3><i class="fas fa-paper-plane"></i> @L("Request Free Demo", "طلب عرض مجاني")</h3>
+            <p>@L("Fill in your details and we'll get back to you via WhatsApp", "أدخل بياناتك وسنتواصل معك عبر واتساب")</p>
             <div class="demo-form">
                 <div class="form-group">
                     <div class="form-icon"><i class="fas fa-user"></i></div>
-                    <input type="text" class="form-input" placeholder="Your Name / الاسم" @bind="demoName" />
+                    <input type="text" class="form-input" placeholder="@L("Your Name", "الاسم")" @bind="demoName" />
                 </div>
                 <div class="form-group">
                     <div class="form-icon"><i class="fas fa-phone"></i></div>
-                    <input type="tel" class="form-input" placeholder="Phone Number / رقم الهاتف" @bind="demoPhone" />
+                    <input type="tel" class="form-input" placeholder="@L("Phone Number", "رقم الهاتف")" @bind="demoPhone" />
                 </div>
                 <div class="form-group">
                     <div class="form-icon"><i class="fas fa-building"></i></div>
-                    <input type="text" class="form-input" placeholder="Gym Name / اسم النادي" @bind="demoGymName" />
+                    <input type="text" class="form-input" placeholder="@L("Gym Name", "اسم النادي")" @bind="demoGymName" />
                 </div>
                 <a href="@GetWhatsAppDemoUrl()" target="_blank" class="btn-whatsapp btn-full">
-                    <i class="fab fa-whatsapp"></i> Send via WhatsApp
+                    <i class="fab fa-whatsapp"></i> @L("Send via WhatsApp", "إرسال عبر واتساب")
                 </a>
             </div>
         </div>
         <div class="contact-info-card">
-            <h3><i class="fas fa-map-marker-alt"></i> Contact Info</h3>
+            <h3><i class="fas fa-map-marker-alt"></i> @L("Contact Info", "معلومات التواصل")</h3>
             <div class="contact-info-items">
                 <a href="https://wa.me/9647812573845" target="_blank" class="contact-info-item">
                     <div class="contact-info-icon whatsapp"><i class="fab fa-whatsapp"></i></div>
                     <div>
-                        <strong>WhatsApp</strong>
+                        <strong>@L("WhatsApp", "واتساب")</strong>
                         <span>+964 781 257 3845</span>
                     </div>
                 </a>
                 <a href="tel:+9647812573845" class="contact-info-item">
                     <div class="contact-info-icon phone"><i class="fas fa-phone"></i></div>
                     <div>
-                        <strong>Phone</strong>
+                        <strong>@L("Phone", "الهاتف")</strong>
                         <span>+964 781 257 3845</span>
                     </div>
                 </a>
                 <a href="mailto:mustafa.kenany2022@gmail.com" class="contact-info-item">
                     <div class="contact-info-icon email"><i class="fas fa-envelope"></i></div>
                     <div>
-                        <strong>Email</strong>
+                        <strong>@L("Email", "البريد الإلكتروني")</strong>
                         <span>mustafa.kenany2022@gmail.com</span>
                     </div>
                 </a>
@@ -332,6 +333,8 @@
     private string demoName = "";
     private string demoPhone = "";
     private string demoGymName = "";
+
+    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
     private string GetWhatsAppDemoUrl()
     {
