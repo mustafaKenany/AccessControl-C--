@@ -1,4 +1,5 @@
 @page "/login"
+@layout AccessControlPro.Web.Components.Layout.LandingLayout
 @inject AccessControlPro.Web.Services.WebAuthService AuthService
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
@@ -86,8 +87,12 @@
 
     protected override void OnInitialized()
     {
-        // Don't auto-redirect — always show login page
-        // User must explicitly login (prevents session leaks between owner/player)
+        // Always clear session when login page is shown
+        // This prevents session leak from "Login as Owner" or other flows
+        if (Session.IsAuthenticated)
+        {
+            Session.Logout();
+        }
     }
 
     protected override void OnAfterRender(bool firstRender)
