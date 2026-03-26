@@ -70,16 +70,14 @@ public class WebAuthService
             }
             else
             {
-                // Fallback: try master database (backward compatibility for single gym)
-                gymDatabase = "gymcloud";
-                conn = await _db.GetConnectionAsync();
+                // No gym found for this user — login fails
+                RecordFailedAttempt(identifier);
+                return AuthResult.Failed("Invalid username or password.");
             }
         }
         catch
         {
-            // Fallback to default connection
-            gymDatabase = "gymcloud";
-            conn = await _db.GetConnectionAsync();
+            return AuthResult.Failed("Unable to connect. Please try again later.");
         }
 
         // Check if gym is active and exists in master
@@ -178,16 +176,14 @@ public class WebAuthService
             }
             else
             {
-                // Fallback: try master database (backward compatibility for single gym)
-                gymDatabase = "gymcloud";
-                conn = await _db.GetConnectionAsync();
+                // No gym found for this player — login fails
+                RecordFailedAttempt(identifier);
+                return AuthResult.Failed("Player not found. Check your phone number.");
             }
         }
         catch
         {
-            // Fallback to default connection
-            gymDatabase = "gymcloud";
-            conn = await _db.GetConnectionAsync();
+            return AuthResult.Failed("Unable to connect. Please try again later.");
         }
 
         // Check if gym is active and exists in master

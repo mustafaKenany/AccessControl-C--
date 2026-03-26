@@ -1,20 +1,13 @@
-using System.Collections.Concurrent;
-
 namespace AccessControlPro.Web.Services;
 
 /// <summary>
-/// Simple session state using a static store.
-/// In production, use proper cookie-based auth.
-/// For now: stores last login globally (single gym, few users).
+/// Per-circuit session state. Registered as Scoped, so each Blazor circuit
+/// (each browser tab) gets its own instance. No static session data.
 /// </summary>
 public class SessionState
 {
-    // Static store — survives circuit changes
-    private static readonly ConcurrentDictionary<string, SessionData> _sessions = new();
-    private static string _currentSessionId = "";
-
-    // Language state
-    public static string Language { get; set; } = "en"; // "en" or "ar"
+    // Language is static (shared across all users — OK for a single-gym deployment)
+    public static string Language { get; set; } = "en";
     public static bool IsArabic => Language == "ar";
     public static string Dir => IsArabic ? "rtl" : "ltr";
 
@@ -23,12 +16,20 @@ public class SessionState
         Language = IsArabic ? "en" : "ar";
     }
 
-    public bool IsAuthenticated => GetCurrent()?.IsAuthenticated ?? false;
-    public string DisplayName => GetCurrent()?.DisplayName ?? "";
-    public string Role => GetCurrent()?.Role ?? "";
-    public int UserId => GetCurrent()?.UserId ?? 0;
-    public string GymDatabase => GetCurrent()?.GymDatabase ?? "";
-    public int GymId => GetCurrent()?.GymId ?? 0;
+    // Session data — INSTANCE fields (per circuit/user)
+    private bool _isAuthenticated;
+    private string _displayName = "";
+    private string _role = "";
+    private int _userId;
+    private string _gymDatabase = "";
+    private int _gymId;
+
+    public bool IsAuthenticated => _isAuthenticated;
+    public string DisplayName => _displayName;
+    public string Role => _role;
+    public int UserId => _userId;
+    public string GymDatabase => _gymDatabase;
+    public int GymId => _gymId;
 
     public bool IsOwner => Role == "Owner" || Role == "Admin";
     public bool IsPlayer => Role == "Player";
@@ -36,59 +37,35 @@ public class SessionState
 
     public void Login(AuthResult result, string gymDatabase = "", int gymId = 0)
     {
-        var id = Guid.NewGuid().ToString("N");
-        var data = new SessionData
-        {
-            IsAuthenticated = result.IsAuthenticated,
-            DisplayName = result.DisplayName,
-            Role = result.Role,
-            UserId = result.UserId,
-            GymDatabase = gymDatabase,
-            GymId = gymId
-        };
-        _sessions[id] = data;
-        _currentSessionId = id;
+        _isAuthenticated = result.IsAuthenticated;
+        _displayName = result.DisplayName;
+        _role = result.Role;
+        _userId = result.UserId;
+        _gymDatabase = gymDatabase;
+        _gymId = gymId;
     }
 
     public void Logout()
     {
-        if (!string.IsNullOrEmpty(_currentSessionId))
-            _sessions.TryRemove(_currentSessionId, out _);
-        _currentSessionId = "";
-        // Clear all sessions to ensure clean state across circuit restarts
-        _sessions.Clear();
+        _isAuthenticated = false;
+        _displayName = "";
+        _role = "";
+        _userId = 0;
+        _gymDatabase = "";
+        _gymId = 0;
     }
 
+    // These methods are used by SuperAdmin gym management.
+    // With instance-based sessions, we can't clear other circuits' state.
+    // The gym active check on login will prevent re-access to deactivated/deleted gyms.
     public static void ClearSessionsForGym(int gymId)
     {
-        var toRemove = _sessions.Where(s => s.Value.GymId == gymId).Select(s => s.Key).ToList();
-        foreach (var key in toRemove)
-            _sessions.TryRemove(key, out _);
-        // Also clear current session if it matches
-        if (GetCurrent()?.GymId == gymId)
-            _currentSessionId = "";
+        // No-op: each circuit manages its own state.
+        // Deactivated/deleted gyms are blocked at login time via the IsActive check.
     }
 
     public static void ClearAllSessions()
     {
-        _sessions.Clear();
-        _currentSessionId = "";
-    }
-
-    private static SessionData? GetCurrent()
-    {
-        if (string.IsNullOrEmpty(_currentSessionId)) return null;
-        _sessions.TryGetValue(_currentSessionId, out var data);
-        return data;
-    }
-
-    private class SessionData
-    {
-        public bool IsAuthenticated { get; set; }
-        public string DisplayName { get; set; } = "";
-        public string Role { get; set; } = "";
-        public int UserId { get; set; }
-        public string GymDatabase { get; set; } = "";
-        public int GymId { get; set; }
+        // No-op: each circuit manages its own state.
     }
 }
