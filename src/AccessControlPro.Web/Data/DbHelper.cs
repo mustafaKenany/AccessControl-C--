@@ -263,7 +263,7 @@ CREATE INDEX IF NOT EXISTS idx_deleted_deletedat ON ""DeletedEmployees"" (""Dele
 CREATE INDEX IF NOT EXISTS idx_qrpasses_code ON ""QrPasses"" (""Code"");
 CREATE INDEX IF NOT EXISTS idx_freezehistories_employeeid ON ""FreezeHistories"" (""EmployeeId"");
 CREATE INDEX IF NOT EXISTS idx_products_isactive ON ""Products"" (""IsActive"");
-CREATE INDEX IF NOT EXISTS idx_timegroups_name ON ""TimeGroups"" (""Name"");
+CREATE INDEX IF NOT EXISTS idx_timegroups_name ON ""TimeGroups"" (""NameEn"");
 CREATE INDEX IF NOT EXISTS idx_qrpool_status ON ""QrPool"" (""Status"");
 CREATE INDEX IF NOT EXISTS idx_posshifts_status ON ""PosShifts"" (""Status"");
 CREATE INDEX IF NOT EXISTS idx_subscriptionplans_isactive ON ""SubscriptionPlans"" (""IsActive"");
