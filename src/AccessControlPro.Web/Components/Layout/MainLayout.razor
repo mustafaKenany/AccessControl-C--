@@ -5,7 +5,13 @@
 @inject IJSRuntime JS
 
 <div class="app-container" dir="@SessionState.Dir">
-    @if (Session.IsAuthenticated)
+    @if (_isLoading)
+    {
+        <div style="display:flex; justify-content:center; align-items:center; min-height:100vh; color:var(--accent);">
+            <i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i>
+        </div>
+    }
+    else if (Session.IsAuthenticated)
     {
         <nav class="sidebar">
             <div class="sidebar-brand">
@@ -93,41 +99,62 @@
 @code {
     private string _gymName = "HM-GymManagement";
     private string _expiryInfo = "";
+    private bool _isLoading = true;
 
     private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !Session.IsAuthenticated)
+        if (firstRender)
         {
-            try
+            // Step 1: Restore session from cookie if not authenticated
+            if (!Session.IsAuthenticated)
             {
-                var cookie = await JS.InvokeAsync<string>("eval", "document.cookie.split('; ').find(c => c.startsWith('session='))?.split('=')[1] || ''");
-                if (!string.IsNullOrEmpty(cookie))
+                try
                 {
-                    var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(cookie));
-                    var parts = decoded.Split('|');
-                    if (parts.Length >= 5)
+                    var cookie = await JS.InvokeAsync<string>("eval",
+                        "document.cookie.split('; ').find(c => c.startsWith('session='))?.split('=')[1] || ''");
+                    if (!string.IsNullOrEmpty(cookie))
                     {
-                        var result = new AuthResult
+                        var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(cookie));
+                        var parts = decoded.Split('|');
+                        if (parts.Length >= 5)
                         {
-                            IsAuthenticated = true,
-                            Role = parts[0],
-                            DisplayName = parts[1],
-                            UserId = int.TryParse(parts[2], out var uid) ? uid : 0,
-                            GymDatabase = parts[3],
-                            GymId = int.TryParse(parts[4], out var gid) ? gid : 0
-                        };
-                        Session.Login(result, parts[3], int.TryParse(parts[4], out var g) ? g : 0);
-                        StateHasChanged();
+                            var result = new AuthResult
+                            {
+                                IsAuthenticated = true,
+                                Role = parts[0],
+                                DisplayName = parts[1],
+                                UserId = int.TryParse(parts[2], out var uid) ? uid : 0,
+                                GymDatabase = parts[3],
+                                GymId = int.TryParse(parts[4], out var gid) ? gid : 0
+                            };
+                            Session.Login(result, parts[3], int.TryParse(parts[4], out var g) ? g : 0);
+                        }
                     }
                 }
+                catch { }
             }
-            catch { }
+
+            // Step 2: Load gym name if authenticated
+            if (Session.IsAuthenticated && Session.IsOwner)
+            {
+                await LoadGymInfoAsync();
+            }
+
+            // Step 3: If still not authenticated, redirect to login
+            if (!Session.IsAuthenticated)
+            {
+                await JS.InvokeVoidAsync("eval", "window.location.href = '/login'");
+                return;
+            }
+
+            _isLoading = false;
+            StateHasChanged();
         }
     }
 
-    protected override async Task OnInitializedAsync()
+    private async Task LoadGymInfoAsync()
     {
         if (Session.IsAuthenticated && Session.IsOwner)
         {
