@@ -189,20 +189,23 @@ else
 
     private (DateTime start, DateTime end) GetDateRange()
     {
+        // Events are stored in gym's local time (e.g., Baghdad UTC+3)
+        // VPS runs UTC. Use wide ranges to cover any timezone up to UTC+12
         var now = DateTime.UtcNow;
+        var future = now.AddHours(12); // Cover timezones ahead of UTC
         var today = now.Date;
         return _period switch
         {
-            "today" => (now.AddHours(-24), now),
-            "yesterday" => (now.AddHours(-48), now.AddHours(-24)),
-            "thisweek" => (today.AddDays(-(int)today.DayOfWeek), now),
-            "thismonth" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), now),
-            "lastmonth" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-1),
-                            new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc)),
-            "last3months" => (today.AddMonths(-3), now),
-            "lastyear" => (today.AddYears(-1), now),
-            "all" => (DateTime.MinValue, now),
-            _ => (today, now)
+            "today" => (today.AddHours(-6), future),
+            "yesterday" => (today.AddDays(-1).AddHours(-6), today.AddHours(-6)),
+            "thisweek" => (today.AddDays(-(int)today.DayOfWeek).AddHours(-6), future),
+            "thismonth" => (new DateTime(now.Year, now.Month, 1).AddHours(-6), future),
+            "lastmonth" => (new DateTime(now.Year, now.Month, 1).AddMonths(-1).AddHours(-6),
+                            new DateTime(now.Year, now.Month, 1).AddHours(-6)),
+            "last3months" => (today.AddMonths(-3).AddHours(-6), future),
+            "lastyear" => (today.AddYears(-1).AddHours(-6), future),
+            "all" => (DateTime.MinValue, future),
+            _ => (today.AddHours(-6), future)
         };
     }
 
