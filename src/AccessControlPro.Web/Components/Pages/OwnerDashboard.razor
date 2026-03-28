@@ -3,9 +3,16 @@
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.DbHelper Db
 @inject AccessControlPro.Web.Data.GymDbHelper GymDb
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
-@if (Session.IsAuthenticated && Session.IsOwner)
+@if (_pageLoading)
+{
+    <div style="display:flex; justify-content:center; align-items:center; min-height:50vh; color:var(--accent);">
+        <i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i>
+    </div>
+}
+else if (Session.IsAuthenticated && Session.IsOwner)
 {
     <div class="sync-info-bar">
         <div class="sync-info-left">
@@ -195,15 +202,56 @@
     private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
     private bool _dataLoaded;
+    private bool _pageLoading = true;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnInitializedAsync()
     {
-        // Wait for MainLayout to restore session from cookie, then load data
-        if (!_dataLoaded && Session.IsAuthenticated && Session.IsOwner)
+        try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Dashboard] OnInitializedAsync START, IsAuth={Session.IsAuthenticated}\n"); } catch { }
+
+        // Restore session from server-side file (works in SSR, no JS needed)
+        if (!Session.IsAuthenticated)
         {
-            _dataLoaded = true;
+            var sessionFile = System.IO.Path.Combine(AppContext.BaseDirectory, ".active_session");
+            try
+            {
+                if (System.IO.File.Exists(sessionFile))
+                {
+                    var data = System.IO.File.ReadAllText(sessionFile).Trim();
+                    var parts = data.Split('|');
+                    if (parts.Length >= 5)
+                    {
+                        var result = new AuthResult
+                        {
+                            IsAuthenticated = true,
+                            Role = parts[0],
+                            DisplayName = parts[1],
+                            UserId = int.TryParse(parts[2], out var uid) ? uid : 0,
+                            GymDatabase = parts[3],
+                            GymId = int.TryParse(parts[4], out var gid) ? gid : 0
+                        };
+                        Session.Login(result, parts[3], int.TryParse(parts[4], out var g) ? g : 0);
+                        try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Dashboard] Session restored from file: {Session.Role}\n"); } catch { }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Dashboard] File session error: {ex.Message}\n"); } catch { }
+            }
+        }
+
+        if (Session.IsAuthenticated && Session.IsOwner)
+        {
+            try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Dashboard] Loading data...\n"); } catch { }
             await LoadDataAsync();
-            StateHasChanged();
+            _pageLoading = false;
+            _dataLoaded = true;
+            try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Dashboard] COMPLETE\n"); } catch { }
+        }
+        else
+        {
+            _pageLoading = false;
+            try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Dashboard] Not owner, pageLoading=false\n"); } catch { }
         }
     }
 

@@ -91,12 +91,10 @@
         if (firstRender)
         {
             // Clear any existing session when login page loads
-            // This prevents session leak from "Login as Owner" or other flows
-            if (Session.IsAuthenticated)
-            {
-                Session.Logout();
-                await JS.InvokeVoidAsync("eval", "document.cookie = 'session=; path=/; max-age=0'");
-            }
+            Session.Logout();
+            var sessionFile = System.IO.Path.Combine(AppContext.BaseDirectory, ".active_session");
+            try { if (System.IO.File.Exists(sessionFile)) System.IO.File.Delete(sessionFile); } catch { }
+            await JS.InvokeVoidAsync("eval", "document.cookie = 'session=; path=/; max-age=0'");
         }
 
         if (_loginSuccess && Session.IsAuthenticated)
@@ -104,9 +102,16 @@
             _loginSuccess = false;
             var cookieValue = $"{Session.Role}|{Session.DisplayName}|{Session.UserId}|{Session.GymDatabase}|{Session.GymId}";
             var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(cookieValue));
+
+            // Save session to a server-side file so the dashboard page can read it
+            var sessionFile = System.IO.Path.Combine(AppContext.BaseDirectory, ".active_session");
+            try { System.IO.File.WriteAllText(sessionFile, cookieValue); } catch { }
+
+            // Also write cookie as backup
             await JS.InvokeVoidAsync("eval", $"document.cookie = 'session={encoded}; path=/; max-age=86400; SameSite=Strict'");
 
             var url = Session.IsOwner ? "/dashboard" : "/my";
+            try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Login] Session saved to file + redirecting to: {url}\n"); } catch { }
             await JS.InvokeVoidAsync("eval", $"window.location.href = '{url}'");
         }
     }

@@ -17,14 +17,16 @@
     protected override void OnInitialized()
     {
         _wasSuperAdmin = Session.IsSuperAdmin;
+        // Clear session + delete session file
+        Session.Logout();
+        var sessionFile = System.IO.Path.Combine(AppContext.BaseDirectory, ".active_session");
+        try { if (System.IO.File.Exists(sessionFile)) System.IO.File.Delete(sessionFile); } catch { }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            Session.Logout();
-            // Delete session cookie
             await JS.InvokeVoidAsync("eval", "document.cookie = 'session=; path=/; max-age=0'");
             await Task.Delay(300);
             var url = _wasSuperAdmin ? "/superadmin/login" : "/login";

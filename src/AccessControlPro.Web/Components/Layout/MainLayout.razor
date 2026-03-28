@@ -103,25 +103,61 @@
 
     private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
+    protected override void OnInitialized()
+    {
+        // Restore session from server-side file (works in SSR before any JS)
+        if (!Session.IsAuthenticated)
+        {
+            var sessionFile = System.IO.Path.Combine(AppContext.BaseDirectory, ".active_session");
+            try
+            {
+                if (System.IO.File.Exists(sessionFile))
+                {
+                    var data = System.IO.File.ReadAllText(sessionFile).Trim();
+                    var parts = data.Split('|');
+                    if (parts.Length >= 5)
+                    {
+                        var result = new AuthResult
+                        {
+                            IsAuthenticated = true,
+                            Role = parts[0],
+                            DisplayName = parts[1],
+                            UserId = int.TryParse(parts[2], out var uid) ? uid : 0,
+                            GymDatabase = parts[3],
+                            GymId = int.TryParse(parts[4], out var gid) ? gid : 0
+                        };
+                        Session.Login(result, parts[3], int.TryParse(parts[4], out var g) ? g : 0);
+                    }
+                }
+            }
+            catch { }
+        }
+
+        _isLoading = !Session.IsAuthenticated;
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // Always log — even before firstRender check
+        try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] MainLayout.OnAfterRenderAsync called, firstRender={firstRender}\n"); } catch { }
+
         if (firstRender)
         {
             try
             {
-                Console.WriteLine("[MainLayout] OnAfterRenderAsync START, IsAuthenticated=" + Session.IsAuthenticated);
+                System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] OnAfterRenderAsync START, IsAuthenticated=" + Session.IsAuthenticated + "\n");
 
                 // Step 1: Restore session from cookie if not authenticated
                 if (!Session.IsAuthenticated)
                 {
                     var cookie = await JS.InvokeAsync<string>("eval",
                         "document.cookie.split('; ').find(c => c.startsWith('session='))?.split('=')[1] || ''");
-                    Console.WriteLine("[MainLayout] Cookie value: " + (string.IsNullOrEmpty(cookie) ? "EMPTY" : cookie.Substring(0, Math.Min(20, cookie.Length)) + "..."));
+                    System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] Cookie value: " + (string.IsNullOrEmpty(cookie) ? "EMPTY" : cookie.Substring(0, Math.Min(20, cookie.Length)) + "...") + "\n");
 
                     if (!string.IsNullOrEmpty(cookie))
                     {
                         var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(cookie));
-                        Console.WriteLine("[MainLayout] Decoded cookie: " + decoded);
+                        System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] Decoded cookie: " + decoded + "\n");
                         var parts = decoded.Split('|');
                         if (parts.Length >= 5)
                         {
@@ -135,35 +171,35 @@
                                 GymId = int.TryParse(parts[4], out var gid) ? gid : 0
                             };
                             Session.Login(result, parts[3], int.TryParse(parts[4], out var g) ? g : 0);
-                            Console.WriteLine("[MainLayout] Session restored: Role=" + Session.Role + " IsOwner=" + Session.IsOwner);
+                            System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] Session restored: Role=" + Session.Role + " IsOwner=" + Session.IsOwner + "\n");
                         }
                     }
                 }
 
-                Console.WriteLine("[MainLayout] After cookie restore: IsAuthenticated=" + Session.IsAuthenticated + " IsOwner=" + Session.IsOwner);
+                System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] After cookie restore: IsAuthenticated=" + Session.IsAuthenticated + " IsOwner=" + Session.IsOwner + "\n");
 
                 // Step 2: Load gym name if authenticated
                 if (Session.IsAuthenticated && Session.IsOwner)
                 {
                     try { await LoadGymInfoAsync(); }
-                    catch (Exception ex) { Console.WriteLine("[MainLayout] LoadGymInfo error: " + ex.Message); }
+                    catch (Exception ex) { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] LoadGymInfo error: " + ex.Message + "\n"); }
                 }
 
                 // Step 3: If still not authenticated, redirect to login
                 if (!Session.IsAuthenticated)
                 {
-                    Console.WriteLine("[MainLayout] Not authenticated, redirecting to /login");
+                    System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] Not authenticated, redirecting to /login\n");
                     await JS.InvokeVoidAsync("eval", "window.location.href = '/login'");
                     return;
                 }
 
-                Console.WriteLine("[MainLayout] Setting _isLoading = false");
+                System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] Setting _isLoading = false\n");
                 _isLoading = false;
                 StateHasChanged();
             }
             catch (Exception ex)
             {
-                Console.WriteLine("[MainLayout] EXCEPTION: " + ex.Message + "\n" + ex.StackTrace);
+                System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] EXCEPTION: " + ex.Message + " | " + ex.StackTrace + "\n");
                 _isLoading = false;
                 StateHasChanged();
             }

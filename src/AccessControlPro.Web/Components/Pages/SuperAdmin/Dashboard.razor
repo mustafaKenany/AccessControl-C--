@@ -132,6 +132,26 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Restore session from file if not authenticated
+        if (!Session.IsSuperAdmin)
+        {
+            var sessionFile = System.IO.Path.Combine(AppContext.BaseDirectory, ".active_session");
+            try
+            {
+                if (System.IO.File.Exists(sessionFile))
+                {
+                    var data = System.IO.File.ReadAllText(sessionFile).Trim();
+                    var parts = data.Split('|');
+                    if (parts.Length >= 5 && parts[0] == "SuperAdmin")
+                    {
+                        var result = new AuthResult { IsAuthenticated = true, Role = "SuperAdmin", DisplayName = "Super Admin" };
+                        Session.Login(result);
+                    }
+                }
+            }
+            catch { }
+        }
+
         if (!Session.IsSuperAdmin) { Nav.NavigateTo("/superadmin/login", forceLoad: true); return; }
         await LoadDataAsync();
     }

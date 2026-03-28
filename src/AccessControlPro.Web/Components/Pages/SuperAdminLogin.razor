@@ -60,6 +60,10 @@
         {
             _loginSuccess = false;
             var cookieValue = $"SuperAdmin|Super Admin|0||0";
+            // Save to server-side file
+            var sessionFile = System.IO.Path.Combine(AppContext.BaseDirectory, ".active_session");
+            try { System.IO.File.WriteAllText(sessionFile, cookieValue); } catch { }
+            // Also cookie as backup
             var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(cookieValue));
             await JS.InvokeVoidAsync("eval", $"document.cookie = 'session={encoded}; path=/; max-age=86400; SameSite=Strict'");
             await JS.InvokeVoidAsync("eval", "window.location.href = '/superadmin/dashboard'");
