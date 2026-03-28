@@ -1,6 +1,7 @@
 @page "/logout"
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <div class="login-container">
@@ -23,8 +24,11 @@
         if (firstRender)
         {
             Session.Logout();
-            await Task.Delay(500);
-            Nav.NavigateTo(_wasSuperAdmin ? "/superadmin/login" : "/login", forceLoad: true);
+            // Delete session cookie
+            await JS.InvokeVoidAsync("eval", "document.cookie = 'session=; path=/; max-age=0'");
+            await Task.Delay(300);
+            var url = _wasSuperAdmin ? "/superadmin/login" : "/login";
+            await JS.InvokeVoidAsync("eval", $"window.location.href = '{url}'");
         }
     }
 }

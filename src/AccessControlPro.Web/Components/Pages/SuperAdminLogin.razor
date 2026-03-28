@@ -59,6 +59,9 @@
         if (_loginSuccess && Session.IsSuperAdmin)
         {
             _loginSuccess = false;
+            var cookieValue = $"SuperAdmin|Super Admin|0||0";
+            var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(cookieValue));
+            await JS.InvokeVoidAsync("eval", $"document.cookie = 'session={encoded}; path=/; max-age=86400; SameSite=Strict'");
             await JS.InvokeVoidAsync("eval", "window.location.href = '/superadmin/dashboard'");
         }
     }

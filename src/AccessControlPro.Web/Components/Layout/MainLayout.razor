@@ -2,6 +2,7 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.GymDbHelper GymDb
+@inject IJSRuntime JS
 
 <div class="app-container" dir="@SessionState.Dir">
     @if (Session.IsAuthenticated)
@@ -94,6 +95,37 @@
     private string _expiryInfo = "";
 
     private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !Session.IsAuthenticated)
+        {
+            try
+            {
+                var cookie = await JS.InvokeAsync<string>("eval", "document.cookie.split('; ').find(c => c.startsWith('session='))?.split('=')[1] || ''");
+                if (!string.IsNullOrEmpty(cookie))
+                {
+                    var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(cookie));
+                    var parts = decoded.Split('|');
+                    if (parts.Length >= 5)
+                    {
+                        var result = new AuthResult
+                        {
+                            IsAuthenticated = true,
+                            Role = parts[0],
+                            DisplayName = parts[1],
+                            UserId = int.TryParse(parts[2], out var uid) ? uid : 0,
+                            GymDatabase = parts[3],
+                            GymId = int.TryParse(parts[4], out var gid) ? gid : 0
+                        };
+                        Session.Login(result, parts[3], int.TryParse(parts[4], out var g) ? g : 0);
+                        StateHasChanged();
+                    }
+                }
+            }
+            catch { }
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

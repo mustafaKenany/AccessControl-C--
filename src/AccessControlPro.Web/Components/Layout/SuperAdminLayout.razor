@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <div class="app-container superadmin-container">
     @if (Session.IsSuperAdmin)
@@ -40,10 +41,37 @@
 </div>
 
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!Session.IsSuperAdmin)
-            Nav.NavigateTo("/superadmin/login", forceLoad: true);
+        if (firstRender && !Session.IsSuperAdmin)
+        {
+            try
+            {
+                var cookie = await JS.InvokeAsync<string>("eval", "document.cookie.split('; ').find(c => c.startsWith('session='))?.split('=')[1] || ''");
+                if (!string.IsNullOrEmpty(cookie))
+                {
+                    var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(cookie));
+                    var parts = decoded.Split('|');
+                    if (parts.Length >= 5 && parts[0] == "SuperAdmin")
+                    {
+                        var result = new AuthResult { IsAuthenticated = true, Role = "SuperAdmin", DisplayName = "Super Admin" };
+                        Session.Login(result);
+                        StateHasChanged();
+                        return;
+                    }
+                }
+
+                // If still not authenticated after cookie check, redirect to login
+                if (!Session.IsSuperAdmin)
+                {
+                    await JS.InvokeVoidAsync("eval", "window.location.href = '/superadmin/login'");
+                }
+            }
+            catch
+            {
+                await JS.InvokeVoidAsync("eval", "window.location.href = '/superadmin/login'");
+            }
+        }
     }
 
     private string ActiveClass(string href)
@@ -53,9 +81,10 @@
         return string.Equals(uri, target, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     }
 
-    private void DoLogout()
+    private async Task DoLogout()
     {
         Session.Logout();
-        Nav.NavigateTo("/superadmin/login", forceLoad: true);
+        await JS.InvokeVoidAsync("eval", "document.cookie = 'session=; path=/; max-age=0'");
+        await JS.InvokeVoidAsync("eval", "window.location.href = '/superadmin/login'");
     }
 }

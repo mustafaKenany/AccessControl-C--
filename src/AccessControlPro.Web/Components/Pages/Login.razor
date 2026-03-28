@@ -86,21 +86,26 @@
 
     private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
-    protected override void OnInitialized()
-    {
-        // Always clear session when login page is shown
-        // This prevents session leak from "Login as Owner" or other flows
-        if (Session.IsAuthenticated)
-        {
-            Session.Logout();
-        }
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            // Clear any existing session when login page loads
+            // This prevents session leak from "Login as Owner" or other flows
+            if (Session.IsAuthenticated)
+            {
+                Session.Logout();
+                await JS.InvokeVoidAsync("eval", "document.cookie = 'session=; path=/; max-age=0'");
+            }
+        }
+
         if (_loginSuccess && Session.IsAuthenticated)
         {
             _loginSuccess = false;
+            var cookieValue = $"{Session.Role}|{Session.DisplayName}|{Session.UserId}|{Session.GymDatabase}|{Session.GymId}";
+            var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(cookieValue));
+            await JS.InvokeVoidAsync("eval", $"document.cookie = 'session={encoded}; path=/; max-age=86400; SameSite=Strict'");
+
             var url = Session.IsOwner ? "/dashboard" : "/my";
             await JS.InvokeVoidAsync("eval", $"window.location.href = '{url}'");
         }
