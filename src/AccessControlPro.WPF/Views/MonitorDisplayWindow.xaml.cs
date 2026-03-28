@@ -90,9 +90,11 @@ public partial class MonitorDisplayWindow : Window
             else
                 SetStatus($"{Lang.DispSuccessPass}\n{direction}", "#2ED47A", FontAwesomeIcon.CheckCircle);
 
-            // Show the best available name (full, not truncated)
+            // Show both names if available, or best available
             string displayName = "";
-            if (!string.IsNullOrWhiteSpace(employee.FullNameAr))
+            if (!string.IsNullOrWhiteSpace(employee.FullNameAr) && !string.IsNullOrWhiteSpace(employee.FullNameEn))
+                displayName = $"{employee.FullNameAr}\n{employee.FullNameEn}";
+            else if (!string.IsNullOrWhiteSpace(employee.FullNameAr))
                 displayName = employee.FullNameAr;
             else if (!string.IsNullOrWhiteSpace(employee.FullNameEn))
                 displayName = employee.FullNameEn;

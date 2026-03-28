@@ -54,7 +54,7 @@
             </Border>
 
             <!-- Player Info Card -->
-            <Border Grid.Row="1" Margin="80,40,80,80" CornerRadius="24" Background="#0D2B2E" Padding="60">
+            <Border Grid.Row="1" Margin="60,20,60,40" CornerRadius="24" Background="#0D2B2E" Padding="40">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -62,7 +62,7 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- Player Photo -->
-                    <Border Grid.Column="0" Width="220" Height="220" CornerRadius="110"
+                    <Border Grid.Column="0" Width="160" Height="160" CornerRadius="80"
                             BorderBrush="#44A1A0" BorderThickness="4" Margin="0,0,50,0"
                             VerticalAlignment="Top">
                         <Border.Background>
@@ -79,8 +79,8 @@
                     <!-- Player Details -->
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <!-- Name -->
-                        <TextBlock x:Name="PlayerNameText" FontSize="44" Foreground="#E0E6ED"
-                                   TextWrapping="Wrap" Margin="0,0,0,20"/>
+                        <TextBlock x:Name="PlayerNameText" FontSize="32" Foreground="#E0E6ED"
+                                   TextWrapping="Wrap" Margin="0,0,0,10"/>
 
                         <!-- Info Grid -->
                         <Grid>
@@ -97,55 +97,55 @@
                             </Grid.RowDefinitions>
 
                             <!-- Subscription Type -->
-                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,20">
+                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
                                 <TextBlock x:Name="SubLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="SubValue" FontSize="26" Foreground="#78CDD7"/>
+                                <TextBlock x:Name="SubValue" FontSize="22" Foreground="#78CDD7"/>
                             </StackPanel>
 
                             <!-- Card Number -->
-                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,20">
+                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,10">
                                 <TextBlock x:Name="CardLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="CardValue" FontSize="26" Foreground="#AABBCC"/>
+                                <TextBlock x:Name="CardValue" FontSize="20" Foreground="#AABBCC"/>
                             </StackPanel>
 
                             <!-- Start Date -->
-                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,20">
+                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
                                 <TextBlock x:Name="StartLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="StartValue" FontSize="26" Foreground="#AABBCC"/>
+                                <TextBlock x:Name="StartValue" FontSize="20" Foreground="#AABBCC"/>
                             </StackPanel>
 
                             <!-- End Date -->
-                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,20">
+                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,10">
                                 <TextBlock x:Name="EndLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="EndValue" FontSize="26" Foreground="#AABBCC"/>
+                                <TextBlock x:Name="EndValue" FontSize="20" Foreground="#AABBCC"/>
                             </StackPanel>
 
                             <!-- Fee -->
-                            <StackPanel x:Name="FeePanel" Grid.Row="2" Grid.Column="0" Margin="0,0,0,20"
+                            <StackPanel x:Name="FeePanel" Grid.Row="2" Grid.Column="0" Margin="0,0,0,10"
                                         Visibility="Collapsed">
                                 <TextBlock x:Name="FeeLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="FeeValue" FontSize="26" Foreground="#AABBCC"/>
+                                <TextBlock x:Name="FeeValue" FontSize="20" Foreground="#AABBCC"/>
                             </StackPanel>
 
                             <!-- Paid -->
-                            <StackPanel x:Name="PaidPanel" Grid.Row="2" Grid.Column="1" Margin="0,0,0,20"
+                            <StackPanel x:Name="PaidPanel" Grid.Row="2" Grid.Column="1" Margin="0,0,0,10"
                                         Visibility="Collapsed">
                                 <TextBlock x:Name="PaidLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="PaidValue" FontSize="26" Foreground="#2ED47A"/>
+                                <TextBlock x:Name="PaidValue" FontSize="20" Foreground="#2ED47A"/>
                             </StackPanel>
 
                             <!-- Remaining Balance -->
                             <StackPanel x:Name="BalancePanel" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
-                                        Margin="0,0,0,20" Visibility="Collapsed">
+                                        Margin="0,0,0,10" Visibility="Collapsed">
                                 <TextBlock x:Name="BalanceLabel" FontSize="16" Foreground="#556677"/>
                                 <TextBlock x:Name="BalanceValue" FontSize="32" Foreground="#F7685B"
                                            FontWeight="Bold"/>
                             </StackPanel>
 
                             <!-- Time -->
-                            <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,0,20">
+                            <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,0,10">
                                 <TextBlock x:Name="TimeLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="TimeValue" FontSize="26" Foreground="#AABBCC"/>
+                                <TextBlock x:Name="TimeValue" FontSize="20" Foreground="#AABBCC"/>
                             </StackPanel>
                         </Grid>
                     </StackPanel>
