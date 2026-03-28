@@ -5,13 +5,7 @@
 @inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @rendermode InteractiveServer
 
-@* TODO: Currently checks Session.IsOwner only. When granular cloud permissions are added,
-   enforce AppPermission checks per page (e.g., DashboardView for this page). *@
-@if (!Session.IsAuthenticated || !Session.IsOwner)
-{
-    <p>Redirecting...</p>
-}
-else
+@if (Session.IsAuthenticated && Session.IsOwner)
 {
     <div class="sync-info-bar">
         <div class="sync-info-left">
@@ -200,15 +194,17 @@ else
 
     private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
 
-    protected override async Task OnInitializedAsync()
-    {
-        if (!Session.IsAuthenticated || !Session.IsOwner)
-        {
-            Nav.NavigateTo("/login", forceLoad: true);
-            return;
-        }
+    private bool _dataLoaded;
 
-        await LoadDataAsync();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Wait for MainLayout to restore session from cookie, then load data
+        if (!_dataLoaded && Session.IsAuthenticated && Session.IsOwner)
+        {
+            _dataLoaded = true;
+            await LoadDataAsync();
+            StateHasChanged();
+        }
     }
 
     private async Task RefreshData()

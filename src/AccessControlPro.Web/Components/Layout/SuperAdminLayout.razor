@@ -4,7 +4,13 @@
 @inject IJSRuntime JS
 
 <div class="app-container superadmin-container">
-    @if (Session.IsSuperAdmin)
+    @if (_isLoading)
+    {
+        <div style="display:flex; justify-content:center; align-items:center; min-height:100vh; color:#7E57C2;">
+            <i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i>
+        </div>
+    }
+    else if (Session.IsSuperAdmin)
     {
         <nav class="sidebar superadmin-sidebar">
             <div class="sidebar-brand" style="border-bottom-color: rgba(126, 87, 194, 0.3);">
@@ -34,43 +40,43 @@
             @Body
         </main>
     }
-    else
-    {
-        @Body
-    }
 </div>
 
 @code {
+    private bool _isLoading = true;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !Session.IsSuperAdmin)
+        if (firstRender)
         {
-            try
+            if (!Session.IsSuperAdmin)
             {
-                var cookie = await JS.InvokeAsync<string>("eval", "document.cookie.split('; ').find(c => c.startsWith('session='))?.split('=')[1] || ''");
-                if (!string.IsNullOrEmpty(cookie))
+                try
                 {
-                    var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(cookie));
-                    var parts = decoded.Split('|');
-                    if (parts.Length >= 5 && parts[0] == "SuperAdmin")
+                    var cookie = await JS.InvokeAsync<string>("eval",
+                        "document.cookie.split('; ').find(c => c.startsWith('session='))?.split('=')[1] || ''");
+                    if (!string.IsNullOrEmpty(cookie))
                     {
-                        var result = new AuthResult { IsAuthenticated = true, Role = "SuperAdmin", DisplayName = "Super Admin" };
-                        Session.Login(result);
-                        StateHasChanged();
-                        return;
+                        var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(cookie));
+                        var parts = decoded.Split('|');
+                        if (parts.Length >= 5 && parts[0] == "SuperAdmin")
+                        {
+                            var result = new AuthResult { IsAuthenticated = true, Role = "SuperAdmin", DisplayName = "Super Admin" };
+                            Session.Login(result);
+                        }
                     }
                 }
-
-                // If still not authenticated after cookie check, redirect to login
-                if (!Session.IsSuperAdmin)
-                {
-                    await JS.InvokeVoidAsync("eval", "window.location.href = '/superadmin/login'");
-                }
+                catch { }
             }
-            catch
+
+            if (!Session.IsSuperAdmin)
             {
                 await JS.InvokeVoidAsync("eval", "window.location.href = '/superadmin/login'");
+                return;
             }
+
+            _isLoading = false;
+            StateHasChanged();
         }
     }
 
