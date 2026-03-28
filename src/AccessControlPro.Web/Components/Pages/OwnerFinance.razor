@@ -193,8 +193,8 @@ else
         var today = now.Date;
         return _period switch
         {
-            "today" => (today, now),
-            "yesterday" => (today.AddDays(-1), today),
+            "today" => (now.AddHours(-24), now),
+            "yesterday" => (now.AddHours(-48), now.AddHours(-24)),
             "thisweek" => (today.AddDays(-(int)today.DayOfWeek), now),
             "thismonth" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), now),
             "lastmonth" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-1),

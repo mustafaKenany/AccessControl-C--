@@ -139,6 +139,17 @@ public partial class MonitorViewModel : ObservableObject
                 SubnetMask = d.SubnetMask
             }).ToList();
 
+            // Auto-sync device time before monitoring
+            StatusMessage = "Syncing device time...";
+            foreach (var di in deviceInfos)
+            {
+                try
+                {
+                    _sdk.CalibrateTime(di);
+                }
+                catch { /* non-critical, continue */ }
+            }
+
             // Track monitoring state so DeviceOperationHelper can restart after SDK reset
             _opHelper.SetMonitoringState(deviceInfos, OnMonitorEvent);
             _sdk.StartMonitoring(deviceInfos, OnMonitorEvent);
