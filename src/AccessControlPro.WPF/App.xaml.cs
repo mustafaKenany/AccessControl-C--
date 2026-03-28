@@ -257,15 +257,29 @@ public partial class App : System.Windows.Application
         // ── Single-instance guard: kill any stale processes from previous runs ──
         StartupLog("Killing old instances...");
         KillOtherInstances();
+
+        // Wait a moment for old processes to fully exit and release mutex
+        Thread.Sleep(2000);
+
         _singleInstanceMutex = new Mutex(true, "AccessControlPro_SingleInstance", out bool isNew);
         if (!isNew)
         {
-            CustomMessageBox.Show(
-                "HM-GymManagement is already running.",
-                "Already Running", MsgType.Info);
-            Shutdown();
-            Environment.Exit(0);
-            return;
+            // Try waiting for the mutex (old process might be exiting)
+            try
+            {
+                isNew = _singleInstanceMutex.WaitOne(5000); // Wait up to 5 seconds
+            }
+            catch { /* ignore abandoned mutex exceptions */ }
+
+            if (!isNew)
+            {
+                CustomMessageBox.Show(
+                    "HM-GymManagement is already running.",
+                    "Already Running", MsgType.Info);
+                Shutdown();
+                Environment.Exit(0);
+                return;
+            }
         }
 
         StartupLog("Checking setup wizard...");
@@ -893,8 +907,24 @@ public partial class App : System.Windows.Application
         catch { }
     }
 
+    /// <summary>
+    /// Releases the single-instance mutex so a new process can acquire it.
+    /// Called before restarting the app (e.g., after stopping monitoring).
+    /// </summary>
+    public static void ReleaseSingleInstanceMutex()
+    {
+        try
+        {
+            _singleInstanceMutex?.ReleaseMutex();
+            _singleInstanceMutex?.Dispose();
+            _singleInstanceMutex = null;
+        }
+        catch { /* ignore — mutex may already be released */ }
+    }
+
     private static void RestartApp()
     {
+        ReleaseSingleInstanceMutex();
         var exePath = Environment.ProcessPath;
         if (exePath != null)
             Process.Start(exePath);

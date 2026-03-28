@@ -90,8 +90,15 @@ public partial class MonitorDisplayWindow : Window
             else
                 SetStatus($"{Lang.DispSuccessPass}\n{direction}", "#2ED47A", FontAwesomeIcon.CheckCircle);
 
-            // Show both Arabic and English names
-            PlayerNameText.Text = $"{employee.FullNameEn}\n{employee.FullNameAr}";
+            // Show the best available name (full, not truncated)
+            string displayName = "";
+            if (!string.IsNullOrWhiteSpace(employee.FullNameAr))
+                displayName = employee.FullNameAr;
+            else if (!string.IsNullOrWhiteSpace(employee.FullNameEn))
+                displayName = employee.FullNameEn;
+            else
+                displayName = "Unknown";
+            PlayerNameText.Text = displayName;
 
             SubLabel.Text = Lang.Subscription;
             SubValue.Text = employee.SubscriptionType;
@@ -104,25 +111,25 @@ public partial class MonitorDisplayWindow : Window
             EndLabel.Text = Lang.EndDate;
             EndValue.Text = employee.EndDate.ToString("yyyy-MM-dd");
 
-            var remaining = employee.SubscriptionFee - employee.AmountPaid;
+            // Always show fee and paid info
+            FeePanel.Visibility = Visibility.Visible;
+            FeeLabel.Text = Lang.Fee;
+            FeeValue.Text = $"{employee.SubscriptionFee:N0} {Lang.IQD}";
+
+            PaidPanel.Visibility = Visibility.Visible;
+            PaidLabel.Text = Lang.Paid;
+            PaidValue.Text = $"{employee.AmountPaid:N0} {Lang.IQD}";
+
+            // Show remaining balance only if there is an outstanding amount
+            decimal remaining = employee.SubscriptionFee - employee.AmountPaid;
             if (remaining > 0)
             {
-                FeePanel.Visibility = Visibility.Visible;
-                FeeLabel.Text = Lang.Fee;
-                FeeValue.Text = $"{employee.SubscriptionFee:N0} {Lang.IQD}";
-
-                PaidPanel.Visibility = Visibility.Visible;
-                PaidLabel.Text = Lang.Paid;
-                PaidValue.Text = $"{employee.AmountPaid:N0} {Lang.IQD}";
-
                 BalancePanel.Visibility = Visibility.Visible;
                 BalanceLabel.Text = Lang.Remaining;
                 BalanceValue.Text = $"{remaining:N0} {Lang.IQD}";
             }
             else
             {
-                FeePanel.Visibility = Visibility.Collapsed;
-                PaidPanel.Visibility = Visibility.Collapsed;
                 BalancePanel.Visibility = Visibility.Collapsed;
             }
 

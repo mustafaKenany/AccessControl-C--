@@ -207,7 +207,10 @@ public partial class MonitorViewModel : ObservableObject
                     System.Windows.Application.Current.MainWindow);
             });
 
-            // Brief delay to ensure message is visible before restart
+            // Release mutex before restart so new process can acquire it
+            App.ReleaseSingleInstanceMutex();
+
+            // Brief delay to ensure cleanup completes
             await Task.Delay(1000);
 
             // Restart app to get fresh SDK state
