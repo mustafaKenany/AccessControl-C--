@@ -110,16 +110,30 @@ public class GymDbHelper
     {
         // Create database
         using var masterConn = await GetMasterConnectionAsync();
-
-        // Can't use parameters for CREATE DATABASE
         using var createCmd = new NpgsqlCommand($"CREATE DATABASE \"{databaseName}\"", masterConn);
         await createCmd.ExecuteNonQueryAsync();
+        await masterConn.CloseAsync();
 
-        // Initialize tables in new database
-        using var gymConn = await GetGymConnectionAsync(databaseName);
+        // Wait for database to be ready
+        await Task.Delay(1000);
+
+        // Initialize tables in new database using a fresh connection string
         var builder = new NpgsqlConnectionStringBuilder(_masterConnectionString);
         builder.Database = databaseName;
-        var dbHelper = new DbHelper(builder.ConnectionString);
-        await dbHelper.InitializeDatabaseAsync();
+        var connStr = builder.ConnectionString;
+
+        try
+        {
+            var dbHelper = new DbHelper(connStr);
+            await dbHelper.InitializeDatabaseAsync();
+        }
+        catch (Exception ex)
+        {
+            // Log the error so we can debug
+            try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log",
+                $"[{DateTime.Now:HH:mm:ss}] CreateGymDB init error for {databaseName}: {ex.Message}\n{ex.StackTrace}\n"); }
+            catch { }
+            throw;
+        }
     }
 }
