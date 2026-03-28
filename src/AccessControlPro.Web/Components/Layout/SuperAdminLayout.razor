@@ -45,39 +45,29 @@
 @code {
     private bool _isLoading = true;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnInitialized()
     {
-        if (firstRender)
+        // Restore session from server-side file (works in SSR)
+        if (!Session.IsSuperAdmin)
         {
-            if (!Session.IsSuperAdmin)
+            var sessionFile = System.IO.Path.Combine(AppContext.BaseDirectory, ".active_session");
+            try
             {
-                try
+                if (System.IO.File.Exists(sessionFile))
                 {
-                    var cookie = await JS.InvokeAsync<string>("eval",
-                        "document.cookie.split('; ').find(c => c.startsWith('session='))?.split('=')[1] || ''");
-                    if (!string.IsNullOrEmpty(cookie))
+                    var data = System.IO.File.ReadAllText(sessionFile).Trim();
+                    var parts = data.Split('|');
+                    if (parts.Length >= 1 && parts[0] == "SuperAdmin")
                     {
-                        var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(cookie));
-                        var parts = decoded.Split('|');
-                        if (parts.Length >= 5 && parts[0] == "SuperAdmin")
-                        {
-                            var result = new AuthResult { IsAuthenticated = true, Role = "SuperAdmin", DisplayName = "Super Admin" };
-                            Session.Login(result);
-                        }
+                        var result = new AuthResult { IsAuthenticated = true, Role = "SuperAdmin", DisplayName = "Super Admin" };
+                        Session.Login(result);
                     }
                 }
-                catch { }
             }
-
-            if (!Session.IsSuperAdmin)
-            {
-                await JS.InvokeVoidAsync("eval", "window.location.href = '/superadmin/login'");
-                return;
-            }
-
-            _isLoading = false;
-            StateHasChanged();
+            catch { }
         }
+
+        _isLoading = !Session.IsSuperAdmin;
     }
 
     private string ActiveClass(string href)
