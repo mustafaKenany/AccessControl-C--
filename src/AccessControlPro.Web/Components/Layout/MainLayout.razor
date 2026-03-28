@@ -107,16 +107,21 @@
     {
         if (firstRender)
         {
-            // Step 1: Restore session from cookie if not authenticated
-            if (!Session.IsAuthenticated)
+            try
             {
-                try
+                Console.WriteLine("[MainLayout] OnAfterRenderAsync START, IsAuthenticated=" + Session.IsAuthenticated);
+
+                // Step 1: Restore session from cookie if not authenticated
+                if (!Session.IsAuthenticated)
                 {
                     var cookie = await JS.InvokeAsync<string>("eval",
                         "document.cookie.split('; ').find(c => c.startsWith('session='))?.split('=')[1] || ''");
+                    Console.WriteLine("[MainLayout] Cookie value: " + (string.IsNullOrEmpty(cookie) ? "EMPTY" : cookie.Substring(0, Math.Min(20, cookie.Length)) + "..."));
+
                     if (!string.IsNullOrEmpty(cookie))
                     {
                         var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(cookie));
+                        Console.WriteLine("[MainLayout] Decoded cookie: " + decoded);
                         var parts = decoded.Split('|');
                         if (parts.Length >= 5)
                         {
@@ -130,27 +135,38 @@
                                 GymId = int.TryParse(parts[4], out var gid) ? gid : 0
                             };
                             Session.Login(result, parts[3], int.TryParse(parts[4], out var g) ? g : 0);
+                            Console.WriteLine("[MainLayout] Session restored: Role=" + Session.Role + " IsOwner=" + Session.IsOwner);
                         }
                     }
                 }
-                catch { }
-            }
 
-            // Step 2: Load gym name if authenticated
-            if (Session.IsAuthenticated && Session.IsOwner)
+                Console.WriteLine("[MainLayout] After cookie restore: IsAuthenticated=" + Session.IsAuthenticated + " IsOwner=" + Session.IsOwner);
+
+                // Step 2: Load gym name if authenticated
+                if (Session.IsAuthenticated && Session.IsOwner)
+                {
+                    try { await LoadGymInfoAsync(); }
+                    catch (Exception ex) { Console.WriteLine("[MainLayout] LoadGymInfo error: " + ex.Message); }
+                }
+
+                // Step 3: If still not authenticated, redirect to login
+                if (!Session.IsAuthenticated)
+                {
+                    Console.WriteLine("[MainLayout] Not authenticated, redirecting to /login");
+                    await JS.InvokeVoidAsync("eval", "window.location.href = '/login'");
+                    return;
+                }
+
+                Console.WriteLine("[MainLayout] Setting _isLoading = false");
+                _isLoading = false;
+                StateHasChanged();
+            }
+            catch (Exception ex)
             {
-                await LoadGymInfoAsync();
+                Console.WriteLine("[MainLayout] EXCEPTION: " + ex.Message + "\n" + ex.StackTrace);
+                _isLoading = false;
+                StateHasChanged();
             }
-
-            // Step 3: If still not authenticated, redirect to login
-            if (!Session.IsAuthenticated)
-            {
-                await JS.InvokeVoidAsync("eval", "window.location.href = '/login'");
-                return;
-            }
-
-            _isLoading = false;
-            StateHasChanged();
         }
     }
 
