@@ -29,6 +29,7 @@ public partial class CashFlowViewModel : ObservableObject
     [ObservableProperty] private int _selectedFilterIndex;  // 0=All, 1=Income, 2=Expense
     [ObservableProperty] private int _selectedPeriodIndex;  // 0=All, 1=Today, ...
     [ObservableProperty] private string _paginationText = "1 / 1";
+    [ObservableProperty] private string _dateRangeText = "";
 
     private const int PageSize = 20;
 
@@ -69,6 +70,26 @@ public partial class CashFlowViewModel : ObservableObject
     {
         if (_isInitialized)
             RebuildCategories();
+    }
+
+    partial void OnSelectedPeriodIndexChanged(int value)
+    {
+        UpdateDateRangeText();
+    }
+
+    private void UpdateDateRangeText()
+    {
+        var (from, to) = GetDateRange();
+        if (from == null && to == null)
+        {
+            DateRangeText = "";
+            return;
+        }
+
+        var lang = LanguageManager.Instance;
+        var fromStr = from?.ToString("yyyy-MM-dd") ?? "";
+        var toStr = to?.ToString("yyyy-MM-dd") ?? (lang.IsArabic ? "\u0627\u0644\u0622\u0646" : "Now");
+        DateRangeText = $"\U0001f4c5 {fromStr} \u2192 {toStr}";
     }
 
     public async Task InitializeAsync()

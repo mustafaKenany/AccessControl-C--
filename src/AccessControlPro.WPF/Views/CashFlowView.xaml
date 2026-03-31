@@ -46,6 +46,7 @@
 
         <!-- Filter Bar -->
         <Border Grid.Row="1" Style="{StaticResource DashboardCard}" Padding="16,12" Margin="0,0,0,16">
+            <StackPanel>
             <WrapPanel VerticalAlignment="Center">
                 <!-- Category label + combo -->
                 <fa:ImageAwesome Icon="Tags" Width="14" Height="14"
@@ -100,6 +101,11 @@
                                      Foreground="{StaticResource TextPrimaryBrush}"/>
                 </Button>
             </WrapPanel>
+
+            <!-- Date Range Display -->
+            <TextBlock Text="{Binding DateRangeText}"
+                       FontSize="11" Foreground="#44A1A0" Margin="0,6,0,0"/>
+            </StackPanel>
         </Border>
 
         <!-- Transaction Table -->

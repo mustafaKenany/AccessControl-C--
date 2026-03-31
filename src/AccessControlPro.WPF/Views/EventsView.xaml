@@ -120,6 +120,10 @@
                                          Foreground="{StaticResource TextMutedBrush}"/>
                     </Button>
                 </StackPanel>
+
+                <!-- Date Range Display -->
+                <TextBlock Text="{Binding DateRangeText}"
+                           FontSize="11" Foreground="#44A1A0" Margin="0,6,0,0"/>
             </StackPanel>
         </Border>
 

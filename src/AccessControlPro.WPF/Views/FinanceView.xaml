@@ -26,50 +26,56 @@
 
             <!-- Filter Bar -->
             <Border Style="{StaticResource DashboardCard}" Padding="16,12" Margin="0,0,0,16">
-                <WrapPanel VerticalAlignment="Center">
-                    <!-- Search label + box -->
-                    <fa:ImageAwesome Icon="Search" Width="14" Height="14"
-                                     Foreground="{StaticResource TextMutedBrush}"
-                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock Text="{Binding FinSearch, Source={x:Static helpers:LanguageManager.Instance}}"
-                               FontSize="12" Foreground="{StaticResource TextMutedBrush}"
-                               VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBox Style="{StaticResource DarkTextBox}" Width="220"
-                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             Padding="10,8" Margin="0,0,10,0"/>
-                    <Button Style="{StaticResource SecondaryButton}" Padding="14,8"
-                            Command="{Binding SearchCommand}" Margin="0,0,24,0">
+                <StackPanel>
+                    <WrapPanel VerticalAlignment="Center">
+                        <!-- Search label + box -->
                         <fa:ImageAwesome Icon="Search" Width="14" Height="14"
-                                         Foreground="{StaticResource TextPrimaryBrush}"/>
-                    </Button>
+                                         Foreground="{StaticResource TextMutedBrush}"
+                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding FinSearch, Source={x:Static helpers:LanguageManager.Instance}}"
+                                   FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBox Style="{StaticResource DarkTextBox}" Width="220"
+                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="10,8" Margin="0,0,10,0"/>
+                        <Button Style="{StaticResource SecondaryButton}" Padding="14,8"
+                                Command="{Binding SearchCommand}" Margin="0,0,24,0">
+                            <fa:ImageAwesome Icon="Search" Width="14" Height="14"
+                                             Foreground="{StaticResource TextPrimaryBrush}"/>
+                        </Button>
 
-                    <!-- Period label + combo -->
-                    <fa:ImageAwesome Icon="Calendar" Width="14" Height="14"
-                                     Foreground="{StaticResource TextMutedBrush}"
-                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock Text="{Binding FinPeriod, Source={x:Static helpers:LanguageManager.Instance}}"
-                               FontSize="12" Foreground="{StaticResource TextMutedBrush}"
-                               VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <ComboBox Width="200" SelectedIndex="{Binding SelectedPeriodIndex}"
-                              Style="{StaticResource DarkComboBox}" Margin="0,0,10,0">
-                        <ComboBoxItem Content="{Binding FinAll, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipAll, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                        <ComboBoxItem Content="{Binding FinToday, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipToday, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                        <ComboBoxItem Content="{Binding FinYesterday, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipYesterday, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                        <ComboBoxItem Content="{Binding FinThisWeek, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipThisWeek, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                        <ComboBoxItem Content="{Binding FinLastWeek, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipLastWeek, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                        <ComboBoxItem Content="{Binding FinThisMonth, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipThisMonth, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                        <ComboBoxItem Content="{Binding FinLastMonth, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipLastMonth, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                        <ComboBoxItem Content="{Binding FinLast3Months, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipLast3Months, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                        <ComboBoxItem Content="{Binding FinLast6Months, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipLast6Months, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                        <ComboBoxItem Content="{Binding FinThisYear, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipThisYear, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                    </ComboBox>
+                        <!-- Period label + combo -->
+                        <fa:ImageAwesome Icon="Calendar" Width="14" Height="14"
+                                         Foreground="{StaticResource TextMutedBrush}"
+                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding FinPeriod, Source={x:Static helpers:LanguageManager.Instance}}"
+                                   FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <ComboBox Width="200" SelectedIndex="{Binding SelectedPeriodIndex}"
+                                  Style="{StaticResource DarkComboBox}" Margin="0,0,10,0">
+                            <ComboBoxItem Content="{Binding FinAll, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipAll, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                            <ComboBoxItem Content="{Binding FinToday, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipToday, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                            <ComboBoxItem Content="{Binding FinYesterday, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipYesterday, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                            <ComboBoxItem Content="{Binding FinThisWeek, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipThisWeek, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                            <ComboBoxItem Content="{Binding FinLastWeek, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipLastWeek, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                            <ComboBoxItem Content="{Binding FinThisMonth, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipThisMonth, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                            <ComboBoxItem Content="{Binding FinLastMonth, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipLastMonth, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                            <ComboBoxItem Content="{Binding FinLast3Months, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipLast3Months, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                            <ComboBoxItem Content="{Binding FinLast6Months, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipLast6Months, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                            <ComboBoxItem Content="{Binding FinThisYear, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipThisYear, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                        </ComboBox>
 
-                    <Button Style="{StaticResource SecondaryButton}" Padding="14,8"
-                            Command="{Binding PeriodChangedCommand}">
-                        <fa:ImageAwesome Icon="Filter" Width="14" Height="14"
-                                         Foreground="{StaticResource TextPrimaryBrush}"/>
-                    </Button>
-                </WrapPanel>
+                        <Button Style="{StaticResource SecondaryButton}" Padding="14,8"
+                                Command="{Binding PeriodChangedCommand}">
+                            <fa:ImageAwesome Icon="Filter" Width="14" Height="14"
+                                             Foreground="{StaticResource TextPrimaryBrush}"/>
+                        </Button>
+                    </WrapPanel>
+
+                    <!-- Date Range Display -->
+                    <TextBlock Text="{Binding DateRangeText}"
+                               FontSize="11" Foreground="#44A1A0" Margin="0,6,0,0"/>
+                </StackPanel>
             </Border>
 
             <!-- Stat Cards -->

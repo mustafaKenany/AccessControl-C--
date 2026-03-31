@@ -26,6 +26,7 @@ public partial class EventsViewModel : ObservableObject
     [ObservableProperty] private int _selectedPeriodIndex;     // 0=All, 1=Today, ...
     [ObservableProperty] private int _selectedEventTypeIndex;  // 0=All, 1=Card, 2=Button, ...
     [ObservableProperty] private int _selectedDeviceIndex;     // 0=All, then device list
+    [ObservableProperty] private string _dateRangeText = "";
 
     public ObservableCollection<AccessEventDto> Events { get; } = new();
 
@@ -56,6 +57,25 @@ public partial class EventsViewModel : ObservableObject
     {
         _eventService = eventService;
         _deviceService = deviceService;
+    }
+
+    partial void OnSelectedPeriodIndexChanged(int value)
+    {
+        UpdateDateRangeText();
+    }
+
+    private void UpdateDateRangeText()
+    {
+        var (from, to) = GetDateRange();
+        if (from == null && to == null)
+        {
+            DateRangeText = "";
+            return;
+        }
+
+        var fromStr = from?.ToString("yyyy-MM-dd") ?? "";
+        var toStr = to?.ToString("yyyy-MM-dd") ?? (Lang.IsArabic ? "\u0627\u0644\u0622\u0646" : "Now");
+        DateRangeText = $"\U0001f4c5 {fromStr} \u2192 {toStr}";
     }
 
     public async Task LoadDevicesAsync()

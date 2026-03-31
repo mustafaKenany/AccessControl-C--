@@ -38,11 +38,33 @@ public partial class LogsViewModel : ObservableObject
     [ObservableProperty]
     private int _selectedPeriodIndex;
 
+    [ObservableProperty]
+    private string _dateRangeText = "";
+
     public ObservableCollection<AuditLogDto> Logs { get; } = new();
 
     public LogsViewModel(IAuditLogService auditLogService)
     {
         _auditLogService = auditLogService;
+    }
+
+    partial void OnSelectedPeriodIndexChanged(int value)
+    {
+        UpdateDateRangeText();
+    }
+
+    private void UpdateDateRangeText()
+    {
+        var (from, to) = GetPeriodRange();
+        if (from == null && to == null)
+        {
+            DateRangeText = "";
+            return;
+        }
+
+        var fromStr = from?.ToString("yyyy-MM-dd") ?? "";
+        var toStr = to?.ToString("yyyy-MM-dd") ?? (Lang.IsArabic ? "\u0627\u0644\u0622\u0646" : "Now");
+        DateRangeText = $"\U0001f4c5 {fromStr} \u2192 {toStr}";
     }
 
     partial void OnSearchTextChanged(string value)

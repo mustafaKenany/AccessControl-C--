@@ -27,6 +27,7 @@ public partial class FinanceViewModel : ObservableObject
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private int _selectedPeriodIndex; // 0 = All
+    [ObservableProperty] private string _dateRangeText = "";
 
     public ObservableCollection<TransactionDto> RecentTransactions { get; } = new();
     public ObservableCollection<OutstandingPlayerDto> OutstandingPlayers { get; } = new();
@@ -37,6 +38,25 @@ public partial class FinanceViewModel : ObservableObject
     {
         _financeService = financeService;
         _currentUser = currentUser;
+    }
+
+    partial void OnSelectedPeriodIndexChanged(int value)
+    {
+        UpdateDateRangeText();
+    }
+
+    private void UpdateDateRangeText()
+    {
+        var (from, to) = GetDateRange();
+        if (from == null && to == null)
+        {
+            DateRangeText = "";
+            return;
+        }
+
+        var fromStr = from?.ToString("yyyy-MM-dd") ?? "";
+        var toStr = to?.ToString("yyyy-MM-dd") ?? (Lang.IsArabic ? "\u0627\u0644\u0622\u0646" : "Now");
+        DateRangeText = $"\U0001f4c5 {fromStr} \u2192 {toStr}";
     }
 
     public async Task InitializeAsync()

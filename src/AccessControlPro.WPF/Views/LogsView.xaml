@@ -225,6 +225,10 @@
                     </ControlTemplate>
                 </Button.Template>
             </Button>
+
+            <!-- Date Range Display -->
+            <TextBlock Text="{Binding DateRangeText}"
+                       FontSize="11" Foreground="#44A1A0" VerticalAlignment="Center" Margin="16,0,0,0"/>
         </StackPanel>
 
         <!-- Table Header -->
