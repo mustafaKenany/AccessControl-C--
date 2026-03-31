@@ -836,4 +836,15 @@ Card sync errors on some devices:
   <data name="PosExpectedCash" xml:space="preserve"><value>Expected Cash</value></data>
   <data name="PosByPaymentMethod" xml:space="preserve"><value>By Payment Method</value></data>
   <data name="BtnSync" xml:space="preserve"><value>Sync Now</value></data>
+  <!-- Filter Tooltips -->
+  <data name="FilterTipAll" xml:space="preserve"><value>Show all records without date filter</value></data>
+  <data name="FilterTipToday" xml:space="preserve"><value>Records from today only</value></data>
+  <data name="FilterTipYesterday" xml:space="preserve"><value>Records from yesterday only</value></data>
+  <data name="FilterTipThisWeek" xml:space="preserve"><value>Records from this week</value></data>
+  <data name="FilterTipLastWeek" xml:space="preserve"><value>Records from last week</value></data>
+  <data name="FilterTipThisMonth" xml:space="preserve"><value>Records from the 1st of this month to today</value></data>
+  <data name="FilterTipLastMonth" xml:space="preserve"><value>Records from last month only</value></data>
+  <data name="FilterTipLast3Months" xml:space="preserve"><value>Records from the last 3 months</value></data>
+  <data name="FilterTipLast6Months" xml:space="preserve"><value>Records from the last 6 months</value></data>
+  <data name="FilterTipThisYear" xml:space="preserve"><value>Records from January 1st to today</value></data>
 </root>

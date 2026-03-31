@@ -842,4 +842,15 @@
   <data name="PosExpectedCash" xml:space="preserve"><value>النقد المتوقع</value></data>
   <data name="PosByPaymentMethod" xml:space="preserve"><value>حسب طريقة الدفع</value></data>
   <data name="BtnSync" xml:space="preserve"><value>مزامنة الآن</value></data>
+  <!-- Filter Tooltips -->
+  <data name="FilterTipAll" xml:space="preserve"><value>عرض جميع السجلات بدون فلتر تاريخ</value></data>
+  <data name="FilterTipToday" xml:space="preserve"><value>سجلات اليوم فقط</value></data>
+  <data name="FilterTipYesterday" xml:space="preserve"><value>سجلات الأمس فقط</value></data>
+  <data name="FilterTipThisWeek" xml:space="preserve"><value>سجلات هذا الأسبوع</value></data>
+  <data name="FilterTipLastWeek" xml:space="preserve"><value>سجلات الأسبوع الماضي</value></data>
+  <data name="FilterTipThisMonth" xml:space="preserve"><value>سجلات من بداية الشهر حتى اليوم</value></data>
+  <data name="FilterTipLastMonth" xml:space="preserve"><value>سجلات الشهر الماضي فقط</value></data>
+  <data name="FilterTipLast3Months" xml:space="preserve"><value>سجلات آخر 3 أشهر</value></data>
+  <data name="FilterTipLast6Months" xml:space="preserve"><value>سجلات آخر 6 أشهر</value></data>
+  <data name="FilterTipThisYear" xml:space="preserve"><value>سجلات من بداية السنة حتى اليوم</value></data>
 </root>

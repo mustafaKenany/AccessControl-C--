@@ -906,6 +906,18 @@ public class LanguageManager : INotifyPropertyChanged
     // Device Notification Bar
     public string BtnSync => GetString("BtnSync");
 
+    // Filter Tooltips
+    public string FilterTipAll => GetString("FilterTipAll");
+    public string FilterTipToday => GetString("FilterTipToday");
+    public string FilterTipYesterday => GetString("FilterTipYesterday");
+    public string FilterTipThisWeek => GetString("FilterTipThisWeek");
+    public string FilterTipLastWeek => GetString("FilterTipLastWeek");
+    public string FilterTipThisMonth => GetString("FilterTipThisMonth");
+    public string FilterTipLastMonth => GetString("FilterTipLastMonth");
+    public string FilterTipLast3Months => GetString("FilterTipLast3Months");
+    public string FilterTipLast6Months => GetString("FilterTipLast6Months");
+    public string FilterTipThisYear => GetString("FilterTipThisYear");
+
     private string GetString(string name)
     {
         return _resourceManager.GetString(name, _currentCulture) ?? name;
@@ -1678,6 +1690,17 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(TgScheduleLabel));
         // Device Notification Bar
         OnPropertyChanged(nameof(BtnSync));
+        // Filter Tooltips
+        OnPropertyChanged(nameof(FilterTipAll));
+        OnPropertyChanged(nameof(FilterTipToday));
+        OnPropertyChanged(nameof(FilterTipYesterday));
+        OnPropertyChanged(nameof(FilterTipThisWeek));
+        OnPropertyChanged(nameof(FilterTipLastWeek));
+        OnPropertyChanged(nameof(FilterTipThisMonth));
+        OnPropertyChanged(nameof(FilterTipLastMonth));
+        OnPropertyChanged(nameof(FilterTipLast3Months));
+        OnPropertyChanged(nameof(FilterTipLast6Months));
+        OnPropertyChanged(nameof(FilterTipThisYear));
     }
 
     private void OnPropertyChanged(string propertyName)
