@@ -80,18 +80,18 @@
                 <TextBlock Text="{Binding FinPeriod, Source={x:Static helpers:LanguageManager.Instance}}"
                            FontSize="12" Foreground="{StaticResource TextMutedBrush}"
                            VerticalAlignment="Center" Margin="0,0,10,0"/>
-                <ComboBox Width="170" SelectedIndex="{Binding SelectedPeriodIndex}"
+                <ComboBox Width="200" SelectedIndex="{Binding SelectedPeriodIndex}"
                           Style="{StaticResource DarkComboBox}" Margin="0,0,10,0">
-                    <ComboBoxItem Content="{Binding FinAll, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                    <ComboBoxItem Content="{Binding FinToday, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                    <ComboBoxItem Content="{Binding FinYesterday, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                    <ComboBoxItem Content="{Binding FinThisWeek, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                    <ComboBoxItem Content="{Binding FinLastWeek, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                    <ComboBoxItem Content="{Binding FinThisMonth, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                    <ComboBoxItem Content="{Binding FinLastMonth, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                    <ComboBoxItem Content="{Binding FinLast3Months, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                    <ComboBoxItem Content="{Binding FinLast6Months, Source={x:Static helpers:LanguageManager.Instance}}"/>
-                    <ComboBoxItem Content="{Binding FinThisYear, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                    <ComboBoxItem Content="{Binding FinAll, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="Show all records without date filter"/>
+                    <ComboBoxItem Content="{Binding FinToday, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="Records from today only"/>
+                    <ComboBoxItem Content="{Binding FinYesterday, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="Records from yesterday only"/>
+                    <ComboBoxItem Content="{Binding FinThisWeek, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="Records from this week"/>
+                    <ComboBoxItem Content="{Binding FinLastWeek, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="Records from last week"/>
+                    <ComboBoxItem Content="{Binding FinThisMonth, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="Records from the 1st of this month to today"/>
+                    <ComboBoxItem Content="{Binding FinLastMonth, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="Records from last month only"/>
+                    <ComboBoxItem Content="{Binding FinLast3Months, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="Records from the last 3 months"/>
+                    <ComboBoxItem Content="{Binding FinLast6Months, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="Records from the last 6 months"/>
+                    <ComboBoxItem Content="{Binding FinThisYear, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="Records from January 1st to today"/>
                 </ComboBox>
 
                 <Button Style="{StaticResource SecondaryButton}" Padding="14,8"

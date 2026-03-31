@@ -82,7 +82,7 @@
         <!-- Period Filter Chips -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
             <!-- All -->
-            <Button Command="{Binding SetPeriodCommand}" CommandParameter="0" Cursor="Hand" Margin="0,0,6,0">
+            <Button Command="{Binding SetPeriodCommand}" CommandParameter="0" Cursor="Hand" Margin="0,0,6,0" ToolTip="Show all records without date filter">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="chip" CornerRadius="14" Padding="14,6" Background="#1A44A1A0">
@@ -100,7 +100,7 @@
                 </Button.Template>
             </Button>
             <!-- Today -->
-            <Button Command="{Binding SetPeriodCommand}" CommandParameter="1" Cursor="Hand" Margin="0,0,6,0">
+            <Button Command="{Binding SetPeriodCommand}" CommandParameter="1" Cursor="Hand" Margin="0,0,6,0" ToolTip="Records from today only">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="chip" CornerRadius="14" Padding="14,6" Background="#1A44A1A0">
@@ -118,7 +118,7 @@
                 </Button.Template>
             </Button>
             <!-- Yesterday -->
-            <Button Command="{Binding SetPeriodCommand}" CommandParameter="2" Cursor="Hand" Margin="0,0,6,0">
+            <Button Command="{Binding SetPeriodCommand}" CommandParameter="2" Cursor="Hand" Margin="0,0,6,0" ToolTip="Records from yesterday only">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="chip" CornerRadius="14" Padding="14,6" Background="#1A44A1A0">
@@ -136,7 +136,7 @@
                 </Button.Template>
             </Button>
             <!-- This Week -->
-            <Button Command="{Binding SetPeriodCommand}" CommandParameter="3" Cursor="Hand" Margin="0,0,6,0">
+            <Button Command="{Binding SetPeriodCommand}" CommandParameter="3" Cursor="Hand" Margin="0,0,6,0" ToolTip="Records from this week">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="chip" CornerRadius="14" Padding="14,6" Background="#1A44A1A0">
@@ -154,7 +154,7 @@
                 </Button.Template>
             </Button>
             <!-- Last Week -->
-            <Button Command="{Binding SetPeriodCommand}" CommandParameter="4" Cursor="Hand" Margin="0,0,6,0">
+            <Button Command="{Binding SetPeriodCommand}" CommandParameter="4" Cursor="Hand" Margin="0,0,6,0" ToolTip="Records from last week">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="chip" CornerRadius="14" Padding="14,6" Background="#1A44A1A0">
@@ -172,7 +172,7 @@
                 </Button.Template>
             </Button>
             <!-- This Month -->
-            <Button Command="{Binding SetPeriodCommand}" CommandParameter="5" Cursor="Hand" Margin="0,0,6,0">
+            <Button Command="{Binding SetPeriodCommand}" CommandParameter="5" Cursor="Hand" Margin="0,0,6,0" ToolTip="Records from the 1st of this month to today">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="chip" CornerRadius="14" Padding="14,6" Background="#1A44A1A0">
@@ -190,7 +190,7 @@
                 </Button.Template>
             </Button>
             <!-- Last Month -->
-            <Button Command="{Binding SetPeriodCommand}" CommandParameter="6" Cursor="Hand" Margin="0,0,6,0">
+            <Button Command="{Binding SetPeriodCommand}" CommandParameter="6" Cursor="Hand" Margin="0,0,6,0" ToolTip="Records from last month only">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="chip" CornerRadius="14" Padding="14,6" Background="#1A44A1A0">
@@ -208,7 +208,7 @@
                 </Button.Template>
             </Button>
             <!-- Last 3 Months -->
-            <Button Command="{Binding SetPeriodCommand}" CommandParameter="7" Cursor="Hand">
+            <Button Command="{Binding SetPeriodCommand}" CommandParameter="7" Cursor="Hand" ToolTip="Records from the last 3 months">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="chip" CornerRadius="14" Padding="14,6" Background="#1A44A1A0">
