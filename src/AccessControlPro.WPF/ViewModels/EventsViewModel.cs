@@ -192,15 +192,22 @@ public partial class EventsViewModel : ObservableObject
             Events.Clear();
             foreach (var evt in list)
             {
-                // Localize action label and direction based on current language
-                evt.EventDescription = Lang.GetEventActionLabel(evt.EventType);
+                // Localize direction based on current language
                 evt.Direction = Lang.GetDirectionLabel(evt.Direction);
 
+                // EventDescription already contains the actual event code description from service
                 // Append localized card status to description if available
                 if (!string.IsNullOrEmpty(evt.CardStatus))
                 {
                     var localizedStatus = Lang.GetCardStatusLabel(evt.CardStatus);
                     evt.EventDescription = $"{evt.EventDescription} ({localizedStatus})";
+
+                    // Set CardStatusKey for color coding in the view
+                    evt.CardStatusKey = evt.CardStatus switch
+                    {
+                        "Active" or "Expired" or "Frozen" or "Unregistered" => evt.CardStatus,
+                        _ => ""
+                    };
                 }
 
                 Events.Add(evt);

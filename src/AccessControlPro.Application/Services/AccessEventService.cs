@@ -47,6 +47,7 @@ public class AccessEventService : IAccessEventService
             EventDescription = GetEventDescription(e.EventCode),
             Direction = e.Details.Contains("Entry") ? "Entry" : e.Details.Contains("Exit") ? "Exit" : "",
             CardStatus = ExtractCardStatus(e.Details),
+            CardStatusKey = ExtractCardStatus(e.Details),
             Timestamp = e.Timestamp
         });
 

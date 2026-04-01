@@ -348,6 +348,10 @@
                                     <Trigger SourceName="row" Property="IsMouseOver" Value="True">
                                         <Setter TargetName="row" Property="Background" Value="#08FFFFFF"/>
                                     </Trigger>
+                                    <DataTrigger Binding="{Binding CardStatusKey}" Value="NotRegistered">
+                                        <Setter TargetName="row" Property="Background" Value="#18F7685B"/>
+                                        <Setter TargetName="row" Property="BorderBrush" Value="#30F7685B"/>
+                                    </DataTrigger>
                                 </DataTemplate.Triggers>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

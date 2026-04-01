@@ -386,7 +386,8 @@ public partial class MonitorViewModel : ObservableObject
                 cardStatusKey = "Active";
             }
 
-            string details = $"{direction} | SN:{evt.DeviceSN}";
+            string eventDesc = GetEventDescription(evt.EventCode);
+            string details = $"{direction} | {eventDesc} | @{cardStatusKey} | SN:{evt.DeviceSN}";
 
             // Save to DB
             if (doorId > 0)
@@ -408,6 +409,13 @@ public partial class MonitorViewModel : ObservableObject
                 playerName = lang2.IsArabic ? "ضيف QR" : "QR Guest";
             }
 
+            // Combine event description with card status for display
+            // Format: "Card Open (Active 3/50)" or "Card Not Found (Unregistered)"
+            string eventDescription = GetEventDescription(evt.EventCode);
+            string combinedStatus = !string.IsNullOrEmpty(cardStatus)
+                ? $"{eventDescription} ({cardStatus})"
+                : eventDescription;
+
             // Update UI on dispatcher thread
             var dto = new AccessEventDto
             {
@@ -416,10 +424,10 @@ public partial class MonitorViewModel : ObservableObject
                 CardNumber = evt.CardNumber,
                 PlayerName = playerName,
                 EventType = isQrCode ? "QR" : ((Domain.Enums.RecordType)evt.RecordType).ToString(),
-                EventDescription = GetEventDescription(evt.EventCode),
+                EventDescription = eventDescription,
                 Direction = direction,
                 IsEntry = isEntry,
-                CardStatus = cardStatus,
+                CardStatus = combinedStatus,
                 CardStatusKey = cardStatusKey,
                 Timestamp = evt.EventDate
             };
