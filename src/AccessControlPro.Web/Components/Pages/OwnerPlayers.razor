@@ -36,6 +36,52 @@ else
         </div>
     </div>
 
+    <div class="filter-group" style="margin-top: 0.5rem;">
+        <span style="color: var(--text-secondary); font-size: 0.85rem; margin-right: 0.5rem;">
+            <i class="fas fa-calendar-alt"></i> @L("Expires In", "ينتهي في"):
+        </span>
+        <button class="filter-btn @(_period == "all" ? "active" : "")" @onclick='() => SetPeriod("all")'
+                title="@GetFilterTooltip("all")">
+            @L("All", "الكل")
+        </button>
+        <button class="filter-btn @(_period == "today" ? "active" : "")" @onclick='() => SetPeriod("today")'
+                title="@GetFilterTooltip("today")">
+            @L("Today", "اليوم")
+        </button>
+        <button class="filter-btn @(_period == "yesterday" ? "active" : "")" @onclick='() => SetPeriod("yesterday")'
+                title="@GetFilterTooltip("yesterday")">
+            @L("Yesterday", "أمس")
+        </button>
+        <button class="filter-btn @(_period == "thisweek" ? "active" : "")" @onclick='() => SetPeriod("thisweek")'
+                title="@GetFilterTooltip("thisweek")">
+            @L("This Week", "هذا الأسبوع")
+        </button>
+        <button class="filter-btn @(_period == "lastweek" ? "active" : "")" @onclick='() => SetPeriod("lastweek")'
+                title="@GetFilterTooltip("lastweek")">
+            @L("Last Week", "الأسبوع الماضي")
+        </button>
+        <button class="filter-btn @(_period == "thismonth" ? "active" : "")" @onclick='() => SetPeriod("thismonth")'
+                title="@GetFilterTooltip("thismonth")">
+            @L("This Month", "هذا الشهر")
+        </button>
+        <button class="filter-btn @(_period == "lastmonth" ? "active" : "")" @onclick='() => SetPeriod("lastmonth")'
+                title="@GetFilterTooltip("lastmonth")">
+            @L("Last Month", "الشهر الماضي")
+        </button>
+        <button class="filter-btn @(_period == "last3months" ? "active" : "")" @onclick='() => SetPeriod("last3months")'
+                title="@GetFilterTooltip("last3months")">
+            @L("Last 3 Months", "آخر 3 أشهر")
+        </button>
+        <button class="filter-btn @(_period == "last6months" ? "active" : "")" @onclick='() => SetPeriod("last6months")'
+                title="@GetFilterTooltip("last6months")">
+            @L("Last 6 Months", "آخر 6 أشهر")
+        </button>
+        <button class="filter-btn @(_period == "thisyear" ? "active" : "")" @onclick='() => SetPeriod("thisyear")'
+                title="@GetFilterTooltip("thisyear")">
+            @L("This Year", "هذا العام")
+        </button>
+    </div>
+
     <div class="content-card">
         @* Desktop table *@
         <div class="desktop-only">
@@ -267,6 +313,7 @@ else
 @code {
     private string _search = "";
     private string _filter = "All";
+    private string _period = "all";
     private int? _expandedId;
     private List<PlayerRow> _players = new();
     private int _page = 1;
@@ -340,13 +387,23 @@ else
                 _ => ""
             };
 
+            // Date period filter on EndDate
+            var isAllPeriod = _period == "all";
+            var dateWhere = "";
+            DateTime periodFrom = DateTime.MinValue, periodTo = DateTime.MaxValue;
+            if (!isAllPeriod)
+            {
+                (periodFrom, periodTo) = GetDateRange();
+                dateWhere = @" AND ""EndDate"" >= @periodFrom AND ""EndDate"" < @periodTo";
+            }
+
             var searchWhere = "";
             if (!string.IsNullOrWhiteSpace(_search))
             {
                 searchWhere = @" AND (LOWER(""FullNameEn"") LIKE @q OR ""FullNameAr"" LIKE @q OR ""Phone"" LIKE @q OR ""CardNo"" LIKE @q)";
             }
 
-            var fullWhere = $"WHERE {whereBase}{extraWhere}{searchWhere}";
+            var fullWhere = $"WHERE {whereBase}{extraWhere}{dateWhere}{searchWhere}";
 
             // Count
             using (var countCmd = new Npgsql.NpgsqlCommand(
@@ -356,6 +413,11 @@ else
                     countCmd.Parameters.AddWithValue("now", now);
                 if (_filter == "Expiring")
                     countCmd.Parameters.AddWithValue("week", weekFromNow);
+                if (!isAllPeriod)
+                {
+                    countCmd.Parameters.AddWithValue("periodFrom", periodFrom);
+                    countCmd.Parameters.AddWithValue("periodTo", periodTo);
+                }
                 if (!string.IsNullOrWhiteSpace(_search))
                     countCmd.Parameters.AddWithValue("q", $"%{_search.Trim().ToLower()}%");
 
@@ -375,6 +437,11 @@ else
                     cmd.Parameters.AddWithValue("now", now);
                 if (_filter == "Expiring")
                     cmd.Parameters.AddWithValue("week", weekFromNow);
+                if (!isAllPeriod)
+                {
+                    cmd.Parameters.AddWithValue("periodFrom", periodFrom);
+                    cmd.Parameters.AddWithValue("periodTo", periodTo);
+                }
                 if (!string.IsNullOrWhiteSpace(_search))
                     cmd.Parameters.AddWithValue("q", $"%{_search.Trim().ToLower()}%");
                 cmd.Parameters.AddWithValue("limit", PageSize);
@@ -421,6 +488,79 @@ else
         _filter = filter;
         _page = 1;
         await LoadPlayersAsync();
+    }
+
+    private async Task SetPeriod(string period)
+    {
+        _period = period;
+        _page = 1;
+        await LoadPlayersAsync();
+    }
+
+    private (DateTime start, DateTime end) GetDateRange()
+    {
+        var now = DateTime.UtcNow;
+        var future = now.AddHours(12);
+        var today = now.Date;
+        return _period switch
+        {
+            "today" => (today.AddHours(-6), future),
+            "yesterday" => (today.AddDays(-1).AddHours(-6), today.AddHours(-6)),
+            "thisweek" => (today.AddDays(-(int)today.DayOfWeek).AddHours(-6), future),
+            "lastweek" => (today.AddDays(-(int)today.DayOfWeek - 7).AddHours(-6), today.AddDays(-(int)today.DayOfWeek).AddHours(-6)),
+            "thismonth" => (new DateTime(now.Year, now.Month, 1).AddHours(-6), future),
+            "lastmonth" => (new DateTime(now.Year, now.Month, 1).AddMonths(-1).AddHours(-6),
+                            new DateTime(now.Year, now.Month, 1).AddHours(-6)),
+            "last3months" => (today.AddMonths(-3).AddHours(-6), future),
+            "last6months" => (today.AddMonths(-6).AddHours(-6), future),
+            "thisyear" => (new DateTime(now.Year, 1, 1).AddHours(-6), future),
+            "all" => (DateTime.MinValue, future),
+            _ => (today.AddHours(-6), future)
+        };
+    }
+
+    private (DateTime start, DateTime end) GetDateRangeFor(string p)
+    {
+        var now = DateTime.UtcNow;
+        var future = now.AddHours(12);
+        var today = now.Date;
+        return p switch
+        {
+            "today" => (today.AddHours(-6), future),
+            "yesterday" => (today.AddDays(-1).AddHours(-6), today.AddHours(-6)),
+            "thisweek" => (today.AddDays(-(int)today.DayOfWeek).AddHours(-6), future),
+            "lastweek" => (today.AddDays(-(int)today.DayOfWeek - 7).AddHours(-6), today.AddDays(-(int)today.DayOfWeek).AddHours(-6)),
+            "thismonth" => (new DateTime(now.Year, now.Month, 1).AddHours(-6), future),
+            "lastmonth" => (new DateTime(now.Year, now.Month, 1).AddMonths(-1).AddHours(-6),
+                            new DateTime(now.Year, now.Month, 1).AddHours(-6)),
+            "last3months" => (today.AddMonths(-3).AddHours(-6), future),
+            "last6months" => (today.AddMonths(-6).AddHours(-6), future),
+            "thisyear" => (new DateTime(now.Year, 1, 1).AddHours(-6), future),
+            "all" => (DateTime.MinValue, future),
+            _ => (today.AddHours(-6), future)
+        };
+    }
+
+    private string GetFilterTooltip(string period)
+    {
+        var (s, e) = GetDateRangeFor(period);
+        var startStr = s == DateTime.MinValue ? "" : s.ToString("yyyy-MM-dd");
+        var endStr = e > DateTime.UtcNow.AddHours(10) ? L("Now", "الآن") : e.ToString("yyyy-MM-dd");
+
+        return period switch
+        {
+            "all" => L("Show all players without date filter", "عرض جميع اللاعبين بدون فلتر تاريخ"),
+            "today" => L($"Expires today ({startStr} → {endStr})", $"ينتهي اليوم ({startStr} → {endStr})"),
+            "yesterday" => L($"Expired yesterday ({startStr} → {endStr})", $"انتهى بالأمس ({startStr} → {endStr})"),
+            "thisweek" => L($"Expires this week ({startStr} → {endStr})", $"ينتهي هذا الأسبوع ({startStr} → {endStr})"),
+            "lastweek" => L($"Expired last week ({startStr} → {endStr})", $"انتهى الأسبوع الماضي ({startStr} → {endStr})"),
+            "thismonth" => L($"Expires this month ({startStr} → {endStr})", $"ينتهي هذا الشهر ({startStr} → {endStr})"),
+            "lastmonth" => L($"Expired last month ({startStr} → {endStr})", $"انتهى الشهر الماضي ({startStr} → {endStr})"),
+            "last3months" => L($"Expired last 3 months ({startStr} → {endStr})", $"انتهى آخر 3 أشهر ({startStr} → {endStr})"),
+            "last6months" => L($"Expired last 6 months ({startStr} → {endStr})", $"انتهى آخر 6 أشهر ({startStr} → {endStr})"),
+            "thisyear" => L($"Expires this year ({startStr} → {endStr})", $"ينتهي هذا العام ({startStr} → {endStr})"),
+            _ => ""
+        };
     }
 
     private async Task OnSearch()

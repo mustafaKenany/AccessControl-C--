@@ -19,29 +19,45 @@ else
     </div>
 
     <div class="filter-group">
-        <button class="filter-btn @(_period == "today" ? "active" : "")" @onclick='() => SetPeriod("today")'>
+        <button class="filter-btn @(_period == "all" ? "active" : "")" @onclick='() => SetPeriod("all")'
+                title="@GetFilterTooltip("all")">
+            @L("All", "الكل")
+        </button>
+        <button class="filter-btn @(_period == "today" ? "active" : "")" @onclick='() => SetPeriod("today")'
+                title="@GetFilterTooltip("today")">
             @L("Today", "اليوم")
         </button>
-        <button class="filter-btn @(_period == "yesterday" ? "active" : "")" @onclick='() => SetPeriod("yesterday")'>
+        <button class="filter-btn @(_period == "yesterday" ? "active" : "")" @onclick='() => SetPeriod("yesterday")'
+                title="@GetFilterTooltip("yesterday")">
             @L("Yesterday", "أمس")
         </button>
-        <button class="filter-btn @(_period == "thisweek" ? "active" : "")" @onclick='() => SetPeriod("thisweek")'>
+        <button class="filter-btn @(_period == "thisweek" ? "active" : "")" @onclick='() => SetPeriod("thisweek")'
+                title="@GetFilterTooltip("thisweek")">
             @L("This Week", "هذا الأسبوع")
         </button>
-        <button class="filter-btn @(_period == "thismonth" ? "active" : "")" @onclick='() => SetPeriod("thismonth")'>
+        <button class="filter-btn @(_period == "lastweek" ? "active" : "")" @onclick='() => SetPeriod("lastweek")'
+                title="@GetFilterTooltip("lastweek")">
+            @L("Last Week", "الأسبوع الماضي")
+        </button>
+        <button class="filter-btn @(_period == "thismonth" ? "active" : "")" @onclick='() => SetPeriod("thismonth")'
+                title="@GetFilterTooltip("thismonth")">
             @L("This Month", "هذا الشهر")
         </button>
-        <button class="filter-btn @(_period == "lastmonth" ? "active" : "")" @onclick='() => SetPeriod("lastmonth")'>
+        <button class="filter-btn @(_period == "lastmonth" ? "active" : "")" @onclick='() => SetPeriod("lastmonth")'
+                title="@GetFilterTooltip("lastmonth")">
             @L("Last Month", "الشهر الماضي")
         </button>
-        <button class="filter-btn @(_period == "last3months" ? "active" : "")" @onclick='() => SetPeriod("last3months")'>
+        <button class="filter-btn @(_period == "last3months" ? "active" : "")" @onclick='() => SetPeriod("last3months")'
+                title="@GetFilterTooltip("last3months")">
             @L("Last 3 Months", "آخر 3 أشهر")
         </button>
-        <button class="filter-btn @(_period == "lastyear" ? "active" : "")" @onclick='() => SetPeriod("lastyear")'>
-            @L("Last Year", "العام الماضي")
+        <button class="filter-btn @(_period == "last6months" ? "active" : "")" @onclick='() => SetPeriod("last6months")'
+                title="@GetFilterTooltip("last6months")">
+            @L("Last 6 Months", "آخر 6 أشهر")
         </button>
-        <button class="filter-btn @(_period == "all" ? "active" : "")" @onclick='() => SetPeriod("all")'>
-            @L("All", "الكل")
+        <button class="filter-btn @(_period == "thisyear" ? "active" : "")" @onclick='() => SetPeriod("thisyear")'
+                title="@GetFilterTooltip("thisyear")">
+            @L("This Year", "هذا العام")
         </button>
     </div>
 
@@ -199,13 +215,59 @@ else
             "today" => (today.AddHours(-6), future),
             "yesterday" => (today.AddDays(-1).AddHours(-6), today.AddHours(-6)),
             "thisweek" => (today.AddDays(-(int)today.DayOfWeek).AddHours(-6), future),
+            "lastweek" => (today.AddDays(-(int)today.DayOfWeek - 7).AddHours(-6), today.AddDays(-(int)today.DayOfWeek).AddHours(-6)),
             "thismonth" => (new DateTime(now.Year, now.Month, 1).AddHours(-6), future),
             "lastmonth" => (new DateTime(now.Year, now.Month, 1).AddMonths(-1).AddHours(-6),
                             new DateTime(now.Year, now.Month, 1).AddHours(-6)),
             "last3months" => (today.AddMonths(-3).AddHours(-6), future),
-            "lastyear" => (today.AddYears(-1).AddHours(-6), future),
+            "last6months" => (today.AddMonths(-6).AddHours(-6), future),
+            "thisyear" => (new DateTime(now.Year, 1, 1).AddHours(-6), future),
             "all" => (DateTime.MinValue, future),
             _ => (today.AddHours(-6), future)
+        };
+    }
+
+    private (DateTime start, DateTime end) GetDateRangeFor(string p)
+    {
+        var now = DateTime.UtcNow;
+        var future = now.AddHours(12);
+        var today = now.Date;
+        return p switch
+        {
+            "today" => (today.AddHours(-6), future),
+            "yesterday" => (today.AddDays(-1).AddHours(-6), today.AddHours(-6)),
+            "thisweek" => (today.AddDays(-(int)today.DayOfWeek).AddHours(-6), future),
+            "lastweek" => (today.AddDays(-(int)today.DayOfWeek - 7).AddHours(-6), today.AddDays(-(int)today.DayOfWeek).AddHours(-6)),
+            "thismonth" => (new DateTime(now.Year, now.Month, 1).AddHours(-6), future),
+            "lastmonth" => (new DateTime(now.Year, now.Month, 1).AddMonths(-1).AddHours(-6),
+                            new DateTime(now.Year, now.Month, 1).AddHours(-6)),
+            "last3months" => (today.AddMonths(-3).AddHours(-6), future),
+            "last6months" => (today.AddMonths(-6).AddHours(-6), future),
+            "thisyear" => (new DateTime(now.Year, 1, 1).AddHours(-6), future),
+            "all" => (DateTime.MinValue, future),
+            _ => (today.AddHours(-6), future)
+        };
+    }
+
+    private string GetFilterTooltip(string period)
+    {
+        var (s, e) = GetDateRangeFor(period);
+        var startStr = s == DateTime.MinValue ? "" : s.ToString("yyyy-MM-dd");
+        var endStr = e > DateTime.UtcNow.AddHours(10) ? L("Now", "الآن") : e.ToString("yyyy-MM-dd");
+
+        return period switch
+        {
+            "all" => L("Show all records without date filter", "عرض جميع السجلات بدون فلتر تاريخ"),
+            "today" => L($"Records from today ({startStr} → {endStr})", $"سجلات اليوم ({startStr} → {endStr})"),
+            "yesterday" => L($"Records from yesterday ({startStr} → {endStr})", $"سجلات الأمس ({startStr} → {endStr})"),
+            "thisweek" => L($"This week ({startStr} → {endStr})", $"هذا الأسبوع ({startStr} → {endStr})"),
+            "lastweek" => L($"Last week ({startStr} → {endStr})", $"الأسبوع الماضي ({startStr} → {endStr})"),
+            "thismonth" => L($"This month ({startStr} → {endStr})", $"هذا الشهر ({startStr} → {endStr})"),
+            "lastmonth" => L($"Last month ({startStr} → {endStr})", $"الشهر الماضي ({startStr} → {endStr})"),
+            "last3months" => L($"Last 3 months ({startStr} → {endStr})", $"آخر 3 أشهر ({startStr} → {endStr})"),
+            "last6months" => L($"Last 6 months ({startStr} → {endStr})", $"آخر 6 أشهر ({startStr} → {endStr})"),
+            "thisyear" => L($"This year ({startStr} → {endStr})", $"هذا العام ({startStr} → {endStr})"),
+            _ => ""
         };
     }
 
