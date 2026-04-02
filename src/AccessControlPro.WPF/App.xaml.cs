@@ -487,9 +487,12 @@ public partial class App : System.Windows.Application
                         StartupLog($"QR pool low ({available} available)");
                     }
 
-                    // Upload un-uploaded QR codes to device
-                    if (generated > 0 || available > 0)
+                    // Always check for un-uploaded QR codes and upload them
+                    // This covers: first run, missed 1st/15th, newly generated codes
+                    var pendingCount = await qrPool.GetPendingUploadCountAsync();
+                    if (pendingCount > 0)
                     {
+                        StartupLog($"QR Pool: {pendingCount} codes pending upload to device...");
                         try
                         {
                             var deviceRepo = qrScope.ServiceProvider.GetRequiredService<IDeviceRepository>();
@@ -503,11 +506,19 @@ public partial class App : System.Windows.Application
                                     TCPPort = d.TCPPort, Password = d.Password,
                                     Gateway = d.Gateway, SubnetMask = d.SubnetMask
                                 }).ToList();
-                                var (uploaded, _, _) = await qrPool.SyncQrPoolToDeviceAsync(sdk, deviceInfos);
-                                StartupLog($"QR Pool initial upload: {uploaded} codes uploaded to {allDevices.Count} device(s)");
+                                var (uploaded, cleaned, regen) = await qrPool.SyncQrPoolToDeviceAsync(sdk, deviceInfos);
+                                StartupLog($"QR Pool upload: {uploaded} uploaded, {cleaned} cleaned, {regen} regenerated to {allDevices.Count} device(s)");
+                            }
+                            else
+                            {
+                                StartupLog("QR Pool: no devices registered, skipping upload");
                             }
                         }
-                        catch (Exception ex) { StartupLog($"QR Pool initial upload error: {ex.Message}"); }
+                        catch (Exception ex) { StartupLog($"QR Pool upload error: {ex.Message}"); }
+                    }
+                    else
+                    {
+                        StartupLog("QR Pool: all codes already uploaded to device");
                     }
                 }
                 catch (Exception qrEx)
