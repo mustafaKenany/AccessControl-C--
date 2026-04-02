@@ -90,12 +90,13 @@ else
                                 <td>@ev.EventDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                                 <td>@GetDeviceName(ev.DoorId)</td>
                                 <td>@(string.IsNullOrEmpty(ev.DoorName) ? GetDoorName(ev.DoorId) : ev.DoorName)</td>
+                                @{ var deskCardNo = GetCardDisplay(ev); }
                                 <td>
-                                    @if (!string.IsNullOrEmpty(ev.CardNumber) && ev.CardNumber.StartsWith("5000"))
+                                    @if (!string.IsNullOrEmpty(deskCardNo) && deskCardNo.StartsWith("5000"))
                                     {
                                         <span class="badge badge-active" style="font-size:0.7em;margin-right:4px;">QR</span>
                                     }
-                                    @(string.IsNullOrEmpty(ev.CardNumber) ? "-" : ev.CardNumber)
+                                    @(string.IsNullOrEmpty(deskCardNo) ? "-" : deskCardNo)
                                 </td>
                                 <td>@GetPlayerDisplay(ev)</td>
                                 <td>
@@ -131,14 +132,15 @@ else
                             <span class="mobile-card-label">@L("Door", "الباب")</span>
                             <span class="mobile-card-value">@(string.IsNullOrEmpty(ev.DoorName) ? GetDoorName(ev.DoorId) : ev.DoorName)</span>
                         </div>
+                        @{ var mobCardNo = GetCardDisplay(ev); }
                         <div class="mobile-card-row">
                             <span class="mobile-card-label">@L("Card", "البطاقة")</span>
                             <span class="mobile-card-value">
-                                @if (!string.IsNullOrEmpty(ev.CardNumber) && ev.CardNumber.StartsWith("5000"))
+                                @if (!string.IsNullOrEmpty(mobCardNo) && mobCardNo.StartsWith("5000"))
                                 {
                                     <span class="badge badge-active" style="font-size:0.7em;margin-right:4px;">QR</span>
                                 }
-                                @(string.IsNullOrEmpty(ev.CardNumber) ? "-" : ev.CardNumber)
+                                @(string.IsNullOrEmpty(mobCardNo) ? "-" : mobCardNo)
                             </span>
                         </div>
                         @if (!string.IsNullOrEmpty(ev.Details))
@@ -379,9 +381,10 @@ else
             {
                 var q = _search.Trim().ToLower();
                 _events = _events.Where(ev =>
-                    ev.CardNumber.ToLower().Contains(q) ||
+                    GetCardDisplay(ev).ToLower().Contains(q) ||
                     ev.PlayerNameEn.ToLower().Contains(q) ||
                     ev.PlayerNameAr.Contains(q) ||
+                    GetPlayerDisplay(ev).ToLower().Contains(q) ||
                     ev.DoorName.ToLower().Contains(q)
                 ).ToList();
             }
@@ -422,7 +425,8 @@ else
     private string GetPlayerDisplay(EventRow ev)
     {
         // QR code detection — card numbers starting with 5000 are QR guest passes
-        if (!string.IsNullOrEmpty(ev.CardNumber) && ev.CardNumber.StartsWith("5000"))
+        var cardNo = GetCardDisplay(ev);
+        if (!string.IsNullOrEmpty(cardNo) && cardNo.StartsWith("5000"))
             return L("QR Guest", "ضيف QR");
 
         // Prefer JOIN-based player name from query
@@ -431,7 +435,49 @@ else
         if (!string.IsNullOrEmpty(ev.PlayerNameEn))
             return ev.PlayerNameEn;
         // Fallback to lookup dictionary
-        return GetPlayerName(ev.CardId);
+        var fromLookup = GetPlayerName(ev.CardId);
+        if (fromLookup != "-") return fromLookup;
+        // Fallback: extract player name from Details string
+        return ExtractPlayerNameFromDetails(ev.Details);
+    }
+
+    private string GetCardDisplay(EventRow ev)
+    {
+        // Prefer JOIN-based card number
+        if (!string.IsNullOrEmpty(ev.CardNumber))
+            return ev.CardNumber;
+        // Fallback: extract from Details string (format: "... | #12345678 | ...")
+        return ExtractFieldFromDetails(ev.Details, "#");
+    }
+
+    private static string ExtractFieldFromDetails(string details, string prefix)
+    {
+        if (string.IsNullOrEmpty(details)) return "";
+        var parts = details.Split('|');
+        foreach (var part in parts)
+        {
+            var trimmed = part.Trim();
+            if (trimmed.StartsWith(prefix))
+                return trimmed.Substring(prefix.Length).Trim();
+        }
+        return "";
+    }
+
+    private static string ExtractPlayerNameFromDetails(string details)
+    {
+        if (string.IsNullOrEmpty(details)) return "-";
+        var parts = details.Split('|');
+        for (int i = 0; i < parts.Length; i++)
+        {
+            var trimmed = parts[i].Trim();
+            if (trimmed.StartsWith("#") && i + 1 < parts.Length)
+            {
+                var next = parts[i + 1].Trim();
+                if (!next.StartsWith("SN:") && !next.StartsWith("@"))
+                    return next;
+            }
+        }
+        return "-";
     }
 
     private string GetEventTypeName(int code) => code switch

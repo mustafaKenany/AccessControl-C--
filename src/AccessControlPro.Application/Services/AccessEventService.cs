@@ -42,7 +42,9 @@ public class AccessEventService : IAccessEventService
             DeviceName = e.Door?.Device?.Name ?? e.Door?.Device?.SerialNumber ?? "",
             DoorName = e.Door?.Name ?? ExtractDoorLabel(e.Details),
             CardNumber = e.Card?.CardNumber ?? ExtractCardNumber(e.Details),
-            PlayerName = e.Card?.Employee?.FullNameEn ?? "",
+            PlayerName = e.Card?.Employee != null
+                ? $"{e.Card.Employee.FullNameEn} | {e.Card.Employee.FullNameAr}"
+                : ExtractPlayerName(e.Details),
             EventType = e.EventType.ToString(),
             EventDescription = GetEventDescription(e.EventCode),
             Direction = e.Details.Contains("Entry") ? "Entry" : e.Details.Contains("Exit") ? "Exit" : "",
@@ -123,6 +125,7 @@ public class AccessEventService : IAccessEventService
             // but we still save the raw card number in Details
             int? cardId = null;
             string cardStatus = "";
+            string playerName = "";
             if (!string.IsNullOrEmpty(rec.CardNumber))
             {
                 var card = await _cardRepository.GetByCardNumberAsync(rec.CardNumber);
@@ -146,6 +149,10 @@ public class AccessEventService : IAccessEventService
                 {
                     cardStatus = "Active";
                 }
+
+                // Capture player name for embedding in Details
+                if (card?.Employee != null)
+                    playerName = $"{card.Employee.FullNameEn} | {card.Employee.FullNameAr}";
             }
 
             // ReaderType: 0 = In (Entry), 1 = Out (Exit)
@@ -164,10 +171,11 @@ public class AccessEventService : IAccessEventService
                 _ => "Unknown"
             };
 
-            // Include raw card number and status in details
+            // Include raw card number, player name, and status in details
             var cardPart = !string.IsNullOrEmpty(rec.CardNumber) ? $" | #{rec.CardNumber}" : "";
+            var playerPart = !string.IsNullOrEmpty(playerName) ? $" | {playerName}" : "";
             var statusPart = !string.IsNullOrEmpty(cardStatus) ? $" | @{cardStatus}" : "";
-            string details = $"{direction} | {doorLabel} | {recordTypeLabel}{cardPart}{statusPart}";
+            string details = $"{direction} | {doorLabel} | {recordTypeLabel}{cardPart}{playerPart}{statusPart}";
 
             await SaveEventAsync(doorId, cardId, rec.RecordType, rec.EventCode, rec.EventDate, details);
             savedCount++;
@@ -189,6 +197,23 @@ public class AccessEventService : IAccessEventService
         var parts = details.Split('|', StringSplitOptions.TrimEntries);
         var cardPart = parts.FirstOrDefault(p => p.StartsWith('#'));
         return cardPart?.TrimStart('#') ?? "";
+    }
+
+    /// <summary>Extract player name from Details (appears after #CardNumber and before SN:)</summary>
+    private static string ExtractPlayerName(string details)
+    {
+        if (string.IsNullOrEmpty(details)) return "";
+        var parts = details.Split('|', StringSplitOptions.TrimEntries);
+        for (int i = 0; i < parts.Length; i++)
+        {
+            if (parts[i].StartsWith('#') && i + 1 < parts.Length)
+            {
+                var next = parts[i + 1];
+                if (!next.StartsWith("SN:") && !next.StartsWith("@"))
+                    return next;
+            }
+        }
+        return "";
     }
 
     /// <summary>Extract card status from Details (format: "... | @Registered")</summary>

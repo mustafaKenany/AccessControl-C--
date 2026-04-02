@@ -387,7 +387,9 @@ public partial class MonitorViewModel : ObservableObject
             }
 
             string eventDesc = GetEventDescription(evt.EventCode);
-            string details = $"{direction} | {eventDesc} | @{cardStatusKey} | SN:{evt.DeviceSN}";
+            var cardPart = !string.IsNullOrEmpty(evt.CardNumber) ? $" | #{evt.CardNumber}" : "";
+            var playerPart = !string.IsNullOrEmpty(playerName) ? $" | {playerName}" : "";
+            string details = $"{direction} | {eventDesc} | @{cardStatusKey}{cardPart}{playerPart} | SN:{evt.DeviceSN}";
 
             // Save to DB
             if (doorId > 0)
