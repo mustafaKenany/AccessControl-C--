@@ -25,8 +25,6 @@ public static class SyncHelper
     public static async Task<int> UpsertRowsAsync(NpgsqlConnection conn, string tableName,
         List<Dictionary<string, object?>> rows)
     {
-        if (rows.Count == 0) return 0;
-
         // Validate table name against whitelist
         if (!_allowedTables.Contains(tableName))
         {
@@ -34,7 +32,7 @@ public static class SyncHelper
             return 0;
         }
 
-        // Delete existing data first (full sync)
+        // Delete existing data first (full sync) — even if 0 rows sent
         try
         {
             using var del = new NpgsqlCommand($@"DELETE FROM ""{tableName}""", conn);
@@ -44,6 +42,9 @@ public static class SyncHelper
         {
             _lastErrors.Add($"{tableName} DELETE: {ex.Message}");
         }
+
+        // If 0 rows sent, we're done (table cleared — local has no data for this table)
+        if (rows.Count == 0) return 0;
 
         int count = 0;
         int errors = 0;

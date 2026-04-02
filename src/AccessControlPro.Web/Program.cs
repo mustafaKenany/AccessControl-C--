@@ -112,38 +112,38 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
         using var conn = await gymDb.GetGymConnectionAsync(dbName);
         int total = 0;
 
-        // Process each table
-        if (syncData.Players?.Count > 0)
+        // Process each table — always call even with 0 rows (to clear cloud when local is empty)
+        if (syncData.Players != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "Players", syncData.Players);
-        if (syncData.AccessEvents?.Count > 0)
+        if (syncData.AccessEvents != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "AccessEvents", syncData.AccessEvents);
-        if (syncData.Devices?.Count > 0)
+        if (syncData.Devices != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "Devices", syncData.Devices);
-        if (syncData.Doors?.Count > 0)
+        if (syncData.Doors != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "Doors", syncData.Doors);
-        if (syncData.Transactions?.Count > 0)
+        if (syncData.Transactions != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "Transactions", syncData.Transactions);
-        if (syncData.Users?.Count > 0)
+        if (syncData.Users != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "Users", syncData.Users);
-        if (syncData.AuditLogs?.Count > 0)
+        if (syncData.AuditLogs != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "AuditLogs", syncData.AuditLogs);
-        if (syncData.DeletedEmployees?.Count > 0)
+        if (syncData.DeletedEmployees != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "DeletedEmployees", syncData.DeletedEmployees);
-        if (syncData.AppSettings?.Count > 0)
+        if (syncData.AppSettings != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "AppSettings", syncData.AppSettings);
-        if (syncData.AccessCards?.Count > 0)
+        if (syncData.AccessCards != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "AccessCards", syncData.AccessCards);
-        if (syncData.QrPool?.Count > 0)
+        if (syncData.QrPool != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "QrPool", syncData.QrPool);
-        if (syncData.SubscriptionPlans?.Count > 0)
+        if (syncData.SubscriptionPlans != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "SubscriptionPlans", syncData.SubscriptionPlans);
-        if (syncData.PosShifts?.Count > 0)
+        if (syncData.PosShifts != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "PosShifts", syncData.PosShifts);
-        if (syncData.FreezeHistories?.Count > 0)
+        if (syncData.FreezeHistories != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "FreezeHistories", syncData.FreezeHistories);
-        if (syncData.Products?.Count > 0)
+        if (syncData.Products != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "Products", syncData.Products);
-        if (syncData.TimeGroups?.Count > 0)
+        if (syncData.TimeGroups != null)
             total += await SyncHelper.UpsertRowsAsync(conn, "TimeGroups", syncData.TimeGroups);
 
         // Invalidate cached data after sync
