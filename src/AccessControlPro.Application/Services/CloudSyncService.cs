@@ -70,10 +70,16 @@ public class CloudSyncService : ICloudSyncService
             using var local = new SqlConnection(_localConnectionString);
             await local.OpenAsync();
 
+            // Pulled rows get UpdatedAt set to just-before the delta watermark so the same
+            // sync doesn't then push them back up as "new local changes" (they came from
+            // the cloud, so the cloud already has them — wasted upsert).
+            // First-ever sync has lastSync = null; use a sentinel older timestamp.
+            var pulledRowTimestamp = (lastSync ?? DateTime.UtcNow.AddYears(-1)).AddMilliseconds(-1);
+
             // Step 0: Pull new users and QR assignments from cloud BEFORE push
             try
             {
-                await PullCloudUsersAsync(local, cloudUrl);
+                await PullCloudUsersAsync(local, cloudUrl, pulledRowTimestamp);
             }
             catch (Exception pullEx)
             {
@@ -82,7 +88,7 @@ public class CloudSyncService : ICloudSyncService
 
             try
             {
-                await PullCloudQrAssignmentsAsync(local, cloudUrl);
+                await PullCloudQrAssignmentsAsync(local, cloudUrl, pulledRowTimestamp);
             }
             catch (Exception pullEx)
             {
@@ -323,7 +329,7 @@ public class CloudSyncService : ICloudSyncService
         return rows;
     }
 
-    private async Task PullCloudUsersAsync(SqlConnection local, string cloudUrl)
+    private async Task PullCloudUsersAsync(SqlConnection local, string cloudUrl, DateTime pulledRowTimestamp)
     {
         Log("Pull users: starting...");
 
@@ -366,10 +372,13 @@ public class CloudSyncService : ICloudSyncService
 
                 if (!exists)
                 {
-                    // INSERT new user from cloud — never update existing users (local is master)
+                    // INSERT new user from cloud — never update existing users (local is master).
+                    // UpdatedAt is set to the pulled-row sentinel (older than the delta watermark)
+                    // so this user isn't re-pushed to the cloud on the very same sync cycle.
                     using var insertCmd = new SqlCommand(
-                        @"INSERT INTO Users (Username, PasswordHash, DisplayName, Role, IsActive, Permissions, CreatedAt)
-                          VALUES (@u, @p, @d, @r, @a, @perm, GETUTCDATE())", local);
+                        @"INSERT INTO Users (Username, PasswordHash, DisplayName, Role, IsActive, Permissions, CreatedAt, UpdatedAt)
+                          VALUES (@u, @p, @d, @r, @a, @perm, GETUTCDATE(), @ts)", local);
+                    insertCmd.Parameters.AddWithValue("@ts", pulledRowTimestamp);
                     insertCmd.Parameters.AddWithValue("@u", username);
                     insertCmd.Parameters.AddWithValue("@p", cloudUser.ContainsKey("PasswordHash") ? cloudUser["PasswordHash"].GetString() ?? "" : "");
                     insertCmd.Parameters.AddWithValue("@d", cloudUser.ContainsKey("DisplayName") ? cloudUser["DisplayName"].GetString() ?? "" : "");
@@ -393,7 +402,7 @@ public class CloudSyncService : ICloudSyncService
             Log("Pull users: no new users to add (all exist locally)");
     }
 
-    private async Task PullCloudQrAssignmentsAsync(SqlConnection local, string cloudUrl)
+    private async Task PullCloudQrAssignmentsAsync(SqlConnection local, string cloudUrl, DateTime pulledRowTimestamp)
     {
         Log("Pull QR assignments: starting...");
 
@@ -436,12 +445,14 @@ public class CloudSyncService : ICloudSyncService
 
                 if (!exists)
                 {
-                    // INSERT cloud-assigned QR code into local pool
+                    // INSERT cloud-assigned QR code into local pool. UpdatedAt = pulled-row
+                    // sentinel so delta push doesn't re-send it on the same sync cycle.
                     using var insertCmd = new SqlCommand(
                         @"INSERT INTO QrPool (Code, Status, Source, GuestName, GuestPhone, Reason,
-                          DoorPermissions, MaxUses, UsedCount, ValidFrom, ValidTo, AssignedAt, CreatedAt, IsUploadedToDevice)
+                          DoorPermissions, MaxUses, UsedCount, ValidFrom, ValidTo, AssignedAt, CreatedAt, IsUploadedToDevice, UpdatedAt)
                           VALUES (@code, @status, 'Cloud', @name, @phone, @reason,
-                          @perms, @max, @used, GETUTCDATE(), @validTo, @assigned, GETUTCDATE(), 0)", local);
+                          @perms, @max, @used, GETUTCDATE(), @validTo, @assigned, GETUTCDATE(), 0, @ts)", local);
+                    insertCmd.Parameters.AddWithValue("@ts", pulledRowTimestamp);
                     insertCmd.Parameters.AddWithValue("@code", code);
                     insertCmd.Parameters.AddWithValue("@status", entry.ContainsKey("Status") ? entry["Status"].GetInt32() : 1);
                     insertCmd.Parameters.AddWithValue("@name", entry.ContainsKey("GuestName") ? entry["GuestName"].GetString() ?? "" : "");

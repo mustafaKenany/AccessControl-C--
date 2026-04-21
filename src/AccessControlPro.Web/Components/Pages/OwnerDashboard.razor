@@ -292,6 +292,14 @@ else if (Session.IsAuthenticated && Session.IsOwner)
     private async Task ForceFullSync()
     {
         if (_forcingFullSync || Session.GymId <= 0) return;
+
+        // Confirm first — the next sync re-uploads every row, which can be several MB.
+        var prompt = L(
+            "Queue a full re-sync? The next sync from the gym PC will resend all rows.",
+            "هل تريد طلب مزامنة كاملة؟ ستعيد المزامنة التالية من جهاز النادي إرسال كل الصفوف.");
+        var confirmed = await JS.InvokeAsync<bool>("confirm", prompt);
+        if (!confirmed) return;
+
         _forcingFullSync = true;
         StateHasChanged();
         try

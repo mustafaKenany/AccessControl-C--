@@ -12,8 +12,13 @@ builder.Services.AddResponseCompression(options =>
     options.EnableForHttps = true;
 });
 
+// CloudConnection must be provided via appsettings.json, an appsettings.{Environment}.json,
+// environment variables (ConnectionStrings__CloudConnection), or CLI args. Failing loud
+// here is better than falling back to a hardcoded password that would ship in source.
 var cloudConn = builder.Configuration.GetConnectionString("CloudConnection")
-    ?? "Host=localhost;Database=gymcloud;Username=postgres;Password=GymCloud2026";
+    ?? throw new InvalidOperationException(
+        "ConnectionStrings:CloudConnection is not configured. " +
+        "Set it in appsettings.json or via the ConnectionStrings__CloudConnection environment variable.");
 
 builder.Services.AddSingleton(new DbHelper(cloudConn));
 builder.Services.AddSingleton(new GymDbHelper(cloudConn));
@@ -33,6 +38,21 @@ builder.WebHost.ConfigureKestrel(options =>
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
 var app = builder.Build();
+
+// Shared API-key validator used by every /api/* endpoint. The inline version had a
+// subtle bypass: `null == null` was true, so a missing X-Api-Key header + unset
+// SyncApiKey config authenticated anyone. Centralizing the check means future
+// endpoints can't drift back into that bug.
+async Task<bool> IsApiKeyValidAsync(HttpContext ctx, GymDbHelper gymDb)
+{
+    var key = ctx.Request.Headers["X-Api-Key"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(key)) return false;
+
+    var configuredKey = app.Configuration["SyncApiKey"];
+    if (!string.IsNullOrEmpty(configuredKey) && key == configuredKey) return true;
+
+    return !string.IsNullOrEmpty(await gymDb.GetDatabaseByApiKeyAsync(key));
+}
 
 // Initialize database tables
 try
@@ -69,21 +89,10 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
     // requests from different gyms would share accumulated errors via the old static field.
     SyncHelper.ResetErrors();
 
-    // Verify API key — accept config key OR any valid gym key. Require non-empty key
-    // explicitly so a missing header never matches an unset config value via null==null.
-    var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(apiKey))
+    if (!await IsApiKeyValidAsync(context, gymDb))
         return Results.Unauthorized();
 
-    var configuredKey = app.Configuration["SyncApiKey"];
-    var isValidKey = !string.IsNullOrEmpty(configuredKey) && apiKey == configuredKey;
-    if (!isValidKey)
-    {
-        var gymDb2 = await gymDb.GetDatabaseByApiKeyAsync(apiKey);
-        isValidKey = !string.IsNullOrEmpty(gymDb2);
-    }
-    if (!isValidKey)
-        return Results.Unauthorized();
+    var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
 
     try
     {
@@ -220,19 +229,20 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
     }
     catch (Exception ex)
     {
-        return Results.Problem($"Sync failed: {ex.Message}");
+        // Log full details server-side; return generic message so DB schema / paths / etc.
+        // don't leak to clients via exception text.
+        Console.WriteLine($"[api/sync] Exception: {ex}");
+        return Results.Problem("Sync failed");
     }
 });
 
 // Pull users API — local app pulls new users from cloud
 app.MapGet("/api/users", async (HttpContext context, GymDbHelper gymDb, DbHelper db) =>
 {
-    var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
-    var isValid = apiKey == app.Configuration["SyncApiKey"];
-    if (!isValid && !string.IsNullOrEmpty(apiKey))
-        isValid = !string.IsNullOrEmpty(await gymDb.GetDatabaseByApiKeyAsync(apiKey));
-    if (!isValid)
+    if (!await IsApiKeyValidAsync(context, gymDb))
         return Results.Unauthorized();
+
+    var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
 
     try
     {
@@ -269,19 +279,18 @@ app.MapGet("/api/users", async (HttpContext context, GymDbHelper gymDb, DbHelper
     }
     catch (Exception ex)
     {
-        return Results.Problem($"Failed to get users: {ex.Message}");
+        Console.WriteLine($"[api/users] Exception: {ex}");
+        return Results.Problem("Failed to get users");
     }
 });
 
 // QR Pool API — local app pulls cloud-assigned QR codes
 app.MapGet("/api/qr-pool", async (HttpContext context, GymDbHelper gymDb) =>
 {
-    var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
-    var isValid = apiKey == app.Configuration["SyncApiKey"];
-    if (!isValid && !string.IsNullOrEmpty(apiKey))
-        isValid = !string.IsNullOrEmpty(await gymDb.GetDatabaseByApiKeyAsync(apiKey));
-    if (!isValid)
+    if (!await IsApiKeyValidAsync(context, gymDb))
         return Results.Unauthorized();
+
+    var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
 
     try
     {
@@ -318,7 +327,8 @@ app.MapGet("/api/qr-pool", async (HttpContext context, GymDbHelper gymDb) =>
     }
     catch (Exception ex)
     {
-        return Results.Problem($"Failed to get QR pool: {ex.Message}");
+        Console.WriteLine($"[api/qr-pool] Exception: {ex}");
+        return Results.Problem("Failed to get QR pool");
     }
 });
 
@@ -327,11 +337,10 @@ app.MapGet("/api/qr-pool", async (HttpContext context, GymDbHelper gymDb) =>
 // "read-and-clear" operation so the flag only triggers once per click.
 app.MapGet("/api/sync-control", async (HttpContext context, DbHelper db, GymDbHelper gymDb) =>
 {
+    if (!await IsApiKeyValidAsync(context, gymDb))
+        return Results.Unauthorized();
+
     var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
-    var isValid = apiKey == app.Configuration["SyncApiKey"];
-    if (!isValid && !string.IsNullOrEmpty(apiKey))
-        isValid = !string.IsNullOrEmpty(await gymDb.GetDatabaseByApiKeyAsync(apiKey));
-    if (!isValid) return Results.Unauthorized();
 
     try
     {
@@ -349,7 +358,8 @@ app.MapGet("/api/sync-control", async (HttpContext context, DbHelper db, GymDbHe
     }
     catch (Exception ex)
     {
-        return Results.Problem($"Sync control error: {ex.Message}");
+        Console.WriteLine($"[api/sync-control] Exception: {ex}");
+        return Results.Problem("Sync control error");
     }
 });
 
