@@ -2,6 +2,7 @@
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject IHttpContextAccessor HttpCtx
 
 <div class="app-container superadmin-container">
     @if (_isLoading)
@@ -47,24 +48,21 @@
 
     protected override void OnInitialized()
     {
-        // Restore session from server-side file (works in SSR)
+        // Hydrate from the server-validated session that the request middleware stashed
+        // in HttpContext.Items (no file reads, no cookie parsing in user-land code).
         if (!Session.IsSuperAdmin)
         {
-            var sessionFile = System.IO.Path.Combine(AppContext.BaseDirectory, ".active_session");
-            try
+            var info = HttpCtx.HttpContext?.Items["SessionInfo"] as AccessControlPro.Web.Services.SessionInfo;
+            if (info?.Role == "SuperAdmin")
             {
-                if (System.IO.File.Exists(sessionFile))
+                var result = new AuthResult
                 {
-                    var data = System.IO.File.ReadAllText(sessionFile).Trim();
-                    var parts = data.Split('|');
-                    if (parts.Length >= 1 && parts[0] == "SuperAdmin")
-                    {
-                        var result = new AuthResult { IsAuthenticated = true, Role = "SuperAdmin", DisplayName = "Super Admin" };
-                        Session.Login(result);
-                    }
-                }
+                    IsAuthenticated = true,
+                    Role = "SuperAdmin",
+                    DisplayName = info.DisplayName
+                };
+                Session.Login(result);
             }
-            catch { }
         }
 
         _isLoading = !Session.IsSuperAdmin;
@@ -80,7 +78,9 @@
     private async Task DoLogout()
     {
         Session.Logout();
-        await JS.InvokeVoidAsync("eval", "document.cookie = 'session=; path=/; max-age=0'");
+        // Server revokes the session row and clears the HttpOnly cookie
+        try { await JS.InvokeAsync<object>("authPost", "/api/auth/logout", "{}"); }
+        catch { /* continue with redirect regardless */ }
         await JS.InvokeVoidAsync("eval", "window.location.href = '/superadmin/login'");
     }
 }

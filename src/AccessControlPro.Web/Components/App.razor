@@ -22,6 +22,23 @@
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js');
         }
+
+        // Auth helpers — call server endpoints that manage the HttpOnly session cookie.
+        // Body is passed through as-is; the endpoint validates credentials server-side.
+        window.authPost = async function (url, bodyJson) {
+            try {
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: bodyJson,
+                    credentials: 'same-origin'
+                });
+                if (!resp.ok) return { success: false, error: 'Network error' };
+                return await resp.json();
+            } catch (e) {
+                return { success: false, error: 'Network error' };
+            }
+        };
     </script>
 </body>
 

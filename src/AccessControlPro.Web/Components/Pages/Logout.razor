@@ -1,6 +1,5 @@
 @page "/logout"
 @inject AccessControlPro.Web.Services.SessionState Session
-@inject NavigationManager Nav
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
@@ -17,18 +16,24 @@
     protected override void OnInitialized()
     {
         _wasSuperAdmin = Session.IsSuperAdmin;
-        // Clear session + delete session file
+        // Clear per-circuit session state. The HttpOnly cookie is revoked
+        // server-side by the /api/auth/logout call below, so the current
+        // session token can't be replayed even if someone copied the cookie.
         Session.Logout();
-        var sessionFile = System.IO.Path.Combine(AppContext.BaseDirectory, ".active_session");
-        try { if (System.IO.File.Exists(sessionFile)) System.IO.File.Delete(sessionFile); } catch { }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await JS.InvokeVoidAsync("eval", "document.cookie = 'session=; path=/; max-age=0'");
-            await Task.Delay(300);
+            // Call the server to revoke the session row and delete the HttpOnly cookie.
+            // We don't need a body; the server reads the cookie off the request.
+            try
+            {
+                await JS.InvokeAsync<object>("authPost", "/api/auth/logout", "{}");
+            }
+            catch { /* best-effort; nav happens anyway */ }
+
             var url = _wasSuperAdmin ? "/superadmin/login" : "/login";
             await JS.InvokeVoidAsync("eval", $"window.location.href = '{url}'");
         }

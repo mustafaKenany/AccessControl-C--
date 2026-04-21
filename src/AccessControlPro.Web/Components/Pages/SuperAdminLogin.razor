@@ -47,28 +47,6 @@
     private string _password = "";
     private string _error = "";
     private bool _loading;
-    private bool _loginSuccess;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender && Session.IsSuperAdmin)
-        {
-            await JS.InvokeVoidAsync("eval", "window.location.href = '/superadmin/dashboard'");
-            return;
-        }
-        if (_loginSuccess && Session.IsSuperAdmin)
-        {
-            _loginSuccess = false;
-            var cookieValue = $"SuperAdmin|Super Admin|0||0";
-            // Save to server-side file
-            var sessionFile = System.IO.Path.Combine(AppContext.BaseDirectory, ".active_session");
-            try { System.IO.File.WriteAllText(sessionFile, cookieValue); } catch { }
-            // Also cookie as backup
-            var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(cookieValue));
-            await JS.InvokeVoidAsync("eval", $"document.cookie = 'session={encoded}; path=/; max-age=86400; SameSite=Strict'");
-            await JS.InvokeVoidAsync("eval", "window.location.href = '/superadmin/dashboard'");
-        }
-    }
 
     private async Task HandleKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
     {
@@ -76,53 +54,35 @@
             await DoLogin();
     }
 
-    private Task DoLogin()
+    private async Task DoLogin()
     {
         _error = "";
         _loading = true;
 
         try
         {
-            var configUser = Config["SuperAdmin:Username"] ?? "";
-            var configHash = Config["SuperAdmin:PasswordHash"] ?? "";
-
             if (string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))
             {
                 _error = "Username and password are required.";
-                return Task.CompletedTask;
+                return;
             }
 
-            bool hashOk;
-            if (configHash.StartsWith("$2"))
+            var body = System.Text.Json.JsonSerializer.Serialize(new
             {
-                // BCrypt hash (prefix $2a/$2b/$2y) — slow, salted, preferred.
-                try { hashOk = BCrypt.Net.BCrypt.Verify(_password, configHash); }
-                catch { hashOk = false; }
+                username = _username.Trim(),
+                password = _password
+            });
+
+            // Server endpoint does hash verification + creates session + sets HttpOnly
+            // cookie. Credentials never touch .active_session or JS-readable cookies.
+            var response = await JS.InvokeAsync<LoginResponse>("authPost", "/api/auth/superadmin-login", body);
+            if (response?.Success == true && !string.IsNullOrEmpty(response.Redirect))
+            {
+                await JS.InvokeVoidAsync("eval", $"window.location.href = '{response.Redirect}'");
             }
             else
             {
-                // Legacy SHA256(base64) hash — fast and unsalted. Kept for backward
-                // compatibility with existing deployments. Replace the appsettings.json
-                // PasswordHash with a BCrypt hash when convenient:
-                //   BCrypt.Net.BCrypt.HashPassword("your password", workFactor: 12)
-                var inputHash = Convert.ToBase64String(
-                    System.Security.Cryptography.SHA256.HashData(
-                        System.Text.Encoding.UTF8.GetBytes(_password)));
-                hashOk = inputHash == configHash;
-                if (hashOk)
-                    Console.WriteLine("[SuperAdminLogin] WARN: using legacy SHA256 hash. Migrate SuperAdmin:PasswordHash to BCrypt.");
-            }
-
-            if (_username.Trim() == configUser && hashOk)
-            {
-                var result = AuthResult.Success("Super Admin", "SuperAdmin", 0);
-                Session.Login(result);
-                _loginSuccess = true;
-                StateHasChanged();
-            }
-            else
-            {
-                _error = "Invalid credentials.";
+                _error = response?.Error ?? "Invalid credentials.";
             }
         }
         catch (Exception ex)
@@ -133,7 +93,12 @@
         {
             _loading = false;
         }
+    }
 
-        return Task.CompletedTask;
+    private class LoginResponse
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public string? Redirect { get; set; }
     }
 }

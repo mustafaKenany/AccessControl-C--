@@ -23,7 +23,9 @@ var cloudConn = builder.Configuration.GetConnectionString("CloudConnection")
 builder.Services.AddSingleton(new DbHelper(cloudConn));
 builder.Services.AddSingleton(new GymDbHelper(cloudConn));
 builder.Services.AddSingleton<WebAuthService>();
+builder.Services.AddSingleton<SessionService>();
 builder.Services.AddScoped<SessionState>();
+builder.Services.AddHttpContextAccessor();
 
 // Allow large request bodies for sync API (50MB)
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
@@ -55,6 +57,32 @@ var app = builder.Build();
 
 // Must come before any middleware that reads the scheme/host.
 app.UseForwardedHeaders();
+
+// Session-reader middleware: on every request, if the session cookie is present,
+// validate it server-side and stash the SessionInfo in HttpContext.Items so the
+// Blazor root component can use it to populate the per-circuit SessionState.
+// Runs before Blazor render so SSR sees the correct auth state.
+app.Use(async (context, next) =>
+{
+    var token = context.Request.Cookies[SessionService.CookieName];
+    if (!string.IsNullOrWhiteSpace(token))
+    {
+        var sessionService = context.RequestServices.GetRequiredService<SessionService>();
+        var ip = context.Connection.RemoteIpAddress?.ToString();
+        var ua = context.Request.Headers.UserAgent.ToString();
+        var info = await sessionService.ValidateAsync(token, ip, ua);
+        if (info != null)
+        {
+            context.Items["SessionInfo"] = info;
+        }
+        else
+        {
+            // Token was invalid/expired/revoked — delete it so the browser stops sending it.
+            context.Response.Cookies.Delete(SessionService.CookieName);
+        }
+    }
+    await next();
+});
 
 // Shared API-key validator used by every /api/* endpoint. The inline version had a
 // subtle bypass: `null == null` was true, so a missing X-Api-Key header + unset
@@ -378,6 +406,111 @@ app.MapGet("/api/sync-control", async (HttpContext context, DbHelper db, GymDbHe
         Console.WriteLine($"[api/sync-control] Exception: {ex}");
         return Results.Problem("Sync control error");
     }
+});
+
+// === Auth endpoints (server-side cookie + session store) ============================
+// These issue HttpOnly cookies and manage the Sessions table. Blazor components POST
+// here to establish/tear down the session; no session info is ever visible to JS.
+
+static CookieOptions BuildSessionCookie(HttpContext ctx, TimeSpan lifetime)
+{
+    return new CookieOptions
+    {
+        HttpOnly = true,
+        Secure = ctx.Request.IsHttps, // ForwardedHeaders ensures this reflects the proxy's scheme
+        SameSite = SameSiteMode.Strict,
+        Expires = DateTimeOffset.UtcNow.Add(lifetime),
+        Path = "/"
+    };
+}
+
+app.MapPost("/api/auth/login", async (HttpContext ctx, WebAuthService auth, SessionService sessions) =>
+{
+    // Read JSON body manually — minimal API model binding would require a DTO class
+    using var doc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
+    var root = doc.RootElement;
+    var mode = root.TryGetProperty("mode", out var m) ? m.GetString() ?? "owner" : "owner";
+
+    AuthResult result;
+    if (mode == "player")
+    {
+        var phone = root.TryGetProperty("phone", out var p) ? p.GetString() ?? "" : "";
+        var cardLast4 = root.TryGetProperty("cardLast4", out var c) ? c.GetString() ?? "" : "";
+        result = await auth.PlayerLoginAsync(phone, cardLast4);
+    }
+    else
+    {
+        var username = root.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
+        var password = root.TryGetProperty("password", out var pw) ? pw.GetString() ?? "" : "";
+        result = await auth.OwnerLoginAsync(username, password);
+    }
+
+    if (!result.IsAuthenticated)
+        return Results.Ok(new { success = false, error = string.IsNullOrEmpty(result.Error) ? "Invalid credentials" : result.Error });
+
+    var ip = ctx.Connection.RemoteIpAddress?.ToString();
+    var ua = ctx.Request.Headers.UserAgent.ToString();
+    var token = await sessions.CreateAsync(
+        result.Role, result.DisplayName, result.UserId,
+        result.GymDatabase ?? "", result.GymId, ip, ua);
+
+    ctx.Response.Cookies.Append(SessionService.CookieName, token,
+        BuildSessionCookie(ctx, SessionService.DefaultLifetime));
+
+    var redirect = result.Role == "Player" ? "/my" : "/dashboard";
+    return Results.Ok(new { success = true, redirect });
+});
+
+app.MapPost("/api/auth/superadmin-login", async (HttpContext ctx, SessionService sessions) =>
+{
+    using var doc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
+    var root = doc.RootElement;
+    var username = root.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
+    var password = root.TryGetProperty("password", out var p) ? p.GetString() ?? "" : "";
+
+    var configUser = app.Configuration["SuperAdmin:Username"] ?? "";
+    var configHash = app.Configuration["SuperAdmin:PasswordHash"] ?? "";
+
+    bool hashOk = false;
+    if (!string.IsNullOrWhiteSpace(password) && !string.IsNullOrWhiteSpace(configHash))
+    {
+        if (configHash.StartsWith("$2"))
+        {
+            try { hashOk = BCrypt.Net.BCrypt.Verify(password, configHash); }
+            catch { hashOk = false; }
+        }
+        else
+        {
+            var inputHash = Convert.ToBase64String(
+                System.Security.Cryptography.SHA256.HashData(
+                    System.Text.Encoding.UTF8.GetBytes(password)));
+            hashOk = inputHash == configHash;
+            if (hashOk)
+                Console.WriteLine("[auth] WARN: SuperAdmin using legacy SHA256 hash. Migrate to BCrypt.");
+        }
+    }
+
+    if (username.Trim() != configUser || !hashOk)
+        return Results.Ok(new { success = false, error = "Invalid credentials" });
+
+    var ip = ctx.Connection.RemoteIpAddress?.ToString();
+    var ua = ctx.Request.Headers.UserAgent.ToString();
+    var token = await sessions.CreateAsync("SuperAdmin", "Super Admin", 0, "", 0, ip, ua);
+
+    ctx.Response.Cookies.Append(SessionService.CookieName, token,
+        BuildSessionCookie(ctx, SessionService.DefaultLifetime));
+
+    return Results.Ok(new { success = true, redirect = "/superadmin/dashboard" });
+});
+
+app.MapPost("/api/auth/logout", async (HttpContext ctx, SessionService sessions) =>
+{
+    var token = ctx.Request.Cookies[SessionService.CookieName];
+    if (!string.IsNullOrWhiteSpace(token))
+        await sessions.RevokeAsync(token);
+
+    ctx.Response.Cookies.Delete(SessionService.CookieName);
+    return Results.Ok(new { success = true });
 });
 
 app.MapRazorComponents<App>()

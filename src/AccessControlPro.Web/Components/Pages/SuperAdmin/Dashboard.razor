@@ -4,6 +4,7 @@
 @inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
+@inject IHttpContextAccessor HttpCtx
 @rendermode InteractiveServer
 
 <div class="page-header">
@@ -132,24 +133,15 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        // Restore session from file if not authenticated
+        // Hydrate from the session middleware's validated SessionInfo
         if (!Session.IsSuperAdmin)
         {
-            var sessionFile = System.IO.Path.Combine(AppContext.BaseDirectory, ".active_session");
-            try
+            var info = HttpCtx.HttpContext?.Items["SessionInfo"] as AccessControlPro.Web.Services.SessionInfo;
+            if (info?.Role == "SuperAdmin")
             {
-                if (System.IO.File.Exists(sessionFile))
-                {
-                    var data = System.IO.File.ReadAllText(sessionFile).Trim();
-                    var parts = data.Split('|');
-                    if (parts.Length >= 5 && parts[0] == "SuperAdmin")
-                    {
-                        var result = new AuthResult { IsAuthenticated = true, Role = "SuperAdmin", DisplayName = "Super Admin" };
-                        Session.Login(result);
-                    }
-                }
+                var result = new AuthResult { IsAuthenticated = true, Role = "SuperAdmin", DisplayName = info.DisplayName };
+                Session.Login(result);
             }
-            catch { }
         }
 
         if (!Session.IsSuperAdmin) { Nav.NavigateTo("/superadmin/login", forceLoad: true); return; }

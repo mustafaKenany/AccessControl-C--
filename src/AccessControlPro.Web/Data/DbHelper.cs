@@ -268,6 +268,26 @@ CREATE INDEX IF NOT EXISTS idx_qrpool_status ON ""QrPool"" (""Status"");
 CREATE INDEX IF NOT EXISTS idx_posshifts_status ON ""PosShifts"" (""Status"");
 CREATE INDEX IF NOT EXISTS idx_subscriptionplans_isactive ON ""SubscriptionPlans"" (""IsActive"");
 
+-- Sessions: server-side session store. Replaces the plaintext .active_session flat
+-- file and JS-set cookies. The cookie sent to the browser is only the random token;
+-- all session data lives here and can be revoked atomically (logout, admin action).
+CREATE TABLE IF NOT EXISTS ""Sessions"" (
+    ""Token"" VARCHAR(128) PRIMARY KEY,
+    ""Role"" VARCHAR(50) NOT NULL,
+    ""DisplayName"" VARCHAR(200) NOT NULL DEFAULT '',
+    ""UserId"" INT NOT NULL DEFAULT 0,
+    ""GymDatabase"" VARCHAR(100) NOT NULL DEFAULT '',
+    ""GymId"" INT NOT NULL DEFAULT 0,
+    ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT NOW(),
+    ""ExpiresAt"" TIMESTAMP NOT NULL,
+    ""RevokedAt"" TIMESTAMP NULL,
+    ""LastSeenAt"" TIMESTAMP NOT NULL DEFAULT NOW(),
+    ""LastIp"" VARCHAR(45) DEFAULT '',
+    ""LastUserAgent"" VARCHAR(500) DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_expiresat ON ""Sessions"" (""ExpiresAt"");
+CREATE INDEX IF NOT EXISTS idx_sessions_userid_gymid ON ""Sessions"" (""UserId"", ""GymId"");
+
 -- Players migration: widen Height/Weight from DECIMAL(5,1) to DECIMAL(10,2) so
 -- values above 999.9 (bad client data, e.g. phone numbers typed into height) don't cause 22003 overflow.
 ALTER TABLE ""Players"" ALTER COLUMN ""Height"" TYPE DECIMAL(10,2);
