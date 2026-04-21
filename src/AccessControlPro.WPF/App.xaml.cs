@@ -23,6 +23,11 @@ namespace AccessControlPro.WPF;
 public partial class App : System.Windows.Application
 {
     private static Mutex? _singleInstanceMutex;
+    private static EventWaitHandle? _showInstanceEvent;
+    // Session-local (no Global\ prefix) — keeps things working under non-admin users
+    // and per-user Windows sessions; also avoids Terminal Services permission issues.
+    private const string SingleInstanceMutexName = "AccessControlPro_SingleInstance";
+    private const string ShowInstanceEventName = "AccessControlPro_ShowInstance";
     private readonly ServiceProvider _serviceProvider;
     private DispatcherTimer? _cleanupTimer;
     private DispatcherTimer? _expiryMonitorTimer;
@@ -254,33 +259,58 @@ public partial class App : System.Windows.Application
             StartupLog("WiFi kept enabled (cloud sync configured)");
         }
 
-        // ── Single-instance guard: kill any stale processes from previous runs ──
-        StartupLog("Killing old instances...");
-        KillOtherInstances();
+        // ── Single-instance guard ──
+        // If the app is already running, we DO NOT kill the existing process.
+        // Instead we signal it to bring its window to the front, then exit cleanly.
+        // This fixes the "113 restarts in 5 days" behavior where every accidental
+        // double-click of the app icon killed the old instance and started a new one.
+        StartupLog("Checking for existing instance...");
 
-        // Wait a moment for old processes to fully exit and release mutex
-        Thread.Sleep(2000);
+        bool isNew;
+        try
+        {
+            _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out isNew);
+        }
+        catch (AbandonedMutexException)
+        {
+            // Previous process died without releasing — we inherit ownership
+            isNew = true;
+        }
 
-        _singleInstanceMutex = new Mutex(true, "AccessControlPro_SingleInstance", out bool isNew);
         if (!isNew)
         {
-            // Try waiting for the mutex (old process might be exiting)
+            // Another instance is alive — signal it to come to the foreground
             try
             {
-                isNew = _singleInstanceMutex.WaitOne(5000); // Wait up to 5 seconds
+                var showSignal = EventWaitHandle.OpenExisting(ShowInstanceEventName);
+                showSignal.Set();
+                StartupLog("Existing instance signaled to come to front.");
             }
-            catch { /* ignore abandoned mutex exceptions */ }
-
-            if (!isNew)
+            catch (WaitHandleCannotBeOpenedException)
             {
-                CustomMessageBox.Show(
-                    "HM-GymManagement is already running.",
-                    "Already Running", MsgType.Info);
-                Shutdown();
-                Environment.Exit(0);
-                return;
+                // Very old existing instance that doesn't know about this event.
+                // Tell the user; they can find it in the taskbar.
+                StartupLog("Existing instance found but cannot be signaled (older build).");
             }
+            catch (Exception ex)
+            {
+                StartupLog($"Signal to existing instance failed: {ex.Message}");
+            }
+
+            Shutdown();
+            Environment.Exit(0);
+            return;
         }
+
+        // We're the primary instance. Create the signal event and start a background
+        // listener thread so future launches can tell us to come to the front.
+        _showInstanceEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowInstanceEventName);
+        var signalListener = new Thread(ListenForShowSignal)
+        {
+            IsBackground = true,
+            Name = "SingleInstanceSignalListener"
+        };
+        signalListener.Start();
 
         StartupLog("Checking setup wizard...");
         // ── First-run setup wizard ──
@@ -899,7 +929,11 @@ public partial class App : System.Windows.Application
         // Re-enable WiFi on app exit
         try { Helpers.WifiManager.EnableWifi(); } catch { }
 
-        _singleInstanceMutex?.ReleaseMutex();
+        // Stop the signal-listener thread by disposing the event it waits on
+        try { _showInstanceEvent?.Dispose(); } catch { }
+        _showInstanceEvent = null;
+
+        try { _singleInstanceMutex?.ReleaseMutex(); } catch { }
         _singleInstanceMutex?.Dispose();
 
         // Dispose services safely
@@ -955,20 +989,41 @@ public partial class App : System.Windows.Application
     }
 
     /// <summary>
-    /// Kill any other running instances of this app (stale processes from previous runs).
+    /// Background thread: waits for another launch of the app to signal
+    /// that we should come to the foreground, then brings MainWindow to front.
     /// </summary>
-    private static void KillOtherInstances()
+    private void ListenForShowSignal()
     {
-        try
+        while (_showInstanceEvent != null)
         {
-            var current = Process.GetCurrentProcess();
-            var others = Process.GetProcessesByName(current.ProcessName)
-                .Where(p => p.Id != current.Id);
-            foreach (var p in others)
+            try
             {
-                try { p.Kill(); } catch { /* ignore if already exiting */ }
+                // WaitOne(timeout) so the thread can exit cleanly if the app shuts down
+                if (!_showInstanceEvent.WaitOne(1000)) continue;
+
+                Dispatcher.Invoke(BringMainWindowToFront);
+            }
+            catch (ObjectDisposedException) { return; }
+            catch (Exception ex)
+            {
+                try { StartupLog($"Show-signal listener error: {ex.Message}"); } catch { }
             }
         }
-        catch { /* best effort */ }
+    }
+
+    private void BringMainWindowToFront()
+    {
+        var window = MainWindow;
+        if (window == null) return;
+
+        if (window.WindowState == WindowState.Minimized)
+            window.WindowState = WindowState.Normal;
+
+        window.Show();
+        window.Activate();
+        // Topmost flash forces focus even when another app is in the foreground.
+        window.Topmost = true;
+        window.Topmost = false;
+        window.Focus();
     }
 }
