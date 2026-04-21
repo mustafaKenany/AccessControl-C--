@@ -3,6 +3,7 @@
 @inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <div class="page-header">
@@ -588,34 +589,35 @@ else
         if (string.IsNullOrEmpty(_gymDbName)) return;
         try
         {
-            using var gymConn = await GymDb.GetGymConnectionAsync(_gymDbName);
-            using var cmd = new Npgsql.NpgsqlCommand(
-                @"SELECT ""Id"", ""Username"", ""DisplayName"", ""Role""
-                  FROM ""Users"" WHERE ""Role"" = 'Admin' AND ""IsActive"" = TRUE LIMIT 1", gymConn);
-            using var reader = await cmd.ExecuteReaderAsync();
-            if (await reader.ReadAsync())
+            // Hits the server endpoint, which revokes our SuperAdmin session and
+            // issues a new Owner/Admin session cookie for the chosen gym. After
+            // redirect we'll land on /dashboard as that gym's admin.
+            var body = System.Text.Json.JsonSerializer.Serialize(new
             {
-                var result = new AccessControlPro.Web.Services.AuthResult
-                {
-                    IsAuthenticated = true,
-                    UserId = reader.GetInt32(0),
-                    DisplayName = reader.GetString(2) + " (Support View)",
-                    Role = reader.GetString(3),
-                    GymDatabase = _gymDbName,
-                    GymId = GymId
-                };
-                Session.Login(result, _gymDbName, GymId);
-                Nav.NavigateTo("/dashboard", forceLoad: true);
+                gymDbName = _gymDbName,
+                gymId = GymId
+            });
+            var response = await JS.InvokeAsync<ImpersonateResponse>("authPost", "/api/auth/impersonate", body);
+            if (response?.Success == true && !string.IsNullOrEmpty(response.Redirect))
+            {
+                await JS.InvokeVoidAsync("eval", $"window.location.href = '{response.Redirect}'");
             }
             else
             {
-                _errorMsg = "No active admin user found in this gym's database.";
+                _errorMsg = response?.Error ?? "Impersonation failed.";
             }
         }
         catch (Exception ex)
         {
             _errorMsg = $"Impersonation failed: {ex.Message}";
         }
+    }
+
+    private class ImpersonateResponse
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public string? Redirect { get; set; }
     }
 
     private class PlayerRow

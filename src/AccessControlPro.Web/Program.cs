@@ -58,32 +58,6 @@ var app = builder.Build();
 // Must come before any middleware that reads the scheme/host.
 app.UseForwardedHeaders();
 
-// Session-reader middleware: on every request, if the session cookie is present,
-// validate it server-side and stash the SessionInfo in HttpContext.Items so the
-// Blazor root component can use it to populate the per-circuit SessionState.
-// Runs before Blazor render so SSR sees the correct auth state.
-app.Use(async (context, next) =>
-{
-    var token = context.Request.Cookies[SessionService.CookieName];
-    if (!string.IsNullOrWhiteSpace(token))
-    {
-        var sessionService = context.RequestServices.GetRequiredService<SessionService>();
-        var ip = context.Connection.RemoteIpAddress?.ToString();
-        var ua = context.Request.Headers.UserAgent.ToString();
-        var info = await sessionService.ValidateAsync(token, ip, ua);
-        if (info != null)
-        {
-            context.Items["SessionInfo"] = info;
-        }
-        else
-        {
-            // Token was invalid/expired/revoked — delete it so the browser stops sending it.
-            context.Response.Cookies.Delete(SessionService.CookieName);
-        }
-    }
-    await next();
-});
-
 // Shared API-key validator used by every /api/* endpoint. The inline version had a
 // subtle bypass: `null == null` was true, so a missing X-Api-Key header + unset
 // SyncApiKey config authenticated anyone. Centralizing the check means future
@@ -126,6 +100,32 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 app.UseAntiforgery();
+
+// Session-reader middleware: validates the cookie and populates HttpContext.Items
+// so Blazor components can read the session in OnInitialized. Placed AFTER
+// UseStaticFiles so CSS/JS/images don't trigger DB lookups. Sync API endpoints
+// use X-Api-Key instead so they'll just fall through (no cookie = no DB hit).
+app.Use(async (context, next) =>
+{
+    var token = context.Request.Cookies[SessionService.CookieName];
+    if (!string.IsNullOrWhiteSpace(token))
+    {
+        var sessionService = context.RequestServices.GetRequiredService<SessionService>();
+        var ip = context.Connection.RemoteIpAddress?.ToString();
+        var ua = context.Request.Headers.UserAgent.ToString();
+        var info = await sessionService.ValidateAsync(token, ip, ua);
+        if (info != null)
+        {
+            context.Items["SessionInfo"] = info;
+        }
+        else
+        {
+            // Token invalid/expired/revoked — tell the browser to stop sending it.
+            context.Response.Cookies.Delete(SessionService.CookieName);
+        }
+    }
+    await next();
+});
 
 // Sync API — receives data from WPF app via HTTPS
 app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gymDb) =>
@@ -511,6 +511,56 @@ app.MapPost("/api/auth/logout", async (HttpContext ctx, SessionService sessions)
 
     ctx.Response.Cookies.Delete(SessionService.CookieName);
     return Results.Ok(new { success = true });
+});
+
+// SuperAdmin impersonation: swap the current SuperAdmin session for an Owner session
+// scoped to the chosen gym. Used by the "View Gym" button on GymDetails. Requires a
+// valid SuperAdmin cookie on the caller — no other role can trigger this.
+app.MapPost("/api/auth/impersonate", async (HttpContext ctx, GymDbHelper gymDb, SessionService sessions) =>
+{
+    // Only SuperAdmin can impersonate. Validate the current caller session first.
+    var callerToken = ctx.Request.Cookies[SessionService.CookieName];
+    if (string.IsNullOrWhiteSpace(callerToken))
+        return Results.Unauthorized();
+    var caller = await sessions.ValidateAsync(callerToken, null, null);
+    if (caller == null || caller.Role != "SuperAdmin")
+        return Results.Unauthorized();
+
+    using var doc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
+    var root = doc.RootElement;
+    var gymDbName = root.TryGetProperty("gymDbName", out var g) ? g.GetString() ?? "" : "";
+    var gymId = root.TryGetProperty("gymId", out var i) && i.TryGetInt32(out var gid) ? gid : 0;
+    if (string.IsNullOrWhiteSpace(gymDbName) || gymId == 0)
+        return Results.BadRequest(new { error = "Missing gymDbName or gymId" });
+
+    // Find an active admin user in that gym's DB to impersonate.
+    using var gymConn = await gymDb.GetGymConnectionAsync(gymDbName);
+    using var lookup = new Npgsql.NpgsqlCommand(
+        @"SELECT ""Id"", ""DisplayName"", ""Role"" FROM ""Users""
+          WHERE ""Role"" IN ('Admin','Owner') AND ""IsActive"" = TRUE
+          ORDER BY ""Id"" LIMIT 1", gymConn);
+    using var reader = await lookup.ExecuteReaderAsync();
+    if (!await reader.ReadAsync())
+        return Results.BadRequest(new { error = "No active admin user found in this gym" });
+
+    var userId = reader.GetInt32(0);
+    var displayName = reader.GetString(1) + " (Support View)";
+    var role = reader.GetString(2);
+
+    // Revoke the SuperAdmin session and issue a new one for the impersonated role.
+    // Forces SuperAdmin to re-login via /superadmin/login to regain their powers,
+    // so impersonation can't be quietly abused during a long session.
+    await sessions.RevokeAsync(callerToken);
+
+    var ip = ctx.Connection.RemoteIpAddress?.ToString();
+    var ua = ctx.Request.Headers.UserAgent.ToString();
+    var newToken = await sessions.CreateAsync(role, displayName, userId, gymDbName, gymId, ip, ua);
+
+    ctx.Response.Cookies.Append(SessionService.CookieName, newToken,
+        BuildSessionCookie(ctx, SessionService.DefaultLifetime));
+
+    Console.WriteLine($"[impersonate] SuperAdmin session revoked; impersonating {role} in gym {gymId} ({gymDbName})");
+    return Results.Ok(new { success = true, redirect = "/dashboard" });
 });
 
 app.MapRazorComponents<App>()
