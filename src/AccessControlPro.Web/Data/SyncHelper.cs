@@ -6,7 +6,12 @@ namespace AccessControlPro.Web.Data;
 
 public static class SyncHelper
 {
-    private static readonly List<string> _lastErrors = new();
+    // Per-request error list. Must be AsyncLocal (not plain static) because concurrent
+    // /api/sync requests from different gyms would otherwise share the same list and
+    // leak errors across tenants. Each request calls ResetErrors() at entry to start
+    // with a fresh list, then accumulates errors during that request's processing.
+    private static readonly AsyncLocal<List<string>?> _asyncErrors = new();
+    private static List<string> Errors => _asyncErrors.Value ??= new List<string>();
 
     // Whitelist of allowed table names to prevent SQL injection
     private static readonly HashSet<string> _allowedTables = new(StringComparer.OrdinalIgnoreCase)
@@ -20,7 +25,10 @@ public static class SyncHelper
     // Column name must be alphanumeric/underscore only
     private static readonly Regex _validColumnName = new(@"^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.Compiled);
 
-    public static List<string> GetLastErrors() => _lastErrors;
+    public static List<string> GetLastErrors() => _asyncErrors.Value ?? new List<string>();
+
+    /// <summary>Clear the per-request error list. Call at the start of each /api/sync request.</summary>
+    public static void ResetErrors() => _asyncErrors.Value = new List<string>();
 
     public static async Task<int> UpsertRowsAsync(NpgsqlConnection conn, string tableName,
         List<Dictionary<string, object?>> rows, bool isFullSync = true)
@@ -28,7 +36,7 @@ public static class SyncHelper
         // Validate table name against whitelist
         if (!_allowedTables.Contains(tableName))
         {
-            _lastErrors.Add($"Rejected invalid table name: {tableName}");
+            Errors.Add($"Rejected invalid table name: {tableName}");
             return 0;
         }
 
@@ -48,7 +56,7 @@ public static class SyncHelper
                 }
                 catch (Exception ex)
                 {
-                    _lastErrors.Add($"{tableName} DELETE: {ex.Message}");
+                    Errors.Add($"{tableName} DELETE: {ex.Message}");
                     await txn.RollbackAsync();
                     return 0;
                 }
@@ -92,7 +100,7 @@ public static class SyncHelper
                         // Validate column name to prevent SQL injection
                         if (!_validColumnName.IsMatch(kvp.Key) || kvp.Key.Length > 100)
                         {
-                            _lastErrors.Add($"{tableName}: Rejected invalid column name '{kvp.Key}'");
+                            Errors.Add($"{tableName}: Rejected invalid column name '{kvp.Key}'");
                             continue;
                         }
 
@@ -121,9 +129,12 @@ public static class SyncHelper
                         continue;
                     }
 
+                    // ON CONFLICT handling: if there are non-Id columns to update, use DO UPDATE.
+                    // If every incoming column was rejected except Id (edge case), use DO NOTHING —
+                    // `DO UPDATE SET ` with an empty SET clause is a SQL syntax error in PostgreSQL.
                     var conflictClause = updateAssigns.Count > 0
                         ? $@" ON CONFLICT (""Id"") DO UPDATE SET {string.Join(",", updateAssigns)}"
-                        : "";
+                        : @" ON CONFLICT (""Id"") DO NOTHING";
                     var sql = $@"INSERT INTO ""{tableName}"" ({string.Join(",", cols)}) VALUES ({string.Join(",", vals)}){conflictClause}";
                     using var cmd = new NpgsqlCommand(sql, conn);
                     cmd.Transaction = txn as NpgsqlTransaction;
@@ -148,7 +159,7 @@ public static class SyncHelper
                     catch { /* if rollback fails, the whole transaction is dead — outer catch handles it */ }
 
                     if (errors <= 3)
-                        _lastErrors.Add($"{tableName} INSERT row {rowIndex}: {ex.Message}");
+                        Errors.Add($"{tableName} INSERT row {rowIndex}: {ex.Message}");
                 }
             }
 
@@ -156,13 +167,13 @@ public static class SyncHelper
             await txn.CommitAsync();
 
             if (errors > 0)
-                _lastErrors.Add($"{tableName}: {errors}/{rows.Count} rows failed");
+                Errors.Add($"{tableName}: {errors}/{rows.Count} rows failed");
 
             return count;
         }
         catch (Exception ex)
         {
-            _lastErrors.Add($"{tableName} TRANSACTION: {ex.Message}");
+            Errors.Add($"{tableName} TRANSACTION: {ex.Message}");
             try { await txn.RollbackAsync(); } catch { }
             return 0;
         }
@@ -179,12 +190,12 @@ public static class SyncHelper
     {
         if (!_allowedTables.Contains(targetTable))
         {
-            _lastErrors.Add($"Tombstone: rejected target table {targetTable}");
+            Errors.Add($"Tombstone: rejected target table {targetTable}");
             return;
         }
         if (!_validColumnName.IsMatch(idFieldInTombstone))
         {
-            _lastErrors.Add($"Tombstone: rejected field {idFieldInTombstone}");
+            Errors.Add($"Tombstone: rejected field {idFieldInTombstone}");
             return;
         }
 
@@ -203,7 +214,7 @@ public static class SyncHelper
             }
             catch (Exception ex)
             {
-                _lastErrors.Add($"{targetTable} tombstone delete (id={extracted}): {ex.Message}");
+                Errors.Add($"{targetTable} tombstone delete (id={extracted}): {ex.Message}");
             }
         }
     }

@@ -25,15 +25,42 @@ else if (Session.IsAuthenticated && Session.IsOwner)
                 </span>
             }
         </div>
-        <button class="filter-btn" @onclick="RefreshData" disabled="@_isRefreshing">
-            <i class="fas fa-refresh @(_isRefreshing ? "fa-spin" : "")"></i> @L("Refresh", "تحديث")
-        </button>
+        <div style="display:flex; gap:8px;">
+            <button class="filter-btn" @onclick="ForceFullSync" disabled="@(_forcingFullSync || _forceFullSyncQueued)" title="@L("Resets the client's delta state — the next sync from the gym PC will resend everything.", "يعيد ضبط حالة المزامنة — ستعيد المزامنة التالية من جهاز النادي إرسال كل البيانات.")">
+                <i class="fas fa-sync-alt @(_forcingFullSync ? "fa-spin" : "")"></i>
+                @(_forceFullSyncQueued
+                    ? L("Queued — waits for gym PC", "في الانتظار — ينتظر جهاز النادي")
+                    : L("Force full sync", "مزامنة كاملة"))
+            </button>
+            <button class="filter-btn" @onclick="RefreshData" disabled="@_isRefreshing">
+                <i class="fas fa-refresh @(_isRefreshing ? "fa-spin" : "")"></i> @L("Refresh", "تحديث")
+            </button>
+        </div>
     </div>
 
     <div class="page-header">
         <h1><i class="fas fa-chart-line"></i> @L("Dashboard", "لوحة التحكم")</h1>
         <span class="last-sync">@L("Last refresh", "آخر تحديث"): @DateTime.Now.ToString("HH:mm")</span>
     </div>
+
+    @if (_syncErrorCount > 0)
+    {
+        <div class="sync-error-alert" style="background:#3a1e1e; border:1px solid #a03a3a; border-radius:6px; padding:12px 14px; margin-bottom:16px; color:#ffd6d6;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <i class="fas fa-exclamation-triangle" style="color:#ff8c8c; margin-inline-end:8px;"></i>
+                    <strong>@string.Format(L("{0} sync attempt(s) had errors in the last 24 hours.", "{0} محاولة مزامنة بها أخطاء خلال 24 ساعة الماضية."), _syncErrorCount)</strong>
+                </div>
+                <button class="filter-btn" @onclick="() => _syncErrorsExpanded = !_syncErrorsExpanded" style="background:transparent; border:1px solid #a03a3a; color:#ffd6d6;">
+                    @(_syncErrorsExpanded ? L("Hide", "إخفاء") : L("Details", "التفاصيل"))
+                </button>
+            </div>
+            @if (_syncErrorsExpanded && !string.IsNullOrEmpty(_latestSyncErrorDetails))
+            {
+                <div style="margin-top:10px; padding:10px; background:#2a1414; border-radius:4px; font-family:monospace; font-size:12px; white-space:pre-wrap; max-height:200px; overflow:auto;">@_latestSyncErrorDetails</div>
+            }
+        </div>
+    }
 
     <div class="stats-grid">
         <div class="stat-card teal">
@@ -198,6 +225,11 @@ else if (Session.IsAuthenticated && Session.IsOwner)
     private DateTime? _lastSync;
     private string? _lastSyncStatus;
     private bool _isRefreshing;
+    private bool _forcingFullSync;
+    private bool _forceFullSyncQueued;
+    private int _syncErrorCount;
+    private string? _latestSyncErrorDetails;
+    private bool _syncErrorsExpanded;
 
     private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
@@ -257,6 +289,28 @@ else if (Session.IsAuthenticated && Session.IsOwner)
         StateHasChanged();
     }
 
+    private async Task ForceFullSync()
+    {
+        if (_forcingFullSync || Session.GymId <= 0) return;
+        _forcingFullSync = true;
+        StateHasChanged();
+        try
+        {
+            using var conn = await Db.GetConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"UPDATE ""Gyms"" SET ""ForceFullSync"" = TRUE WHERE ""Id"" = @id", conn);
+            cmd.Parameters.AddWithValue("id", Session.GymId);
+            await cmd.ExecuteNonQueryAsync();
+            _forceFullSyncQueued = true;
+        }
+        catch { /* swallow — button just won't flip to queued state */ }
+        finally
+        {
+            _forcingFullSync = false;
+            StateHasChanged();
+        }
+    }
+
     private string GetDoorName(int doorId)
         => _doorNames.TryGetValue(doorId, out var name) ? name : $"Door {doorId}";
 
@@ -296,6 +350,27 @@ else if (Session.IsAuthenticated && Session.IsOwner)
 
             var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
             using var conn = await GymDb.GetGymConnectionAsync(_dbName);
+
+            // Recent sync errors — count partial/failed syncs in last 24h, capture latest error text
+            try
+            {
+                using var errCmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT COUNT(*),
+                             MAX(""SyncedAt""),
+                             (SELECT ""Details"" FROM ""CloudSyncLogs""
+                              WHERE ""Status"" <> 'Success' AND ""SyncedAt"" >= @since
+                              ORDER BY ""SyncedAt"" DESC LIMIT 1)
+                      FROM ""CloudSyncLogs""
+                      WHERE ""Status"" <> 'Success' AND ""SyncedAt"" >= @since", conn);
+                errCmd.Parameters.AddWithValue("since", now.AddHours(-24));
+                using var er = await errCmd.ExecuteReaderAsync();
+                if (await er.ReadAsync())
+                {
+                    _syncErrorCount = er.GetInt32(0);
+                    _latestSyncErrorDetails = er.IsDBNull(2) ? null : er.GetString(2);
+                }
+            }
+            catch { _syncErrorCount = 0; _latestSyncErrorDetails = null; }
 
             // Player stats including frozen
             using (var cmd = new Npgsql.NpgsqlCommand(@"

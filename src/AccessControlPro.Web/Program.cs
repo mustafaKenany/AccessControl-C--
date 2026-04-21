@@ -65,29 +65,47 @@ app.UseAntiforgery();
 // Sync API — receives data from WPF app via HTTPS
 app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gymDb) =>
 {
-    // Verify API key — accept config key, default key, OR any valid gym key
+    // Each request must start with a fresh error list (AsyncLocal) — otherwise concurrent
+    // requests from different gyms would share accumulated errors via the old static field.
+    SyncHelper.ResetErrors();
+
+    // Verify API key — accept config key OR any valid gym key. Require non-empty key
+    // explicitly so a missing header never matches an unset config value via null==null.
     var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
-    var isValidKey = apiKey == app.Configuration["SyncApiKey"];
-    if (!isValidKey && !string.IsNullOrEmpty(apiKey))
+    if (string.IsNullOrWhiteSpace(apiKey))
+        return Results.Unauthorized();
+
+    var configuredKey = app.Configuration["SyncApiKey"];
+    var isValidKey = !string.IsNullOrEmpty(configuredKey) && apiKey == configuredKey;
+    if (!isValidKey)
     {
         var gymDb2 = await gymDb.GetDatabaseByApiKeyAsync(apiKey);
         isValidKey = !string.IsNullOrEmpty(gymDb2);
     }
     if (!isValidKey)
-    {
         return Results.Unauthorized();
-    }
 
     try
     {
-        // Support gzip-compressed request bodies
+        // Support gzip-compressed request bodies. Cap decompressed size at 200 MB so a
+        // malformed or malicious request can't zip-bomb the server into OOM.
+        const long MaxDecompressedBytes = 200 * 1024 * 1024;
         string json;
         if (context.Request.Headers.ContentEncoding.ToString().Contains("gzip"))
         {
             using var decompressed = new System.IO.MemoryStream();
             using (var gzip = new System.IO.Compression.GZipStream(context.Request.Body, System.IO.Compression.CompressionMode.Decompress))
             {
-                await gzip.CopyToAsync(decompressed);
+                var buffer = new byte[81920];
+                long totalRead = 0;
+                int read;
+                while ((read = await gzip.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                {
+                    totalRead += read;
+                    if (totalRead > MaxDecompressedBytes)
+                        return Results.BadRequest($"Payload exceeds {MaxDecompressedBytes / 1024 / 1024} MB decompressed limit");
+                    await decompressed.WriteAsync(buffer.AsMemory(0, read));
+                }
             }
             json = System.Text.Encoding.UTF8.GetString(decompressed.ToArray());
         }
@@ -95,6 +113,8 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
         {
             using var reader = new StreamReader(context.Request.Body);
             json = await reader.ReadToEndAsync();
+            if (json.Length > MaxDecompressedBytes)
+                return Results.BadRequest($"Payload exceeds {MaxDecompressedBytes / 1024 / 1024} MB limit");
         }
         var syncData = System.Text.Json.JsonSerializer.Deserialize<SyncPayload>(json);
 
@@ -188,10 +208,10 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
             using var masterConn = await gymDb.GetMasterConnectionAsync();
             using var updateCmd = new Npgsql.NpgsqlCommand(
                 @"UPDATE ""Gyms"" SET ""LastSyncAt"" = @ts, ""PlayerCount"" = @pc
-                  WHERE ""ApiKey"" = @key OR ""Id"" = 1", masterConn);
+                  WHERE ""ApiKey"" = @key", masterConn);
             updateCmd.Parameters.AddWithValue("ts", DateTime.UtcNow);
             updateCmd.Parameters.AddWithValue("pc", playerCount);
-            updateCmd.Parameters.AddWithValue("key", apiKey ?? "");
+            updateCmd.Parameters.AddWithValue("key", apiKey);
             await updateCmd.ExecuteNonQueryAsync();
         }
         catch (Exception ex) { Console.WriteLine($"[Program] UpdateGymSync Error: {ex.Message}"); }
@@ -299,6 +319,37 @@ app.MapGet("/api/qr-pool", async (HttpContext context, GymDbHelper gymDb) =>
     catch (Exception ex)
     {
         return Results.Problem($"Failed to get QR pool: {ex.Message}");
+    }
+});
+
+// Sync control API — client polls this before sync. If the gym's ForceFullSync flag is set,
+// the response tells the client to reset its delta state and do a full sync. This is a
+// "read-and-clear" operation so the flag only triggers once per click.
+app.MapGet("/api/sync-control", async (HttpContext context, DbHelper db, GymDbHelper gymDb) =>
+{
+    var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
+    var isValid = apiKey == app.Configuration["SyncApiKey"];
+    if (!isValid && !string.IsNullOrEmpty(apiKey))
+        isValid = !string.IsNullOrEmpty(await gymDb.GetDatabaseByApiKeyAsync(apiKey));
+    if (!isValid) return Results.Unauthorized();
+
+    try
+    {
+        using var masterConn = await gymDb.GetMasterConnectionAsync();
+        // Atomic read-and-clear: RETURNING gives us the previous value in a single UPDATE.
+        using var cmd = new Npgsql.NpgsqlCommand(
+            @"UPDATE ""Gyms"" SET ""ForceFullSync"" = FALSE
+              WHERE ""ApiKey"" = @key AND ""ForceFullSync"" = TRUE
+              RETURNING ""Id""", masterConn);
+        cmd.Parameters.AddWithValue("key", apiKey ?? "");
+        var result = await cmd.ExecuteScalarAsync();
+        var forceFullSync = result != null; // a row was returned = flag was TRUE, now cleared
+
+        return Results.Ok(new { forceFullSync });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Sync control error: {ex.Message}");
     }
 });
 

@@ -38,6 +38,22 @@ public class CloudSyncService : ICloudSyncService
         if (string.IsNullOrEmpty(cloudUrl))
             return "Cloud sync disabled";
 
+        // Check if the cloud has requested a forced full resync (admin clicked the button
+        // on the web portal). Read-and-clear: if the flag was set, we reset our state so
+        // this sync sends everything from scratch.
+        try
+        {
+            if (await CheckForceFullSyncAsync(cloudUrl))
+            {
+                SyncStateManager.Reset();
+                Log("Cloud requested force full sync — local delta state reset.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"Sync control check failed (non-critical): {ex.Message}");
+        }
+
         // Capture the sync start time BEFORE reading any data — this becomes the next
         // lastSyncAt watermark if the sync succeeds. Rows updated AT OR AFTER this moment
         // are still sent this round (safe: ">" filter means they re-send next round too,
@@ -208,6 +224,26 @@ public class CloudSyncService : ICloudSyncService
             Log($"Cloud sync FAILED: {ex.Message}");
             return $"Sync failed: {ex.Message}";
         }
+    }
+
+    private static async Task<bool> CheckForceFullSyncAsync(string cloudUrl)
+    {
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", LoadApiKey());
+        client.Timeout = TimeSpan.FromSeconds(10);
+
+        var controlUrl = cloudUrl.Replace("/api/sync", "/api/sync-control");
+        var resp = await client.GetAsync(controlUrl);
+        if (!resp.IsSuccessStatusCode) return false;
+
+        var body = await resp.Content.ReadAsStringAsync();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.TryGetProperty("forceFullSync", out var v)
+                   && v.ValueKind == JsonValueKind.True;
+        }
+        catch { return false; }
     }
 
     private static string SummarizeSyncResponse(string body)

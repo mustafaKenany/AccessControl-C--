@@ -278,6 +278,9 @@ ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""SubscriptionPrice"" DECIMAL(18,2
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""Notes"" TEXT DEFAULT '';
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""LastSyncAt"" TIMESTAMP NULL;
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""PlayerCount"" INT DEFAULT 0;
+-- Admin-triggered recovery flag: when true, the next client sync resets its local
+-- delta-sync state and sends a full sync (use when client and cloud have drifted).
+ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""ForceFullSync"" BOOLEAN DEFAULT FALSE;
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""QrPoolEnabled"" BOOLEAN DEFAULT FALSE;
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""QrPoolSize"" INT DEFAULT 0;
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""QrRangeStart"" INT DEFAULT 0;

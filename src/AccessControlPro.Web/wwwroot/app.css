@@ -3152,3 +3152,52 @@ html, body { overflow-x: hidden !important; max-width: 100vw !important; }
         grid-template-columns: 1fr;
     }
 }
+
+/* ==============================================
+   SYNC CONTROL UI — mobile behavior for
+   Force-full-sync button + recent-errors alert
+   ============================================== */
+@media (max-width: 768px) {
+    /* Stack the two buttons in sync-info-bar (Force Full Sync + Refresh) */
+    .sync-info-bar > div[style*="display:flex"] {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    .sync-info-bar .filter-btn {
+        flex: 1;
+        min-width: 140px;
+        min-height: 44px; /* touch target */
+    }
+
+    /* Error alert: breathing room + touch-friendly action button */
+    .sync-error-alert {
+        padding: 10px 12px !important;
+        font-size: 0.9rem;
+    }
+    .sync-error-alert .filter-btn {
+        min-height: 40px;
+        padding: 6px 12px;
+    }
+    /* Stack header row on very narrow screens */
+    .sync-error-alert > div:first-child {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Larger touch targets on phone screens */
+    .sync-info-bar .filter-btn,
+    .page-header .filter-btn,
+    .content-card .filter-btn {
+        min-height: 44px;
+        padding: 8px 14px;
+        font-size: 0.9rem;
+    }
+    /* Error details code block: prevent horizontal scroll-lock on phones */
+    .sync-error-alert div[style*="font-family:monospace"] {
+        font-size: 11px;
+        max-height: 150px;
+    }
+}
