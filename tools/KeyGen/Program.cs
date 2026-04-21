@@ -1,69 +1,83 @@
 using System.Security.Cryptography;
 using System.Text;
 
-Console.Title = "AccessControlPro - License Key Generator";
-Console.ForegroundColor = ConsoleColor.Cyan;
-Console.WriteLine("╔════════════════════════════════════════════════╗");
-Console.WriteLine("║   AccessControlPro License Key Generator       ║");
-Console.WriteLine("║   KEEP THIS TOOL PRIVATE - DO NOT DISTRIBUTE  ║");
-Console.WriteLine("╚════════════════════════════════════════════════╝");
-Console.ResetColor();
-Console.WriteLine();
-
-while (true)
+try
 {
-    Console.ForegroundColor = ConsoleColor.Yellow;
-    Console.Write("Enter Machine ID (or 'quit' to exit): ");
+    Console.Title = "AccessControlPro - License Key Generator";
+    Console.ForegroundColor = ConsoleColor.Cyan;
+    Console.WriteLine("========================================================");
+    Console.WriteLine("   AccessControlPro License Key Generator");
+    Console.WriteLine("   KEEP THIS TOOL PRIVATE - DO NOT DISTRIBUTE");
+    Console.WriteLine("========================================================");
     Console.ResetColor();
-    var machineId = Console.ReadLine()?.Trim().ToUpperInvariant();
-
-    if (string.IsNullOrEmpty(machineId) || machineId == "QUIT" || machineId == "Q")
-        break;
-
-    // Validate format: XXXX-XXXX-XXXX-XXXX
-    if (machineId.Replace("-", "").Length != 16)
-    {
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine("Invalid Machine ID format. Expected: XXXX-XXXX-XXXX-XXXX");
-        Console.ResetColor();
-        Console.WriteLine();
-        continue;
-    }
-
-    Console.Write("Duration in months (default 6): ");
-    var monthsInput = Console.ReadLine()?.Trim();
-    int months = 6;
-    if (!string.IsNullOrEmpty(monthsInput) && int.TryParse(monthsInput, out var m) && m > 0)
-        months = m;
-
-    try
-    {
-        var key = GenerateKey(machineId, months);
-        var expiryDate = DateTime.Today.AddMonths(months);
-
-        Console.WriteLine();
-        Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine("╔════════════════════════════════════════════════╗");
-        Console.WriteLine($"  Machine ID:  {machineId}");
-        Console.WriteLine($"  License Key: {key}");
-        Console.WriteLine($"  Expires:     {expiryDate:yyyy-MM-dd}");
-        Console.WriteLine($"  Duration:    {months} months");
-        Console.WriteLine("╚════════════════════════════════════════════════╝");
-        Console.ResetColor();
-    }
-    catch (Exception ex)
-    {
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine($"Error: {ex.Message}");
-        Console.ResetColor();
-    }
-
     Console.WriteLine();
+
+    while (true)
+    {
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.Write("Enter Machine ID (or 'quit' to exit): ");
+        Console.ResetColor();
+        var machineId = Console.ReadLine()?.Trim().ToUpperInvariant();
+
+        if (string.IsNullOrEmpty(machineId) || machineId == "QUIT" || machineId == "Q")
+            break;
+
+        // Validate format: XXXX-XXXX-XXXX-XXXX
+        if (machineId.Replace("-", "").Length != 16)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Invalid Machine ID format. Expected: XXXX-XXXX-XXXX-XXXX");
+            Console.ResetColor();
+            Console.WriteLine();
+            continue;
+        }
+
+        Console.Write("Duration in months (default 6): ");
+        var monthsInput = Console.ReadLine()?.Trim();
+        int months = 6;
+        if (!string.IsNullOrEmpty(monthsInput) && int.TryParse(monthsInput, out var m) && m > 0)
+            months = m;
+
+        try
+        {
+            var key = GenerateKey(machineId, months);
+            var expiryDate = DateTime.Today.AddMonths(months);
+
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("========================================================");
+            Console.WriteLine($"  Machine ID:  {machineId}");
+            Console.WriteLine($"  License Key: {key}");
+            Console.WriteLine($"  Expires:     {expiryDate:yyyy-MM-dd}");
+            Console.WriteLine($"  Duration:    {months} months");
+            Console.WriteLine("========================================================");
+            Console.ResetColor();
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"Error: {ex.Message}");
+            Console.ResetColor();
+        }
+
+        Console.WriteLine();
+    }
+
+    Console.WriteLine("Goodbye.");
+}
+catch (Exception ex)
+{
+    Console.ForegroundColor = ConsoleColor.Red;
+    Console.WriteLine($"FATAL ERROR: {ex.Message}");
+    Console.WriteLine(ex.StackTrace);
+    Console.ResetColor();
 }
 
-Console.WriteLine("Goodbye.");
+Console.WriteLine();
+Console.WriteLine("Press any key to exit...");
+Console.ReadKey();
 
-// ── Key generation logic (must match LicenseService exactly) ──
+// -- Key generation logic (must match LicenseService exactly) --
 
 static string GenerateKey(string machineId, int months)
 {

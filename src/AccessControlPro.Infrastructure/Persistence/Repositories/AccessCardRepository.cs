@@ -25,7 +25,17 @@ public class AccessCardRepository : IAccessCardRepository
     public async Task<AccessCard?> GetByCardNumberAsync(string cardNumber)
     {
         await using var db = _factory.CreateDbContext();
-        return await db.AccessCards.Include(c => c.Employee).FirstOrDefaultAsync(c => c.CardNumber == cardNumber);
+        // Try exact match first, then try without leading zeros (readers add leading zeros)
+        var card = await db.AccessCards.Include(c => c.Employee)
+            .FirstOrDefaultAsync(c => c.CardNumber == cardNumber);
+        if (card == null && cardNumber.StartsWith('0'))
+        {
+            var trimmed = cardNumber.TrimStart('0');
+            if (trimmed.Length > 0)
+                card = await db.AccessCards.Include(c => c.Employee)
+                    .FirstOrDefaultAsync(c => c.CardNumber == trimmed);
+        }
+        return card;
     }
 
     public async Task<IEnumerable<AccessCard>> GetByEmployeeIdAsync(int employeeId)
@@ -57,5 +67,23 @@ public class AccessCardRepository : IAccessCardRepository
             db.AccessCards.Remove(card);
             await db.SaveChangesAsync();
         }
+    }
+
+    public async Task<IEnumerable<string>> GetAllActiveCardNumbersAsync()
+    {
+        await using var db = _factory.CreateDbContext();
+        return await db.AccessCards
+            .Where(c => c.IsActive)
+            .Select(c => c.CardNumber)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<AccessCard>> GetAllActiveForSyncAsync()
+    {
+        await using var db = _factory.CreateDbContext();
+        // Load cards WITHOUT Employee navigation (no photos in memory)
+        return await db.AccessCards
+            .Where(c => c.IsActive)
+            .ToListAsync();
     }
 }

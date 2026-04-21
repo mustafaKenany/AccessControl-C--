@@ -224,8 +224,8 @@ public partial class App : System.Windows.Application
 
     private static void StartupLog(string msg)
     {
-        try { File.AppendAllText(StartupLogPath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n"); }
-        catch { }
+        AccessControlPro.Application.Services.RollingLogFile.Append(
+            StartupLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {msg}\n");
     }
 
     protected override void OnStartup(StartupEventArgs e)
@@ -348,6 +348,17 @@ public partial class App : System.Windows.Application
         try
         {
             StartupLog("DB migration OK. Loading login...");
+
+            // Force-clear any stale monitor locks from this machine (after crash/kill/restart)
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var lockService = scope.ServiceProvider.GetRequiredService<Domain.Interfaces.IMonitorLockService>();
+                Task.Run(() => lockService.ReleaseAsync()).Wait(3000);
+                StartupLog("Monitor lock cleared on startup");
+            }
+            catch (Exception ex) { StartupLog($"Monitor lock cleanup failed (non-critical): {ex.Message}"); }
+
             // Prevent auto-shutdown when LoginWindow closes (it's the only window at that point)
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
@@ -835,6 +846,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        StartupLog($"=== APP EXITING (code={e.ApplicationExitCode}) ===");
         _cleanupTimer?.Stop();
         _cleanupTimer = null;
         _expiryMonitorTimer?.Stop();

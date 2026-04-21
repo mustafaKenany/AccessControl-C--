@@ -151,7 +151,7 @@ else if (Session.IsAuthenticated && Session.IsOwner)
                             {
                                 var days = (p.EndDate - DateTime.UtcNow).Days;
                                 <tr>
-                                    <td>@(SessionState.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn)</td>
+                                    <td>@(Session.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn)</td>
                                     <td>@p.EndDate.ToString("yyyy-MM-dd")</td>
                                     <td class="@(days <= 3 ? "text-danger" : "text-warning")">@days</td>
                                 </tr>
@@ -168,7 +168,7 @@ else if (Session.IsAuthenticated && Session.IsOwner)
                             var days = (p.EndDate - DateTime.UtcNow).Days;
                             <div class="mobile-card">
                                 <div class="mobile-card-header">
-                                    <span class="mobile-card-name">@(SessionState.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn)</span>
+                                    <span class="mobile-card-name">@(Session.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn)</span>
                                     <span class="badge @(days <= 3 ? "badge-expired" : "badge-expiring")">@days @L("days", "يوم")</span>
                                 </div>
                                 <div class="mobile-card-row">
@@ -199,15 +199,13 @@ else if (Session.IsAuthenticated && Session.IsOwner)
     private string? _lastSyncStatus;
     private bool _isRefreshing;
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     private bool _dataLoaded;
     private bool _pageLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Dashboard] OnInitializedAsync START, IsAuth={Session.IsAuthenticated}\n"); } catch { }
-
         // Restore session from server-side file (works in SSR, no JS needed)
         if (!Session.IsAuthenticated)
         {
@@ -230,28 +228,23 @@ else if (Session.IsAuthenticated && Session.IsOwner)
                             GymId = int.TryParse(parts[4], out var gid) ? gid : 0
                         };
                         Session.Login(result, parts[3], int.TryParse(parts[4], out var g) ? g : 0);
-                        try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Dashboard] Session restored from file: {Session.Role}\n"); } catch { }
                     }
                 }
             }
             catch (Exception ex)
             {
-                try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Dashboard] File session error: {ex.Message}\n"); } catch { }
             }
         }
 
         if (Session.IsAuthenticated && Session.IsOwner)
         {
-            try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Dashboard] Loading data...\n"); } catch { }
             await LoadDataAsync();
             _pageLoading = false;
             _dataLoaded = true;
-            try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Dashboard] COMPLETE\n"); } catch { }
         }
         else
         {
             _pageLoading = false;
-            try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Dashboard] Not owner, pageLoading=false\n"); } catch { }
         }
     }
 
@@ -276,7 +269,7 @@ else if (Session.IsAuthenticated && Session.IsOwner)
     private string GetPlayerDisplay(EventRow ev)
     {
         // Prefer JOIN-based player name from query
-        if (!string.IsNullOrEmpty(ev.PlayerNameAr) && SessionState.IsArabic)
+        if (!string.IsNullOrEmpty(ev.PlayerNameAr) && Session.IsArabic)
             return ev.PlayerNameAr;
         if (!string.IsNullOrEmpty(ev.PlayerNameEn))
             return ev.PlayerNameEn;
@@ -372,7 +365,7 @@ else if (Session.IsAuthenticated && Session.IsOwner)
                     {
                         var nameEn = r.GetString(1);
                         var nameAr = r.GetString(2);
-                        _playerByCard[cid] = SessionState.IsArabic && !string.IsNullOrEmpty(nameAr) ? nameAr : nameEn;
+                        _playerByCard[cid] = Session.IsArabic && !string.IsNullOrEmpty(nameAr) ? nameAr : nameEn;
                     }
                 }
             }
@@ -435,7 +428,7 @@ else if (Session.IsAuthenticated && Session.IsOwner)
                 }
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerDashboard] LoadDataAsync Error: {ex.Message}"); }
     }
 
     private static PlayerRow ReadPlayerRow(Npgsql.NpgsqlDataReader r)

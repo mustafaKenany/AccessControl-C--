@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:fa="http://schemas.fontawesome.io/icons/"
         Title="Access Control Pro - Login"
-        Width="480" Height="660"
+        Width="480" Height="720"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -69,7 +69,7 @@
 
                 <!-- TOP: App-specific Identity -->
                 <StackPanel DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0,30,0,0">
-                    <Border x:Name="AppIconBorder" Width="64" Height="64" CornerRadius="16"
+                    <Border x:Name="AppIconBorder" Width="80" Height="80" CornerRadius="16"
                             HorizontalAlignment="Center">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -77,41 +77,46 @@
                                 <GradientStop Color="#44A1A0" Offset="1"/>
                             </LinearGradientBrush>
                         </Border.Background>
-                        <fa:ImageAwesome x:Name="AppIcon" Icon="Shield" Width="30" Height="30" Foreground="White"
+                        <fa:ImageAwesome x:Name="AppIcon" Icon="Shield" Width="36" Height="36" Foreground="White"
                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <TextBlock x:Name="AppNameText" Text="Access Control Pro" FontSize="22" FontWeight="Bold"
                                Foreground="#FFFFFA" HorizontalAlignment="Center" Margin="0,12,0,4"/>
                     <TextBlock x:Name="WelcomeText" Text="Welcome back" FontSize="13"
                                Foreground="#5A5A7A" HorizontalAlignment="Center" Margin="0,0,0,0"/>
+                    <TextBlock Text="Developed by HM-Tech IT Solutions" FontSize="11"
+                               Foreground="#44A1A0" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                    <TextBlock Text="hmtech.solutions" FontSize="10"
+                               Foreground="#3A5A5E" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                 </StackPanel>
 
-                <!-- BOTTOM: Company Info (from settings) -->
-                <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0,0,0,20">
-                    <Border Height="1" Background="#15FFFFFF" Margin="20,0,20,14"/>
+                <!-- BOTTOM: Developer Info (hardcoded - always visible) -->
+                <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0,0,0,16">
+                    <Border Height="1" Background="#15FFFFFF" Margin="20,0,20,12"/>
 
-                    <!-- Company Logo + Details -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8">
-                        <Border Width="44" Height="44" CornerRadius="10" Background="#15FFFFFF" Margin="0,0,12,0">
-                            <Grid>
-                                <fa:ImageAwesome x:Name="GymLogoPlaceholder" Icon="Building" Width="18" Height="18"
-                                                 Foreground="#3A3A4E"
-                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Image x:Name="GymLogoImage" Stretch="Uniform"
-                                       RenderOptions.BitmapScalingMode="HighQuality"
-                                       Margin="4"/>
-                            </Grid>
-                        </Border>
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock x:Name="CompanyNameText" Text="" FontSize="13"
-                                       Foreground="#78CDD7"/>
-                            <TextBlock x:Name="GymNameText" Text="" FontSize="11"
-                                       Foreground="#5A5A7A"/>
+                    <!-- Gym Name (loaded from settings) -->
+                    <TextBlock x:Name="GymNameText" Text="" FontSize="13"
+                               Foreground="#78CDD7" HorizontalAlignment="Center" Margin="0,0,0,8"
+                               Visibility="Collapsed"/>
+
+                    <!-- HM-Tech Developer Info (fixed) -->
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="HM-TECH IT Solutions" FontSize="13" FontWeight="Bold"
+                                   Foreground="#1B3A6B" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Smart Tech, Secure Life" FontSize="10" FontStyle="Italic"
+                                   Foreground="#2E8B57" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                            <fa:ImageAwesome Icon="Phone" Width="10" Height="10"
+                                             Foreground="#44A1A0" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <TextBlock Text="07812573845" FontSize="10"
+                                       Foreground="#5A7A7E" VerticalAlignment="Center"/>
+                            <TextBlock Text="  |  " FontSize="10" Foreground="#2A3A3E"/>
+                            <fa:ImageAwesome Icon="Globe" Width="10" Height="10"
+                                             Foreground="#44A1A0" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <TextBlock Text="hmtech.solutions" FontSize="10"
+                                       Foreground="#5A7A7E" VerticalAlignment="Center"/>
                         </StackPanel>
                     </StackPanel>
-
-                    <TextBlock x:Name="FooterText" FontSize="10" Foreground="#3A3A4E"
-                               HorizontalAlignment="Center" TextAlignment="Center" Margin="0,4,0,0"/>
                 </StackPanel>
 
                 <!-- CENTER: Login Form -->

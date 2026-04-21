@@ -77,7 +77,14 @@ public class AccessEventRepository : IAccessEventRepository
         if (eventType.HasValue) query = query.Where(e => e.EventType == eventType.Value);
         if (deviceId.HasValue) query = query.Where(e => e.Door != null && e.Door.Device != null && e.Door.Device.Id == deviceId.Value);
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(e => (e.Card != null && e.Card.CardNumber.Contains(search)) || e.Details.Contains(search));
+        {
+            // Strip leading zeros for card number matching (readers add leading zeros)
+            var searchClean = search.TrimStart('0');
+            query = query.Where(e =>
+                (e.Card != null && e.Card.CardNumber.Contains(search)) ||
+                (searchClean.Length > 0 && e.Card != null && e.Card.CardNumber.Contains(searchClean)) ||
+                e.Details.Contains(search));
+        }
 
         var total = await query.CountAsync();
         var items = await query
@@ -102,8 +109,10 @@ public class AccessEventRepository : IAccessEventRepository
         var ids = cardIds.ToList();
         if (ids.Count == 0) return;
         await using var db = _factory.CreateDbContext();
-        var idList = string.Join(",", ids);
+        // Use parameterized query to prevent SQL injection
+        var parameters = ids.Select((id, i) => new Microsoft.Data.SqlClient.SqlParameter($"@id{i}", id)).ToArray();
+        var paramNames = string.Join(",", ids.Select((_, i) => $"@id{i}"));
         await db.Database.ExecuteSqlRawAsync(
-            $"UPDATE AccessEvents SET CardId = NULL WHERE CardId IN ({idList})");
+            $"UPDATE AccessEvents SET CardId = NULL WHERE CardId IN ({paramNames})", parameters);
     }
 }

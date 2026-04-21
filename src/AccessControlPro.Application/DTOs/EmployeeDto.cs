@@ -25,5 +25,7 @@ public class EmployeeDto
     public int UsedVisits { get; set; }
     public int RemainingVisits => MaxVisits > 0 ? Math.Max(0, MaxVisits - UsedVisits) : -1; // -1 = unlimited
     public DateTime CreatedAt { get; set; }
+    /// <summary>0=NoCard, 1=NotSynced, 2=PartiallySynced, 3=FullySynced</summary>
+    public int SyncStatus { get; set; }
     public List<AccessCardDto> Cards { get; set; } = new();
 }

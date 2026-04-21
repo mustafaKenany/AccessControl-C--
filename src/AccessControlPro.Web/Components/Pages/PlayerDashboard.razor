@@ -290,7 +290,7 @@ else if (_player != null)
                             </div>
                             <div class="mobile-card-row">
                                 <span class="mobile-card-label">@L("Details", "التفاصيل")</span>
-                                <span class="mobile-card-value">@(SessionState.IsArabic && !string.IsNullOrEmpty(f.DetailsAr) ? f.DetailsAr : f.Details)</span>
+                                <span class="mobile-card-value">@(Session.IsArabic && !string.IsNullOrEmpty(f.DetailsAr) ? f.DetailsAr : f.Details)</span>
                             </div>
                         </div>
                     }
@@ -330,7 +330,7 @@ else
     // Freeze history
     private List<AuditRow> _freezes = new();
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     private string Status => _player == null ? "" :
         _player.IsFrozen ? "Frozen" :
@@ -379,7 +379,7 @@ else
                 LoadFreezeHistoryAsync()
             );
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[PlayerDashboard] LoadDataAsync Error: {ex.Message}"); }
     }
 
     private async Task LoadPlayerAsync()
@@ -416,7 +416,7 @@ else
                     _cardId = cid;
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[PlayerDashboard] LoadPlayerAsync Error: {ex.Message}"); }
     }
 
     private async Task LoadPaymentsAsync()
@@ -444,7 +444,7 @@ else
                     r.GetString(4), r.GetDateTime(5), r.GetString(6)));
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[PlayerDashboard] LoadPaymentsAsync Error: {ex.Message}"); }
     }
 
     private async Task LoadVisitsAsync()
@@ -456,7 +456,9 @@ else
             var threeMonthsAgo = DateTime.UtcNow.AddMonths(-3);
             var now = DateTime.UtcNow;
             var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-            var weekStart = now.Date.AddDays(-(int)now.DayOfWeek);
+            // Week starts Saturday (common in Iraq)
+            var daysSinceSaturday = ((int)now.DayOfWeek + 1) % 7;
+            var weekStart = now.Date.AddDays(-daysSinceSaturday);
             weekStart = DateTime.SpecifyKind(weekStart, DateTimeKind.Utc);
 
             var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
@@ -516,7 +518,7 @@ else
                 }
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[PlayerDashboard] LoadVisitsAsync Error: {ex.Message}"); }
     }
 
     private async Task LoadFreezeHistoryAsync()
@@ -542,7 +544,7 @@ else
                     r.GetDateTime(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4)));
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[PlayerDashboard] LoadFreezeHistoryAsync Error: {ex.Message}"); }
     }
 
     private string GetEventTypeName(int code) => code switch

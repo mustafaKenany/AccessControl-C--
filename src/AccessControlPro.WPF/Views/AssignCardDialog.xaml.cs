@@ -69,7 +69,9 @@ public partial class AssignCardDialog : Window
 
         PopulateEffectiveTimes(employee.MaxVisits);
         PopulateDevices();
-        _ = PopulateTimeGroupsAsync(timeGroupService);
+
+        // Load TimeGroups synchronously to ensure combo is populated before dialog shows
+        PopulateTimeGroupsSync(timeGroupService);
 
         if (DeviceModeHelper.IsMultiDevice)
         {
@@ -78,13 +80,13 @@ public partial class AssignCardDialog : Window
         }
     }
 
-    private async Task PopulateTimeGroupsAsync(ITimeGroupService? timeGroupService)
+    private void PopulateTimeGroupsSync(ITimeGroupService? timeGroupService)
     {
         try
         {
             if (timeGroupService != null)
             {
-                var groups = (await timeGroupService.GetAllAsync()).ToList();
+                var groups = Task.Run(() => timeGroupService.GetAllAsync()).GetAwaiter().GetResult().ToList();
                 _timeGroups = groups;
 
                 TimeGroupCombo.Items.Clear();
@@ -99,25 +101,14 @@ public partial class AssignCardDialog : Window
                     });
                 }
 
-                // Select default (index 1)
                 if (TimeGroupCombo.Items.Count > 0)
                     TimeGroupCombo.SelectedIndex = 0;
-
-                TimeGroupCombo.SelectionChanged += TimeGroupCombo_SelectionChanged;
-                UpdateTimePeriodIndex();
-            }
-            else
-            {
-                // No service available - just show default
-                TimeGroupCombo.Items.Add(new ComboBoxItem
-                {
-                    Content = "24/7 Full Access (#1)",
-                    Tag = 1
-                });
-                TimeGroupCombo.SelectedIndex = 0;
             }
         }
-        catch
+        catch { }
+
+        // Ensure at least default option exists
+        if (TimeGroupCombo.Items.Count == 0)
         {
             TimeGroupCombo.Items.Add(new ComboBoxItem
             {
@@ -126,7 +117,13 @@ public partial class AssignCardDialog : Window
             });
             TimeGroupCombo.SelectedIndex = 0;
         }
+
+        TimeGroupCombo.SelectionChanged += TimeGroupCombo_SelectionChanged;
+        UpdateTimePeriodIndex();
     }
+
+    // TimeGroups are now loaded synchronously in PopulateTimeGroupsSync() to ensure
+    // the combo is populated before the dialog is shown to the user.
 
     private void TimeGroupCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {

@@ -47,6 +47,21 @@ appsettings.json
 crash_log.txt
 admin_crash_log.txt
 pos_crash_log.txt
+sync_state.json
+.backup_status
+*_legacy_*.txt
+
+## Customer diagnostic files — DO NOT COMMIT (contains PII: player names, phones, device serials)
+basmia/
+customer-logs/
+
+## Runtime log files (generated on every run)
+backup_log.txt
+card_disable_log.txt
+cloud_sync_log.txt
+sdk_log.txt
+startup_log.txt
+admin_startup_log.txt
 
 ## Publish output
 publish/

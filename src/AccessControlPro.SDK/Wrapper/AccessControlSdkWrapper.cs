@@ -22,8 +22,7 @@ public class AccessControlSdkWrapper : IAccessControlSdk
 
     private static void SdkLog(string msg)
     {
-        try { File.AppendAllText(SdkLogPath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n"); }
-        catch { /* ignore */ }
+        SdkLogFile.Append(SdkLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {msg}\n");
     }
 
     private static string[] BuildDeviceParams(DeviceInfo device)

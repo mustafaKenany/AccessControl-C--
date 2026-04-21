@@ -129,6 +129,7 @@
                     <ColumnDefinition Width="140"/>
                     <ColumnDefinition Width="55"/>
                     <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="55"/>
                     <ColumnDefinition Width="280"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="{Binding Lang.Status}" FontSize="12"
@@ -145,7 +146,9 @@
                            Foreground="{StaticResource TextMutedBrush}"/>
                 <TextBlock Grid.Column="6" Text="{Binding Lang.Doors}" FontSize="12"
                            Foreground="{StaticResource TextMutedBrush}"/>
-                <TextBlock Grid.Column="7" Text="{Binding Lang.Actions}" FontSize="12"
+                <TextBlock Grid.Column="7" Text="{Binding Lang.NavCards}" FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+                <TextBlock Grid.Column="8" Text="{Binding Lang.Actions}" FontSize="12"
                            Foreground="{StaticResource TextMutedBrush}"/>
             </Grid>
         </Border>
@@ -169,6 +172,7 @@
                                         <ColumnDefinition Width="140"/>
                                         <ColumnDefinition Width="55"/>
                                         <ColumnDefinition Width="50"/>
+                                        <ColumnDefinition Width="55"/>
                                         <ColumnDefinition Width="280"/>
                                     </Grid.ColumnDefinitions>
 
@@ -224,8 +228,17 @@
                                                    HorizontalAlignment="Center"/>
                                     </Border>
 
+                                    <!-- Cards -->
+                                    <Border Grid.Column="7" Background="{StaticResource BgInputBrush}"
+                                            CornerRadius="6" Padding="8,4"
+                                            HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding CardCount}" FontSize="12" FontWeight="Bold"
+                                                   Foreground="{StaticResource AccentBrush}"
+                                                   HorizontalAlignment="Center"/>
+                                    </Border>
+
                                     <!-- Actions -->
-                                    <StackPanel Grid.Column="7" Orientation="Horizontal"
+                                    <StackPanel Grid.Column="8" Orientation="Horizontal"
                                                 VerticalAlignment="Center">
                                         <!-- Connect -->
                                         <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.Connect, RelativeSource={RelativeSource AncestorType=ItemsControl}}"

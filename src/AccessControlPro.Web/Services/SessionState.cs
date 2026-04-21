@@ -2,16 +2,16 @@ namespace AccessControlPro.Web.Services;
 
 /// <summary>
 /// Per-circuit session state. Registered as Scoped, so each Blazor circuit
-/// (each browser tab) gets its own instance. No static session data.
+/// (each browser tab) gets its own instance. Language is per-user, not global.
 /// </summary>
 public class SessionState
 {
-    // Language is static (shared across all users — OK for a single-gym deployment)
-    public static string Language { get; set; } = "en";
-    public static bool IsArabic => Language == "ar";
-    public static string Dir => IsArabic ? "rtl" : "ltr";
+    // Language is now INSTANCE-based (per circuit/user) — no longer affects other users
+    public string Language { get; set; } = "en";
+    public bool IsArabic => Language == "ar";
+    public string Dir => IsArabic ? "rtl" : "ltr";
 
-    public static void ToggleLanguage()
+    public void ToggleLanguage()
     {
         Language = IsArabic ? "en" : "ar";
     }
@@ -23,8 +23,9 @@ public class SessionState
     private int _userId;
     private string _gymDatabase = "";
     private int _gymId;
+    private DateTime _loginTime = DateTime.MinValue;
 
-    public bool IsAuthenticated => _isAuthenticated;
+    public bool IsAuthenticated => _isAuthenticated && !IsSessionExpired;
     public string DisplayName => _displayName;
     public string Role => _role;
     public int UserId => _userId;
@@ -35,6 +36,10 @@ public class SessionState
     public bool IsPlayer => Role == "Player";
     public bool IsSuperAdmin => Role == "SuperAdmin";
 
+    // Session expires after 24 hours of inactivity
+    private static readonly TimeSpan SessionTimeout = TimeSpan.FromHours(24);
+    public bool IsSessionExpired => _isAuthenticated && (DateTime.UtcNow - _loginTime) > SessionTimeout;
+
     public void Login(AuthResult result, string gymDatabase = "", int gymId = 0)
     {
         _isAuthenticated = result.IsAuthenticated;
@@ -43,6 +48,13 @@ public class SessionState
         _userId = result.UserId;
         _gymDatabase = gymDatabase;
         _gymId = gymId;
+        _loginTime = DateTime.UtcNow;
+    }
+
+    public void RefreshSession()
+    {
+        if (_isAuthenticated)
+            _loginTime = DateTime.UtcNow;
     }
 
     public void Logout()
@@ -53,6 +65,7 @@ public class SessionState
         _userId = 0;
         _gymDatabase = "";
         _gymId = 0;
+        _loginTime = DateTime.MinValue;
     }
 
     // These methods are used by SuperAdmin gym management.

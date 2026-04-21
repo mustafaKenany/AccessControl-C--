@@ -50,30 +50,11 @@ public partial class LoginWindow : Window
         {
             var settings = await settingsService.GetSettingsAsync();
 
-            if (!string.IsNullOrWhiteSpace(settings.CompanyName))
-                CompanyNameText.Text = settings.CompanyName;
-
+            // Show gym name if available
             if (!string.IsNullOrWhiteSpace(settings.GymName))
-                GymNameText.Text = settings.GymName;
-
-            // Build footer text from phone/address
-            var parts = new List<string>();
-            if (!string.IsNullOrWhiteSpace(settings.Phone))
-                parts.Add(settings.Phone);
-            if (!string.IsNullOrWhiteSpace(settings.Address))
-                parts.Add(settings.Address);
-            if (parts.Count > 0)
-                FooterText.Text = string.Join(" | ", parts);
-
-            if (!string.IsNullOrWhiteSpace(settings.LogoPath) && System.IO.File.Exists(settings.LogoPath))
             {
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.UriSource = new Uri(settings.LogoPath, UriKind.Absolute);
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.EndInit();
-                GymLogoImage.Source = bitmap;
-                GymLogoPlaceholder.Visibility = Visibility.Collapsed;
+                GymNameText.Text = settings.GymName;
+                GymNameText.Visibility = Visibility.Visible;
             }
         }
         catch

@@ -553,6 +553,88 @@ public static class DatabaseMigrator
 
             @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Transactions_CreatedAt_Desc' AND object_id = OBJECT_ID('Transactions'))
               CREATE INDEX IX_Transactions_CreatedAt_Desc ON Transactions(CreatedAt DESC);",
+
+            // v4.5: Delta-sync support — add UpdatedAt columns to mutable tables so the client
+            // can send only rows changed since the last successful sync (instead of all rows every time).
+            // Triggers keep UpdatedAt in sync automatically so no repository code changes are required.
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Employees') AND name = 'UpdatedAt')
+              ALTER TABLE Employees ADD UpdatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE();",
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AccessCards') AND name = 'UpdatedAt')
+              ALTER TABLE AccessCards ADD UpdatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE();",
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('QrPool') AND name = 'UpdatedAt')
+              ALTER TABLE QrPool ADD UpdatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE();",
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'UpdatedAt')
+              ALTER TABLE Users ADD UpdatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE();",
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('FreezeHistories') AND name = 'UpdatedAt')
+              ALTER TABLE FreezeHistories ADD UpdatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE();",
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'UpdatedAt')
+              ALTER TABLE Products ADD UpdatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE();",
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('SubscriptionPlans') AND name = 'UpdatedAt')
+              ALTER TABLE SubscriptionPlans ADD UpdatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE();",
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('PosShifts') AND name = 'UpdatedAt')
+              ALTER TABLE PosShifts ADD UpdatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE();",
+
+            // Triggers: touch UpdatedAt on any UPDATE so the delta-sync query finds changes.
+            // CREATE OR ALTER is SQL 2016+; drop-and-recreate pattern works everywhere and is idempotent.
+            @"IF OBJECT_ID('TR_Employees_UpdatedAt', 'TR') IS NOT NULL DROP TRIGGER TR_Employees_UpdatedAt;",
+            @"EXEC('CREATE TRIGGER TR_Employees_UpdatedAt ON Employees AFTER UPDATE AS
+                   BEGIN SET NOCOUNT ON;
+                     UPDATE e SET UpdatedAt = GETUTCDATE()
+                     FROM Employees e INNER JOIN inserted i ON e.Id = i.Id;
+                   END');",
+
+            @"IF OBJECT_ID('TR_AccessCards_UpdatedAt', 'TR') IS NOT NULL DROP TRIGGER TR_AccessCards_UpdatedAt;",
+            @"EXEC('CREATE TRIGGER TR_AccessCards_UpdatedAt ON AccessCards AFTER UPDATE AS
+                   BEGIN SET NOCOUNT ON;
+                     UPDATE a SET UpdatedAt = GETUTCDATE()
+                     FROM AccessCards a INNER JOIN inserted i ON a.Id = i.Id;
+                   END');",
+
+            @"IF OBJECT_ID('TR_QrPool_UpdatedAt', 'TR') IS NOT NULL DROP TRIGGER TR_QrPool_UpdatedAt;",
+            @"EXEC('CREATE TRIGGER TR_QrPool_UpdatedAt ON QrPool AFTER UPDATE AS
+                   BEGIN SET NOCOUNT ON;
+                     UPDATE q SET UpdatedAt = GETUTCDATE()
+                     FROM QrPool q INNER JOIN inserted i ON q.Id = i.Id;
+                   END');",
+
+            @"IF OBJECT_ID('TR_Users_UpdatedAt', 'TR') IS NOT NULL DROP TRIGGER TR_Users_UpdatedAt;",
+            @"EXEC('CREATE TRIGGER TR_Users_UpdatedAt ON Users AFTER UPDATE AS
+                   BEGIN SET NOCOUNT ON;
+                     UPDATE u SET UpdatedAt = GETUTCDATE()
+                     FROM Users u INNER JOIN inserted i ON u.Id = i.Id;
+                   END');",
+
+            @"IF OBJECT_ID('TR_FreezeHistories_UpdatedAt', 'TR') IS NOT NULL DROP TRIGGER TR_FreezeHistories_UpdatedAt;",
+            @"EXEC('CREATE TRIGGER TR_FreezeHistories_UpdatedAt ON FreezeHistories AFTER UPDATE AS
+                   BEGIN SET NOCOUNT ON;
+                     UPDATE f SET UpdatedAt = GETUTCDATE()
+                     FROM FreezeHistories f INNER JOIN inserted i ON f.Id = i.Id;
+                   END');",
+
+            @"IF OBJECT_ID('TR_Products_UpdatedAt', 'TR') IS NOT NULL DROP TRIGGER TR_Products_UpdatedAt;",
+            @"EXEC('CREATE TRIGGER TR_Products_UpdatedAt ON Products AFTER UPDATE AS
+                   BEGIN SET NOCOUNT ON;
+                     UPDATE p SET UpdatedAt = GETUTCDATE()
+                     FROM Products p INNER JOIN inserted i ON p.Id = i.Id;
+                   END');",
+
+            @"IF OBJECT_ID('TR_SubscriptionPlans_UpdatedAt', 'TR') IS NOT NULL DROP TRIGGER TR_SubscriptionPlans_UpdatedAt;",
+            @"EXEC('CREATE TRIGGER TR_SubscriptionPlans_UpdatedAt ON SubscriptionPlans AFTER UPDATE AS
+                   BEGIN SET NOCOUNT ON;
+                     UPDATE s SET UpdatedAt = GETUTCDATE()
+                     FROM SubscriptionPlans s INNER JOIN inserted i ON s.Id = i.Id;
+                   END');",
+
+            @"IF OBJECT_ID('TR_PosShifts_UpdatedAt', 'TR') IS NOT NULL DROP TRIGGER TR_PosShifts_UpdatedAt;",
+            @"EXEC('CREATE TRIGGER TR_PosShifts_UpdatedAt ON PosShifts AFTER UPDATE AS
+                   BEGIN SET NOCOUNT ON;
+                     UPDATE s SET UpdatedAt = GETUTCDATE()
+                     FROM PosShifts s INNER JOIN inserted i ON s.Id = i.Id;
+                   END');",
+
+            // Index on UpdatedAt for the Players table — hot path for delta sync queries.
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Employees_UpdatedAt' AND object_id = OBJECT_ID('Employees'))
+              CREATE INDEX IX_Employees_UpdatedAt ON Employees(UpdatedAt);",
         };
 
         var failedMigrations = new List<string>();

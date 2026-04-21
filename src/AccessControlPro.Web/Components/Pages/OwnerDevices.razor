@@ -62,7 +62,7 @@ else
     private List<DeviceRow> _devices = new();
     private Dictionary<int, List<DoorRow>> _doorsByDevice = new();
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -107,7 +107,7 @@ else
                 }
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerDevices] LoadDataAsync Error: {ex.Message}"); }
     }
 
     private int GetDoorCount(int deviceId)

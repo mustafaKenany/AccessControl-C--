@@ -639,6 +639,18 @@ public partial class AddEmployeeDialog : Window
         if (_photoData == null || _photoData.Length == 0)
             errors.Add(Lang.PhotoRequired);
 
+        if (!string.IsNullOrWhiteSpace(HeightTextBox.Text))
+        {
+            if (!double.TryParse(HeightTextBox.Text.Trim(), out var h) || h < 50 || h > 250)
+                errors.Add(Lang.HeightInvalid);
+        }
+
+        if (!string.IsNullOrWhiteSpace(WeightTextBox.Text))
+        {
+            if (!double.TryParse(WeightTextBox.Text.Trim(), out var w) || w < 20 || w > 300)
+                errors.Add(Lang.WeightInvalid);
+        }
+
         if (errors.Count > 0)
         {
             var message = string.Join("\n", errors.Select(err => $"  \u2022  {err}"));

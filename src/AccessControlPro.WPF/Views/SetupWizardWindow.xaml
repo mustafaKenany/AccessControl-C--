@@ -72,81 +72,20 @@
 
                     <Border Background="#0C2225" CornerRadius="10" Padding="20,16" Margin="40,24,40,0">
                         <StackPanel>
-                            <TextBlock Text="Developer Information" FontSize="14" Foreground="#44A1A0"
+                            <TextBlock Text="Developer" FontSize="14" Foreground="#44A1A0"
                                        Margin="0,0,0,10"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition/>
-                                    <RowDefinition/>
-                                </Grid.RowDefinitions>
-                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,8">
-                                    <TextBlock Text="Company Name:" FontSize="11" Foreground="#7A8A9A"/>
-                                    <TextBox x:Name="DevCompanyNameBox" FontSize="13" Background="#1E2D3D" Foreground="White"
-                                             BorderBrush="#2A3A4A" BorderThickness="1" Padding="8,6" Margin="0,3,6,0"
-                                             Text="Your Company Name"/>
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock Text="HM-TECH IT Solutions" FontSize="16" FontWeight="Bold"
+                                           Foreground="White" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Smart Tech, Secure Life" FontSize="11" FontStyle="Italic"
+                                           Foreground="#2E8B57" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
+                                    <TextBlock Text="07812573845" FontSize="12" Foreground="#78CDD7" Margin="0,0,16,0"/>
+                                    <TextBlock Text="hmtech.solutions" FontSize="12" Foreground="#78CDD7"/>
                                 </StackPanel>
-                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,8">
-                                    <TextBlock Text="Phone:" FontSize="11" Foreground="#7A8A9A"/>
-                                    <TextBox x:Name="DevPhoneBox" FontSize="13" Background="#1E2D3D" Foreground="White"
-                                             BorderBrush="#2A3A4A" BorderThickness="1" Padding="8,6" Margin="6,3,0,0"
-                                             Text="+961 XX XXX XXX"/>
-                                </StackPanel>
-                                <StackPanel Grid.Row="1" Grid.Column="0">
-                                    <TextBlock Text="Email:" FontSize="11" Foreground="#7A8A9A"/>
-                                    <TextBox x:Name="DevEmailBox" FontSize="13" Background="#1E2D3D" Foreground="White"
-                                             BorderBrush="#2A3A4A" BorderThickness="1" Padding="8,6" Margin="0,3,6,0"
-                                             Text="support@yourcompany.com"/>
-                                </StackPanel>
-                                <StackPanel Grid.Row="1" Grid.Column="1">
-                                    <TextBlock Text="WhatsApp:" FontSize="11" Foreground="#7A8A9A"/>
-                                    <TextBox x:Name="DevWhatsAppBox" FontSize="13" Background="#1E2D3D" Foreground="White"
-                                             BorderBrush="#2A3A4A" BorderThickness="1" Padding="8,6" Margin="6,3,0,0"
-                                             Text="+961 XX XXX XXX"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <!-- Developer Logo Upload -->
-                            <StackPanel Margin="0,10,0,0">
-                                <TextBlock Text="Company Logo:" FontSize="11" Foreground="#7A8A9A" Margin="0,0,0,4"/>
-                                <DockPanel>
-                                    <Button x:Name="BrowseDevLogoButton" DockPanel.Dock="Right"
-                                            Click="BrowseDevLogo_Click"
-                                            Background="#2A3A4A" Foreground="White" BorderThickness="0" Cursor="Hand"
-                                            Padding="12,6" Margin="8,0,0,0" VerticalAlignment="Center">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                                        CornerRadius="6" Padding="{TemplateBinding Padding}">
-                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#3A4A5A"/>
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                        <StackPanel Orientation="Horizontal">
-                                            <fa:FontAwesome Icon="FolderOpen" FontSize="12" Foreground="#4FC3F7" Margin="0,0,6,0"
-                                                            VerticalAlignment="Center"/>
-                                            <TextBlock Text="Browse" FontSize="11" Foreground="White"/>
-                                        </StackPanel>
-                                    </Button>
-                                    <Border Background="#1E2D3D" CornerRadius="6" Padding="6" Height="48">
-                                        <DockPanel>
-                                            <Image x:Name="DevLogoPreview" Width="36" Height="36"
-                                                   Stretch="Uniform" DockPanel.Dock="Left" Margin="0,0,8,0"/>
-                                            <TextBlock x:Name="DevLogoFileName" Text="No logo selected"
-                                                       FontSize="11" Foreground="#7A8A9A"
-                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        </DockPanel>
-                                    </Border>
-                                </DockPanel>
                             </StackPanel>
+
+                            <!-- Developer logo removed - hardcoded in login page -->
                         </StackPanel>
                     </Border>
                 </StackPanel>

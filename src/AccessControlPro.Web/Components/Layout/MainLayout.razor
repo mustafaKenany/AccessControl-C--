@@ -4,7 +4,7 @@
 @inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @inject IJSRuntime JS
 
-<div class="app-container" dir="@SessionState.Dir">
+<div class="app-container" dir="@Session.Dir">
     @if (_isLoading)
     {
         <div style="display:flex; justify-content:center; align-items:center; min-height:100vh; color:var(--accent);">
@@ -79,7 +79,7 @@
                     <i class="fas fa-key"></i> <span class="nav-text">@L("Password", "كلمة المرور")</span>
                 </a>
                 <a href="javascript:void(0)" class="nav-link lang-toggle" @onclick="ToggleLang">
-                    <i class="fas fa-globe"></i> <span class="nav-text">@(SessionState.IsArabic ? "EN" : "عربي")</span>
+                    <i class="fas fa-globe"></i> <span class="nav-text">@(Session.IsArabic ? "EN" : "عربي")</span>
                 </a>
                 <a href="/logout" class="nav-link logout-link" style="color: #e74c3c; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 0.5rem; padding-top: 0.75rem;">
                     <i class="fas fa-sign-out-alt"></i> <span class="nav-text">@L("Logout", "خروج")</span>
@@ -101,7 +101,7 @@
     private string _expiryInfo = "";
     private bool _isLoading = true;
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     protected override void OnInitialized()
     {
@@ -138,26 +138,18 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Always log — even before firstRender check
-        try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] MainLayout.OnAfterRenderAsync called, firstRender={firstRender}\n"); } catch { }
-
         if (firstRender)
         {
             try
             {
-                System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] OnAfterRenderAsync START, IsAuthenticated=" + Session.IsAuthenticated + "\n");
-
                 // Step 1: Restore session from cookie if not authenticated
                 if (!Session.IsAuthenticated)
                 {
                     var cookie = await JS.InvokeAsync<string>("eval",
                         "document.cookie.split('; ').find(c => c.startsWith('session='))?.split('=')[1] || ''");
-                    System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] Cookie value: " + (string.IsNullOrEmpty(cookie) ? "EMPTY" : cookie.Substring(0, Math.Min(20, cookie.Length)) + "...") + "\n");
-
                     if (!string.IsNullOrEmpty(cookie))
                     {
                         var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(cookie));
-                        System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] Decoded cookie: " + decoded + "\n");
                         var parts = decoded.Split('|');
                         if (parts.Length >= 5)
                         {
@@ -171,35 +163,29 @@
                                 GymId = int.TryParse(parts[4], out var gid) ? gid : 0
                             };
                             Session.Login(result, parts[3], int.TryParse(parts[4], out var g) ? g : 0);
-                            System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] Session restored: Role=" + Session.Role + " IsOwner=" + Session.IsOwner + "\n");
                         }
                     }
                 }
-
-                System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] After cookie restore: IsAuthenticated=" + Session.IsAuthenticated + " IsOwner=" + Session.IsOwner + "\n");
 
                 // Step 2: Load gym name if authenticated
                 if (Session.IsAuthenticated && Session.IsOwner)
                 {
                     try { await LoadGymInfoAsync(); }
-                    catch (Exception ex) { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] LoadGymInfo error: " + ex.Message + "\n"); }
+                    catch (Exception ex) { Console.WriteLine($"[MainLayout] LoadGymInfo error: {ex.Message}"); }
                 }
 
                 // Step 3: If still not authenticated, redirect to login
                 if (!Session.IsAuthenticated)
                 {
-                    System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] Not authenticated, redirecting to /login\n");
                     await JS.InvokeVoidAsync("eval", "window.location.href = '/login'");
                     return;
                 }
 
-                System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] Setting _isLoading = false\n");
                 _isLoading = false;
                 StateHasChanged();
             }
             catch (Exception ex)
             {
-                System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [MainLayout] EXCEPTION: " + ex.Message + " | " + ex.StackTrace + "\n");
                 _isLoading = false;
                 StateHasChanged();
             }
@@ -221,7 +207,7 @@
                 if (result != null && result != DBNull.Value)
                     _gymName = result.ToString() ?? "HM-GymManagement";
             }
-            catch { }
+            catch (Exception ex) { Console.WriteLine($"[MainLayout] LoadGymName Error: {ex.Message}"); }
 
             // Get cloud expiry from master
             try
@@ -241,7 +227,7 @@
                             : L("Expired!", "\u0645\u0646\u062a\u0647\u064a!");
                 }
             }
-            catch { }
+            catch (Exception ex) { Console.WriteLine($"[MainLayout] LoadExpiryInfo Error: {ex.Message}"); }
         }
     }
 
@@ -254,7 +240,7 @@
 
     private void ToggleLang()
     {
-        SessionState.ToggleLanguage();
+        Session.ToggleLanguage();
         StateHasChanged();
     }
 }

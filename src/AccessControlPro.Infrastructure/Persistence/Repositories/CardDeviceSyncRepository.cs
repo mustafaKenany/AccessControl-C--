@@ -87,4 +87,20 @@ public class CardDeviceSyncRepository : ICardDeviceSyncRepository
         db.CardDeviceSyncs.RemoveRange(syncs);
         await db.SaveChangesAsync();
     }
+
+    public async Task<int> CountSyncedByDeviceIdAsync(int deviceId)
+    {
+        await using var db = _factory.CreateDbContext();
+        return await db.CardDeviceSyncs
+            .CountAsync(s => s.DeviceId == deviceId && s.IsSynced);
+    }
+
+    public async Task<Dictionary<int, int>> CountSyncedByAllDevicesAsync()
+    {
+        await using var db = _factory.CreateDbContext();
+        return await db.CardDeviceSyncs
+            .Where(s => s.IsSynced)
+            .GroupBy(s => s.DeviceId)
+            .ToDictionaryAsync(g => g.Key, g => g.Count());
+    }
 }

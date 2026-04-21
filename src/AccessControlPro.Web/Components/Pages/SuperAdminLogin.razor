@@ -84,7 +84,7 @@
         try
         {
             var configUser = Config["SuperAdmin:Username"] ?? "";
-            var configPass = Config["SuperAdmin:Password"] ?? "";
+            var configHash = Config["SuperAdmin:PasswordHash"] ?? "";
 
             if (string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))
             {
@@ -92,7 +92,12 @@
                 return Task.CompletedTask;
             }
 
-            if (_username.Trim() == configUser && _password == configPass)
+            // Compare SHA256 hash of input with stored hash (no plaintext password in config)
+            var inputHash = Convert.ToBase64String(
+                System.Security.Cryptography.SHA256.HashData(
+                    System.Text.Encoding.UTF8.GetBytes(_password)));
+
+            if (_username.Trim() == configUser && inputHash == configHash)
             {
                 var result = AuthResult.Success("Super Admin", "SuperAdmin", 0);
                 Session.Login(result);

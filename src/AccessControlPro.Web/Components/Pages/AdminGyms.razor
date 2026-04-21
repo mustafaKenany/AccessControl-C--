@@ -91,7 +91,7 @@ else
     private string _ownerPhone = "";
     private string _ownerEmail = "";
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -117,7 +117,7 @@ else
             if (result != null && result != DBNull.Value && !string.IsNullOrWhiteSpace(result.ToString()))
                 _gymName = result.ToString()!;
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[AdminGyms] LoadAppSettings Error: {ex.Message}"); }
 
         // Try to load from Gyms table (always from master DB since Gyms table lives there)
         try
@@ -146,7 +146,7 @@ else
                     _ownerEmail = r.GetString(5);
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[AdminGyms] LoadGymsData Error: {ex.Message}"); }
 
         _daysRemaining = (_expiresAt - DateTime.UtcNow).Days;
     }

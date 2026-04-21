@@ -151,12 +151,7 @@ public partial class SetupWizardWindow : Window
     {
         switch (_currentStep)
         {
-            case 1: // Welcome - developer info
-                if (string.IsNullOrWhiteSpace(DevCompanyNameBox.Text))
-                {
-                    CustomMessageBox.Show("Please enter the developer company name.", "Validation", MsgType.Warning, this);
-                    return false;
-                }
+            case 1: // Welcome - developer info (hardcoded, always valid)
                 return true;
 
             case 2: // Database
@@ -202,15 +197,7 @@ public partial class SetupWizardWindow : Window
 
     #region Logo Upload
 
-    private void BrowseDevLogo_Click(object sender, RoutedEventArgs e)
-    {
-        var path = BrowseImageFile("Select Developer Company Logo");
-        if (path == null) return;
-
-        _devLogoSourcePath = path;
-        DevLogoPreview.Source = new BitmapImage(new Uri(path));
-        DevLogoFileName.Text = Path.GetFileName(path);
-    }
+    // Developer logo upload removed - info is hardcoded
 
     private void BrowseGymLogo_Click(object sender, RoutedEventArgs e)
     {
@@ -319,9 +306,8 @@ public partial class SetupWizardWindow : Window
             $"Admin Username:   {AdminUsernameBox.Text.Trim()}\n" +
             $"Admin Display:    {AdminDisplayNameBox.Text.Trim()}\n" +
             $"─────────────────────────────\n" +
-            $"Developer:        {DevCompanyNameBox.Text.Trim()}\n" +
-            $"Support Phone:    {DevPhoneBox.Text.Trim()}\n" +
-            $"Dev Logo:         {(_devLogoSourcePath != null ? Path.GetFileName(_devLogoSourcePath) : "None")}\n" +
+            $"Developer:        HM-TECH IT Solutions\n" +
+            $"Support Phone:    07812573845\n" +
             $"Gym Logo:         {(_gymLogoSourcePath != null ? Path.GetFileName(_gymLogoSourcePath) : "None")}\n" +
             $"─────────────────────────────\n" +
             $"Backup Folder:    {(string.IsNullOrWhiteSpace(BackupFolderBox.Text) ? "(default)" : BackupFolderBox.Text.Trim())}";
@@ -343,7 +329,7 @@ public partial class SetupWizardWindow : Window
         var adminUsername = AdminUsernameBox.Text.Trim();
         var adminPassword = AdminPasswordBox.Password;
         var adminDisplayName = AdminDisplayNameBox.Text.Trim();
-        var devCompanyName = DevCompanyNameBox.Text.Trim();
+        var devCompanyName = "HM-TECH IT Solutions";
         var gymNameEn = GymNameEnBox.Text.Trim();
         var gymPhone = GymPhoneBox.Text.Trim();
         var gymAddress = GymAddressBox.Text.Trim();
@@ -456,10 +442,10 @@ public partial class SetupWizardWindow : Window
             },
             ["Developer"] = new JsonObject
             {
-                ["CompanyName"] = DevCompanyNameBox.Text.Trim(),
-                ["Phone"] = DevPhoneBox.Text.Trim(),
-                ["Email"] = DevEmailBox.Text.Trim(),
-                ["WhatsApp"] = DevWhatsAppBox.Text.Trim(),
+                ["CompanyName"] = "HM-TECH IT Solutions",
+                ["Phone"] = "07812573845",
+                ["Email"] = "",
+                ["WhatsApp"] = "07812573845",
                 ["LogoPath"] = ""
             },
             ["CloudSyncUrl"] = "https://hmtech.solutions/api/sync",

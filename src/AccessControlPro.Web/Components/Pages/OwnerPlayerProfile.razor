@@ -53,7 +53,7 @@ else
     <div class="page-header">
         <div style="display: flex; align-items: center; gap: 1rem;">
             <a href="/players" class="btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 0.4rem;">
-                <i class="fas @(SessionState.IsArabic ? "fa-arrow-right" : "fa-arrow-left")"></i> @L("Back", "رجوع")
+                <i class="fas @(Session.IsArabic ? "fa-arrow-right" : "fa-arrow-left")"></i> @L("Back", "رجوع")
             </a>
             <h1><i class="fas fa-user"></i> @L("Player Profile", "ملف اللاعب")</h1>
         </div>
@@ -67,12 +67,12 @@ else
             </div>
             <div style="flex: 1; min-width: 200px;">
                 <h2 style="margin-bottom: 0.25rem; font-size: 1.4rem;">
-                    @(SessionState.IsArabic && !string.IsNullOrEmpty(_player.FullNameAr) ? _player.FullNameAr : _player.FullNameEn)
+                    @(Session.IsArabic && !string.IsNullOrEmpty(_player.FullNameAr) ? _player.FullNameAr : _player.FullNameEn)
                 </h2>
-                @if (!string.IsNullOrEmpty(SessionState.IsArabic ? _player.FullNameEn : _player.FullNameAr))
+                @if (!string.IsNullOrEmpty(Session.IsArabic ? _player.FullNameEn : _player.FullNameAr))
                 {
-                    <p style="color: var(--text-secondary); margin-bottom: 0.5rem; font-size: 1rem;" dir="@(SessionState.IsArabic ? "ltr" : "rtl")">
-                        @(SessionState.IsArabic ? _player.FullNameEn : _player.FullNameAr)
+                    <p style="color: var(--text-secondary); margin-bottom: 0.5rem; font-size: 1rem;" dir="@(Session.IsArabic ? "ltr" : "rtl")">
+                        @(Session.IsArabic ? _player.FullNameEn : _player.FullNameAr)
                     </p>
                 }
                 <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
@@ -279,7 +279,7 @@ else
                                         "UPDATE" => L("Updated", "تحديث"),
                                         _ => a.Action
                                     };
-                                    var details = SessionState.IsArabic && !string.IsNullOrEmpty(a.DetailsAr) ? a.DetailsAr : a.Details;
+                                    var details = Session.IsArabic && !string.IsNullOrEmpty(a.DetailsAr) ? a.DetailsAr : a.Details;
                                     <tr>
                                         <td>@a.Timestamp.ToString("yyyy-MM-dd HH:mm")</td>
                                         <td><span class="badge badge-active">@actionLabel</span></td>
@@ -317,7 +317,7 @@ else
                                 {
                                     var isFrozen = a.Action.ToUpper().Contains("FREEZE") && !a.Action.ToUpper().Contains("UNFREEZE");
                                     var actionLabel = isFrozen ? L("Frozen", "تجميد") : L("Unfrozen", "الغاء التجميد");
-                                    var details = SessionState.IsArabic && !string.IsNullOrEmpty(a.DetailsAr) ? a.DetailsAr : a.Details;
+                                    var details = Session.IsArabic && !string.IsNullOrEmpty(a.DetailsAr) ? a.DetailsAr : a.Details;
                                     <tr>
                                         <td>@a.Timestamp.ToString("yyyy-MM-dd HH:mm")</td>
                                         <td><span class="badge @(isFrozen ? "badge-frozen" : "badge-active")">@actionLabel</span></td>
@@ -360,7 +360,7 @@ else
                                         "SYNCCARD" => L("Card Synced", "مزامنة بطاقة"),
                                         _ => a.Action
                                     };
-                                    var details = SessionState.IsArabic && !string.IsNullOrEmpty(a.DetailsAr) ? a.DetailsAr : a.Details;
+                                    var details = Session.IsArabic && !string.IsNullOrEmpty(a.DetailsAr) ? a.DetailsAr : a.Details;
                                     <tr>
                                         <td>@a.Timestamp.ToString("yyyy-MM-dd HH:mm")</td>
                                         <td><span class="badge badge-active">@actionLabel</span></td>
@@ -439,7 +439,7 @@ else
     private string _activeTab = "subscription";
     private string _gymName = "";
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -477,7 +477,7 @@ else
             if (result != null && result != DBNull.Value && !string.IsNullOrWhiteSpace(result.ToString()))
                 _gymName = result.ToString()!;
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerPlayerProfile] LoadGymNameAsync Error: {ex.Message}"); }
     }
 
     private void ShareViaWhatsApp()
@@ -487,7 +487,7 @@ else
         var last4 = !string.IsNullOrEmpty(_player.CardNo) && _player.CardNo.Length >= 4
             ? _player.CardNo[^4..] : _player.CardNo;
 
-        var msg = SessionState.IsArabic
+        var msg = Session.IsArabic
             ? $"مرحباً بك في {_gymName}! 🏋️\nتابع اشتراكك أونلاين:\n\n🌐 https://hmtech.solutions/login\n📱 الهاتف: {_player.Phone}\n💳 آخر 4 أرقام: {last4}\n\nاختر \"دخول اللاعب\" وأدخل بياناتك"
             : $"Welcome to {_gymName}! 🏋️\nTrack your subscription online:\n\n🌐 https://hmtech.solutions/login\n📱 Phone: {_player.Phone}\n💳 Last 4 digits: {last4}\n\nChoose \"Player Login\" and enter your info";
 
@@ -520,7 +520,7 @@ else
                     r.IsDBNull(13) ? null : r.GetDateTime(13));
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerPlayerProfile] LoadPlayerAsync Error: {ex.Message}"); }
     }
 
     private async Task LoadPaymentsAsync()
@@ -545,7 +545,7 @@ else
                     r.GetString(4), r.GetDateTime(5), r.GetString(6)));
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerPlayerProfile] LoadPaymentsAsync Error: {ex.Message}"); }
     }
 
     private async Task LoadRenewalsAsync()
@@ -570,7 +570,7 @@ else
                     r.GetDateTime(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4)));
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerPlayerProfile] LoadRenewalsAsync Error: {ex.Message}"); }
     }
 
     private async Task LoadFreezesAsync()
@@ -595,7 +595,7 @@ else
                     r.GetDateTime(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4)));
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerPlayerProfile] LoadFreezesAsync Error: {ex.Message}"); }
     }
 
     private async Task LoadCardHistoryAsync()
@@ -620,7 +620,7 @@ else
                     r.GetDateTime(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4)));
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerPlayerProfile] LoadCardHistoryAsync Error: {ex.Message}"); }
     }
 
     private async Task LoadVisitsAsync()
@@ -650,6 +650,6 @@ else
                     r.GetDateTime(0), r.GetString(2), r.GetInt32(1)));
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerPlayerProfile] LoadVisitsAsync Error: {ex.Message}"); }
     }
 }

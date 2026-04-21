@@ -122,8 +122,8 @@ else
                             };
                             var visitsText = p.MaxVisits > 0 ? $"{p.UsedVisits}/{p.MaxVisits}" : L("Unlimited", "غير محدود");
                             var remaining = p.Fee - p.Paid;
-                            var name = SessionState.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn;
-                            var nameSecondary = SessionState.IsArabic ? p.FullNameEn : p.FullNameAr;
+                            var name = Session.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn;
+                            var nameSecondary = Session.IsArabic ? p.FullNameEn : p.FullNameAr;
 
                             <tr class="player-row @(_expandedId == p.Id ? "expanded" : "")" @onclick="() => ToggleExpand(p.Id)">
                                 <td>
@@ -232,8 +232,8 @@ else
                         _ => L("Expired", "منتهي")
                     };
                     var remaining = p.Fee - p.Paid;
-                    var name = SessionState.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn;
-                    var nameSecondary = SessionState.IsArabic ? p.FullNameEn : p.FullNameAr;
+                    var name = Session.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn;
+                    var nameSecondary = Session.IsArabic ? p.FullNameEn : p.FullNameAr;
 
                     <div class="mobile-card">
                         <div class="mobile-card-header">
@@ -325,7 +325,7 @@ else
     private string _gymName = "";
     private bool _refreshing;
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -351,7 +351,7 @@ else
             if (result != null && result != DBNull.Value && !string.IsNullOrWhiteSpace(result.ToString()))
                 _gymName = result.ToString()!;
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerPlayers] LoadGymNameAsync Error: {ex.Message}"); }
     }
 
     private void ShareViaWhatsApp(PlayerRow player)
@@ -359,7 +359,7 @@ else
         var last4 = !string.IsNullOrEmpty(player.CardNo) && player.CardNo.Length >= 4
             ? player.CardNo[^4..] : player.CardNo;
 
-        var msg = SessionState.IsArabic
+        var msg = Session.IsArabic
             ? $"مرحباً بك في {_gymName}! 🏋️\nتابع اشتراكك أونلاين:\n\n🌐 https://hmtech.solutions/login\n📱 الهاتف: {player.Phone}\n💳 آخر 4 أرقام: {last4}\n\nاختر \"دخول اللاعب\" وأدخل بياناتك"
             : $"Welcome to {_gymName}! 🏋️\nTrack your subscription online:\n\n🌐 https://hmtech.solutions/login\n📱 Phone: {player.Phone}\n💳 Last 4 digits: {last4}\n\nChoose \"Player Login\" and enter your info";
 
@@ -460,7 +460,7 @@ else
                 }
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerPlayers] LoadPlayersAsync Error: {ex.Message}"); }
     }
 
     private void ToggleExpand(int id)
@@ -506,8 +506,8 @@ else
         {
             "today" => (today.AddHours(-6), future),
             "yesterday" => (today.AddDays(-1).AddHours(-6), today.AddHours(-6)),
-            "thisweek" => (today.AddDays(-(int)today.DayOfWeek).AddHours(-6), future),
-            "lastweek" => (today.AddDays(-(int)today.DayOfWeek - 7).AddHours(-6), today.AddDays(-(int)today.DayOfWeek).AddHours(-6)),
+            "thisweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7).AddHours(-6), future),
+            "lastweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7 - 7).AddHours(-6), today.AddDays(-((int)today.DayOfWeek + 1) % 7).AddHours(-6)),
             "thismonth" => (new DateTime(now.Year, now.Month, 1).AddHours(-6), future),
             "lastmonth" => (new DateTime(now.Year, now.Month, 1).AddMonths(-1).AddHours(-6),
                             new DateTime(now.Year, now.Month, 1).AddHours(-6)),
@@ -528,8 +528,8 @@ else
         {
             "today" => (today.AddHours(-6), future),
             "yesterday" => (today.AddDays(-1).AddHours(-6), today.AddHours(-6)),
-            "thisweek" => (today.AddDays(-(int)today.DayOfWeek).AddHours(-6), future),
-            "lastweek" => (today.AddDays(-(int)today.DayOfWeek - 7).AddHours(-6), today.AddDays(-(int)today.DayOfWeek).AddHours(-6)),
+            "thisweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7).AddHours(-6), future),
+            "lastweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7 - 7).AddHours(-6), today.AddDays(-((int)today.DayOfWeek + 1) % 7).AddHours(-6)),
             "thismonth" => (new DateTime(now.Year, now.Month, 1).AddHours(-6), future),
             "lastmonth" => (new DateTime(now.Year, now.Month, 1).AddMonths(-1).AddHours(-6),
                             new DateTime(now.Year, now.Month, 1).AddHours(-6)),

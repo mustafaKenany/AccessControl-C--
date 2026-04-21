@@ -23,13 +23,16 @@ public class EmployeeRepository : IEmployeeRepository
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var s = search.ToLower();
+            var s = search.Trim();
+            // Strip leading zeros for card number matching (readers add leading zeros)
+            var sNoLeadingZeros = s.TrimStart('0');
+            // Use EF.Functions.Like for better SQL translation (uses SQL LIKE which can leverage indexes)
             query = query.Where(e =>
-                (e.FullNameEn ?? "").ToLower().Contains(s) ||
-                (e.FullNameAr ?? "").Contains(search) ||
-                (e.CardNo ?? "").ToLower().Contains(s) ||
-                (e.SubscriptionType ?? "").ToLower().Contains(s) ||
-                (e.Phone ?? "").Contains(search));
+                EF.Functions.Like(e.FullNameEn, $"%{s}%") ||
+                EF.Functions.Like(e.FullNameAr ?? "", $"%{s}%") ||
+                EF.Functions.Like(e.CardNo ?? "", $"%{s}%") ||
+                (sNoLeadingZeros.Length > 0 && EF.Functions.Like(e.CardNo ?? "", $"%{sNoLeadingZeros}%")) ||
+                EF.Functions.Like(e.Phone ?? "", $"%{s}%"));
         }
 
         var totalCount = await query.CountAsync();
@@ -143,5 +146,15 @@ public class EmployeeRepository : IEmployeeRepository
             .Where(e => e.SubscriptionFee > e.AmountPaid)
             .OrderByDescending(e => e.SubscriptionFee - e.AmountPaid)
             .ToListAsync();
+    }
+
+    public async Task<IEnumerable<(int Id, string CardNo, DateTime StartDate, DateTime EndDate, int MaxVisits)>> GetCardInfoForSyncAsync()
+    {
+        await using var db = _factory.CreateDbContext();
+        return await db.Employees
+            .Where(e => !string.IsNullOrEmpty(e.CardNo))
+            .Select(e => new { e.Id, e.CardNo, e.StartDate, e.EndDate, e.MaxVisits })
+            .ToListAsync()
+            .ContinueWith(t => t.Result.Select(e => (e.Id, e.CardNo, e.StartDate, e.EndDate, e.MaxVisits)));
     }
 }

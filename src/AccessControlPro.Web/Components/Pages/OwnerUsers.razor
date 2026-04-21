@@ -15,86 +15,141 @@ else
 {
     <div class="page-header">
         <h1><i class="fas fa-user-shield"></i> @L("User Management", "إدارة المستخدمين")</h1>
-        <span class="last-sync">@L("Total", "الإجمالي"): @_users.Count</span>
+    </div>
+
+    <!-- Stats Bar -->
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="background: var(--card-bg, #0d2628); border: 1px solid var(--border, #1a3a3c); border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(68,161,160,0.15); display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-users" style="color: var(--accent, #44A1A0); font-size: 1.1rem;"></i>
+            </div>
+            <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary, #e0e0e0);">@_users.Count</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary, #8a9a9c);">@L("Total Users", "إجمالي المستخدمين")</div>
+            </div>
+        </div>
+        <div style="background: var(--card-bg, #0d2628); border: 1px solid var(--border, #1a3a3c); border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(76,175,80,0.15); display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-user-check" style="color: #4CAF50; font-size: 1.1rem;"></i>
+            </div>
+            <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #4CAF50;">@_users.Count(u => u.IsActive)</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary, #8a9a9c);">@L("Active", "نشط")</div>
+            </div>
+        </div>
+        <div style="background: var(--card-bg, #0d2628); border: 1px solid var(--border, #1a3a3c); border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(244,67,54,0.15); display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-user-slash" style="color: #F44336; font-size: 1.1rem;"></i>
+            </div>
+            <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #F44336;">@_users.Count(u => !u.IsActive)</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary, #8a9a9c);">@L("Inactive", "غير نشط")</div>
+            </div>
+        </div>
     </div>
 
     @if (!string.IsNullOrEmpty(_successMsg))
     {
-        <div class="success-msg">@_successMsg</div>
+        <div class="success-msg" style="display: flex; align-items: center; gap: 0.5rem; animation: fadeIn 0.3s ease;">
+            <i class="fas fa-check-circle"></i> @_successMsg
+        </div>
     }
     @if (!string.IsNullOrEmpty(_errorMsg))
     {
-        <div class="error-msg">@_errorMsg</div>
+        <div class="error-msg" style="display: flex; align-items: center; gap: 0.5rem; animation: fadeIn 0.3s ease;">
+            <i class="fas fa-exclamation-circle"></i> @_errorMsg
+        </div>
     }
 
-    <!-- Create New User Form -->
-    <div class="content-card">
-        <h3><i class="fas fa-user-plus"></i> @L("Create New User", "إنشاء مستخدم جديد")</h3>
-        <div class="form-row">
-            <div class="form-group">
-                <label>@L("Username", "اسم المستخدم")</label>
-                <input type="text" @bind="_newUsername" class="form-input"
-                       placeholder="@L("Enter username", "أدخل اسم المستخدم")" />
-            </div>
-            <div class="form-group">
-                <label>@L("Display Name", "الاسم المعروض")</label>
-                <input type="text" @bind="_newDisplayName" class="form-input"
-                       placeholder="@L("Enter display name", "أدخل الاسم المعروض")" />
-            </div>
-            <div class="form-group">
-                <label>@L("Password", "كلمة المرور")</label>
-                <input type="password" @bind="_newPassword" class="form-input"
-                       placeholder="@L("Enter password (min 6 chars)", "أدخل كلمة المرور (6 أحرف على الأقل)")" />
-            </div>
-            <div class="form-group">
-                <label>@L("Role", "الدور")</label>
-                <select @bind="_newRole" class="form-select">
-                    <option value="Admin">@L("Admin", "مدير")</option>
-                    <option value="User">@L("User", "مستخدم")</option>
-                </select>
-            </div>
+    <!-- Create New User (Collapsible) -->
+    <div class="content-card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @onclick="() => _showCreateForm = !_showCreateForm">
+            <h3 style="margin: 0;"><i class="fas fa-user-plus"></i> @L("Create New User", "إنشاء مستخدم جديد")</h3>
+            <button class="btn-outline btn-sm" style="min-width: auto; padding: 0.3rem 0.6rem;">
+                <i class="fas @(_showCreateForm ? "fa-chevron-up" : "fa-chevron-down")"></i>
+            </button>
         </div>
-        <div class="form-group">
-            <label>@L("Permissions", "الصلاحيات")</label>
-            <div style="margin-bottom: 0.5rem;">
-                <button class="filter-btn" style="font-size: 0.75rem;" @onclick="() => SelectAllNew(true)">
-                    @L("Select All", "تحديد الكل")
-                </button>
-                <button class="filter-btn" style="font-size: 0.75rem;" @onclick="() => SelectAllNew(false)">
-                    @L("Clear All", "مسح الكل")
-                </button>
-            </div>
-            @foreach (var group in _permissionGroups)
-            {
-                <div style="margin-bottom: 0.75rem;">
-                    <div style="color: var(--accent); font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.2rem;">
-                        @L(group.groupEn, group.groupAr)
+
+        @if (_showCreateForm)
+        {
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border, #1a3a3c);">
+                <div class="form-row" style="gap: 1rem;">
+                    <div class="form-group">
+                        <label>@L("Username", "اسم المستخدم")</label>
+                        <input type="text" @bind="_newUsername" class="form-input"
+                               placeholder="@L("Enter username", "أدخل اسم المستخدم")" />
                     </div>
-                    <div class="permissions-grid">
-                        @foreach (var perm in group.perms)
-                        {
-                            var key = perm.key;
-                            var isChecked = _newPermissions.Contains(key);
-                            <div class="permission-item">
-                                <input type="checkbox" id="new_@key" checked="@isChecked"
-                                       @onchange="(e) => ToggleNewPermission(key, (bool)(e.Value ?? false))" />
-                                <label for="new_@key">@L(perm.en, perm.ar)</label>
-                            </div>
-                        }
+                    <div class="form-group">
+                        <label>@L("Display Name", "الاسم المعروض")</label>
+                        <input type="text" @bind="_newDisplayName" class="form-input"
+                               placeholder="@L("Enter display name", "أدخل الاسم المعروض")" />
+                    </div>
+                    <div class="form-group">
+                        <label>@L("Password", "كلمة المرور")</label>
+                        <input type="password" @bind="_newPassword" class="form-input"
+                               placeholder="@L("Enter password (min 6 chars)", "أدخل كلمة المرور (6 أحرف على الأقل)")" />
+                    </div>
+                    <div class="form-group">
+                        <label>@L("Role", "الدور")</label>
+                        <select @bind="_newRole" class="form-select">
+                            <option value="Admin">@L("Admin", "مدير")</option>
+                            <option value="User">@L("User", "مستخدم")</option>
+                        </select>
                     </div>
                 </div>
-            }
-        </div>
-        <div class="form-actions">
-            <button class="btn-accent" @onclick="CreateUserAsync" disabled="@_loading">
-                <i class="fas fa-plus"></i> @L("Create User", "إنشاء مستخدم")
-            </button>
+                <div class="form-group" style="margin-top: 0.75rem;">
+                    <label>@L("Permissions", "الصلاحيات")</label>
+                    <div style="margin-bottom: 0.5rem;">
+                        <button class="filter-btn" style="font-size: 0.75rem;" @onclick="() => SelectAllNew(true)">
+                            @L("Select All", "تحديد الكل")
+                        </button>
+                        <button class="filter-btn" style="font-size: 0.75rem;" @onclick="() => SelectAllNew(false)">
+                            @L("Clear All", "مسح الكل")
+                        </button>
+                    </div>
+                    @foreach (var group in _permissionGroups)
+                    {
+                        <div style="margin-bottom: 0.75rem;">
+                            <div style="color: var(--accent); font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.2rem;">
+                                @L(group.groupEn, group.groupAr)
+                            </div>
+                            <div class="permissions-grid">
+                                @foreach (var perm in group.perms)
+                                {
+                                    var key = perm.key;
+                                    var isChecked = _newPermissions.Contains(key);
+                                    <div class="permission-item">
+                                        <input type="checkbox" id="new_@key" checked="@isChecked"
+                                               @onchange="(e) => ToggleNewPermission(key, (bool)(e.Value ?? false))" />
+                                        <label for="new_@key">@L(perm.en, perm.ar)</label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="form-actions" style="margin-top: 1rem;">
+                    <button class="btn-accent" @onclick="CreateUserAsync" disabled="@_loading">
+                        <i class="fas fa-plus"></i> @L("Create User", "إنشاء مستخدم")
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Search -->
+    <div style="margin-bottom: 1rem;">
+        <div style="position: relative; max-width: 400px;">
+            <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary, #8a9a9c); font-size: 0.85rem;"></i>
+            <input type="text" @bind="_searchQuery" @bind:event="oninput" class="form-input"
+                   style="padding-left: 36px; width: 100%;"
+                   placeholder="@L("Search by username or display name...", "البحث بالاسم أو اسم المستخدم...")" />
         </div>
     </div>
 
     <!-- Existing Users -->
-    <div class="content-card" style="margin-top: 1.5rem;">
-        <h3><i class="fas fa-users"></i> @L("Existing Users", "المستخدمون الحاليون")</h3>
+    <div class="content-card">
+        <h3 style="margin-bottom: 1rem;"><i class="fas fa-users"></i> @L("Existing Users", "المستخدمون الحاليون") <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 400;">(@FilteredUsers.Count())</span></h3>
 
         @* Desktop table *@
         <div class="desktop-only">
@@ -107,15 +162,17 @@ else
                             <th>@L("Role", "الدور")</th>
                             <th>@L("Status", "الحالة")</th>
                             <th>@L("Permissions", "الصلاحيات")</th>
-                            <th>@L("Actions", "الإجراءات")</th>
+                            <th style="min-width: 280px;">@L("Actions", "الإجراءات")</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var user in _users)
+                        @foreach (var user in FilteredUsers)
                         {
                             var isEditing = _editingUserId == user.Id;
-                            <tr>
-                                <td>@user.Username</td>
+                            <tr style="transition: background 0.2s ease;" class="@(user.IsActive ? "" : "inactive-row")">
+                                <td>
+                                    <span style="font-weight: 500;">@user.Username</span>
+                                </td>
                                 <td>
                                     @if (isEditing)
                                     {
@@ -137,8 +194,8 @@ else
                                     }
                                     else
                                     {
-                                        <span class="badge @(user.Role == "Owner" ? "badge-active" : user.Role == "Admin" ? "badge-frozen" : "badge-expiring")">
-                                            @user.Role
+                                        <span class="badge" style="@GetRoleBadgeStyle(user.Role)">
+                                            @L(user.Role, GetRoleArabic(user.Role))
                                         </span>
                                     }
                                 </td>
@@ -152,7 +209,7 @@ else
                                     }
                                     else
                                     {
-                                        <span class="badge @(user.IsActive ? "badge-active" : "badge-expired")">
+                                        <span class="badge" style="@(user.IsActive ? "background: rgba(76,175,80,0.15); color: #4CAF50; border: 1px solid rgba(76,175,80,0.3);" : "background: rgba(244,67,54,0.15); color: #F44336; border: 1px solid rgba(244,67,54,0.3);")">
                                             @(user.IsActive ? L("Active", "نشط") : L("Inactive", "غير نشط"))
                                         </span>
                                     }
@@ -193,8 +250,9 @@ else
                                     {
                                         @if (!string.IsNullOrEmpty(user.Permissions))
                                         {
-                                            <span style="font-size: 0.8rem; color: var(--text-secondary);">
-                                                @FormatPermissions(user.Permissions)
+                                            var permCount = user.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries).Length;
+                                            <span style="font-size: 0.8rem; color: var(--text-secondary);" title="@FormatPermissions(user.Permissions)">
+                                                @permCount @L("permissions", "صلاحية")
                                             </span>
                                         }
                                         else
@@ -217,22 +275,45 @@ else
                                     }
                                     else
                                     {
-                                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                            <button class="btn-outline btn-sm" @onclick="() => StartEdit(user)">
+                                        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                                            <button class="btn-outline btn-sm" @onclick="() => StartEdit(user)" title="@L("Edit", "تعديل")">
                                                 <i class="fas fa-edit"></i> @L("Edit", "تعديل")
                                             </button>
-                                            <button class="btn-outline btn-sm" @onclick="() => StartResetPassword(user.Id)">
-                                                <i class="fas fa-key"></i> @L("Reset Password", "إعادة تعيين كلمة المرور")
+                                            <button class="btn-outline btn-sm" @onclick="() => StartResetPassword(user.Id)" title="@L("Reset Password", "إعادة تعيين كلمة المرور")">
+                                                <i class="fas fa-key"></i>
                                             </button>
+                                            @if (user.Role != "Owner")
+                                            {
+                                                @if (user.IsActive)
+                                                {
+                                                    <button class="btn-sm" style="background: rgba(255,152,0,0.15); color: #FF9800; border: 1px solid rgba(255,152,0,0.3); border-radius: 6px; padding: 0.3rem 0.6rem; cursor: pointer; font-size: 0.8rem; transition: all 0.2s ease;"
+                                                            @onclick="() => StartDeactivate(user)" title="@L("Deactivate", "تعطيل")">
+                                                        <i class="fas fa-ban"></i>
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn-sm" style="background: rgba(76,175,80,0.15); color: #4CAF50; border: 1px solid rgba(76,175,80,0.3); border-radius: 6px; padding: 0.3rem 0.6rem; cursor: pointer; font-size: 0.8rem; transition: all 0.2s ease;"
+                                                            @onclick="() => ActivateUserAsync(user)" title="@L("Activate", "تفعيل")">
+                                                        <i class="fas fa-check-circle"></i>
+                                                    </button>
+                                                }
+                                                <button class="btn-sm" style="background: rgba(244,67,54,0.15); color: #F44336; border: 1px solid rgba(244,67,54,0.3); border-radius: 6px; padding: 0.3rem 0.6rem; cursor: pointer; font-size: 0.8rem; transition: all 0.2s ease;"
+                                                        @onclick="() => StartDelete(user)" title="@L("Delete", "حذف")">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            }
                                         </div>
                                     }
                                 </td>
                             </tr>
+
+                            @* Reset password inline row *@
                             @if (_resetPasswordUserId == user.Id)
                             {
                                 <tr>
                                     <td colspan="6">
-                                        <div style="display: flex; gap: 0.75rem; align-items: flex-end; padding: 0.5rem;">
+                                        <div style="display: flex; gap: 0.75rem; align-items: flex-end; padding: 0.5rem; background: rgba(68,161,160,0.05); border-radius: 8px;">
                                             <div class="form-group" style="margin-bottom: 0; flex: 1; max-width: 300px;">
                                                 <label>@L("New Password", "كلمة المرور الجديدة")</label>
                                                 <input type="password" @bind="_resetPassword" class="form-input"
@@ -241,9 +322,68 @@ else
                                             <button class="btn-accent btn-sm" @onclick="ResetPasswordAsync">
                                                 <i class="fas fa-save"></i> @L("Reset", "إعادة تعيين")
                                             </button>
-                                            <button class="btn-outline btn-sm" @onclick="() => _resetPasswordUserId = 0">
+                                            <button class="btn-outline btn-sm" @onclick="CancelAllActions">
                                                 <i class="fas fa-times"></i> @L("Cancel", "إلغاء")
                                             </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+
+                            @* Deactivate reason inline row *@
+                            @if (_deactivateUserId == user.Id)
+                            {
+                                <tr>
+                                    <td colspan="6">
+                                        <div style="padding: 0.75rem; background: rgba(255,152,0,0.08); border: 1px solid rgba(255,152,0,0.2); border-radius: 8px;">
+                                            <div style="color: #FF9800; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.5rem;">
+                                                <i class="fas fa-exclamation-triangle"></i> @L("Deactivate User", "تعطيل المستخدم"): @user.Username
+                                            </div>
+                                            <div class="form-group" style="margin-bottom: 0.5rem;">
+                                                <label>@L("Reason (required)", "السبب (مطلوب)")</label>
+                                                <input type="text" @bind="_actionReason" class="form-input"
+                                                       placeholder="@L("Enter reason for deactivation...", "أدخل سبب التعطيل...")" />
+                                            </div>
+                                            <div style="display: flex; gap: 0.5rem;">
+                                                <button class="btn-sm" style="background: #FF9800; color: white; border: none; border-radius: 6px; padding: 0.35rem 0.75rem; cursor: pointer; font-size: 0.8rem;"
+                                                        @onclick="ConfirmDeactivateAsync" disabled="@(string.IsNullOrWhiteSpace(_actionReason))">
+                                                    <i class="fas fa-ban"></i> @L("Confirm Deactivate", "تأكيد التعطيل")
+                                                </button>
+                                                <button class="btn-outline btn-sm" @onclick="CancelAllActions">
+                                                    <i class="fas fa-times"></i> @L("Cancel", "إلغاء")
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+
+                            @* Delete confirmation inline row *@
+                            @if (_deleteUserId == user.Id)
+                            {
+                                <tr>
+                                    <td colspan="6">
+                                        <div style="padding: 0.75rem; background: rgba(244,67,54,0.08); border: 1px solid rgba(244,67,54,0.2); border-radius: 8px;">
+                                            <div style="color: #F44336; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.5rem;">
+                                                <i class="fas fa-exclamation-triangle"></i> @L("Delete User Permanently", "حذف المستخدم نهائيا"): @user.Username
+                                            </div>
+                                            <div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 0.5rem;">
+                                                @L("This action cannot be undone. All user data will be permanently removed.", "لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع بيانات المستخدم نهائيا.")
+                                            </div>
+                                            <div class="form-group" style="margin-bottom: 0.5rem;">
+                                                <label>@L("Reason (required)", "السبب (مطلوب)")</label>
+                                                <input type="text" @bind="_actionReason" class="form-input"
+                                                       placeholder="@L("Enter reason for deletion...", "أدخل سبب الحذف...")" />
+                                            </div>
+                                            <div style="display: flex; gap: 0.5rem;">
+                                                <button class="btn-sm" style="background: #F44336; color: white; border: none; border-radius: 6px; padding: 0.35rem 0.75rem; cursor: pointer; font-size: 0.8rem;"
+                                                        @onclick="ConfirmDeleteAsync" disabled="@(string.IsNullOrWhiteSpace(_actionReason))">
+                                                    <i class="fas fa-trash"></i> @L("Confirm Delete", "تأكيد الحذف")
+                                                </button>
+                                                <button class="btn-outline btn-sm" @onclick="CancelAllActions">
+                                                    <i class="fas fa-times"></i> @L("Cancel", "إلغاء")
+                                                </button>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -257,38 +397,61 @@ else
         @* Mobile cards *@
         <div class="mobile-only">
             <div class="mobile-cards">
-                @foreach (var user in _users)
+                @foreach (var user in FilteredUsers)
                 {
                     var permCount = string.IsNullOrEmpty(user.Permissions) ? 0 : user.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries).Length;
-                    <div class="mobile-card">
+                    <div class="mobile-card" style="@(user.IsActive ? "" : "opacity: 0.7; border-left: 3px solid #F44336;")">
                         <div class="mobile-card-header">
                             <div>
                                 <span class="mobile-card-name">@user.DisplayName</span>
                                 <div class="mobile-card-sub">@user.Username</div>
                             </div>
-                            <span class="badge @(user.IsActive ? "badge-active" : "badge-expired")">
-                                @(user.IsActive ? L("Active", "نشط") : L("Inactive", "غير نشط"))
-                            </span>
+                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem;">
+                                <span class="badge" style="@(user.IsActive ? "background: rgba(76,175,80,0.15); color: #4CAF50; border: 1px solid rgba(76,175,80,0.3);" : "background: rgba(244,67,54,0.15); color: #F44336; border: 1px solid rgba(244,67,54,0.3);")">
+                                    @(user.IsActive ? L("Active", "نشط") : L("Inactive", "غير نشط"))
+                                </span>
+                                <span class="badge" style="@GetRoleBadgeStyle(user.Role); font-size: 0.7rem;">
+                                    @L(user.Role, GetRoleArabic(user.Role))
+                                </span>
+                            </div>
                         </div>
                         <div class="mobile-card-divider"></div>
-                        <div class="mobile-card-row">
-                            <span class="mobile-card-label">@L("Role", "الدور")</span>
-                            <span class="badge @(user.Role == "Owner" ? "badge-active" : user.Role == "Admin" ? "badge-frozen" : "badge-expiring")">@user.Role</span>
-                        </div>
                         <div class="mobile-card-row">
                             <span class="mobile-card-label">@L("Permissions", "الصلاحيات")</span>
                             <span class="mobile-card-value">@permCount</span>
                         </div>
-                        <div class="mobile-card-actions">
+                        <div class="mobile-card-actions" style="flex-wrap: wrap;">
                             <button class="btn-outline btn-sm" @onclick="() => StartEdit(user)">
                                 <i class="fas fa-edit"></i> @L("Edit", "تعديل")
                             </button>
                             <button class="btn-outline btn-sm" @onclick="() => StartResetPassword(user.Id)">
                                 <i class="fas fa-key"></i> @L("Reset", "إعادة تعيين")
                             </button>
+                            @if (user.Role != "Owner")
+                            {
+                                @if (user.IsActive)
+                                {
+                                    <button class="btn-sm" style="background: rgba(255,152,0,0.15); color: #FF9800; border: 1px solid rgba(255,152,0,0.3); border-radius: 6px; padding: 0.3rem 0.6rem; cursor: pointer; font-size: 0.78rem;"
+                                            @onclick="() => StartDeactivate(user)">
+                                        <i class="fas fa-ban"></i> @L("Deactivate", "تعطيل")
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn-sm" style="background: rgba(76,175,80,0.15); color: #4CAF50; border: 1px solid rgba(76,175,80,0.3); border-radius: 6px; padding: 0.3rem 0.6rem; cursor: pointer; font-size: 0.78rem;"
+                                            @onclick="() => ActivateUserAsync(user)">
+                                        <i class="fas fa-check-circle"></i> @L("Activate", "تفعيل")
+                                    </button>
+                                }
+                                <button class="btn-sm" style="background: rgba(244,67,54,0.15); color: #F44336; border: 1px solid rgba(244,67,54,0.3); border-radius: 6px; padding: 0.3rem 0.6rem; cursor: pointer; font-size: 0.78rem;"
+                                        @onclick="() => StartDelete(user)">
+                                    <i class="fas fa-trash"></i> @L("Delete", "حذف")
+                                </button>
+                            }
                         </div>
                     </div>
 
+                    @* Mobile: Reset password *@
                     @if (_resetPasswordUserId == user.Id)
                     {
                         <div class="mobile-card" style="border-color: var(--accent);">
@@ -301,7 +464,58 @@ else
                                 <button class="btn-accent btn-sm" @onclick="ResetPasswordAsync">
                                     <i class="fas fa-save"></i> @L("Reset", "إعادة تعيين")
                                 </button>
-                                <button class="btn-outline btn-sm" @onclick="() => _resetPasswordUserId = 0">
+                                <button class="btn-outline btn-sm" @onclick="CancelAllActions">
+                                    <i class="fas fa-times"></i> @L("Cancel", "إلغاء")
+                                </button>
+                            </div>
+                        </div>
+                    }
+
+                    @* Mobile: Deactivate reason *@
+                    @if (_deactivateUserId == user.Id)
+                    {
+                        <div class="mobile-card" style="border-color: #FF9800; background: rgba(255,152,0,0.05);">
+                            <div style="color: #FF9800; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.5rem;">
+                                <i class="fas fa-exclamation-triangle"></i> @L("Deactivate", "تعطيل"): @user.Username
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0.5rem;">
+                                <label>@L("Reason (required)", "السبب (مطلوب)")</label>
+                                <input type="text" @bind="_actionReason" class="form-input"
+                                       placeholder="@L("Enter reason...", "أدخل السبب...")" />
+                            </div>
+                            <div class="mobile-card-actions">
+                                <button class="btn-sm" style="background: #FF9800; color: white; border: none; border-radius: 6px; padding: 0.35rem 0.75rem; cursor: pointer; font-size: 0.8rem;"
+                                        @onclick="ConfirmDeactivateAsync" disabled="@(string.IsNullOrWhiteSpace(_actionReason))">
+                                    <i class="fas fa-ban"></i> @L("Confirm", "تأكيد")
+                                </button>
+                                <button class="btn-outline btn-sm" @onclick="CancelAllActions">
+                                    <i class="fas fa-times"></i> @L("Cancel", "إلغاء")
+                                </button>
+                            </div>
+                        </div>
+                    }
+
+                    @* Mobile: Delete confirmation *@
+                    @if (_deleteUserId == user.Id)
+                    {
+                        <div class="mobile-card" style="border-color: #F44336; background: rgba(244,67,54,0.05);">
+                            <div style="color: #F44336; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem;">
+                                <i class="fas fa-exclamation-triangle"></i> @L("Delete Permanently", "حذف نهائي"): @user.Username
+                            </div>
+                            <div style="color: var(--text-secondary); font-size: 0.78rem; margin-bottom: 0.5rem;">
+                                @L("This action cannot be undone.", "لا يمكن التراجع عن هذا الإجراء.")
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0.5rem;">
+                                <label>@L("Reason (required)", "السبب (مطلوب)")</label>
+                                <input type="text" @bind="_actionReason" class="form-input"
+                                       placeholder="@L("Enter reason...", "أدخل السبب...")" />
+                            </div>
+                            <div class="mobile-card-actions">
+                                <button class="btn-sm" style="background: #F44336; color: white; border: none; border-radius: 6px; padding: 0.35rem 0.75rem; cursor: pointer; font-size: 0.8rem;"
+                                        @onclick="ConfirmDeleteAsync" disabled="@(string.IsNullOrWhiteSpace(_actionReason))">
+                                    <i class="fas fa-trash"></i> @L("Confirm", "تأكيد")
+                                </button>
+                                <button class="btn-outline btn-sm" @onclick="CancelAllActions">
                                     <i class="fas fa-times"></i> @L("Cancel", "إلغاء")
                                 </button>
                             </div>
@@ -311,18 +525,45 @@ else
             </div>
         </div>
 
-        @if (!_users.Any())
+        @if (!FilteredUsers.Any())
         {
-            <p class="no-data">@L("No users found", "لم يتم العثور على مستخدمين")</p>
+            <p class="no-data">
+                @if (!string.IsNullOrEmpty(_searchQuery))
+                {
+                    @L("No users match your search", "لا يوجد مستخدمون يطابقون بحثك")
+                }
+                else
+                {
+                    @L("No users found", "لم يتم العثور على مستخدمين")
+                }
+            </p>
         }
     </div>
 }
+
+<style>
+    .inactive-row {
+        opacity: 0.65;
+    }
+    .inactive-row:hover {
+        opacity: 0.85;
+    }
+    tr:hover td {
+        background: rgba(68, 161, 160, 0.04);
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
 
 @code {
     private List<UserRow> _users = new();
     private bool _loading;
     private string _successMsg = "";
     private string _errorMsg = "";
+    private string _searchQuery = "";
+    private bool _showCreateForm;
 
     // Create form
     private string _newUsername = "";
@@ -341,6 +582,20 @@ else
     // Reset password
     private int _resetPasswordUserId;
     private string _resetPassword = "";
+
+    // Deactivate / Delete
+    private int _deactivateUserId;
+    private int _deleteUserId;
+    private string _actionReason = "";
+    private UserRow? _actionUser;
+
+    // Filtered users
+    private IEnumerable<UserRow> FilteredUsers =>
+        string.IsNullOrWhiteSpace(_searchQuery)
+            ? _users
+            : _users.Where(u =>
+                u.Username.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                u.DisplayName.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase));
 
     // Exact same permissions as local WPF app (AppPermission.cs) — all 46 permissions across all groups
     private readonly (string groupEn, string groupAr, (string key, string en, string ar)[] perms)[] _permissionGroups =
@@ -364,7 +619,8 @@ else
             ("Players.ReassignCard", "Reassign Card", "إعادة تعيين بطاقة"),
             ("Players.Freeze", "Freeze/Unfreeze", "تجميد/إلغاء تجميد"),
             ("Players.Renew", "Renew Subscription", "تجديد اشتراك"),
-            ("Players.Reports", "Player Reports", "تقارير اللاعبين")
+            ("Players.Reports", "Player Reports", "تقارير اللاعبين"),
+            ("Players.SyncToDevice", "Sync to Device", "مزامنة مع الجهاز")
         ]),
         ("Devices", "الأجهزة", [
             ("Devices.View", "View Devices", "عرض الأجهزة"),
@@ -432,7 +688,24 @@ else
     // Flat dictionary for display
     private Dictionary<string, (string en, string ar)> _allPermissions = new();
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
+
+    private string GetDbName() => !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+
+    private string GetRoleBadgeStyle(string role) => role switch
+    {
+        "Owner" => "background: rgba(156,39,176,0.15); color: #CE93D8; border: 1px solid rgba(156,39,176,0.3);",
+        "Admin" => "background: rgba(33,150,243,0.15); color: #64B5F6; border: 1px solid rgba(33,150,243,0.3);",
+        _ => "background: rgba(158,158,158,0.15); color: #BDBDBD; border: 1px solid rgba(158,158,158,0.3);"
+    };
+
+    private string GetRoleArabic(string role) => role switch
+    {
+        "Owner" => "مالك",
+        "Admin" => "مدير",
+        "User" => "مستخدم",
+        _ => role
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -454,8 +727,7 @@ else
     {
         try
         {
-            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
-            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
+            using var conn = await GymDb.GetGymConnectionAsync(GetDbName());
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT ""Id"", ""Username"", COALESCE(""DisplayName"",''), COALESCE(""Role"",'User'),
                          ""IsActive"", COALESCE(""Permissions"",'')
@@ -469,7 +741,29 @@ else
                     r.GetString(3), r.GetBoolean(4), r.GetString(5)));
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerUsers] LoadUsersAsync Error: {ex.Message}"); }
+    }
+
+    private async Task LogAuditAsync(string action, int entityId, string details, string detailsAr)
+    {
+        try
+        {
+            using var conn = await GymDb.GetGymConnectionAsync(GetDbName());
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"INSERT INTO ""AuditLogs"" (""Action"", ""EntityType"", ""EntityId"", ""Details"", ""DetailsAr"", ""PerformedBy"", ""Timestamp"")
+                  VALUES (@action, 'User', @entityId, @details, @detailsAr, @performedBy, @ts)", conn);
+            cmd.Parameters.AddWithValue("action", action);
+            cmd.Parameters.AddWithValue("entityId", entityId);
+            cmd.Parameters.AddWithValue("details", details);
+            cmd.Parameters.AddWithValue("detailsAr", detailsAr);
+            cmd.Parameters.AddWithValue("performedBy", Session.DisplayName ?? "System");
+            cmd.Parameters.AddWithValue("ts", DateTime.UtcNow);
+            await cmd.ExecuteNonQueryAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OwnerUsers] Audit log error: {ex.Message}");
+        }
     }
 
     private async Task CreateUserAsync()
@@ -495,8 +789,7 @@ else
             var hash = BCrypt.Net.BCrypt.HashPassword(_newPassword);
             var permissions = string.Join(",", _newPermissions);
 
-            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
-            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
+            using var conn = await GymDb.GetGymConnectionAsync(GetDbName());
 
             // Check if username exists
             using (var checkCmd = new Npgsql.NpgsqlCommand(
@@ -513,13 +806,17 @@ else
 
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"INSERT INTO ""Users"" (""Username"", ""PasswordHash"", ""DisplayName"", ""Role"", ""IsActive"", ""Permissions"")
-                  VALUES (@u, @h, @d, @r, TRUE, @p)", conn);
+                  VALUES (@u, @h, @d, @r, TRUE, @p) RETURNING ""Id""", conn);
             cmd.Parameters.AddWithValue("u", _newUsername.Trim());
             cmd.Parameters.AddWithValue("h", hash);
             cmd.Parameters.AddWithValue("d", _newDisplayName.Trim());
             cmd.Parameters.AddWithValue("r", _newRole);
             cmd.Parameters.AddWithValue("p", permissions);
-            await cmd.ExecuteNonQueryAsync();
+            var newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+            await LogAuditAsync("CREATE_USER", newId,
+                $"Created user '{_newUsername.Trim()}' with role {_newRole}",
+                $"تم إنشاء المستخدم '{_newUsername.Trim()}' بدور {_newRole}");
 
             _successMsg = L("User created successfully.", "تم إنشاء المستخدم بنجاح.");
             _newUsername = "";
@@ -527,6 +824,7 @@ else
             _newDisplayName = "";
             _newRole = "User";
             _newPermissions.Clear();
+            _showCreateForm = false;
             await LoadUsersAsync();
         }
         catch (Exception ex)
@@ -548,7 +846,7 @@ else
         _editPermissions = string.IsNullOrEmpty(user.Permissions)
             ? new HashSet<string>()
             : user.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
-        _resetPasswordUserId = 0;
+        CancelAllActions();
         _errorMsg = "";
         _successMsg = "";
     }
@@ -567,9 +865,9 @@ else
         {
             var permissions = string.Join(",", _editPermissions);
             var isActive = _editIsActive == "true";
+            var user = _users.FirstOrDefault(u => u.Id == _editingUserId);
 
-            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
-            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
+            using var conn = await GymDb.GetGymConnectionAsync(GetDbName());
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"UPDATE ""Users"" SET ""DisplayName"" = @d, ""Role"" = @r, ""IsActive"" = @a, ""Permissions"" = @p
                   WHERE ""Id"" = @id", conn);
@@ -579,6 +877,20 @@ else
             cmd.Parameters.AddWithValue("p", permissions);
             cmd.Parameters.AddWithValue("id", _editingUserId);
             await cmd.ExecuteNonQueryAsync();
+
+            // Build change description
+            var changes = new List<string>();
+            if (user != null)
+            {
+                if (user.DisplayName != _editDisplayName.Trim()) changes.Add($"DisplayName: '{user.DisplayName}' -> '{_editDisplayName.Trim()}'");
+                if (user.Role != _editRole) changes.Add($"Role: {user.Role} -> {_editRole}");
+                if (user.IsActive != isActive) changes.Add($"IsActive: {user.IsActive} -> {isActive}");
+            }
+            var changeStr = changes.Any() ? string.Join(", ", changes) : "permissions updated";
+
+            await LogAuditAsync("UPDATE_USER", _editingUserId,
+                $"Updated user '{user?.Username}': {changeStr}",
+                $"تم تحديث المستخدم '{user?.Username}': {changeStr}");
 
             _successMsg = L("User updated successfully.", "تم تحديث المستخدم بنجاح.");
             _editingUserId = 0;
@@ -592,6 +904,7 @@ else
 
     private void StartResetPassword(int userId)
     {
+        CancelAllActions();
         _resetPasswordUserId = userId;
         _resetPassword = "";
         _editingUserId = 0;
@@ -613,14 +926,18 @@ else
         try
         {
             var hash = BCrypt.Net.BCrypt.HashPassword(_resetPassword);
+            var user = _users.FirstOrDefault(u => u.Id == _resetPasswordUserId);
 
-            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
-            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
+            using var conn = await GymDb.GetGymConnectionAsync(GetDbName());
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"UPDATE ""Users"" SET ""PasswordHash"" = @h WHERE ""Id"" = @id", conn);
             cmd.Parameters.AddWithValue("h", hash);
             cmd.Parameters.AddWithValue("id", _resetPasswordUserId);
             await cmd.ExecuteNonQueryAsync();
+
+            await LogAuditAsync("RESET_PASSWORD", _resetPasswordUserId,
+                $"Reset password for user '{user?.Username}'",
+                $"تم إعادة تعيين كلمة مرور المستخدم '{user?.Username}'");
 
             _successMsg = L("Password reset successfully.", "تم إعادة تعيين كلمة المرور بنجاح.");
             _resetPasswordUserId = 0;
@@ -630,6 +947,123 @@ else
         {
             _errorMsg = $"{L("Error resetting password", "خطأ في إعادة تعيين كلمة المرور")}: {ex.Message}";
         }
+    }
+
+    private void StartDeactivate(UserRow user)
+    {
+        CancelAllActions();
+        _deactivateUserId = user.Id;
+        _actionUser = user;
+        _actionReason = "";
+        _editingUserId = 0;
+        _errorMsg = "";
+        _successMsg = "";
+    }
+
+    private async Task ConfirmDeactivateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_actionReason) || _actionUser == null) return;
+
+        _errorMsg = "";
+        _successMsg = "";
+
+        try
+        {
+            using var conn = await GymDb.GetGymConnectionAsync(GetDbName());
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"UPDATE ""Users"" SET ""IsActive"" = FALSE WHERE ""Id"" = @id", conn);
+            cmd.Parameters.AddWithValue("id", _deactivateUserId);
+            await cmd.ExecuteNonQueryAsync();
+
+            await LogAuditAsync("DEACTIVATE_USER", _deactivateUserId,
+                $"Deactivated user '{_actionUser.Username}'. Reason: {_actionReason}",
+                $"تم تعطيل المستخدم '{_actionUser.Username}'. السبب: {_actionReason}");
+
+            _successMsg = L("User deactivated successfully.", "تم تعطيل المستخدم بنجاح.");
+            CancelAllActions();
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMsg = $"{L("Error deactivating user", "خطأ في تعطيل المستخدم")}: {ex.Message}";
+        }
+    }
+
+    private async Task ActivateUserAsync(UserRow user)
+    {
+        _errorMsg = "";
+        _successMsg = "";
+        CancelAllActions();
+
+        try
+        {
+            using var conn = await GymDb.GetGymConnectionAsync(GetDbName());
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"UPDATE ""Users"" SET ""IsActive"" = TRUE WHERE ""Id"" = @id", conn);
+            cmd.Parameters.AddWithValue("id", user.Id);
+            await cmd.ExecuteNonQueryAsync();
+
+            await LogAuditAsync("ACTIVATE_USER", user.Id,
+                $"Activated user '{user.Username}'",
+                $"تم تفعيل المستخدم '{user.Username}'");
+
+            _successMsg = L("User activated successfully.", "تم تفعيل المستخدم بنجاح.");
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMsg = $"{L("Error activating user", "خطأ في تفعيل المستخدم")}: {ex.Message}";
+        }
+    }
+
+    private void StartDelete(UserRow user)
+    {
+        CancelAllActions();
+        _deleteUserId = user.Id;
+        _actionUser = user;
+        _actionReason = "";
+        _editingUserId = 0;
+        _errorMsg = "";
+        _successMsg = "";
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_actionReason) || _actionUser == null) return;
+
+        _errorMsg = "";
+        _successMsg = "";
+
+        try
+        {
+            using var conn = await GymDb.GetGymConnectionAsync(GetDbName());
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"DELETE FROM ""Users"" WHERE ""Id"" = @id", conn);
+            cmd.Parameters.AddWithValue("id", _deleteUserId);
+            await cmd.ExecuteNonQueryAsync();
+
+            await LogAuditAsync("DELETE_USER", _deleteUserId,
+                $"Deleted user '{_actionUser.Username}'. Reason: {_actionReason}",
+                $"تم حذف المستخدم '{_actionUser.Username}'. السبب: {_actionReason}");
+
+            _successMsg = L("User deleted successfully.", "تم حذف المستخدم بنجاح.");
+            CancelAllActions();
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMsg = $"{L("Error deleting user", "خطأ في حذف المستخدم")}: {ex.Message}";
+        }
+    }
+
+    private void CancelAllActions()
+    {
+        _resetPasswordUserId = 0;
+        _resetPassword = "";
+        _deactivateUserId = 0;
+        _deleteUserId = 0;
+        _actionReason = "";
+        _actionUser = null;
     }
 
     private void ToggleNewPermission(string perm, bool isChecked)

@@ -204,16 +204,24 @@
                       Style="{StaticResource DarkComboBox}" Margin="0,0,0,10"
                       SelectionChanged="PeriodCombo_SelectionChanged"/>
 
-            <!-- Custom Days (visible only when Custom is selected) -->
+            <!-- Custom Date Range (visible only when Custom is selected) -->
             <TextBlock x:Name="CustomDaysLabel" Grid.Row="4" Grid.Column="0"
-                       Text="{Binding EnterDays, Source={x:Static helpers:LanguageManager.Instance}}"
                        Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"
-                       Visibility="Collapsed"/>
-            <TextBox x:Name="CustomDaysTextBox" Grid.Row="4" Grid.Column="1"
-                     Style="{StaticResource DarkTextBox}" Margin="0,0,0,10"
-                     Visibility="Collapsed" TextChanged="CustomDaysTextBox_TextChanged"
-                     PreviewTextInput="NumberOnly_PreviewTextInput"
-                     DataObject.Pasting="NumberOnly_Pasting"/>
+                       Visibility="Collapsed">
+                <Run Text="Start → End"/>
+            </TextBlock>
+            <StackPanel x:Name="CustomDatesPanel" Grid.Row="4" Grid.Column="1" Orientation="Horizontal"
+                        Margin="0,0,0,10" Visibility="Collapsed">
+                <DatePicker x:Name="CustomStartDate" Width="160"
+                            Background="#2A2A3E" Foreground="#E0E0E0" BorderBrush="#3A3A50"
+                            FontFamily="{StaticResource CairoFont}" FontSize="13" FontWeight="Bold"
+                            SelectedDateChanged="CustomDate_Changed"/>
+                <TextBlock Text="→" Foreground="#78CDD7" VerticalAlignment="Center" Margin="10,0" FontSize="16"/>
+                <DatePicker x:Name="CustomEndDate" Width="160"
+                            Background="#2A2A3E" Foreground="#E0E0E0" BorderBrush="#3A3A50"
+                            FontFamily="{StaticResource CairoFont}" FontSize="13" FontWeight="Bold"
+                            SelectedDateChanged="CustomDate_Changed"/>
+            </StackPanel>
 
             <!-- Fee -->
             <TextBlock Grid.Row="5" Grid.Column="0"

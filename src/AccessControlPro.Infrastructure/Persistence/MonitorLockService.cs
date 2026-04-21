@@ -22,14 +22,23 @@ public class MonitorLockService : IMonitorLockService
 
         if (existing != null)
         {
-            // Check if heartbeat is recent (lock is active)
+            // Same PC can always re-acquire (user stopped and started again quickly)
+            if (string.Equals(existing.MachineName, Environment.MachineName, StringComparison.OrdinalIgnoreCase))
+            {
+                existing.AcquiredAt = DateTime.UtcNow;
+                existing.HeartbeatAt = DateTime.UtcNow;
+                existing.UserName = Environment.UserName;
+                await db.SaveChangesAsync();
+                return (true, null);
+            }
+
+            // Different PC - check if heartbeat is recent (lock is active)
             if (DateTime.UtcNow - existing.HeartbeatAt < StaleThreshold)
             {
-                // Lock is held by another PC
                 return (false, $"{existing.MachineName} ({existing.UserName})");
             }
 
-            // Stale lock — take over
+            // Stale lock from another PC — take over
             existing.MachineName = Environment.MachineName;
             existing.UserName = Environment.UserName;
             existing.AcquiredAt = DateTime.UtcNow;
@@ -37,7 +46,6 @@ public class MonitorLockService : IMonitorLockService
         }
         else
         {
-            // No lock exists — create one
             db.MonitorLocks.Add(new MonitorLock
             {
                 MachineName = Environment.MachineName,
@@ -53,14 +61,20 @@ public class MonitorLockService : IMonitorLockService
 
     public async Task ReleaseAsync()
     {
-        await using var db = _factory.CreateDbContext();
-        var mine = await db.MonitorLocks
-            .FirstOrDefaultAsync(l => l.MachineName == Environment.MachineName);
-        if (mine != null)
+        try
         {
-            db.MonitorLocks.Remove(mine);
-            await db.SaveChangesAsync();
+            await using var db = _factory.CreateDbContext();
+            // Remove ALL locks from this machine (not just one)
+            var myLocks = await db.MonitorLocks
+                .Where(l => l.MachineName == Environment.MachineName)
+                .ToListAsync();
+            if (myLocks.Count > 0)
+            {
+                db.MonitorLocks.RemoveRange(myLocks);
+                await db.SaveChangesAsync();
+            }
         }
+        catch { /* Don't crash if DB fails during release */ }
     }
 
     public async Task HeartbeatAsync()

@@ -40,8 +40,8 @@ CREATE TABLE IF NOT EXISTS ""Players"" (
     ""IsDeleted"" BOOLEAN DEFAULT FALSE,
     ""CreatedAt"" TIMESTAMP DEFAULT NOW(),
     ""PhotoPath"" VARCHAR(500) DEFAULT '',
-    ""Height"" DECIMAL(5,1) DEFAULT 0,
-    ""Weight"" DECIMAL(5,1) DEFAULT 0,
+    ""Height"" DECIMAL(10,2) DEFAULT 0,
+    ""Weight"" DECIMAL(10,2) DEFAULT 0,
     ""Notes"" TEXT DEFAULT ''
 );
 
@@ -258,7 +258,7 @@ CREATE INDEX IF NOT EXISTS idx_events_eventdate ON ""AccessEvents"" (""EventDate
 CREATE INDEX IF NOT EXISTS idx_events_doorid ON ""AccessEvents"" (""DoorId"");
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON ""Transactions"" (""TransactionDate"" DESC);
 CREATE INDEX IF NOT EXISTS idx_auditlogs_timestamp ON ""AuditLogs"" (""Timestamp"" DESC);
-CREATE INDEX IF NOT EXISTS idx_users_username ON ""Users"" (""Username"");
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON ""Users"" (""Username"");
 CREATE INDEX IF NOT EXISTS idx_deleted_deletedat ON ""DeletedEmployees"" (""DeletedAt"" DESC);
 CREATE INDEX IF NOT EXISTS idx_qrpasses_code ON ""QrPasses"" (""Code"");
 CREATE INDEX IF NOT EXISTS idx_freezehistories_employeeid ON ""FreezeHistories"" (""EmployeeId"");
@@ -267,6 +267,11 @@ CREATE INDEX IF NOT EXISTS idx_timegroups_name ON ""TimeGroups"" (""NameEn"");
 CREATE INDEX IF NOT EXISTS idx_qrpool_status ON ""QrPool"" (""Status"");
 CREATE INDEX IF NOT EXISTS idx_posshifts_status ON ""PosShifts"" (""Status"");
 CREATE INDEX IF NOT EXISTS idx_subscriptionplans_isactive ON ""SubscriptionPlans"" (""IsActive"");
+
+-- Players migration: widen Height/Weight from DECIMAL(5,1) to DECIMAL(10,2) so
+-- values above 999.9 (bad client data, e.g. phone numbers typed into height) don't cause 22003 overflow.
+ALTER TABLE ""Players"" ALTER COLUMN ""Height"" TYPE DECIMAL(10,2);
+ALTER TABLE ""Players"" ALTER COLUMN ""Weight"" TYPE DECIMAL(10,2);
 
 -- Gyms table migration: add columns if missing
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""SubscriptionPrice"" DECIMAL(18,2) DEFAULT 0;

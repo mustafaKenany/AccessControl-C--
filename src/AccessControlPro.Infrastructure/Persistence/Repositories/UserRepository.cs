@@ -42,4 +42,15 @@ public class UserRepository : IUserRepository
         db.Users.Update(user);
         await db.SaveChangesAsync();
     }
+
+    public async Task DeleteAsync(int id)
+    {
+        await using var db = _factory.CreateDbContext();
+        var user = await db.Users.FindAsync(id);
+        if (user != null)
+        {
+            db.Users.Remove(user);
+            await db.SaveChangesAsync();
+        }
+    }
 }

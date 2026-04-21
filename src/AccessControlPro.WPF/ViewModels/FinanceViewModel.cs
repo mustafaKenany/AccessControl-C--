@@ -117,8 +117,8 @@ public partial class FinanceViewModel : ObservableObject
         {
             1 => (today, today.AddDays(1).AddTicks(-1)),                                          // Today
             2 => (today.AddDays(-1), today.AddTicks(-1)),                                         // Yesterday
-            3 => (today.AddDays(-(int)today.DayOfWeek), null),                                    // This Week
-            4 => (today.AddDays(-(int)today.DayOfWeek - 7), today.AddDays(-(int)today.DayOfWeek).AddTicks(-1)), // Last Week
+            3 => (today.AddDays(-((int)today.DayOfWeek + 1) % 7), null),                                    // This Week (Saturday start)
+            4 => (today.AddDays(-((int)today.DayOfWeek + 1) % 7 - 7), today.AddDays(-((int)today.DayOfWeek + 1) % 7).AddTicks(-1)), // Last Week
             5 => (new DateTime(today.Year, today.Month, 1), null),                                // This Month
             6 => (new DateTime(today.Year, today.Month, 1).AddMonths(-1),
                   new DateTime(today.Year, today.Month, 1).AddTicks(-1)),                         // Last Month

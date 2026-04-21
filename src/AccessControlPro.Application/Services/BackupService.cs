@@ -32,7 +32,7 @@ public class BackupService : IBackupService
 
     private static void Log(string msg)
     {
-        try { File.AppendAllText(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n"); } catch { }
+        RollingLogFile.Append(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n");
     }
 
     public static BackupStatus LoadStatus()

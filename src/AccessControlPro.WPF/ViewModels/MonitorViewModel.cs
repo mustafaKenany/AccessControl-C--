@@ -370,7 +370,7 @@ public partial class MonitorViewModel : ObservableObject
                 cardStatusKey = "Frozen";
             }
             else if (validationDenied ||
-                     cardEntity.Employee.EndDate < DateTime.Now ||
+                     cardEntity.Employee.EndDate.Date < DateTime.Today ||
                      (cardEntity.Employee.MaxVisits > 0 && cardEntity.Employee.UsedVisits >= cardEntity.Employee.MaxVisits))
             {
                 cardStatus = lang.CardExpired;

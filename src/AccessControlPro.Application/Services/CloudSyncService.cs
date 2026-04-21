@@ -23,7 +23,7 @@ public class CloudSyncService : ICloudSyncService
 
     private static void Log(string msg)
     {
-        try { File.AppendAllText(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n"); } catch { }
+        RollingLogFile.Append(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n");
     }
 
     public bool IsCloudEnabled()
@@ -38,9 +38,18 @@ public class CloudSyncService : ICloudSyncService
         if (string.IsNullOrEmpty(cloudUrl))
             return "Cloud sync disabled";
 
+        // Capture the sync start time BEFORE reading any data — this becomes the next
+        // lastSyncAt watermark if the sync succeeds. Rows updated AT OR AFTER this moment
+        // are still sent this round (safe: ">" filter means they re-send next round too,
+        // worst-case one extra upsert — no data loss).
+        var syncStartedAt = DateTime.UtcNow;
+        var lastSync = SyncStateManager.LoadLastSyncAt();
+        var isFullSync = lastSync == null;
+        var sinceFilter = lastSync ?? DateTime.MinValue;
+
         try
         {
-            Log("Starting cloud sync via API...");
+            Log($"Starting cloud sync via API... mode={(isFullSync ? "full" : "delta")} since={(lastSync?.ToString("yyyy-MM-dd HH:mm:ss") ?? "(first-ever)")}");
 
             using var local = new SqlConnection(_localConnectionString);
             await local.OpenAsync();
@@ -66,65 +75,88 @@ public class CloudSyncService : ICloudSyncService
 
             var payload = new Dictionary<string, List<Dictionary<string, object?>>>();
 
-            // Read each table from local DB into dictionaries
-            // NOTE: Users are read AFTER pull, so newly pulled users are included in push
+            // Delta filter: only rows changed since last sync. Full-sync path omits the filter.
+            // Tables that support delta use UpdatedAt (mutable) or an existing timestamp (append-only).
+            string DeltaWhere(string col) => isFullSync ? "" : $" WHERE {col} > @since";
+
+            // Players (Employees): mutable, has UpdatedAt from v4.5 migration
             payload["players"] = await ReadTableAsync(local,
                 "SELECT Id, FullNameEn, FullNameAr, CardNo, Phone, SubscriptionType, StartDate, EndDate, " +
                 "SubscriptionFee, AmountPaid, MaxVisits, UsedVisits, IsFrozen, FreezeStartDate, " +
-                "CAST(0 AS BIT) AS IsDeleted, CreatedAt, '' AS PhotoPath, Height, Weight, Notes FROM Employees");
+                "CAST(0 AS BIT) AS IsDeleted, CreatedAt, '' AS PhotoPath, Height, Weight, Notes FROM Employees" +
+                DeltaWhere("UpdatedAt"), sinceFilter);
 
+            // AccessEvents: append-only, use existing Timestamp (keep TOP 2000 cap as safety limit)
             payload["accessEvents"] = await ReadTableAsync(local,
                 "SELECT TOP 2000 Id, DoorId, CardId, EventType AS RecordType, EventCode, " +
-                "[Timestamp] AS EventDate, Details FROM AccessEvents ORDER BY [Timestamp] DESC");
+                "[Timestamp] AS EventDate, Details FROM AccessEvents" +
+                DeltaWhere("[Timestamp]") + " ORDER BY [Timestamp] DESC", sinceFilter);
 
+            // Small static tables — always full sync (few rows, cheap)
             payload["devices"] = await ReadTableAsync(local,
                 "SELECT Id, Name, SerialNumber, IP, MAC FROM Devices");
-
             payload["doors"] = await ReadTableAsync(local,
                 "SELECT Id, DeviceId, Name, DoorNumber FROM Doors");
-
-            payload["transactions"] = await ReadTableAsync(local,
-                "SELECT Id, Type, Category, Amount, Description, RelatedEmployeeId, " +
-                "CreatedAt AS TransactionDate, CreatedBy AS RecordedBy FROM Transactions");
-
-            payload["users"] = await ReadTableAsync(local,
-                "SELECT Id, Username, PasswordHash, DisplayName, Role, IsActive, Permissions FROM Users");
-
-            payload["auditLogs"] = await ReadTableAsync(local,
-                "SELECT TOP 1000 Id, Action, EntityType, EntityId, Details, DetailsAr, PerformedBy, " +
-                "[Timestamp] FROM AuditLogs ORDER BY [Timestamp] DESC");
-
-            payload["deletedEmployees"] = await ReadTableAsync(local,
-                "SELECT Id, OriginalId, FullNameEn, FullNameAr, CardNo, Phone, DeleteReason, DeletedBy, DeletedAt " +
-                "FROM DeletedEmployees");
-
             payload["appSettings"] = await ReadTableAsync(local,
                 "SELECT TOP 1 Id, GymName FROM AppSettings");
+            payload["timeGroups"] = await ReadTableAsync(local,
+                "SELECT Id, NameEn, NameAr, HardwareIndex, IsDefault, ScheduleJson, CreatedAt FROM TimeGroups");
 
+            // Transactions: append-only in practice, use CreatedAt
+            payload["transactions"] = await ReadTableAsync(local,
+                "SELECT Id, Type, Category, Amount, Description, RelatedEmployeeId, " +
+                "CreatedAt AS TransactionDate, CreatedBy AS RecordedBy FROM Transactions" +
+                DeltaWhere("CreatedAt"), sinceFilter);
+
+            // Users: mutable, has UpdatedAt
+            payload["users"] = await ReadTableAsync(local,
+                "SELECT Id, Username, PasswordHash, DisplayName, Role, IsActive, Permissions FROM Users" +
+                DeltaWhere("UpdatedAt"), sinceFilter);
+
+            // AuditLogs: append-only, use Timestamp (keep TOP 1000 cap)
+            payload["auditLogs"] = await ReadTableAsync(local,
+                "SELECT TOP 1000 Id, Action, EntityType, EntityId, Details, DetailsAr, PerformedBy, " +
+                "[Timestamp] FROM AuditLogs" +
+                DeltaWhere("[Timestamp]") + " ORDER BY [Timestamp] DESC", sinceFilter);
+
+            // DeletedEmployees: tombstones, append-only, use DeletedAt
+            payload["deletedEmployees"] = await ReadTableAsync(local,
+                "SELECT Id, OriginalId, FullNameEn, FullNameAr, CardNo, Phone, DeleteReason, DeletedBy, DeletedAt " +
+                "FROM DeletedEmployees" + DeltaWhere("DeletedAt"), sinceFilter);
+
+            // AccessCards: mutable, has UpdatedAt
             payload["accessCards"] = await ReadTableAsync(local,
-                "SELECT Id, EmployeeId, CardNumber, IsActive, ValidFrom, ValidTo, EffectiveTimes, CreatedAt FROM AccessCards");
+                "SELECT Id, EmployeeId, CardNumber, IsActive, ValidFrom, ValidTo, EffectiveTimes, CreatedAt FROM AccessCards" +
+                DeltaWhere("UpdatedAt"), sinceFilter);
 
+            // QrPool: mutable, has UpdatedAt
             payload["qrPool"] = await ReadTableAsync(local,
                 "SELECT Id, Code, Status, Source, GuestName, GuestPhone, Reason, " +
                 "AssignedAt, UsedAt, ExpiredAt, MaxUses, UsedCount, ValidFrom, ValidTo, " +
-                "DoorPermissions, CreatedAt, IsUploadedToDevice FROM QrPool");
+                "DoorPermissions, CreatedAt, IsUploadedToDevice FROM QrPool" +
+                DeltaWhere("UpdatedAt"), sinceFilter);
 
+            // SubscriptionPlans: mutable, has UpdatedAt
             payload["subscriptionPlans"] = await ReadTableAsync(local,
                 "SELECT Id, NameEn, NameAr, Duration, DurationType, Price, MaxVisits, " +
-                "EffectiveTimes, IsActive, SortOrder, CreatedAt FROM SubscriptionPlans");
+                "EffectiveTimes, IsActive, SortOrder, CreatedAt FROM SubscriptionPlans" +
+                DeltaWhere("UpdatedAt"), sinceFilter);
 
+            // PosShifts: mutable, has UpdatedAt
             payload["posShifts"] = await ReadTableAsync(local,
                 "SELECT Id, OpenedBy, OpenedAt, ClosedAt, OpeningCash, ClosingCash, " +
-                "TotalSales, TotalCashSales, TotalCardSales, Variance, Status FROM PosShifts");
+                "TotalSales, TotalCashSales, TotalCardSales, Variance, Status FROM PosShifts" +
+                DeltaWhere("UpdatedAt"), sinceFilter);
 
+            // FreezeHistories: mutable, has UpdatedAt
             payload["freezeHistories"] = await ReadTableAsync(local,
-                "SELECT Id, EmployeeId, FreezeStart, FreezeEnd, FreezeDays, Reason, CreatedAt FROM FreezeHistories");
+                "SELECT Id, EmployeeId, FreezeStart, FreezeEnd, FreezeDays, Reason, CreatedAt FROM FreezeHistories" +
+                DeltaWhere("UpdatedAt"), sinceFilter);
 
+            // Products: mutable, has UpdatedAt
             payload["products"] = await ReadTableAsync(local,
-                "SELECT Id, Name, NameAr, Price, Stock, Barcode, Category, IsActive, CreatedAt FROM Products");
-
-            payload["timeGroups"] = await ReadTableAsync(local,
-                "SELECT Id, NameEn, NameAr, HardwareIndex, IsDefault, ScheduleJson, CreatedAt FROM TimeGroups");
+                "SELECT Id, Name, NameAr, Price, Stock, Barcode, Category, IsActive, CreatedAt FROM Products" +
+                DeltaWhere("UpdatedAt"), sinceFilter);
 
             // Log table counts
             foreach (var kvp in payload)
@@ -144,23 +176,30 @@ public class CloudSyncService : ICloudSyncService
 
             using var httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("X-Api-Key", LoadApiKey());
+            httpClient.DefaultRequestHeaders.Add("X-Sync-Mode", isFullSync ? "full" : "delta");
             httpClient.Timeout = TimeSpan.FromMinutes(2);
 
-            var content = new ByteArrayContent(compressedBytes);
+            using var content = new ByteArrayContent(compressedBytes);
             content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
             content.Headers.ContentEncoding.Add("gzip");
-            var response = await httpClient.PostAsync(cloudUrl, content);
+            using var response = await httpClient.PostAsync(cloudUrl, content);
 
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
             {
-                Log($"Cloud sync completed via API: {responseBody}");
-                return $"Synced via API: {responseBody}";
+                // Only advance the watermark on success — failures will retry everything next round.
+                SyncStateManager.SaveLastSyncAt(syncStartedAt);
+
+                var summary = SummarizeSyncResponse(responseBody);
+                Log($"Cloud sync completed: {summary}");
+                LogResponseSnippet(responseBody);
+                return $"Synced: {summary}";
             }
             else
             {
-                Log($"Cloud sync API error: {response.StatusCode} - {responseBody}");
+                var truncated = responseBody.Length > 500 ? responseBody.Substring(0, 500) + "...(truncated)" : responseBody;
+                Log($"Cloud sync API error: {response.StatusCode} - {truncated}");
                 return $"Sync API error: {response.StatusCode}";
             }
         }
@@ -171,13 +210,57 @@ public class CloudSyncService : ICloudSyncService
         }
     }
 
-    private async Task<List<Dictionary<string, object?>>> ReadTableAsync(SqlConnection conn, string sql)
+    private static string SummarizeSyncResponse(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var success = root.TryGetProperty("success", out var s) && s.ValueKind == JsonValueKind.True;
+            var total = root.TryGetProperty("total", out var t) && t.TryGetInt32(out var ti) ? ti : 0;
+            var errCount = 0;
+            if (root.TryGetProperty("errors", out var errs) && errs.ValueKind == JsonValueKind.Array)
+                errCount = errs.GetArrayLength();
+            return $"ok={success}, total={total}, errors={errCount}";
+        }
+        catch
+        {
+            return body.Length > 200 ? body.Substring(0, 200) + "...(truncated)" : body;
+        }
+    }
+
+    private static void LogResponseSnippet(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("errors", out var errs) && errs.ValueKind == JsonValueKind.Array)
+            {
+                int shown = 0;
+                foreach (var err in errs.EnumerateArray())
+                {
+                    if (shown >= 3) break;
+                    var text = err.GetString() ?? "";
+                    if (text.Length > 300) text = text.Substring(0, 300) + "...";
+                    Log($"  [error sample] {text}");
+                    shown++;
+                }
+                if (errs.GetArrayLength() > 3)
+                    Log($"  ({errs.GetArrayLength() - 3} more error(s) suppressed — see server logs for full list)");
+            }
+        }
+        catch { }
+    }
+
+    private async Task<List<Dictionary<string, object?>>> ReadTableAsync(SqlConnection conn, string sql, DateTime? since = null)
     {
         var rows = new List<Dictionary<string, object?>>();
         try
         {
             using var cmd = new SqlCommand(sql, conn);
             cmd.CommandTimeout = 60;
+            if (since.HasValue && sql.Contains("@since", StringComparison.OrdinalIgnoreCase))
+                cmd.Parameters.AddWithValue("@since", since.Value);
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
@@ -209,7 +292,7 @@ public class CloudSyncService : ICloudSyncService
         Log("Pull users: starting...");
 
         using var pullClient = new HttpClient();
-        pullClient.DefaultRequestHeaders.Add("X-Api-Key", "HMTech-Sync-2026");
+        pullClient.DefaultRequestHeaders.Add("X-Api-Key", LoadApiKey());
         pullClient.Timeout = TimeSpan.FromSeconds(30);
 
         var pullUrl = cloudUrl.Replace("/api/sync", "/api/users");
@@ -402,6 +485,6 @@ public class CloudSyncService : ICloudSyncService
             }
         }
         catch { }
-        return "HMTech-Sync-2026"; // Default fallback for single gym
+        return ""; // No hardcoded fallback — API key must be configured in appsettings.json
     }
 }

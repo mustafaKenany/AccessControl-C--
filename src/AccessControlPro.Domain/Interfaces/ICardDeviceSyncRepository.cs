@@ -11,4 +11,6 @@ public interface ICardDeviceSyncRepository
     Task UpsertAsync(int cardId, int deviceId, bool isSynced, string? error = null);
     Task DeleteByCardIdAsync(int cardId);
     Task DeleteByDeviceIdAsync(int deviceId);
+    Task<int> CountSyncedByDeviceIdAsync(int deviceId);
+    Task<Dictionary<int, int>> CountSyncedByAllDevicesAsync();
 }

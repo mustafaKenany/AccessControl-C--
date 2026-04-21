@@ -14,7 +14,7 @@
 
         <div style="text-align: center; margin-bottom: 1rem;">
             <button class="filter-btn" style="font-size: 0.8rem;" @onclick="ToggleLang">
-                @(SessionState.IsArabic ? "English" : "عربي")
+                @(Session.IsArabic ? "English" : "عربي")
             </button>
         </div>
 
@@ -84,7 +84,7 @@
     private bool _loading;
     private bool _loginSuccess;
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -111,14 +111,13 @@
             await JS.InvokeVoidAsync("eval", $"document.cookie = 'session={encoded}; path=/; max-age=86400; SameSite=Strict'");
 
             var url = Session.IsOwner ? "/dashboard" : "/my";
-            try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log", $"[{DateTime.Now:HH:mm:ss}] [Login] Session saved to file + redirecting to: {url}\n"); } catch { }
             await JS.InvokeVoidAsync("eval", $"window.location.href = '{url}'");
         }
     }
 
     private void ToggleLang()
     {
-        SessionState.ToggleLanguage();
+        Session.ToggleLanguage();
         StateHasChanged();
     }
 

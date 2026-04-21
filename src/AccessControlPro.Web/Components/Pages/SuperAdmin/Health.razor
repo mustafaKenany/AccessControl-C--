@@ -202,7 +202,7 @@ else
                 var result = await cmd.ExecuteScalarAsync();
                 _dbSize = result?.ToString() ?? "N/A";
             }
-            catch { }
+            catch (Exception ex) { Console.WriteLine($"[SuperAdmin.Health] LoadDbSize Error: {ex.Message}"); }
 
             // Active connections
             try
@@ -212,7 +212,7 @@ else
                 var result = await cmd.ExecuteScalarAsync();
                 _activeConnections = Convert.ToInt32(result);
             }
-            catch { }
+            catch (Exception ex) { Console.WriteLine($"[SuperAdmin.Health] LoadConnections Error: {ex.Message}"); }
 
             // Server uptime
             try
@@ -225,7 +225,7 @@ else
                 else
                     _uptime = result?.ToString() ?? "N/A";
             }
-            catch { }
+            catch (Exception ex) { Console.WriteLine($"[SuperAdmin.Health] LoadUptime Error: {ex.Message}"); }
 
             // Table count
             try
@@ -235,7 +235,7 @@ else
                 var result = await cmd.ExecuteScalarAsync();
                 _tableCount = Convert.ToInt32(result);
             }
-            catch { }
+            catch (Exception ex) { Console.WriteLine($"[SuperAdmin.Health] LoadTableCount Error: {ex.Message}"); }
 
             // Row counts
             try
@@ -253,7 +253,7 @@ else
                     _totalTransactions = r.IsDBNull(2) ? 0 : Convert.ToInt32(r.GetValue(2));
                 }
             }
-            catch { }
+            catch (Exception ex) { Console.WriteLine($"[SuperAdmin.Health] LoadRowCounts Error: {ex.Message}"); }
 
             // Total syncs
             try
@@ -262,7 +262,7 @@ else
                 var result = await cmd.ExecuteScalarAsync();
                 _totalSyncs = Convert.ToInt32(result);
             }
-            catch { }
+            catch (Exception ex) { Console.WriteLine($"[SuperAdmin.Health] LoadTotalSyncs Error: {ex.Message}"); }
 
             // Table sizes
             try
@@ -285,7 +285,7 @@ else
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { Console.WriteLine($"[SuperAdmin.Health] LoadTableSizes Error: {ex.Message}"); }
 
             // Last sync per gym
             try
@@ -324,7 +324,7 @@ else
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { Console.WriteLine($"[SuperAdmin.Health] LoadGymSyncs Error: {ex.Message}"); }
 
             // Recent sync errors
             try
@@ -345,9 +345,9 @@ else
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { Console.WriteLine($"[SuperAdmin.Health] LoadSyncErrors Error: {ex.Message}"); }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[SuperAdmin.Health] LoadDataAsync Error: {ex.Message}"); }
         finally
         {
             _loading = false;

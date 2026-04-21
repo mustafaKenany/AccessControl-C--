@@ -7,10 +7,50 @@
 
     <UserControl.Resources>
         <helpers:BindingProxy x:Key="Proxy" Data="{Binding}"/>
+
+        <!-- Row hover style -->
+        <Style x:Key="HoverDataGridRow" TargetType="DataGridRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1A44A1A0"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#2244A1A0"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Icon Action Button -->
+        <Style x:Key="IconActionButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#20FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="24,20">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
@@ -34,8 +74,80 @@
             </Button>
         </DockPanel>
 
+        <!-- Stats Bar -->
+        <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,14">
+            <!-- Total Users -->
+            <Border Background="#0E2A2D" CornerRadius="10" Padding="16,12" Margin="0,0,6,0">
+                <DockPanel>
+                    <Border DockPanel.Dock="Left" Background="#1544A1A0" CornerRadius="8"
+                            Width="40" Height="40" Margin="0,0,12,0">
+                        <fa:ImageAwesome Icon="Users" Width="18" Height="18"
+                                         Foreground="{StaticResource PrimaryLightBrush}"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding TotalUsers}" FontSize="22"
+                                   Foreground="{StaticResource TextPrimaryBrush}" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding Lang.UsrTotalUsers}" FontSize="11"
+                                   Foreground="{StaticResource TextMutedBrush}"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- Active Users -->
+            <Border Background="#0E2A2D" CornerRadius="10" Padding="16,12" Margin="6,0,6,0">
+                <DockPanel>
+                    <Border DockPanel.Dock="Left" Background="#152ED47A" CornerRadius="8"
+                            Width="40" Height="40" Margin="0,0,12,0">
+                        <fa:ImageAwesome Icon="CheckCircle" Width="18" Height="18"
+                                         Foreground="{StaticResource SuccessBrush}"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ActiveUsers}" FontSize="22"
+                                   Foreground="{StaticResource SuccessBrush}" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding Lang.UsrActiveUsers}" FontSize="11"
+                                   Foreground="{StaticResource TextMutedBrush}"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- Inactive Users -->
+            <Border Background="#0E2A2D" CornerRadius="10" Padding="16,12" Margin="6,0,0,0">
+                <DockPanel>
+                    <Border DockPanel.Dock="Left" Background="#15F7685B" CornerRadius="8"
+                            Width="40" Height="40" Margin="0,0,12,0">
+                        <fa:ImageAwesome Icon="Ban" Width="18" Height="18"
+                                         Foreground="{StaticResource DangerBrush}"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding InactiveUsers}" FontSize="22"
+                                   Foreground="{StaticResource DangerBrush}" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding Lang.UsrInactiveUsers}" FontSize="11"
+                                   Foreground="{StaticResource TextMutedBrush}"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </UniformGrid>
+
+        <!-- Search Box -->
+        <Border Grid.Row="2" Background="#0E2A2D" CornerRadius="10" Padding="12,8" Margin="0,0,0,14">
+            <DockPanel>
+                <fa:ImageAwesome DockPanel.Dock="Left" Icon="Search" Width="14" Height="14"
+                                 Foreground="{StaticResource TextMutedBrush}"
+                                 VerticalAlignment="Center" Margin="4,0,10,0"/>
+                <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource DarkTextBox}"
+                         FontSize="13"
+                         Background="Transparent" BorderThickness="0"
+                         Foreground="{StaticResource TextPrimaryBrush}"
+                         VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+
         <!-- Content: Users Table + Edit Panel -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -55,7 +167,7 @@
                     </StackPanel>
 
                     <!-- DataGrid -->
-                    <DataGrid ItemsSource="{Binding Users}"
+                    <DataGrid ItemsSource="{Binding UsersView}"
                               AutoGenerateColumns="False"
                               IsReadOnly="True"
                               Background="Transparent"
@@ -64,13 +176,14 @@
                               AlternatingRowBackground="#112F32"
                               Foreground="{StaticResource TextPrimaryBrush}"
                               GridLinesVisibility="Horizontal"
-                              HorizontalGridLinesBrush="#15FFFFFF"
+                              HorizontalGridLinesBrush="#0AFFFFFF"
                               HeadersVisibility="Column"
                               SelectionMode="Single"
                               CanUserResizeRows="False"
                               FontFamily="{StaticResource CairoFont}"
                               FontSize="13"
                               FontWeight="Bold"
+                              RowStyle="{StaticResource HoverDataGridRow}"
                               Visibility="{Binding IsLoading, Converter={StaticResource InverseBoolToVisibility}}">
 
                         <DataGrid.ColumnHeaderStyle>
@@ -78,9 +191,9 @@
                                 <Setter Property="Background" Value="#143436"/>
                                 <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
                                 <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
-                                <Setter Property="FontSize" Value="13"/>
+                                <Setter Property="FontSize" Value="12"/>
                                 <Setter Property="FontWeight" Value="Bold"/>
-                                <Setter Property="Padding" Value="14,10"/>
+                                <Setter Property="Padding" Value="14,12"/>
                                 <Setter Property="BorderThickness" Value="0"/>
                                 <Setter Property="Template">
                                     <Setter.Value>
@@ -103,7 +216,7 @@
 
                         <DataGrid.CellStyle>
                             <Style TargetType="DataGridCell">
-                                <Setter Property="Padding" Value="14,8"/>
+                                <Setter Property="Padding" Value="14,10"/>
                                 <Setter Property="BorderThickness" Value="0"/>
                                 <Setter Property="Template">
                                     <Setter.Value>
@@ -121,11 +234,44 @@
                             <DataGridTextColumn Header="{Binding Data.Lang.UsrID, Source={StaticResource Proxy}}" Binding="{Binding Id}" Width="60"/>
                             <DataGridTextColumn Header="{Binding Data.Lang.UsrUsername, Source={StaticResource Proxy}}" Binding="{Binding Username}" Width="*"/>
                             <DataGridTextColumn Header="{Binding Data.Lang.UsrDisplayName, Source={StaticResource Proxy}}" Binding="{Binding DisplayName}" Width="*"/>
-                            <DataGridTextColumn Header="{Binding Data.Lang.UsrRole, Source={StaticResource Proxy}}" Binding="{Binding Role}" Width="100"/>
-                            <DataGridTemplateColumn Header="{Binding Data.Lang.UsrStatus, Source={StaticResource Proxy}}" Width="100">
+
+                            <!-- Role Badge Column -->
+                            <DataGridTemplateColumn Header="{Binding Data.Lang.UsrRole, Source={StaticResource Proxy}}" Width="110">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Border CornerRadius="8" Padding="8,4" HorizontalAlignment="Left">
+                                        <Border CornerRadius="6" Padding="10,4" HorizontalAlignment="Left">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#25808080"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Role}" Value="Admin">
+                                                            <Setter Property="Background" Value="#2544A1A0"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding Role}" FontSize="11" FontWeight="Bold">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#999"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Role}" Value="Admin">
+                                                                <Setter Property="Foreground" Value="{StaticResource PrimaryLightBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <!-- Status Badge Column -->
+                            <DataGridTemplateColumn Header="{Binding Data.Lang.UsrStatus, Source={StaticResource Proxy}}" Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="6" Padding="10,5" HorizontalAlignment="Left">
                                             <Border.Style>
                                                 <Style TargetType="Border">
                                                     <Setter Property="Background" Value="#302ED47A"/>
@@ -136,34 +282,88 @@
                                                     </Style.Triggers>
                                                 </Style>
                                             </Border.Style>
-                                            <TextBlock FontSize="11">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Text" Value="{Binding DataContext.Lang.UsrActive, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                                                        <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsActive}" Value="False">
-                                                                <Setter Property="Text" Value="{Binding DataContext.Lang.UsrDisabled, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                                                                <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse Width="7" Height="7" Margin="0,0,6,0">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Fill" Value="{StaticResource SuccessBrush}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                                                    <Setter Property="Fill" Value="{StaticResource DangerBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock FontSize="11" FontWeight="Bold">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="{Binding DataContext.Lang.UsrActive, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                                                    <Setter Property="Text" Value="{Binding DataContext.Lang.UsrDisabled, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
                                         </Border>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="" Width="80">
+
+                            <!-- Actions Column: Edit, Toggle Active, Delete -->
+                            <DataGridTemplateColumn Header="{Binding Data.Lang.UsrActions, Source={StaticResource Proxy}}" Width="140">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Style="{StaticResource SecondaryButton}"
-                                                Padding="10,6" Cursor="Hand"
-                                                Command="{Binding DataContext.StartEditUserCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <fa:ImageAwesome Icon="Pencil" Width="12" Height="12"
-                                                             Foreground="{StaticResource AccentBrush}"/>
-                                        </Button>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <!-- Edit Button -->
+                                            <Button Style="{StaticResource IconActionButton}"
+                                                    ToolTip="{Binding Data.Lang.UsrEditUser, Source={StaticResource Proxy}}"
+                                                    Command="{Binding Data.StartEditUserCommand, Source={StaticResource Proxy}}"
+                                                    CommandParameter="{Binding}"
+                                                    Margin="0,0,4,0">
+                                                <fa:ImageAwesome Icon="Pencil" Width="13" Height="13"
+                                                                 Foreground="{StaticResource AccentBrush}"/>
+                                            </Button>
+
+                                            <!-- Toggle Active/Deactivate Button -->
+                                            <Button Style="{StaticResource IconActionButton}"
+                                                    Command="{Binding Data.ToggleUserActiveCommand, Source={StaticResource Proxy}}"
+                                                    CommandParameter="{Binding}"
+                                                    Margin="0,0,4,0">
+                                                <Button.ToolTip>
+                                                    <MultiBinding StringFormat="{}{0}">
+                                                        <Binding Path="IsActive"/>
+                                                    </MultiBinding>
+                                                </Button.ToolTip>
+                                                <fa:ImageAwesome Width="13" Height="13">
+                                                    <fa:ImageAwesome.Style>
+                                                        <Style TargetType="fa:ImageAwesome">
+                                                            <Setter Property="Icon" Value="Ban"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                                                    <Setter Property="Icon" Value="CheckCircle"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </fa:ImageAwesome.Style>
+                                                </fa:ImageAwesome>
+                                            </Button>
+
+                                            <!-- Delete Button -->
+                                            <Button Style="{StaticResource IconActionButton}"
+                                                    Command="{Binding Data.DeleteUserCommand, Source={StaticResource Proxy}}"
+                                                    CommandParameter="{Binding}">
+                                                <fa:ImageAwesome Icon="Trash" Width="13" Height="13"
+                                                                 Foreground="{StaticResource DangerBrush}"/>
+                                            </Button>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>

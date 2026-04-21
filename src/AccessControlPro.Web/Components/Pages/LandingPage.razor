@@ -1,8 +1,9 @@
 @page "/"
 @layout AccessControlPro.Web.Components.Layout.LandingLayout
+@inject AccessControlPro.Web.Services.SessionState Session
 
 <!-- Hero Section -->
-<section class="landing-hero" dir="@SessionState.Dir">
+<section class="landing-hero" dir="@Session.Dir">
     <div class="hero-bg-effects">
         <div class="hero-glow hero-glow-1"></div>
         <div class="hero-glow hero-glow-2"></div>
@@ -47,7 +48,7 @@
 </section>
 
 <!-- Features Section -->
-<section id="features" class="landing-section" dir="@SessionState.Dir">
+<section id="features" class="landing-section" dir="@Session.Dir">
     <div class="section-header">
         <span class="section-tag"><i class="fas fa-star"></i> @L("Features", "المميزات")</span>
         <h2>@L("Everything You Need to", "كل ما تحتاجه") <span class="gradient-text">@L("Run Your Gym", "لإدارة ناديك")</span></h2>
@@ -114,7 +115,7 @@
 </section>
 
 <!-- How It Works Section -->
-<section id="how-it-works" class="landing-section landing-section-alt" dir="@SessionState.Dir">
+<section id="how-it-works" class="landing-section landing-section-alt" dir="@Session.Dir">
     <div class="section-header">
         <span class="section-tag"><i class="fas fa-cogs"></i> @L("How It Works", "كيف يعمل")</span>
         <h2>@L("Get Started in", "ابدأ في") <span class="gradient-text">@L("3 Simple Steps", "3 خطوات بسيطة")</span></h2>
@@ -144,7 +145,7 @@
 </section>
 
 <!-- Pricing Section -->
-<section id="pricing" class="landing-section" dir="@SessionState.Dir">
+<section id="pricing" class="landing-section" dir="@Session.Dir">
     <div class="section-header">
         <span class="section-tag"><i class="fas fa-tags"></i> @L("Pricing", "الأسعار")</span>
         <h2>@L("Simple, Transparent", "أسعار بسيطة") <span class="gradient-text">@L("Pricing", "وشفافة")</span></h2>
@@ -209,7 +210,7 @@
 </section>
 
 <!-- Screenshots Section -->
-<section id="screenshots" class="landing-section landing-section-alt" dir="@SessionState.Dir">
+<section id="screenshots" class="landing-section landing-section-alt" dir="@Session.Dir">
     <div class="section-header">
         <span class="section-tag"><i class="fas fa-images"></i> @L("Screenshots", "لقطات الشاشة")</span>
         <h2>@L("See It in", "شاهده") <span class="gradient-text">@L("Action", "أثناء العمل")</span></h2>
@@ -272,7 +273,7 @@
 </section>
 
 <!-- Contact/Demo Section -->
-<section id="contact" class="landing-section" dir="@SessionState.Dir">
+<section id="contact" class="landing-section" dir="@Session.Dir">
     <div class="section-header">
         <span class="section-tag"><i class="fas fa-headset"></i> @L("Get In Touch", "تواصل معنا")</span>
         <h2>@L("Ready to", "مستعد لـ") <span class="gradient-text">@L("Get Started?", "البدء؟")</span></h2>
@@ -334,7 +335,7 @@
     private string demoPhone = "";
     private string demoGymName = "";
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     private string GetWhatsAppDemoUrl()
     {

@@ -23,6 +23,8 @@ public partial class RenewSubscriptionDialog : Window
     public string SelectedSubscriptionType { get; private set; } = string.Empty;
     public int SelectedMonths { get; private set; }
     public int SelectedCustomDays { get; private set; }
+    public DateTime? CustomStartDateResult { get; private set; }
+    public DateTime? CustomEndDateResult { get; private set; }
     public decimal NewFee => decimal.TryParse(FeeTextBox.Text.Trim(), out var f) ? f : 0;
     public decimal NewAmountPaid => decimal.TryParse(PaidTextBox.Text.Trim(), out var p) ? p : 0;
 
@@ -250,16 +252,30 @@ public partial class RenewSubscriptionDialog : Window
 
     private void PeriodCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // Show/hide custom days input
+        // Show/hide custom date range input
         var isCustom = IsCustomPeriod();
         var vis = isCustom ? Visibility.Visible : Visibility.Collapsed;
         if (CustomDaysLabel != null) CustomDaysLabel.Visibility = vis;
-        if (CustomDaysTextBox != null) CustomDaysTextBox.Visibility = vis;
+        if (CustomDatesPanel != null) CustomDatesPanel.Visibility = vis;
+
+        // Set default dates when switching to custom
+        if (isCustom && CustomStartDate != null && CustomEndDate != null)
+        {
+            if (CustomStartDate.SelectedDate == null)
+                CustomStartDate.SelectedDate = DateTime.Today;
+            if (CustomEndDate.SelectedDate == null)
+                CustomEndDate.SelectedDate = DateTime.Today.AddMonths(1);
+        }
 
         RecalcFee();
     }
 
     private void CustomDaysTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        RecalcFee();
+    }
+
+    private void CustomDate_Changed(object sender, SelectionChangedEventArgs e)
     {
         RecalcFee();
     }
@@ -271,11 +287,15 @@ public partial class RenewSubscriptionDialog : Window
 
         if (IsCustomPeriod())
         {
-            // Calculate fee based on daily rate
-            if (plan != null && int.TryParse(CustomDaysTextBox?.Text?.Trim(), out int days) && days > 0)
+            // Calculate fee based on date range
+            if (plan != null && CustomStartDate?.SelectedDate != null && CustomEndDate?.SelectedDate != null)
             {
-                var dailyRate = plan.MonthlyRate / 30m;
-                FeeTextBox.Text = Math.Round(dailyRate * days, 0).ToString();
+                var days = (CustomEndDate.SelectedDate.Value - CustomStartDate.SelectedDate.Value).Days;
+                if (days > 0)
+                {
+                    var dailyRate = plan.MonthlyRate / 30m;
+                    FeeTextBox.Text = Math.Round(dailyRate * days, 0).ToString();
+                }
             }
         }
         else
@@ -343,8 +363,10 @@ public partial class RenewSubscriptionDialog : Window
 
         if (IsCustomPeriod())
         {
-            if (!int.TryParse(CustomDaysTextBox.Text.Trim(), out int days) || days <= 0)
-                errors.Add(Lang.DaysRequired);
+            if (CustomStartDate.SelectedDate == null || CustomEndDate.SelectedDate == null)
+                errors.Add("Start and end dates are required");
+            else if (CustomEndDate.SelectedDate <= CustomStartDate.SelectedDate)
+                errors.Add("End date must be after start date");
         }
 
         if (string.IsNullOrWhiteSpace(FeeTextBox.Text) || NewFee <= 0)
@@ -370,7 +392,10 @@ public partial class RenewSubscriptionDialog : Window
         if (IsCustomPeriod())
         {
             SelectedMonths = 0;
-            SelectedCustomDays = int.TryParse(CustomDaysTextBox.Text.Trim(), out int d) ? d : 0;
+            CustomStartDateResult = CustomStartDate.SelectedDate;
+            CustomEndDateResult = CustomEndDate.SelectedDate;
+            SelectedCustomDays = CustomStartDate.SelectedDate != null && CustomEndDate.SelectedDate != null
+                ? (CustomEndDate.SelectedDate.Value - CustomStartDate.SelectedDate.Value).Days : 0;
         }
         else
         {

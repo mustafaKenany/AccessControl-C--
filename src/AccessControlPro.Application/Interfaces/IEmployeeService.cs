@@ -50,6 +50,10 @@ public interface IEmployeeService
     Task<(int success, int failed)> BulkUnfreezeAsync(IEnumerable<int> ids);
     Task<(int success, int failed)> BulkExtendAsync(IEnumerable<int> ids, int days);
 
+    // Upload all cards to selected devices, skipping already-synced cards
+    Task<(int uploaded, int skipped, int failed, int total)> UploadAllCardsToDevicesAsync(
+        IEnumerable<int> deviceIds, IProgress<(int current, int total, string cardNumber)>? progress = null);
+
     // Reports
     Task<IEnumerable<EmployeeDto>> GetExpiringAsync(DateTime from, DateTime to);
     Task<IEnumerable<EmployeeDto>> GetRenewedAsync(DateTime from, DateTime to);

@@ -129,10 +129,6 @@ public class GymDbHelper
         }
         catch (Exception ex)
         {
-            // Log the error so we can debug
-            try { System.IO.File.AppendAllText("/var/www/gymapp/cloud_debug.log",
-                $"[{DateTime.Now:HH:mm:ss}] CreateGymDB init error for {databaseName}: {ex.Message}\n{ex.StackTrace}\n"); }
-            catch { }
             throw;
         }
     }

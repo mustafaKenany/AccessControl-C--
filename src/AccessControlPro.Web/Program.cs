@@ -67,7 +67,7 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
 {
     // Verify API key — accept config key, default key, OR any valid gym key
     var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
-    var isValidKey = apiKey == app.Configuration["SyncApiKey"] || apiKey == "HMTech-Sync-2026";
+    var isValidKey = apiKey == app.Configuration["SyncApiKey"];
     if (!isValidKey && !string.IsNullOrEmpty(apiKey))
     {
         var gymDb2 = await gymDb.GetDatabaseByApiKeyAsync(apiKey);
@@ -109,42 +109,54 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
             dbName = "gymcloud";
         }
 
+        // Sync mode: "full" wipes tables before insert (initial sync or manual reset);
+        // "delta" only upserts changed rows (skips the DELETE). Default "full" preserves
+        // behavior for older clients that don't send the header.
+        var syncMode = context.Request.Headers["X-Sync-Mode"].FirstOrDefault() ?? "full";
+        var isFullSync = !string.Equals(syncMode, "delta", StringComparison.OrdinalIgnoreCase);
+
         using var conn = await gymDb.GetGymConnectionAsync(dbName);
         int total = 0;
 
-        // Process each table — always call even with 0 rows (to clear cloud when local is empty)
+        // Process each table — always call even with 0 rows (to clear cloud when local is empty in full-sync mode)
         if (syncData.Players != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "Players", syncData.Players);
+            total += await SyncHelper.UpsertRowsAsync(conn, "Players", syncData.Players, isFullSync);
         if (syncData.AccessEvents != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "AccessEvents", syncData.AccessEvents);
+            total += await SyncHelper.UpsertRowsAsync(conn, "AccessEvents", syncData.AccessEvents, isFullSync);
         if (syncData.Devices != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "Devices", syncData.Devices);
+            total += await SyncHelper.UpsertRowsAsync(conn, "Devices", syncData.Devices, isFullSync);
         if (syncData.Doors != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "Doors", syncData.Doors);
+            total += await SyncHelper.UpsertRowsAsync(conn, "Doors", syncData.Doors, isFullSync);
         if (syncData.Transactions != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "Transactions", syncData.Transactions);
+            total += await SyncHelper.UpsertRowsAsync(conn, "Transactions", syncData.Transactions, isFullSync);
         if (syncData.Users != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "Users", syncData.Users);
+            total += await SyncHelper.UpsertRowsAsync(conn, "Users", syncData.Users, isFullSync);
         if (syncData.AuditLogs != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "AuditLogs", syncData.AuditLogs);
+            total += await SyncHelper.UpsertRowsAsync(conn, "AuditLogs", syncData.AuditLogs, isFullSync);
         if (syncData.DeletedEmployees != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "DeletedEmployees", syncData.DeletedEmployees);
+        {
+            total += await SyncHelper.UpsertRowsAsync(conn, "DeletedEmployees", syncData.DeletedEmployees, isFullSync);
+            // Propagate deletes: for each tombstone row, remove the matching Players row
+            // (only meaningful in delta mode — full sync already deleted Players before inserting)
+            if (!isFullSync)
+                await SyncHelper.ApplyDeleteTombstonesAsync(conn, "Players", "OriginalId", syncData.DeletedEmployees);
+        }
         if (syncData.AppSettings != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "AppSettings", syncData.AppSettings);
+            total += await SyncHelper.UpsertRowsAsync(conn, "AppSettings", syncData.AppSettings, isFullSync);
         if (syncData.AccessCards != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "AccessCards", syncData.AccessCards);
+            total += await SyncHelper.UpsertRowsAsync(conn, "AccessCards", syncData.AccessCards, isFullSync);
         if (syncData.QrPool != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "QrPool", syncData.QrPool);
+            total += await SyncHelper.UpsertRowsAsync(conn, "QrPool", syncData.QrPool, isFullSync);
         if (syncData.SubscriptionPlans != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "SubscriptionPlans", syncData.SubscriptionPlans);
+            total += await SyncHelper.UpsertRowsAsync(conn, "SubscriptionPlans", syncData.SubscriptionPlans, isFullSync);
         if (syncData.PosShifts != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "PosShifts", syncData.PosShifts);
+            total += await SyncHelper.UpsertRowsAsync(conn, "PosShifts", syncData.PosShifts, isFullSync);
         if (syncData.FreezeHistories != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "FreezeHistories", syncData.FreezeHistories);
+            total += await SyncHelper.UpsertRowsAsync(conn, "FreezeHistories", syncData.FreezeHistories, isFullSync);
         if (syncData.Products != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "Products", syncData.Products);
+            total += await SyncHelper.UpsertRowsAsync(conn, "Products", syncData.Products, isFullSync);
         if (syncData.TimeGroups != null)
-            total += await SyncHelper.UpsertRowsAsync(conn, "TimeGroups", syncData.TimeGroups);
+            total += await SyncHelper.UpsertRowsAsync(conn, "TimeGroups", syncData.TimeGroups, isFullSync);
 
         // Invalidate cached data after sync
         QueryCache.InvalidateAll();
@@ -167,7 +179,7 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
             logCmd.Parameters.AddWithValue("ts", DateTime.UtcNow);
             await logCmd.ExecuteNonQueryAsync();
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[Program] SyncLogInsert Error: {ex.Message}"); }
 
         // Update gym's LastSyncAt and PlayerCount in master database
         try
@@ -182,7 +194,7 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
             updateCmd.Parameters.AddWithValue("key", apiKey ?? "");
             await updateCmd.ExecuteNonQueryAsync();
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[Program] UpdateGymSync Error: {ex.Message}"); }
 
         return Results.Ok(new { success = true, total, errors = syncErrors });
     }
@@ -196,7 +208,7 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
 app.MapGet("/api/users", async (HttpContext context, GymDbHelper gymDb, DbHelper db) =>
 {
     var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
-    var isValid = apiKey == app.Configuration["SyncApiKey"] || apiKey == "HMTech-Sync-2026";
+    var isValid = apiKey == app.Configuration["SyncApiKey"];
     if (!isValid && !string.IsNullOrEmpty(apiKey))
         isValid = !string.IsNullOrEmpty(await gymDb.GetDatabaseByApiKeyAsync(apiKey));
     if (!isValid)
@@ -245,7 +257,7 @@ app.MapGet("/api/users", async (HttpContext context, GymDbHelper gymDb, DbHelper
 app.MapGet("/api/qr-pool", async (HttpContext context, GymDbHelper gymDb) =>
 {
     var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
-    var isValid = apiKey == app.Configuration["SyncApiKey"] || apiKey == "HMTech-Sync-2026";
+    var isValid = apiKey == app.Configuration["SyncApiKey"];
     if (!isValid && !string.IsNullOrEmpty(apiKey))
         isValid = !string.IsNullOrEmpty(await gymDb.GetDatabaseByApiKeyAsync(apiKey));
     if (!isValid)

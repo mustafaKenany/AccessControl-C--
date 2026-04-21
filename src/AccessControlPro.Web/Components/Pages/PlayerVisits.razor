@@ -127,7 +127,7 @@ else
     private bool _hasMore => _page * PageSize < _totalCount;
     private int TotalPages => _totalCount == 0 ? 1 : (int)Math.Ceiling((double)_totalCount / PageSize);
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -165,7 +165,9 @@ else
                 // Get stats
                 var now = DateTime.UtcNow;
                 var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                var weekStart = now.Date.AddDays(-(int)now.DayOfWeek);
+                // Week starts Saturday (common in Iraq)
+                var daysSinceSaturday = ((int)now.DayOfWeek + 1) % 7;
+                var weekStart = now.Date.AddDays(-daysSinceSaturday);
 
                 using (var cmd = new Npgsql.NpgsqlCommand(
                     @"SELECT COUNT(*) FROM ""AccessEvents"" WHERE ""CardId"" = @cid AND ""EventDate"" >= @ms", conn))
@@ -186,7 +188,7 @@ else
                 await LoadVisitsAsync();
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[PlayerVisits] LoadDataAsync Error: {ex.Message}"); }
     }
 
     private async Task LoadVisitsAsync()
@@ -228,7 +230,7 @@ else
                 }
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[PlayerVisits] LoadVisitsAsync Error: {ex.Message}"); }
     }
 
     private async Task NextPage()

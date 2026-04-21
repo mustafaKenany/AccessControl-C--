@@ -14,7 +14,8 @@ public static class CardSyncRunner
 
     private static void Log(string msg)
     {
-        try { File.AppendAllText(LogPath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n"); } catch { }
+        AccessControlPro.Application.Services.RollingLogFile.Append(
+            LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {msg}\n");
     }
 
     /// <summary>

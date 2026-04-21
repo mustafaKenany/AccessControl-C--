@@ -36,14 +36,18 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty]
     private string _backupWarningMessage = "";
 
+    [ObservableProperty]
+    private string _welcomeMessage = "";
+
     public ObservableCollection<AccessEventDto> RecentEvents { get; } = new();
     public ObservableCollection<DoorStatusDto> DoorStatuses { get; } = new();
 
     private bool _isInitialized;
 
-    public DashboardViewModel(IDashboardService dashboardService)
+    public DashboardViewModel(IDashboardService dashboardService, CurrentUserService currentUser)
     {
         _dashboardService = dashboardService;
+        WelcomeMessage = currentUser.DisplayName ?? "";
     }
 
     public async Task InitializeAsync()

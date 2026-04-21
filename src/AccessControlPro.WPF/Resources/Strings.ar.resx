@@ -176,6 +176,8 @@
   <data name="PeriodRequired" xml:space="preserve"><value>يرجى اختيار مدة الاشتراك.</value></data>
   <data name="FeeRequired" xml:space="preserve"><value>الرسوم مطلوبة.</value></data>
   <data name="PhotoRequired" xml:space="preserve"><value>صورة اللاعب مطلوبة.</value></data>
+  <data name="HeightInvalid" xml:space="preserve"><value>يجب أن يكون الطول بين 50 و 250 سم.</value></data>
+  <data name="WeightInvalid" xml:space="preserve"><value>يجب أن يكون الوزن بين 20 و 300 كجم.</value></data>
   <!-- Assign Card Dialog -->
   <data name="AuthorizeCard" xml:space="preserve"><value>تفويض بطاقة الوصول</value></data>
   <data name="CardNumber" xml:space="preserve"><value>رقم البطاقة</value></data>
@@ -409,6 +411,17 @@
   <data name="UsrUsernameRequired" xml:space="preserve"><value>اسم المستخدم مطلوب.</value></data>
   <data name="UsrPasswordRequired" xml:space="preserve"><value>كلمة المرور مطلوبة للمستخدمين الجدد.</value></data>
   <data name="UsrDisplayNameRequired" xml:space="preserve"><value>الاسم المعروض مطلوب.</value></data>
+  <data name="UsrSearch" xml:space="preserve"><value>بحث عن مستخدمين...</value></data>
+  <data name="UsrTotalUsers" xml:space="preserve"><value>إجمالي المستخدمين</value></data>
+  <data name="UsrActiveUsers" xml:space="preserve"><value>نشط</value></data>
+  <data name="UsrInactiveUsers" xml:space="preserve"><value>غير نشط</value></data>
+  <data name="UsrDeactivate" xml:space="preserve"><value>تعطيل</value></data>
+  <data name="UsrActivate" xml:space="preserve"><value>تفعيل</value></data>
+  <data name="UsrConfirmDeactivate" xml:space="preserve"><value>هل أنت متأكد من تعطيل</value></data>
+  <data name="UsrConfirmActivate" xml:space="preserve"><value>هل أنت متأكد من تفعيل</value></data>
+  <data name="UsrDeactivateReason" xml:space="preserve"><value>سبب التعطيل</value></data>
+  <data name="UsrDeleteReason" xml:space="preserve"><value>سبب الحذف</value></data>
+  <data name="UsrActions" xml:space="preserve"><value>الإجراءات</value></data>
 
   <!-- Permission Display Names -->
   <data name="PermAccessMainApp" xml:space="preserve"><value>الوصول للتطبيق الرئيسي</value></data>
@@ -678,6 +691,13 @@
   <data name="BulkComplete" xml:space="preserve"><value>تمت العملية الجماعية.</value></data>
   <data name="BulkSuccessCount" xml:space="preserve"><value>نجح</value></data>
   <data name="BulkFailedCount" xml:space="preserve"><value>فشل</value></data>
+  <data name="BulkUploadAll" xml:space="preserve"><value>رفع الكل إلى الجهاز</value></data>
+  <data name="BulkSelectDevices" xml:space="preserve"><value>اختر الأجهزة</value></data>
+  <data name="BulkSelectAtLeastOneDevice" xml:space="preserve"><value>يرجى اختيار جهاز واحد على الأقل.</value></data>
+  <data name="BulkUploadProgress" xml:space="preserve"><value>جاري رفع البطاقات إلى الأجهزة...</value></data>
+  <data name="BulkUploadComplete" xml:space="preserve"><value>اكتمل الرفع</value></data>
+  <data name="BulkUploaded" xml:space="preserve"><value>تم رفعه</value></data>
+  <data name="BulkSkipped" xml:space="preserve"><value>موجود مسبقاً</value></data>
   <data name="PrfPlayerProfile" xml:space="preserve"><value>ملف اللاعب</value></data>
   <data name="PrfOverview" xml:space="preserve"><value>نظرة عامة</value></data>
   <data name="PrfFreezeHistory" xml:space="preserve"><value>سجل التجميد</value></data>
@@ -853,4 +873,9 @@
   <data name="FilterTipLast3Months" xml:space="preserve"><value>سجلات آخر 3 أشهر</value></data>
   <data name="FilterTipLast6Months" xml:space="preserve"><value>سجلات آخر 6 أشهر</value></data>
   <data name="FilterTipThisYear" xml:space="preserve"><value>سجلات من بداية السنة حتى اليوم</value></data>
+  <data name="SyncStatus" xml:space="preserve"><value>مزامنة</value></data>
+  <data name="SyncToDevice" xml:space="preserve"><value>مزامنة مع الجهاز</value></data>
+  <data name="PlayerSynced" xml:space="preserve"><value>تمت مزامنة اللاعب مع {0} جهاز</value></data>
+  <data name="PlayerSyncFailed" xml:space="preserve"><value>فشلت المزامنة</value></data>
+  <data name="PlayerNoCard" xml:space="preserve"><value>اللاعب ليس لديه رقم بطاقة</value></data>
 </root>

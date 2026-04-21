@@ -112,24 +112,30 @@ public class MigrationService : IMigrationService
                     }
                 }
 
+                // Only copy essential fields (name, card, dates, photo)
+                // All secondary fields use safe defaults to prevent DB errors
                 var employee = new Employee
                 {
                     FullNameAr = name,
                     FullNameEn = name,
                     CardNo = cardNo,
-                    SubscriptionType = GetString(reader, "UserAccount"),
-                    Phone = $"MIG-{current}",
+                    Phone = $"MIG-{current}",           // unique placeholder (required, unique)
                     PhotoData = GetImageBytes(reader, "UserPicture"),
-                    Height = GetInt(reader, "BodyLength"),
-                    Weight = GetInt(reader, "BodyWeight"),
-                    SubscriptionFee = 0,
-                    AmountPaid = 0,
                     StartDate = GetDate(reader, "TimeBegin"),
                     EndDate = GetDate(reader, "TimeValidaty"),
-                    Notes = GetString(reader, "Notes"),
-                    IsFrozen = GetBool(reader, "IsFreez"),
-                    FreezeStartDate = GetNullableDate(reader, "FreezDate"),
-                    CreatedAt = GetDateOrNow(reader, "DateLog")
+                    // Secondary fields - safe defaults
+                    SubscriptionType = "Migrated",
+                    SubscriptionFee = 0,
+                    AmountPaid = 0,
+                    Height = 0,
+                    Weight = 0,
+                    Notes = string.Empty,
+                    IsFrozen = false,
+                    FreezeStartDate = null,
+                    MaxVisits = 0,
+                    UsedVisits = 0,
+                    CardBalance = 0,
+                    CreatedAt = DateTime.UtcNow
                 };
 
                 await _employeeRepository.AddAsync(employee);

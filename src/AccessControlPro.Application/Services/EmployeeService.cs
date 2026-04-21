@@ -1005,46 +1005,119 @@ public class EmployeeService : IEmployeeService
         var device = await _deviceRepository.GetByIdAsync(deviceId);
         if (device == null) return (0, 0, 0);
 
-        var allCards = (await _cardRepository.GetAllWithEmployeeAsync())
-            .Where(c => c.IsActive && c.Employee != null)
-            .ToList();
+        // Auto-create AccessCard records for players who have CardNo but no AccessCard
+        // Check ALL cards (active + inactive) to avoid duplicate constraint violations
+        var empCardInfos = (await _employeeRepository.GetCardInfoForSyncAsync()).ToList();
+        var allExistingCards = (await _cardRepository.GetAllActiveForSyncAsync()).ToList();
+        var existingCardNumbers = allExistingCards.Select(c => c.CardNumber).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var emp in empCardInfos)
+        {
+            if (!string.IsNullOrWhiteSpace(emp.CardNo) && !existingCardNumbers.Contains(emp.CardNo))
+            {
+                try
+                {
+                    var newCard = new AccessCard
+                    {
+                        EmployeeId = emp.Id,
+                        CardNumber = emp.CardNo,
+                        IsActive = true,
+                        ValidFrom = emp.StartDate,
+                        ValidTo = emp.EndDate,
+                        EffectiveTimes = emp.MaxVisits > 0 ? emp.MaxVisits : 65535,
+                        DoorPermissions = "01010101",
+                        TimePeriodIndex = 1,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _cardRepository.AddAsync(newCard);
+                    existingCardNumbers.Add(emp.CardNo);
+                }
+                catch
+                {
+                    // Skip if duplicate or any DB error
+                }
+            }
+        }
+
+        // Step 2: Get all active cards for sync (no Employee navigation = no photos loaded)
+        var allCards = (await _cardRepository.GetAllActiveForSyncAsync()).ToList();
 
         if (allCards.Count == 0) return (0, 0, 0);
 
-        _sdk.Initialize();
         var deviceInfo = BuildDeviceInfo(device);
 
+        // Upload in batches of 30 cards per SDK session
+        // Each batch gets a full SDK cycle: Ping → Stop → Shutdown → ReInit → 30 cards → Cleanup
         int synced = 0, failed = 0;
-        for (int i = 0; i < allCards.Count; i++)
+        var cardsToSync = allCards.ToList();
+        const int batchSize = 30;
+
+        var batches = cardsToSync
+            .Select((card, idx) => (card, idx))
+            .GroupBy(x => x.idx / batchSize)
+            .Select(g => g.Select(x => x.card).ToList())
+            .ToList();
+
+        foreach (var batch in batches)
         {
-            var card = allCards[i];
-            progress?.Report((i + 1, allCards.Count, card.CardNumber));
+            var currentBatch = batch;
 
-            try
-            {
-                var permitTime = card.ValidTo > DateTime.Now
-                    ? card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss")
-                    : DateTime.Now.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
-                _sdk.AddAccessCard(
-                    deviceInfo,
-                    card.CardNumber,
-                    card.CardPassword,
-                    card.OpenMode,
-                    card.DoorPermissions,
-                    permitTime,
-                    card.EffectiveTimes,
-                    card.TimePeriodIndex,
-                    card.HolidayEnabled);
+            var batchResult = await _opHelper.ExecuteOnDevicesSequentialAsync(
+                new[] { (deviceInfo, device.Name, device.IP, device.Id) },
+                info =>
+                {
+                    foreach (var card in currentBatch)
+                    {
+                        progress?.Report((synced + failed + 1, cardsToSync.Count, card.CardNumber));
+                        try
+                        {
+                            var permitTime = card.ValidTo > DateTime.Now
+                                ? card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss")
+                                : DateTime.Now.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
 
-                card.IsSyncedToDevice = true;
-                await _cardRepository.UpdateAsync(card);
-                synced++;
-            }
-            catch (Exception ex)
+                            var doorPerm = card.DoorPermissions;
+                            if (string.IsNullOrEmpty(doorPerm) || doorPerm == "01000000")
+                                doorPerm = "01010000";
+
+                            _sdk.AddAccessCard(
+                                info,
+                                card.CardNumber,
+                                card.CardPassword,
+                                card.OpenMode,
+                                doorPerm,
+                                permitTime,
+                                card.EffectiveTimes > 0 ? card.EffectiveTimes : 65535,
+                                card.TimePeriodIndex > 0 ? card.TimePeriodIndex : 1,
+                                card.HolidayEnabled);
+
+                            Thread.Sleep(200);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[SyncAll] Card {card.CardNumber}: {ex.Message}");
+                        }
+                    }
+                });
+
+            if (batchResult.SuccessCount > 0)
             {
-                System.Diagnostics.Debug.WriteLine($"[SyncAll] Failed card {card.CardNumber}: {ex.Message}");
-                failed++;
+                foreach (var card in currentBatch)
+                {
+                    try
+                    {
+                        card.IsSyncedToDevice = true;
+                        await _cardRepository.UpdateAsync(card);
+                        synced++;
+                    }
+                    catch { failed++; }
+                }
             }
+            else
+            {
+                failed += currentBatch.Count;
+            }
+
+            await Task.Delay(500); // pause between batches
         }
 
         await LogAuditAsync("SyncAllCards", "Device", deviceId,
@@ -1052,6 +1125,160 @@ public class EmployeeService : IEmployeeService
             $"تم مزامنة {synced}/{allCards.Count} بطاقة مع جهاز {device.Name} ({device.IP}). فشل: {failed}");
 
         return (synced, failed, allCards.Count);
+    }
+
+    public async Task<(int uploaded, int skipped, int failed, int total)> UploadAllCardsToDevicesAsync(
+        IEnumerable<int> deviceIds, IProgress<(int current, int total, string cardNumber)>? progress = null)
+    {
+        // Step 1: Auto-create AccessCard records for migrated players
+        var empCardInfos = (await _employeeRepository.GetCardInfoForSyncAsync()).ToList();
+        var allExistingCards = (await _cardRepository.GetAllWithEmployeeAsync()).ToList();
+        var existingCardNumbers = allExistingCards.Select(c => c.CardNumber).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var emp in empCardInfos)
+        {
+            if (!string.IsNullOrWhiteSpace(emp.CardNo) && !existingCardNumbers.Contains(emp.CardNo))
+            {
+                try
+                {
+                    var newCard = new AccessCard
+                    {
+                        EmployeeId = emp.Id,
+                        CardNumber = emp.CardNo,
+                        IsActive = true,
+                        ValidFrom = emp.StartDate,
+                        ValidTo = emp.EndDate,
+                        EffectiveTimes = emp.MaxVisits > 0 ? emp.MaxVisits : 65535,
+                        DoorPermissions = "01010000",
+                        TimePeriodIndex = 1,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _cardRepository.AddAsync(newCard);
+                    existingCardNumbers.Add(emp.CardNo);
+                }
+                catch { }
+            }
+        }
+
+        // Step 2: Get all active cards
+        var allCards = (await _cardRepository.GetAllActiveForSyncAsync()).ToList();
+        if (allCards.Count == 0) return (0, 0, 0, 0);
+
+        var devices = await ResolveDevicesAsync(deviceIds);
+        if (devices.Count == 0) return (0, 0, 0, allCards.Count);
+
+        int totalUploaded = 0, totalSkipped = 0, totalFailed = 0;
+        int progressIndex = 0;
+        int totalWork = allCards.Count * devices.Count;
+
+        // Step 3: Upload using the SAME SDK pattern as individual assign
+        // (Ping → StopMonitor → Shutdown → ReInit → SDK call → Cleanup)
+        foreach (var device in devices)
+        {
+            var deviceInfo = BuildDeviceInfo(device);
+
+            // Get cards already synced to this device
+            var syncedRecords = await _cardDeviceSyncRepository.GetByDeviceIdAsync(device.Id);
+            var alreadySynced = syncedRecords
+                .Where(s => s.IsSynced)
+                .Select(s => s.AccessCardId)
+                .ToHashSet();
+
+            // Build list of cards to upload (skip already synced)
+            var cardsToUpload = new List<AccessCard>();
+            foreach (var card in allCards)
+            {
+                progressIndex++;
+                if (alreadySynced.Contains(card.Id))
+                {
+                    totalSkipped++;
+                    continue;
+                }
+                cardsToUpload.Add(card);
+            }
+
+            if (cardsToUpload.Count == 0) continue;
+
+            // Upload in batches of 30 cards per SDK session
+            // Each batch: Ping → StopMonitor → Shutdown → ReInit → 30 cards → Cleanup
+            const int batchSize = 30;
+            var batches = cardsToUpload
+                .Select((card, idx) => (card, idx))
+                .GroupBy(x => x.idx / batchSize)
+                .Select(g => g.Select(x => x.card).ToList())
+                .ToList();
+
+            int batchNum = 0;
+            foreach (var batch in batches)
+            {
+                batchNum++;
+                var currentBatch = batch; // capture for lambda
+
+                var batchResult = await _opHelper.ExecuteOnDevicesSequentialAsync(
+                    new[] { (deviceInfo, device.Name, device.IP, device.Id) },
+                    info =>
+                    {
+                        foreach (var card in currentBatch)
+                        {
+                            progress?.Report((totalUploaded + totalSkipped + totalFailed + 1, totalWork, card.CardNumber));
+
+                            var permitTime = card.ValidTo > DateTime.Now
+                                ? card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss")
+                                : DateTime.Now.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
+
+                            var doorPerm = card.DoorPermissions;
+                            if (string.IsNullOrEmpty(doorPerm) || doorPerm == "01000000")
+                                doorPerm = "01010000"; // default Door 1+2
+
+                            _sdk.AddAccessCard(
+                                info,
+                                card.CardNumber,
+                                card.CardPassword,
+                                card.OpenMode,
+                                doorPerm,
+                                permitTime,
+                                card.EffectiveTimes > 0 ? card.EffectiveTimes : 65535,
+                                card.TimePeriodIndex > 0 ? card.TimePeriodIndex : 1,
+                                card.HolidayEnabled);
+
+                            Thread.Sleep(200);
+                        }
+                    });
+
+                // Update DB for this batch
+                if (batchResult.SuccessCount > 0)
+                {
+                    foreach (var card in currentBatch)
+                    {
+                        try
+                        {
+                            card.IsSyncedToDevice = true;
+                            await _cardRepository.UpdateAsync(card);
+                            await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, true);
+                            totalUploaded++;
+                        }
+                        catch { totalFailed++; }
+                    }
+                }
+                else
+                {
+                    foreach (var card in currentBatch)
+                    {
+                        try { await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, false, "Batch failed"); } catch { }
+                        totalFailed++;
+                    }
+                }
+
+                // Brief pause between batches to let device settle
+                await Task.Delay(500);
+            }
+        }
+
+        await LogAuditAsync("UploadAllCards", "System", null,
+            $"Upload all cards to {devices.Count} device(s): Uploaded={totalUploaded}, Skipped={totalSkipped}, Failed={totalFailed}",
+            $"رفع جميع البطاقات إلى {devices.Count} جهاز: تم الرفع={totalUploaded}، تم التخطي={totalSkipped}، فشل={totalFailed}");
+
+        return (totalUploaded, totalSkipped, totalFailed, allCards.Count * devices.Count);
     }
 
     public async Task<(int synced, int failed, int total, List<string> errors)> SyncCardToDevicesAsync(int cardId, IEnumerable<int>? deviceIds = null)
@@ -1255,22 +1482,22 @@ public class EmployeeService : IEmployeeService
             return (false, $"Player is frozen since {employee.FreezeStartDate:yyyy-MM-dd}");
         }
 
-        // Check date-based expiry
-        if (employee.EndDate < DateTime.Now)
+        // Check date-based expiry (use .Date to allow access for full last day)
+        if (employee.EndDate.Date < DateTime.Today)
         {
             return (false, $"Subscription expired ({employee.EndDate:yyyy-MM-dd})");
         }
 
-        // Check visit-count expiry — count ALL swipes (entry AND exit)
+        // Check visit-count expiry — validate FIRST, then increment only if allowed
         if (employee.MaxVisits > 0)
         {
-            employee.UsedVisits++;
-            await _employeeRepository.UpdateAsync(employee);
-
             if (employee.UsedVisits >= employee.MaxVisits)
             {
                 return (false, $"Visit limit reached ({employee.UsedVisits}/{employee.MaxVisits})");
             }
+
+            employee.UsedVisits++;
+            await _employeeRepository.UpdateAsync(employee);
 
             return (true, $"Visit {employee.UsedVisits}/{employee.MaxVisits}");
         }
@@ -1361,7 +1588,7 @@ public class EmployeeService : IEmployeeService
         try
         {
             var msg = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Card={cardNo} Device={deviceSN} Date={date} → {result}\n";
-            File.AppendAllText(DisableLogPath, msg);
+            RollingLogFile.Append(DisableLogPath, msg);
         }
         catch { }
     }
@@ -1476,6 +1703,7 @@ public class EmployeeService : IEmployeeService
         UsedVisits = e.UsedVisits,
         CardCount = e.AccessCards?.Count ?? 0,
         CreatedAt = e.CreatedAt,
+        SyncStatus = ComputeSyncStatus(e),
         Cards = (e.AccessCards ?? []).Select(c => new AccessCardDto
         {
             Id = c.Id,
@@ -1495,4 +1723,20 @@ public class EmployeeService : IEmployeeService
             ValidTo = c.ValidTo
         }).ToList()
     };
+
+    private static int ComputeSyncStatus(Employee e)
+    {
+        var cards = e.AccessCards;
+        if ((cards == null || cards.Count == 0) && string.IsNullOrWhiteSpace(e.CardNo))
+            return 0; // NoCard
+        if (cards == null || cards.Count == 0)
+            return 1; // Has CardNo but no AccessCard records = NotSynced
+        var activeCards = cards.Where(c => c.IsActive).ToList();
+        if (activeCards.Count == 0)
+            return 1; // No active cards = NotSynced
+        var syncedCount = activeCards.Count(c => c.IsSyncedToDevice);
+        if (syncedCount == 0) return 1; // NotSynced
+        if (syncedCount < activeCards.Count) return 2; // PartiallySynced
+        return 3; // FullySynced
+    }
 }

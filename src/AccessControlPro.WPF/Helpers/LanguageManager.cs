@@ -190,6 +190,8 @@ public class LanguageManager : INotifyPropertyChanged
     public string PeriodRequired => GetString("PeriodRequired");
     public string FeeRequired => GetString("FeeRequired");
     public string PhotoRequired => GetString("PhotoRequired");
+    public string HeightInvalid => GetString("HeightInvalid");
+    public string WeightInvalid => GetString("WeightInvalid");
 
     // Assign Card Dialog
     public string AuthorizeCard => GetString("AuthorizeCard");
@@ -446,6 +448,17 @@ public class LanguageManager : INotifyPropertyChanged
     public string UsrUsernameRequired => GetString("UsrUsernameRequired");
     public string UsrPasswordRequired => GetString("UsrPasswordRequired");
     public string UsrDisplayNameRequired => GetString("UsrDisplayNameRequired");
+    public string UsrSearch => GetString("UsrSearch");
+    public string UsrTotalUsers => GetString("UsrTotalUsers");
+    public string UsrActiveUsers => GetString("UsrActiveUsers");
+    public string UsrInactiveUsers => GetString("UsrInactiveUsers");
+    public string UsrDeactivate => GetString("UsrDeactivate");
+    public string UsrActivate => GetString("UsrActivate");
+    public string UsrConfirmDeactivate => GetString("UsrConfirmDeactivate");
+    public string UsrConfirmActivate => GetString("UsrConfirmActivate");
+    public string UsrDeactivateReason => GetString("UsrDeactivateReason");
+    public string UsrDeleteReason => GetString("UsrDeleteReason");
+    public string UsrActions => GetString("UsrActions");
 
     /// <summary>
     /// Returns the localized display name for a permission key (e.g., "Players.View" -> "View Players" / "عرض اللاعبين").
@@ -826,6 +839,13 @@ public class LanguageManager : INotifyPropertyChanged
     public string BulkComplete => GetString("BulkComplete");
     public string BulkSuccessCount => GetString("BulkSuccessCount");
     public string BulkFailedCount => GetString("BulkFailedCount");
+    public string BulkUploadAll => GetString("BulkUploadAll");
+    public string BulkSelectDevices => GetString("BulkSelectDevices");
+    public string BulkSelectAtLeastOneDevice => GetString("BulkSelectAtLeastOneDevice");
+    public string BulkUploadProgress => GetString("BulkUploadProgress");
+    public string BulkUploadComplete => GetString("BulkUploadComplete");
+    public string BulkUploaded => GetString("BulkUploaded");
+    public string BulkSkipped => GetString("BulkSkipped");
 
     // Player Profile
     public string PrfPlayerProfile => GetString("PrfPlayerProfile");
@@ -917,6 +937,13 @@ public class LanguageManager : INotifyPropertyChanged
     public string FilterTipLast3Months => GetString("FilterTipLast3Months");
     public string FilterTipLast6Months => GetString("FilterTipLast6Months");
     public string FilterTipThisYear => GetString("FilterTipThisYear");
+
+    // Sync Status
+    public string SyncStatus => GetString("SyncStatus");
+    // SyncToDevice already defined above (line 160)
+    public string PlayerSynced => GetString("PlayerSynced");
+    public string PlayerSyncFailed => GetString("PlayerSyncFailed");
+    public string PlayerNoCard => GetString("PlayerNoCard");
 
     private string GetString(string name)
     {
@@ -1091,6 +1118,8 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(PeriodRequired));
         OnPropertyChanged(nameof(FeeRequired));
         OnPropertyChanged(nameof(PhotoRequired));
+        OnPropertyChanged(nameof(HeightInvalid));
+        OnPropertyChanged(nameof(WeightInvalid));
         OnPropertyChanged(nameof(AuthorizeCard));
         OnPropertyChanged(nameof(CardNumber));
         OnPropertyChanged(nameof(CardPassword));
@@ -1314,6 +1343,17 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(UsrUsernameRequired));
         OnPropertyChanged(nameof(UsrPasswordRequired));
         OnPropertyChanged(nameof(UsrDisplayNameRequired));
+        OnPropertyChanged(nameof(UsrSearch));
+        OnPropertyChanged(nameof(UsrTotalUsers));
+        OnPropertyChanged(nameof(UsrActiveUsers));
+        OnPropertyChanged(nameof(UsrInactiveUsers));
+        OnPropertyChanged(nameof(UsrDeactivate));
+        OnPropertyChanged(nameof(UsrActivate));
+        OnPropertyChanged(nameof(UsrConfirmDeactivate));
+        OnPropertyChanged(nameof(UsrConfirmActivate));
+        OnPropertyChanged(nameof(UsrDeactivateReason));
+        OnPropertyChanged(nameof(UsrDeleteReason));
+        OnPropertyChanged(nameof(UsrActions));
         // Change Password
         OnPropertyChanged(nameof(CpwChangePassword));
         OnPropertyChanged(nameof(CpwCurrentPassword));
@@ -1618,6 +1658,13 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(BulkComplete));
         OnPropertyChanged(nameof(BulkSuccessCount));
         OnPropertyChanged(nameof(BulkFailedCount));
+        OnPropertyChanged(nameof(BulkUploadAll));
+        OnPropertyChanged(nameof(BulkSelectDevices));
+        OnPropertyChanged(nameof(BulkSelectAtLeastOneDevice));
+        OnPropertyChanged(nameof(BulkUploadProgress));
+        OnPropertyChanged(nameof(BulkUploadComplete));
+        OnPropertyChanged(nameof(BulkUploaded));
+        OnPropertyChanged(nameof(BulkSkipped));
 
         OnPropertyChanged(nameof(PrfPlayerProfile));
         OnPropertyChanged(nameof(PrfOverview));
@@ -1701,6 +1748,12 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(FilterTipLast3Months));
         OnPropertyChanged(nameof(FilterTipLast6Months));
         OnPropertyChanged(nameof(FilterTipThisYear));
+        // Sync Status
+        OnPropertyChanged(nameof(SyncStatus));
+        OnPropertyChanged(nameof(SyncToDevice));
+        OnPropertyChanged(nameof(PlayerSynced));
+        OnPropertyChanged(nameof(PlayerSyncFailed));
+        OnPropertyChanged(nameof(PlayerNoCard));
     }
 
     private void OnPropertyChanged(string propertyName)

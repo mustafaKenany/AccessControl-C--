@@ -52,6 +52,13 @@
                         <TextBlock Text="{Binding BulkExtend, Source={x:Static helpers:LanguageManager.Instance}}"/>
                     </StackPanel>
                 </ComboBoxItem>
+                <ComboBoxItem>
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Upload" Width="14" Height="14" Foreground="#44A1A0"
+                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding BulkUploadAll, Source={x:Static helpers:LanguageManager.Instance}}"/>
+                    </StackPanel>
+                </ComboBoxItem>
             </ComboBox>
 
             <!-- Freeze Reason (only for freeze) -->
@@ -69,8 +76,20 @@
                          Text="30"/>
             </StackPanel>
 
+            <!-- Device Selection (only for upload all) -->
+            <StackPanel x:Name="DeviceSelectPanel" Visibility="Collapsed" Margin="0,0,0,14">
+                <TextBlock Text="{Binding BulkSelectDevices, Source={x:Static helpers:LanguageManager.Instance}}"
+                           FontSize="13" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,6"/>
+                <Border Background="{StaticResource BgInputBrush}" CornerRadius="8" Padding="10,6"
+                        MaxHeight="160">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="DeviceCheckList"/>
+                    </ScrollViewer>
+                </Border>
+            </StackPanel>
+
             <!-- Target -->
-            <TextBlock Text="{Binding BulkTarget, Source={x:Static helpers:LanguageManager.Instance}}"
+            <TextBlock x:Name="TargetLabel" Text="{Binding BulkTarget, Source={x:Static helpers:LanguageManager.Instance}}"
                        FontSize="13" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"/>
             <ComboBox x:Name="TargetCombo" Style="{StaticResource DarkComboBox}" Margin="0,0,0,16">
                 <ComboBoxItem>

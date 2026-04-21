@@ -87,6 +87,31 @@ public partial class App : System.Windows.Application
         return "Server=localhost;Database=AccessControlPro;User Id=sa;Password=123;TrustServerCertificate=True;";
     }
 
+    /// <summary>
+    /// Check if database is already set up (Main app did the first-time setup).
+    /// If DB has Users table with at least 1 user, setup is done.
+    /// </summary>
+    private static bool IsDatabaseReady()
+    {
+        try
+        {
+            var connStr = LoadConnectionString();
+            using var conn = new Microsoft.Data.SqlClient.SqlConnection(connStr);
+            conn.Open();
+            using var cmd = new Microsoft.Data.SqlClient.SqlCommand(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Users'", conn);
+            var count = (int)cmd.ExecuteScalar();
+            if (count > 0)
+            {
+                // Mark setup as complete so wizard never shows again
+                try { File.WriteAllText(Path.Combine(AppContext.BaseDirectory, ".setup_complete"), "admin"); } catch { }
+                return true;
+            }
+        }
+        catch { }
+        return false;
+    }
+
     private static void ConfigureServices(IServiceCollection services)
     {
         var connectionString = LoadConnectionString();
@@ -105,6 +130,9 @@ public partial class App : System.Windows.Application
         services.AddScoped<IFinanceService, FinanceService>();
         services.AddScoped<IEmployeeService, EmployeeService>();
         services.AddScoped<ITimeGroupService, TimeGroupService>();
+        services.AddScoped<IDeviceService, DeviceService>();
+        services.AddScoped<IDoorService, DoorService>();
+        services.AddSingleton<Application.Helpers.DeviceOperationHelper>();
 
         // Backup
         services.AddSingleton<IBackupService>(sp => new BackupService(connectionString));
@@ -151,7 +179,9 @@ public partial class App : System.Windows.Application
         }
 
         // ── First-run setup wizard ──
-        if (!SetupWizardWindow.IsSetupComplete())
+        // Admin panel shares database with Main app — skip wizard if DB already has data
+        // (Main app handles first-time setup, Admin just connects to same DB)
+        if (!SetupWizardWindow.IsSetupComplete() && !IsDatabaseReady())
         {
             var wizard = new SetupWizardWindow();
             if (wizard.ShowDialog() != true || !wizard.SetupCompleted)
@@ -353,8 +383,8 @@ public partial class App : System.Windows.Application
 
     private static void AdminStartupLog(string msg)
     {
-        try { File.AppendAllText(AdminStartupLogPath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n"); }
-        catch { }
+        AccessControlPro.Application.Services.RollingLogFile.Append(
+            AdminStartupLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {msg}\n");
     }
 
     private static void ParseConnectionString(string connStr, out string server, out string database, out string userId)

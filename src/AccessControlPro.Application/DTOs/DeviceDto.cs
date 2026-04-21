@@ -13,4 +13,5 @@ public class DeviceDto
     public string SubnetMask { get; set; } = "255.255.255.0";
     public bool IsOnline { get; set; }
     public int DoorCount { get; set; }
+    public int CardCount { get; set; }
 }

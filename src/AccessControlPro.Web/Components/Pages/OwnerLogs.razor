@@ -90,7 +90,7 @@ else
                                 <td><span class="badge @GetActionBadge(log.Action)">@log.Action</span></td>
                                 <td>@log.EntityType</td>
                                 <td>@log.EntityId</td>
-                                <td>@(SessionState.IsArabic && !string.IsNullOrEmpty(log.DetailsAr) ? log.DetailsAr : log.Details)</td>
+                                <td>@(Session.IsArabic && !string.IsNullOrEmpty(log.DetailsAr) ? log.DetailsAr : log.Details)</td>
                                 <td>@log.PerformedBy</td>
                             </tr>
                         }
@@ -116,7 +116,7 @@ else
                         </div>
                         <div class="mobile-card-row">
                             <span class="mobile-card-label">@L("Details", "التفاصيل")</span>
-                            <span class="mobile-card-value" style="max-width: 60%; text-align: right;">@(SessionState.IsArabic && !string.IsNullOrEmpty(log.DetailsAr) ? log.DetailsAr : log.Details)</span>
+                            <span class="mobile-card-value" style="max-width: 60%; text-align: right;">@(Session.IsArabic && !string.IsNullOrEmpty(log.DetailsAr) ? log.DetailsAr : log.Details)</span>
                         </div>
                         @if (!string.IsNullOrEmpty(log.PerformedBy))
                         {
@@ -163,7 +163,7 @@ else
     private bool _hasMore => _page * PageSize < _totalCount;
     private int TotalPages => _totalCount == 0 ? 1 : (int)Math.Ceiling((double)_totalCount / PageSize);
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -184,8 +184,8 @@ else
         {
             "today" => (today, now),
             "yesterday" => (today.AddDays(-1), today),
-            "thisweek" => (today.AddDays(-(int)today.DayOfWeek), now),
-            "lastweek" => (today.AddDays(-(int)today.DayOfWeek - 7), today.AddDays(-(int)today.DayOfWeek)),
+            "thisweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7), now),
+            "lastweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7 - 7), today.AddDays(-((int)today.DayOfWeek + 1) % 7)),
             "thismonth" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), now),
             "lastmonth" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-1),
                             new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc)),
@@ -205,8 +205,8 @@ else
         {
             "today" => (today, now),
             "yesterday" => (today.AddDays(-1), today),
-            "thisweek" => (today.AddDays(-(int)today.DayOfWeek), now),
-            "lastweek" => (today.AddDays(-(int)today.DayOfWeek - 7), today.AddDays(-(int)today.DayOfWeek)),
+            "thisweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7), now),
+            "lastweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7 - 7), today.AddDays(-((int)today.DayOfWeek + 1) % 7)),
             "thismonth" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), now),
             "lastmonth" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-1),
                             new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc)),
@@ -311,7 +311,7 @@ else
                 ).ToList();
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerLogs] LoadLogsAsync Error: {ex.Message}"); }
     }
 
     private async Task OnSearch()

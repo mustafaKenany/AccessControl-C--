@@ -64,8 +64,8 @@ else
             <div class="mobile-cards">
                 @foreach (var d in _deleted)
                 {
-                    var name = SessionState.IsArabic && !string.IsNullOrEmpty(d.FullNameAr) ? d.FullNameAr : d.FullNameEn;
-                    var nameSecondary = SessionState.IsArabic ? d.FullNameEn : d.FullNameAr;
+                    var name = Session.IsArabic && !string.IsNullOrEmpty(d.FullNameAr) ? d.FullNameAr : d.FullNameEn;
+                    var nameSecondary = Session.IsArabic ? d.FullNameEn : d.FullNameAr;
                     <div class="mobile-card">
                         <div class="mobile-card-header">
                             <div>
@@ -144,7 +144,7 @@ else
     private bool _hasMore => _page * PageSize < _totalCount;
     private int TotalPages => _totalCount == 0 ? 1 : (int)Math.Ceiling((double)_totalCount / PageSize);
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -202,7 +202,7 @@ else
                 }
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerDeleted] LoadDeletedAsync Error: {ex.Message}"); }
     }
 
     private async Task OnSearch()

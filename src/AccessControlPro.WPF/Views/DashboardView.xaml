@@ -29,6 +29,14 @@
                     <TextBlock Text="{Binding Lang.NavDashboard}"
                                FontSize="26" FontWeight="Bold"
                                Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <fa:ImageAwesome Icon="UserCircleOutline" Width="14" Height="14"
+                                         Foreground="{StaticResource PrimaryLightBrush}"
+                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding WelcomeMessage}" FontSize="14"
+                                   Foreground="{StaticResource PrimaryLightBrush}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
                 </StackPanel>
                 <Button DockPanel.Dock="Right" HorizontalAlignment="Right"
                         Style="{StaticResource PrimaryButton}"

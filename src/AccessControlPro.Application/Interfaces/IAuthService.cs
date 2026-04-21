@@ -24,4 +24,5 @@ public interface IAuthService
     Task ChangePasswordAsync(string username, string currentPassword, string newPassword);
     bool IsDefaultPassword(string passwordHash);
     Task<AppUser?> GetUserByUsernameAsync(string username);
+    Task DeleteUserAsync(int userId);
 }

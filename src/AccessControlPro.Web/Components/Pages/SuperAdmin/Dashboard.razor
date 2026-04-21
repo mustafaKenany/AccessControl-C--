@@ -194,7 +194,7 @@ else
                 var pc = await countCmd.ExecuteScalarAsync();
                 if (pc != null) _totalPlayers = Convert.ToInt32(pc);
             }
-            catch { }
+            catch (Exception ex) { Console.WriteLine($"[SuperAdmin.Dashboard] LoadPlayerCount Error: {ex.Message}"); }
 
             // Recent sync logs
             using (var cmd = new Npgsql.NpgsqlCommand(
@@ -232,7 +232,7 @@ else
                 }
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[SuperAdmin.Dashboard] LoadDataAsync Error: {ex.Message}"); }
         finally
         {
             _loading = false;

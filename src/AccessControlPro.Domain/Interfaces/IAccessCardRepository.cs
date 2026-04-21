@@ -11,4 +11,8 @@ public interface IAccessCardRepository
     Task AddAsync(AccessCard card);
     Task UpdateAsync(AccessCard card);
     Task DeleteAsync(int id);
+    /// <summary>Get all active card numbers only (lightweight, no navigation properties)</summary>
+    Task<IEnumerable<string>> GetAllActiveCardNumbersAsync();
+    /// <summary>Get all active cards for device sync (no Employee photos loaded)</summary>
+    Task<IEnumerable<AccessCard>> GetAllActiveForSyncAsync();
 }

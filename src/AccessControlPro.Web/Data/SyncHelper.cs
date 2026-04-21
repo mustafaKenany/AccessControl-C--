@@ -23,7 +23,7 @@ public static class SyncHelper
     public static List<string> GetLastErrors() => _lastErrors;
 
     public static async Task<int> UpsertRowsAsync(NpgsqlConnection conn, string tableName,
-        List<Dictionary<string, object?>> rows)
+        List<Dictionary<string, object?>> rows, bool isFullSync = true)
     {
         // Validate table name against whitelist
         if (!_allowedTables.Contains(tableName))
@@ -32,75 +32,180 @@ public static class SyncHelper
             return 0;
         }
 
-        // Delete existing data first (full sync) — even if 0 rows sent
+        // Use transaction to ensure atomicity — if inserts fail, delete is rolled back
+        using var txn = await conn.BeginTransactionAsync();
         try
         {
-            using var del = new NpgsqlCommand($@"DELETE FROM ""{tableName}""", conn);
-            await del.ExecuteNonQueryAsync();
-        }
-        catch (Exception ex)
-        {
-            _lastErrors.Add($"{tableName} DELETE: {ex.Message}");
-        }
-
-        // If 0 rows sent, we're done (table cleared — local has no data for this table)
-        if (rows.Count == 0) return 0;
-
-        int count = 0;
-        int errors = 0;
-        foreach (var row in rows)
-        {
-            try
+            // Full sync: wipe the table so absent-from-payload rows are treated as deleted.
+            // Delta sync: keep existing rows; upsert just the changed ones.
+            if (isFullSync)
             {
-                var cols = new List<string>();
-                var vals = new List<string>();
-                var pars = new List<NpgsqlParameter>();
-                int i = 0;
-
-                foreach (var kvp in row)
+                try
                 {
-                    // Validate column name to prevent SQL injection
-                    if (!_validColumnName.IsMatch(kvp.Key) || kvp.Key.Length > 100)
+                    using var del = new NpgsqlCommand($@"DELETE FROM ""{tableName}""", conn);
+                    del.Transaction = txn as NpgsqlTransaction;
+                    await del.ExecuteNonQueryAsync();
+                }
+                catch (Exception ex)
+                {
+                    _lastErrors.Add($"{tableName} DELETE: {ex.Message}");
+                    await txn.RollbackAsync();
+                    return 0;
+                }
+            }
+
+            // Delta sync with 0 changed rows is a no-op — nothing to commit.
+            // Full sync with 0 rows still commits the delete above (wipes the cloud copy).
+            if (rows.Count == 0)
+            {
+                await txn.CommitAsync();
+                return 0;
+            }
+
+            int count = 0;
+            int errors = 0;
+            int rowIndex = 0;
+            foreach (var row in rows)
+            {
+                rowIndex++;
+                var savepointName = $"sp_{rowIndex}";
+
+                // Create a savepoint so one bad row doesn't poison the whole transaction (PG 25P02 cascade)
+                try
+                {
+                    using var save = new NpgsqlCommand($"SAVEPOINT {savepointName}", conn);
+                    save.Transaction = txn as NpgsqlTransaction;
+                    await save.ExecuteNonQueryAsync();
+                }
+                catch { /* if savepoint creation fails, the outer try/catch handles it */ }
+
+                try
+                {
+                    var cols = new List<string>();
+                    var vals = new List<string>();
+                    var updateAssigns = new List<string>();
+                    var pars = new List<NpgsqlParameter>();
+                    int i = 0;
+
+                    foreach (var kvp in row)
                     {
-                        _lastErrors.Add($"{tableName}: Rejected invalid column name '{kvp.Key}'");
+                        // Validate column name to prevent SQL injection
+                        if (!_validColumnName.IsMatch(kvp.Key) || kvp.Key.Length > 100)
+                        {
+                            _lastErrors.Add($"{tableName}: Rejected invalid column name '{kvp.Key}'");
+                            continue;
+                        }
+
+                        cols.Add($@"""{kvp.Key}""");
+                        vals.Add($"@p{i}");
+                        if (!kvp.Key.Equals("Id", StringComparison.OrdinalIgnoreCase))
+                            updateAssigns.Add($@"""{kvp.Key}"" = EXCLUDED.""{kvp.Key}""");
+
+                        object? val = kvp.Value;
+
+                        // Handle JsonElement values from deserialization
+                        if (val is JsonElement je)
+                        {
+                            val = ConvertJsonElement(je, kvp.Key);
+                        }
+
+                        pars.Add(new NpgsqlParameter($"p{i}", val ?? DBNull.Value));
+                        i++;
+                    }
+
+                    if (cols.Count == 0)
+                    {
+                        using var release = new NpgsqlCommand($"RELEASE SAVEPOINT {savepointName}", conn);
+                        release.Transaction = txn as NpgsqlTransaction;
+                        await release.ExecuteNonQueryAsync();
                         continue;
                     }
 
-                    cols.Add($@"""{kvp.Key}""");
-                    vals.Add($"@p{i}");
+                    var conflictClause = updateAssigns.Count > 0
+                        ? $@" ON CONFLICT (""Id"") DO UPDATE SET {string.Join(",", updateAssigns)}"
+                        : "";
+                    var sql = $@"INSERT INTO ""{tableName}"" ({string.Join(",", cols)}) VALUES ({string.Join(",", vals)}){conflictClause}";
+                    using var cmd = new NpgsqlCommand(sql, conn);
+                    cmd.Transaction = txn as NpgsqlTransaction;
+                    cmd.Parameters.AddRange(pars.ToArray());
+                    await cmd.ExecuteNonQueryAsync();
 
-                    object? val = kvp.Value;
-
-                    // Handle JsonElement values from deserialization
-                    if (val is JsonElement je)
-                    {
-                        val = ConvertJsonElement(je, kvp.Key);
-                    }
-
-                    pars.Add(new NpgsqlParameter($"p{i}", val ?? DBNull.Value));
-                    i++;
+                    using var rel = new NpgsqlCommand($"RELEASE SAVEPOINT {savepointName}", conn);
+                    rel.Transaction = txn as NpgsqlTransaction;
+                    await rel.ExecuteNonQueryAsync();
+                    count++;
                 }
+                catch (Exception ex)
+                {
+                    errors++;
+                    // Roll back to savepoint so the transaction stays usable for subsequent rows
+                    try
+                    {
+                        using var rb = new NpgsqlCommand($"ROLLBACK TO SAVEPOINT {savepointName}", conn);
+                        rb.Transaction = txn as NpgsqlTransaction;
+                        await rb.ExecuteNonQueryAsync();
+                    }
+                    catch { /* if rollback fails, the whole transaction is dead — outer catch handles it */ }
 
-                if (cols.Count == 0) continue;
+                    if (errors <= 3)
+                        _lastErrors.Add($"{tableName} INSERT row {rowIndex}: {ex.Message}");
+                }
+            }
 
-                var sql = $@"INSERT INTO ""{tableName}"" ({string.Join(",", cols)}) VALUES ({string.Join(",", vals)})";
-                using var cmd = new NpgsqlCommand(sql, conn);
-                cmd.Parameters.AddRange(pars.ToArray());
+            // Commit even with partial errors — better to have some data than none
+            await txn.CommitAsync();
+
+            if (errors > 0)
+                _lastErrors.Add($"{tableName}: {errors}/{rows.Count} rows failed");
+
+            return count;
+        }
+        catch (Exception ex)
+        {
+            _lastErrors.Add($"{tableName} TRANSACTION: {ex.Message}");
+            try { await txn.RollbackAsync(); } catch { }
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Applies soft-delete tombstones to a target table. For each row in <paramref name="tombstones"/>,
+    /// reads the value at <paramref name="idFieldInTombstone"/> (e.g. "OriginalId") and deletes
+    /// the matching row from <paramref name="targetTable"/>. Used in delta-sync mode where the
+    /// target table isn't wiped upfront — deletes must flow through the tombstone table instead.
+    /// </summary>
+    public static async Task ApplyDeleteTombstonesAsync(NpgsqlConnection conn, string targetTable,
+        string idFieldInTombstone, List<Dictionary<string, object?>> tombstones)
+    {
+        if (!_allowedTables.Contains(targetTable))
+        {
+            _lastErrors.Add($"Tombstone: rejected target table {targetTable}");
+            return;
+        }
+        if (!_validColumnName.IsMatch(idFieldInTombstone))
+        {
+            _lastErrors.Add($"Tombstone: rejected field {idFieldInTombstone}");
+            return;
+        }
+
+        foreach (var ts in tombstones)
+        {
+            if (!ts.TryGetValue(idFieldInTombstone, out var idVal) || idVal == null) continue;
+
+            object? extracted = idVal is JsonElement je ? ConvertJsonElement(je, idFieldInTombstone) : idVal;
+            if (extracted == null || extracted is DBNull) continue;
+
+            try
+            {
+                using var cmd = new NpgsqlCommand($@"DELETE FROM ""{targetTable}"" WHERE ""Id"" = @id", conn);
+                cmd.Parameters.AddWithValue("id", extracted);
                 await cmd.ExecuteNonQueryAsync();
-                count++;
             }
             catch (Exception ex)
             {
-                errors++;
-                if (errors <= 3)
-                    _lastErrors.Add($"{tableName} INSERT row {count + errors}: {ex.Message}");
+                _lastErrors.Add($"{targetTable} tombstone delete (id={extracted}): {ex.Message}");
             }
         }
-
-        if (errors > 0)
-            _lastErrors.Add($"{tableName}: {errors}/{rows.Count} rows failed");
-
-        return count;
     }
 
     private static object? ConvertJsonElement(JsonElement je, string columnName)
@@ -154,6 +259,7 @@ public static class SyncHelper
                name.Contains("At", StringComparison.OrdinalIgnoreCase) ||
                name == "Timestamp" || name == "EventDate" ||
                name == "CreatedAt" || name == "DeletedAt" ||
+               name == "FreezeStart" || name == "FreezeEnd" ||
                name == "FreezeStartDate" || name == "FreezeEndDate" || name == "ValidFrom" || name == "ValidTo" ||
                name == "TransactionDate" || name == "SyncedAt" || name == "ExpiresAt" ||
                name == "AssignedAt" || name == "ExpiredAt" || name == "UsedAt" ||

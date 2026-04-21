@@ -22,6 +22,7 @@ public static class AppPermission
     public const string PlayersRenew = "Players.Renew";
     public const string PlayersReports = "Players.Reports";
     public const string PlayersReassignCard = "Players.ReassignCard";
+    public const string PlayersSyncToDevice = "Players.SyncToDevice";
 
     // Devices
     public const string DevicesView = "Devices.View";
@@ -99,6 +100,7 @@ public static class AppPermission
         DashboardView,
         PlayersView, PlayersAdd, PlayersEdit, PlayersDelete,
         PlayersAssignCard, PlayersRemoveCard, PlayersReassignCard, PlayersFreeze, PlayersRenew, PlayersReports,
+        PlayersSyncToDevice,
         DevicesView, DevicesAdd, DevicesEdit, DevicesDelete, DevicesConnect,
         DoorsView, DoorsOpenClose, DoorsSettings,
         EventsView,
@@ -135,7 +137,7 @@ public static class AppPermission
     [
         ("AppAccess", [AccessMainApp, AccessPOS, AccessAdmin, AccessCloud]),
         ("Dashboard", [DashboardView]),
-        ("Players", [PlayersView, PlayersAdd, PlayersEdit, PlayersDelete, PlayersAssignCard, PlayersRemoveCard, PlayersReassignCard, PlayersFreeze, PlayersRenew, PlayersReports]),
+        ("Players", [PlayersView, PlayersAdd, PlayersEdit, PlayersDelete, PlayersAssignCard, PlayersRemoveCard, PlayersReassignCard, PlayersFreeze, PlayersRenew, PlayersReports, PlayersSyncToDevice]),
         ("Devices", [DevicesView, DevicesAdd, DevicesEdit, DevicesDelete, DevicesConnect]),
         ("Doors", [DoorsView, DoorsOpenClose, DoorsSettings]),
         ("Events", [EventsView]),

@@ -290,7 +290,7 @@ else
             }
             _gymRevenues = tempList;
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[SuperAdmin.Revenue] LoadDataAsync Error: {ex.Message}"); }
         finally
         {
             _loading = false;

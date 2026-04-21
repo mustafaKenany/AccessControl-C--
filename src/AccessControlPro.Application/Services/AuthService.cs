@@ -158,4 +158,15 @@ public class AuthService : IAuthService
         if (string.IsNullOrWhiteSpace(username)) return null;
         return await _userRepository.GetByUsernameAsync(username.Trim().ToLowerInvariant());
     }
+
+    public async Task DeleteUserAsync(int userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId)
+            ?? throw new InvalidOperationException("User not found.");
+
+        if (user.Username.Equals("admin", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Cannot delete the default admin account.");
+
+        await _userRepository.DeleteAsync(userId);
+    }
 }

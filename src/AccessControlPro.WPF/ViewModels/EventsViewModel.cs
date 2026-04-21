@@ -96,8 +96,8 @@ public partial class EventsViewModel : ObservableObject
         {
             1 => (today, today.AddDays(1).AddTicks(-1)),
             2 => (today.AddDays(-1), today.AddTicks(-1)),
-            3 => (today.AddDays(-(int)today.DayOfWeek), null),
-            4 => (today.AddDays(-(int)today.DayOfWeek - 7), today.AddDays(-(int)today.DayOfWeek).AddTicks(-1)),
+            3 => (today.AddDays(-((int)today.DayOfWeek + 1) % 7), null),                                    // Week starts Saturday
+            4 => (today.AddDays(-((int)today.DayOfWeek + 1) % 7 - 7), today.AddDays(-((int)today.DayOfWeek + 1) % 7).AddTicks(-1)),
             5 => (new DateTime(today.Year, today.Month, 1), null),
             6 => (new DateTime(today.Year, today.Month, 1).AddMonths(-1),
                   new DateTime(today.Year, today.Month, 1).AddTicks(-1)),

@@ -13,13 +13,15 @@ public class DeviceService : IDeviceService
 {
     private readonly IDeviceRepository _deviceRepository;
     private readonly IDoorRepository _doorRepository;
+    private readonly ICardDeviceSyncRepository _syncRepository;
     private readonly IAccessControlSdk _sdk;
     private readonly DeviceOperationHelper _opHelper;
 
-    public DeviceService(IDeviceRepository deviceRepository, IDoorRepository doorRepository, IAccessControlSdk sdk, DeviceOperationHelper opHelper)
+    public DeviceService(IDeviceRepository deviceRepository, IDoorRepository doorRepository, ICardDeviceSyncRepository syncRepository, IAccessControlSdk sdk, DeviceOperationHelper opHelper)
     {
         _deviceRepository = deviceRepository;
         _doorRepository = doorRepository;
+        _syncRepository = syncRepository;
         _sdk = sdk;
         _opHelper = opHelper;
     }
@@ -27,6 +29,7 @@ public class DeviceService : IDeviceService
     public async Task<IEnumerable<DeviceDto>> GetAllDevicesAsync()
     {
         var devices = await _deviceRepository.GetAllAsync();
+        var cardCounts = await _syncRepository.CountSyncedByAllDevicesAsync();
         return devices.Select(d => new DeviceDto
         {
             Id = d.Id,
@@ -39,7 +42,8 @@ public class DeviceService : IDeviceService
             Gateway = d.Gateway,
             SubnetMask = d.SubnetMask,
             IsOnline = d.IsOnline,
-            DoorCount = GetDoorCount(d.DeviceType.ToString())
+            DoorCount = GetDoorCount(d.DeviceType.ToString()),
+            CardCount = cardCounts.TryGetValue(d.Id, out var count) ? count : 0
         });
     }
 

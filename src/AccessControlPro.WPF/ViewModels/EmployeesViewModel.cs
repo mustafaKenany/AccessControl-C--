@@ -32,6 +32,7 @@ public partial class EmployeesViewModel : ObservableObject
     public bool CanFreeze => _currentUser.HasPermission(AppPermission.PlayersFreeze);
     public bool CanRenew => _currentUser.HasPermission(AppPermission.PlayersRenew);
     public bool CanViewReports => _currentUser.HasPermission(AppPermission.PlayersReports);
+    public bool CanSyncToDevice => _currentUser.HasPermission(AppPermission.PlayersSyncToDevice);
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -441,7 +442,7 @@ public partial class EmployeesViewModel : ObservableObject
             if (success)
             {
                 var updatedEmployee = await _employeeService.GetEmployeeByIdAsync(employee.Id);
-                var latestCard = updatedEmployee?.Cards.LastOrDefault();
+                var latestCard = updatedEmployee?.Cards?.LastOrDefault();
 
                 if (selectedDeviceIds.Count > 0 && latestCard != null)
                 {
@@ -866,7 +867,7 @@ public partial class EmployeesViewModel : ObservableObject
         return SelectedPeriodIndex switch
         {
             0 => (now.Date, now.Date.AddDays(1).AddSeconds(-1)),
-            1 => (now.Date.AddDays(-(int)now.DayOfWeek), now.Date.AddDays(-(int)now.DayOfWeek).AddDays(7).AddSeconds(-1)),
+            1 => (now.Date.AddDays(-((int)now.DayOfWeek + 1) % 7), now.Date.AddDays(-((int)now.DayOfWeek + 1) % 7).AddDays(7).AddSeconds(-1)),
             2 => (now.Date.AddDays(-(int)now.DayOfWeek - 7), now.Date.AddDays(-(int)now.DayOfWeek - 7).AddDays(7).AddSeconds(-1)),
             3 => (new DateTime(now.Year, now.Month, 1), new DateTime(now.Year, now.Month, 1).AddMonths(1).AddSeconds(-1)),
             4 => (new DateTime(now.Year, now.Month, 1).AddMonths(-1), new DateTime(now.Year, now.Month, 1).AddSeconds(-1)),
@@ -877,9 +878,18 @@ public partial class EmployeesViewModel : ObservableObject
     [RelayCommand]
     private async Task BulkOperationAsync()
     {
-        var dialog = new BulkOperationDialog();
+        // Load devices for Upload All option
+        var devices = (await _deviceService.GetAllDevicesAsync()).ToList();
+        var dialog = new BulkOperationDialog(devices);
         dialog.Owner = System.Windows.Application.Current.MainWindow;
         if (dialog.ShowDialog() != true) return;
+
+        // Handle Upload All to Device (operation 3)
+        if (dialog.SelectedOperation == 3)
+        {
+            await UploadAllCardsToDevicesAsync(dialog.SelectedDeviceIds);
+            return;
+        }
 
         // Get target player IDs
         var ids = new List<int>();
@@ -953,6 +963,42 @@ public partial class EmployeesViewModel : ObservableObject
         }
     }
 
+    private async Task UploadAllCardsToDevicesAsync(List<int> deviceIds)
+    {
+        IsLoading = true;
+        StatusMessage = Lang.BulkUploadProgress;
+        try
+        {
+            var progress = new Progress<(int current, int total, string cardNumber)>(p =>
+            {
+                StatusMessage = $"{Lang.BulkUploadProgress} ({p.current}/{p.total}) - {p.cardNumber}";
+            });
+
+            var (uploaded, skipped, failed, total) = await Task.Run(() =>
+                _employeeService.UploadAllCardsToDevicesAsync(deviceIds, progress));
+
+            var msg = $"{Lang.BulkUploadComplete}\n\n" +
+                      $"{Lang.BulkUploaded}: {uploaded}\n" +
+                      $"{Lang.BulkSkipped}: {skipped}\n" +
+                      $"{Lang.BulkFailedCount}: {failed}";
+
+            StatusMessage = $"{Lang.BulkUploadComplete}: {uploaded} uploaded, {skipped} skipped, {failed} failed";
+            CustomMessageBox.Show(msg, Lang.BulkOperations,
+                failed > 0 ? MsgType.Warning : MsgType.Success,
+                System.Windows.Application.Current.MainWindow);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = Lang.BulkFailedCount;
+            CustomMessageBox.Show($"{Lang.BulkFailedCount}: {ex.Message}", Lang.BulkOperations,
+                MsgType.Error, System.Windows.Application.Current.MainWindow);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
     private async Task LoadPagedAsync()
     {
         ActivityLogger.LogAction("Employees", "LoadPage", $"page={CurrentPage} filter={SelectedFilterIndex} search={SearchText}");
@@ -1016,6 +1062,93 @@ public partial class EmployeesViewModel : ObservableObject
         catch (Exception ex)
         {
             CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task SyncPlayerToDeviceAsync(EmployeeDto? employee)
+    {
+        if (employee == null) return;
+
+        if (string.IsNullOrWhiteSpace(employee.CardNo) && (employee.Cards == null || employee.Cards.Count == 0))
+        {
+            CustomMessageBox.Show(Lang.PlayerNoCard, Lang.SyncToDevice, MsgType.Warning,
+                System.Windows.Application.Current.MainWindow);
+            return;
+        }
+
+        IsLoading = true;
+        StatusMessage = Lang.SyncToDevice + "...";
+        try
+        {
+            // WiFi check
+            if (NetworkHelper.IsWifiOnSameSubnetAsEthernet())
+            {
+                CustomMessageBox.Show(Lang.WifiWarning, Lang.SyncToDevice, MsgType.Warning,
+                    System.Windows.Application.Current.MainWindow);
+                return;
+            }
+
+            var devices = (await _deviceService.GetAllDevicesAsync()).ToList();
+            if (devices.Count == 0)
+            {
+                CustomMessageBox.Show("No devices found.", Lang.SyncToDevice, MsgType.Warning,
+                    System.Windows.Application.Current.MainWindow);
+                return;
+            }
+
+            // Get updated employee with cards
+            var updatedEmployee = await _employeeService.GetEmployeeByIdAsync(employee.Id);
+            if (updatedEmployee == null) return;
+
+            var activeCards = updatedEmployee.Cards?.Where(c => c.IsActive).ToList() ?? new();
+            if (activeCards.Count == 0)
+            {
+                CustomMessageBox.Show(Lang.PlayerNoCard, Lang.SyncToDevice, MsgType.Warning,
+                    System.Windows.Application.Current.MainWindow);
+                return;
+            }
+
+            int totalSynced = 0, totalFailed = 0;
+            var allErrors = new List<string>();
+
+            foreach (var card in activeCards)
+            {
+                StatusMessage = $"Syncing card {card.CardNumber} to {devices.Count} device(s)...";
+                var (synced, failed, total, errors) = await _employeeService.SyncCardToDevicesAsync(card.Id);
+                totalSynced += synced;
+                totalFailed += failed;
+                allErrors.AddRange(errors);
+                await Task.Delay(200);
+            }
+
+            if (totalFailed == 0 && totalSynced > 0)
+            {
+                StatusMessage = "✓ " + string.Format(Lang.PlayerSynced, totalSynced);
+                CustomMessageBox.Show(string.Format(Lang.PlayerSynced, totalSynced),
+                    Lang.SyncToDevice, MsgType.Success, System.Windows.Application.Current.MainWindow);
+            }
+            else if (totalSynced > 0)
+            {
+                var msg = string.Format(Lang.PlayerSynced, totalSynced) + $"\n\nFailed: {totalFailed}\n" + string.Join("\n", allErrors);
+                CustomMessageBox.Show(msg, Lang.SyncToDevice, MsgType.Warning, System.Windows.Application.Current.MainWindow);
+            }
+            else
+            {
+                var msg = Lang.PlayerSyncFailed + "\n\n" + string.Join("\n", allErrors);
+                CustomMessageBox.Show(msg, Lang.SyncToDevice, MsgType.Error, System.Windows.Application.Current.MainWindow);
+            }
+
+            await LoadPagedAsync();
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(ex.Message, Lang.SyncToDevice, MsgType.Error,
+                System.Windows.Application.Current.MainWindow);
         }
         finally
         {

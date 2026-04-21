@@ -121,8 +121,8 @@ public partial class LogsViewModel : ObservableObject
         {
             1 => (now.Date, now.Date.AddDays(1).AddSeconds(-1)),
             2 => (now.Date.AddDays(-1), now.Date.AddSeconds(-1)),
-            3 => (now.Date.AddDays(-(int)now.DayOfWeek), now.Date.AddDays(-(int)now.DayOfWeek).AddDays(7).AddSeconds(-1)),
-            4 => (now.Date.AddDays(-(int)now.DayOfWeek - 7), now.Date.AddDays(-(int)now.DayOfWeek - 7).AddDays(7).AddSeconds(-1)),
+            3 => (now.Date.AddDays(-((int)now.DayOfWeek + 1) % 7), now.Date.AddDays(-((int)now.DayOfWeek + 1) % 7).AddDays(7).AddSeconds(-1)),
+            4 => (now.Date.AddDays(-((int)now.DayOfWeek + 1) % 7 - 7), now.Date.AddDays(-((int)now.DayOfWeek + 1) % 7 - 7).AddDays(7).AddSeconds(-1)),
             5 => (new DateTime(now.Year, now.Month, 1), new DateTime(now.Year, now.Month, 1).AddMonths(1).AddSeconds(-1)),
             6 => (new DateTime(now.Year, now.Month, 1).AddMonths(-1), new DateTime(now.Year, now.Month, 1).AddSeconds(-1)),
             7 => (new DateTime(now.Year, now.Month, 1).AddMonths(-3), now.Date.AddDays(1).AddSeconds(-1)),

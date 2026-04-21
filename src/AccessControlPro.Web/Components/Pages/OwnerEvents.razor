@@ -191,7 +191,7 @@ else
     private bool _hasMore => _page * PageSize < _totalCount;
     private int TotalPages => _totalCount == 0 ? 1 : (int)Math.Ceiling((double)_totalCount / PageSize);
 
-    private string L(string en, string ar) => SessionState.IsArabic ? ar : en;
+    private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -216,8 +216,8 @@ else
         {
             "today" => (today.AddHours(-6), future),
             "yesterday" => (today.AddDays(-1).AddHours(-6), today.AddHours(-6)),
-            "thisweek" => (today.AddDays(-(int)today.DayOfWeek).AddHours(-6), future),
-            "lastweek" => (today.AddDays(-(int)today.DayOfWeek - 7).AddHours(-6), today.AddDays(-(int)today.DayOfWeek).AddHours(-6)),
+            "thisweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7).AddHours(-6), future),
+            "lastweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7 - 7).AddHours(-6), today.AddDays(-((int)today.DayOfWeek + 1) % 7).AddHours(-6)),
             "thismonth" => (new DateTime(now.Year, now.Month, 1).AddHours(-6), future),
             "lastmonth" => (new DateTime(now.Year, now.Month, 1).AddMonths(-1).AddHours(-6),
                             new DateTime(now.Year, now.Month, 1).AddHours(-6)),
@@ -238,8 +238,8 @@ else
         {
             "today" => (today.AddHours(-6), future),
             "yesterday" => (today.AddDays(-1).AddHours(-6), today.AddHours(-6)),
-            "thisweek" => (today.AddDays(-(int)today.DayOfWeek).AddHours(-6), future),
-            "lastweek" => (today.AddDays(-(int)today.DayOfWeek - 7).AddHours(-6), today.AddDays(-(int)today.DayOfWeek).AddHours(-6)),
+            "thisweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7).AddHours(-6), future),
+            "lastweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7 - 7).AddHours(-6), today.AddDays(-((int)today.DayOfWeek + 1) % 7).AddHours(-6)),
             "thismonth" => (new DateTime(now.Year, now.Month, 1).AddHours(-6), future),
             "lastmonth" => (new DateTime(now.Year, now.Month, 1).AddMonths(-1).AddHours(-6),
                             new DateTime(now.Year, now.Month, 1).AddHours(-6)),
@@ -311,12 +311,12 @@ else
                     {
                         var nameEn = r.GetString(1);
                         var nameAr = r.GetString(2);
-                        _playerByCard[cid] = SessionState.IsArabic && !string.IsNullOrEmpty(nameAr) ? nameAr : nameEn;
+                        _playerByCard[cid] = Session.IsArabic && !string.IsNullOrEmpty(nameAr) ? nameAr : nameEn;
                     }
                 }
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerEvents] LoadLookupsAsync Error: {ex.Message}"); }
     }
 
     private async Task LoadEventsAsync()
@@ -389,7 +389,7 @@ else
                 ).ToList();
             }
         }
-        catch { }
+        catch (Exception ex) { Console.WriteLine($"[OwnerEvents] LoadEventsAsync Error: {ex.Message}"); }
     }
 
     private async Task OnSearch()
@@ -430,7 +430,7 @@ else
             return L("QR Guest", "ضيف QR");
 
         // Prefer JOIN-based player name from query
-        if (!string.IsNullOrEmpty(ev.PlayerNameAr) && SessionState.IsArabic)
+        if (!string.IsNullOrEmpty(ev.PlayerNameAr) && Session.IsArabic)
             return ev.PlayerNameAr;
         if (!string.IsNullOrEmpty(ev.PlayerNameEn))
             return ev.PlayerNameEn;
