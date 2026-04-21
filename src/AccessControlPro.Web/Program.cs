@@ -37,7 +37,24 @@ builder.WebHost.ConfigureKestrel(options =>
 
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
+// Trust forwarded headers from a reverse proxy (nginx/Caddy/etc. in front of the Kestrel
+// listener). Without this, Blazor thinks every request is plain HTTP — which makes
+// UseHttpsRedirection misbehave and means cookies set with Request.IsHttps-gated flags
+// won't get the Secure attribute. Limit to known proxy ranges if you have them; for
+// single-VPS deploys, accepting any forwarded proxy is fine.
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+        Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
+
+// Must come before any middleware that reads the scheme/host.
+app.UseForwardedHeaders();
 
 // Shared API-key validator used by every /api/* endpoint. The inline version had a
 // subtle bypass: `null == null` was true, so a missing X-Api-Key header + unset

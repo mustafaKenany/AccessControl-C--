@@ -92,12 +92,28 @@
                 return Task.CompletedTask;
             }
 
-            // Compare SHA256 hash of input with stored hash (no plaintext password in config)
-            var inputHash = Convert.ToBase64String(
-                System.Security.Cryptography.SHA256.HashData(
-                    System.Text.Encoding.UTF8.GetBytes(_password)));
+            bool hashOk;
+            if (configHash.StartsWith("$2"))
+            {
+                // BCrypt hash (prefix $2a/$2b/$2y) — slow, salted, preferred.
+                try { hashOk = BCrypt.Net.BCrypt.Verify(_password, configHash); }
+                catch { hashOk = false; }
+            }
+            else
+            {
+                // Legacy SHA256(base64) hash — fast and unsalted. Kept for backward
+                // compatibility with existing deployments. Replace the appsettings.json
+                // PasswordHash with a BCrypt hash when convenient:
+                //   BCrypt.Net.BCrypt.HashPassword("your password", workFactor: 12)
+                var inputHash = Convert.ToBase64String(
+                    System.Security.Cryptography.SHA256.HashData(
+                        System.Text.Encoding.UTF8.GetBytes(_password)));
+                hashOk = inputHash == configHash;
+                if (hashOk)
+                    Console.WriteLine("[SuperAdminLogin] WARN: using legacy SHA256 hash. Migrate SuperAdmin:PasswordHash to BCrypt.");
+            }
 
-            if (_username.Trim() == configUser && inputHash == configHash)
+            if (_username.Trim() == configUser && hashOk)
             {
                 var result = AuthResult.Success("Super Admin", "SuperAdmin", 0);
                 Session.Login(result);
