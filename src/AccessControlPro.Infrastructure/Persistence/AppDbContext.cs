@@ -33,5 +33,18 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // v4.5 added AFTER UPDATE triggers on these tables to keep UpdatedAt fresh for
+        // delta cloud sync. Without telling EF Core about them, SaveChanges() on these
+        // entities throws "Could not save changes because the target table has database
+        // triggers" because EF's default INSERT...OUTPUT pattern is incompatible with
+        // triggers. Registering each trigger here switches EF to a save strategy that
+        // works alongside them. See aka.ms/efcore-docs-sqlserver-save-changes-and-output-clause.
+        modelBuilder.Entity<Employee>().ToTable(t => t.HasTrigger("TR_Employees_UpdatedAt"));
+        modelBuilder.Entity<AccessCard>().ToTable(t => t.HasTrigger("TR_AccessCards_UpdatedAt"));
+        modelBuilder.Entity<AppUser>().ToTable(t => t.HasTrigger("TR_Users_UpdatedAt"));
+        modelBuilder.Entity<FreezeHistory>().ToTable(t => t.HasTrigger("TR_FreezeHistories_UpdatedAt"));
+        modelBuilder.Entity<Product>().ToTable(t => t.HasTrigger("TR_Products_UpdatedAt"));
+        modelBuilder.Entity<PosShift>().ToTable(t => t.HasTrigger("TR_PosShifts_UpdatedAt"));
     }
 }
