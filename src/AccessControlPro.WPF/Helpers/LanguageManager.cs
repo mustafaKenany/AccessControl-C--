@@ -192,6 +192,7 @@ public class LanguageManager : INotifyPropertyChanged
     public string PhotoRequired => GetString("PhotoRequired");
     public string HeightInvalid => GetString("HeightInvalid");
     public string WeightInvalid => GetString("WeightInvalid");
+    public string OptionalInfo => GetString("OptionalInfo");
 
     // Assign Card Dialog
     public string AuthorizeCard => GetString("AuthorizeCard");
@@ -1120,6 +1121,7 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(PhotoRequired));
         OnPropertyChanged(nameof(HeightInvalid));
         OnPropertyChanged(nameof(WeightInvalid));
+        OnPropertyChanged(nameof(OptionalInfo));
         OnPropertyChanged(nameof(AuthorizeCard));
         OnPropertyChanged(nameof(CardNumber));
         OnPropertyChanged(nameof(CardPassword));

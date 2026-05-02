@@ -288,6 +288,26 @@ CREATE TABLE IF NOT EXISTS ""Sessions"" (
 CREATE INDEX IF NOT EXISTS idx_sessions_expiresat ON ""Sessions"" (""ExpiresAt"");
 CREATE INDEX IF NOT EXISTS idx_sessions_userid_gymid ON ""Sessions"" (""UserId"", ""GymId"");
 
+-- AccessCards FK: ensure every card points to a real player. Adds FK if missing.
+-- ON DELETE CASCADE so deleting a player auto-removes their cards (mirrors local SQL Server).
+-- Wrapped in DO block + EXCEPTION so it skips silently if FK already exists (idempotent migration).
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'fk_accesscards_employeeid'
+          AND table_name = 'AccessCards'
+    ) THEN
+        ALTER TABLE ""AccessCards""
+        ADD CONSTRAINT fk_accesscards_employeeid
+        FOREIGN KEY (""EmployeeId"") REFERENCES ""Players""(""Id"")
+        ON DELETE CASCADE;
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    -- FK creation can fail if there are orphan rows; log and continue rather than break startup.
+    RAISE NOTICE 'AccessCards FK setup skipped: %', SQLERRM;
+END $$;
+
 -- Players migration: widen Height/Weight from DECIMAL(5,1) to DECIMAL(10,2) so
 -- values above 999.9 (bad client data, e.g. phone numbers typed into height) don't cause 22003 overflow.
 ALTER TABLE ""Players"" ALTER COLUMN ""Height"" TYPE DECIMAL(10,2);

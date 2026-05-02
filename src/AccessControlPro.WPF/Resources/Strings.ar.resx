@@ -178,6 +178,7 @@
   <data name="PhotoRequired" xml:space="preserve"><value>صورة اللاعب مطلوبة.</value></data>
   <data name="HeightInvalid" xml:space="preserve"><value>يجب أن يكون الطول بين 50 و 250 سم.</value></data>
   <data name="WeightInvalid" xml:space="preserve"><value>يجب أن يكون الوزن بين 20 و 300 كجم.</value></data>
+  <data name="OptionalInfo" xml:space="preserve"><value>معلومات اختيارية (الطول، الوزن، ملاحظات)</value></data>
   <!-- Assign Card Dialog -->
   <data name="AuthorizeCard" xml:space="preserve"><value>تفويض بطاقة الوصول</value></data>
   <data name="CardNumber" xml:space="preserve"><value>رقم البطاقة</value></data>

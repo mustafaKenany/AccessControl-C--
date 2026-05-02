@@ -173,6 +173,7 @@
   <data name="PhotoRequired" xml:space="preserve"><value>Player photo is required.</value></data>
   <data name="HeightInvalid" xml:space="preserve"><value>Height must be between 50 and 250 cm.</value></data>
   <data name="WeightInvalid" xml:space="preserve"><value>Weight must be between 20 and 300 kg.</value></data>
+  <data name="OptionalInfo" xml:space="preserve"><value>Optional info (Height, Weight, Notes)</value></data>
   <!-- Assign Card Dialog -->
   <data name="AuthorizeCard" xml:space="preserve"><value>Authorize Access Card</value></data>
   <data name="CardNumber" xml:space="preserve"><value>Card Number</value></data>
