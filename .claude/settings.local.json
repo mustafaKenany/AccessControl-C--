@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "d:\\AccessControlPro\\tools"
+    ],
+    "allow": [
+      "Bash(git commit -m 'Add demo data seeder for screenshots *)"
+    ]
+  }
+}
