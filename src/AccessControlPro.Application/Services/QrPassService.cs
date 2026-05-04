@@ -9,15 +9,18 @@ public class QrPassService : IQrPassService
 {
     private readonly IQrPassRepository _qrPassRepository;
     private readonly ITransactionRepository _transactionRepository;
+    private readonly IQrPoolService _qrPoolService;
     private readonly CurrentUserService _currentUser;
 
     public QrPassService(
         IQrPassRepository qrPassRepository,
         ITransactionRepository transactionRepository,
+        IQrPoolService qrPoolService,
         CurrentUserService currentUser)
     {
         _qrPassRepository = qrPassRepository;
         _transactionRepository = transactionRepository;
+        _qrPoolService = qrPoolService;
         _currentUser = currentUser;
     }
 
@@ -25,7 +28,20 @@ public class QrPassService : IQrPassService
         int? deviceId = null, int doorNumber = 1, string deviceName = "")
     {
         var now = DateTime.Now;
-        var passCode = GeneratePassCode();
+
+        // Pull a code from the QR Pool (these are pre-uploaded to the access control device,
+        // so the QR will actually work at the door reader). Earlier versions generated a
+        // random string like "QR05040944441143" which the device never knew about — door denied.
+        var poolEntry = await _qrPoolService.AssignCodeAsync(
+            playerName.Trim(),
+            phone.Trim(),
+            $"Daily Pass — {validDays}d, {maxUses} uses, fee {fee:N0}");
+
+        if (poolEntry == null)
+            throw new InvalidOperationException(
+                "No QR codes available in the pool. The pool tops itself up automatically — wait a few minutes and try again, or restart the app to trigger generation now.");
+
+        var passCode = poolEntry.Code; // numeric pool code (e.g. "50001050") that the device recognises
 
         var qrPass = new QrPass
         {
@@ -144,14 +160,10 @@ public class QrPassService : IQrPassService
         return await _qrPassRepository.GetActiveTodayCountAsync();
     }
 
-    private static string GeneratePassCode()
-    {
-        // Generate a unique code using cryptographic RNG (not predictable)
-        var timestamp = DateTime.UtcNow.ToString("MMddHHmmss");
-        var suffixBytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(4);
-        var suffix = (Math.Abs(BitConverter.ToInt32(suffixBytes, 0)) % 9000 + 1000).ToString();
-        return $"QR{timestamp}{suffix}";
-    }
+    // GeneratePassCode() removed — daily passes now pull a code from the QR pool via
+    // QrPoolService.AssignCodeAsync so the QR actually works at the access control device.
+    // The old random "QR{timestamp}{suffix}" format generated codes the device never knew
+    // about, so the door always denied them.
 
     private static QrPassDto MapToDto(QrPass pass) => new()
     {
