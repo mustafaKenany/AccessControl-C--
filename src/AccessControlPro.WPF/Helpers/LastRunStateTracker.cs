@@ -11,6 +11,8 @@ namespace AccessControlPro.WPF.Helpers;
 ///
 /// Categories of previous-session end:
 /// - clean_exit:       OnExit ran successfully (user closed app normally)
+/// - planned_restart:  app deliberately killed itself with Environment.Exit and re-spawned
+///                     (Stop Monitor uses this to refresh SDK state). NOT a crash.
 /// - system_shutdown:  Windows logoff/shutdown intercepted via SessionEnding
 /// - killed_or_crashed: state still says "running" — process died without OnExit
 ///                     (Task Manager kill, power loss, native crash, BSOD, etc.)
@@ -50,6 +52,27 @@ public static class LastRunStateTracker
         catch { /* logging this would be circular; just swallow */ }
     }
 
+    /// <summary>
+    /// Mark the current session as a deliberate restart (e.g., Stop Monitor → restart app
+    /// to refresh SDK state). Call this RIGHT BEFORE <c>Environment.Exit</c> when the exit
+    /// is planned, so the next launch doesn't falsely report "KILLED OR CRASHED".
+    /// </summary>
+    public static void RecordPlannedRestart(string reason)
+    {
+        try
+        {
+            var existing = TryReadState();
+            var updated = new State(
+                Pid: existing?.Pid ?? Process.GetCurrentProcess().Id,
+                Status: "planned_restart",
+                StartedAt: existing?.StartedAt ?? DateTime.Now.ToString("O"),
+                EndedAt: DateTime.Now.ToString("O"),
+                ShutdownReason: reason);
+            File.WriteAllText(StatePath, JsonSerializer.Serialize(updated));
+        }
+        catch { }
+    }
+
     public static void RecordSystemShutdown(string reason)
     {
         try
@@ -76,6 +99,9 @@ public static class LastRunStateTracker
         {
             "clean_exit" =>
                 $"Previous session: clean_exit (started {prev.StartedAt}, ended {prev.EndedAt})",
+            "planned_restart" =>
+                $"Previous session: planned_restart — {prev.ShutdownReason ?? "unspecified"} " +
+                $"(started {prev.StartedAt}, ended {prev.EndedAt})",
             "system_shutdown" =>
                 $"Previous session: system_shutdown — {prev.ShutdownReason ?? "unknown reason"} " +
                 $"(started {prev.StartedAt}, ended {prev.EndedAt})",

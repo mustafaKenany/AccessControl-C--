@@ -227,7 +227,12 @@ public partial class MonitorViewModel : ObservableObject
             // Brief delay to ensure cleanup completes
             await Task.Delay(1000);
 
-            // Restart app to get fresh SDK state
+            // Restart app to get fresh SDK state.
+            // Mark the exit as a planned restart RIGHT BEFORE Environment.Exit, otherwise
+            // the next launch's LastRunStateTracker would read state="running" (because
+            // Environment.Exit doesn't fire OnExit → RecordCleanExit never runs) and
+            // falsely report this as "KILLED OR CRASHED" in the startup log.
+            LastRunStateTracker.RecordPlannedRestart("Monitor stopped — SDK state refresh");
             var exePath = Environment.ProcessPath;
             if (exePath != null)
                 System.Diagnostics.Process.Start(exePath);
