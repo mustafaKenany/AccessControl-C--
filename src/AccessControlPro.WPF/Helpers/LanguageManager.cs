@@ -249,6 +249,9 @@ public class LanguageManager : INotifyPropertyChanged
     // Renew Subscription
     public string RenewSubscription => GetString("RenewSubscription");
     public string RenewSuccess => GetString("RenewSuccess");
+    public string MigratedRenewBlockedTitle => GetString("MigratedRenewBlockedTitle");
+    public string MigratedRenewBlockedMessage => GetString("MigratedRenewBlockedMessage");
+    public string MigratedRenewStillBlocked => GetString("MigratedRenewStillBlocked");
 
     // Edit Reason
     public string EditReason => GetString("EditReason");
@@ -1170,6 +1173,9 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(UnfreezeSuccess));
         OnPropertyChanged(nameof(RenewSubscription));
         OnPropertyChanged(nameof(RenewSuccess));
+        OnPropertyChanged(nameof(MigratedRenewBlockedTitle));
+        OnPropertyChanged(nameof(MigratedRenewBlockedMessage));
+        OnPropertyChanged(nameof(MigratedRenewStillBlocked));
         OnPropertyChanged(nameof(EditReason));
         OnPropertyChanged(nameof(EnterEditReason));
         OnPropertyChanged(nameof(EditReasonRequired));

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.RegularExpressions;
 using System.Windows;
 using AccessControlPro.Application.DTOs;
 using AccessControlPro.Application.Interfaces;
@@ -684,9 +685,106 @@ public partial class EmployeesViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Migration-default gate for the Renew flow. If <paramref name="employee"/> still has
+    /// the sentinels MigrationService leaves behind (Phone="MIG-N" or SubscriptionType="Migrated"),
+    /// shows a bilingual warning, opens the Edit dialog, saves the user's changes, then
+    /// re-checks. Returns the updated employee if the record is now clean, or null if the
+    /// user cancelled / didn't fix the placeholders. Caller should abort renewal on null.
+    /// </summary>
+    private async Task<EmployeeDto?> EnsureMigrationDefaultsResolvedAsync(EmployeeDto employee)
+    {
+        if (!IsMigrationDefault(employee)) return employee;
+
+        var msg = string.Format(
+            Lang.MigratedRenewBlockedMessage,
+            string.IsNullOrEmpty(employee.Phone) ? "—" : employee.Phone,
+            string.IsNullOrEmpty(employee.SubscriptionType) ? "—" : employee.SubscriptionType);
+        var openEdit = CustomMessageBox.Confirm(
+            msg,
+            Lang.MigratedRenewBlockedTitle,
+            MsgType.Warning,
+            System.Windows.Application.Current.MainWindow);
+        if (!openEdit) return null;
+
+        var editDialog = new AddEmployeeDialog(employee, _lookupService);
+        editDialog.SetValidationService(_employeeService);
+        editDialog.Owner = System.Windows.Application.Current.MainWindow;
+        editDialog.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner;
+        if (editDialog.ShowDialog() != true) return null;
+
+        // Persist the edits via the same pipeline the Edit command uses so the activity log,
+        // audit trail, and device sync all behave consistently. Reuse the existing reason
+        // dialog so the audit log records "renewal-prep update".
+        var reasonDialog = new EditReasonDialog();
+        reasonDialog.Owner = System.Windows.Application.Current.MainWindow;
+        reasonDialog.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner;
+        if (reasonDialog.ShowDialog() != true) return null;
+
+        IsLoading = true;
+        try
+        {
+            var updated = new EmployeeDto
+            {
+                Id = employee.Id,
+                FullNameEn = editDialog.FullNameEn,
+                FullNameAr = editDialog.FullNameAr,
+                CardNo = editDialog.CardNo,
+                SubscriptionType = editDialog.SubscriptionType,
+                Phone = editDialog.Phone,
+                PhotoData = editDialog.PhotoData,
+                Height = editDialog.PlayerHeight,
+                Weight = editDialog.PlayerWeight,
+                SubscriptionFee = editDialog.SubscriptionFee,
+                AmountPaid = editDialog.AmountPaid,
+                StartDate = editDialog.StartDate,
+                EndDate = editDialog.EndDate,
+                Notes = editDialog.Notes,
+                MaxVisits = editDialog.MaxVisits
+            };
+            await _employeeService.UpdateEmployeeAsync(updated, reasonDialog.Reason);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+
+        // Re-fetch the canonical row from the DB so we evaluate against persisted state.
+        var refreshed = await _employeeService.GetEmployeeByIdAsync(employee.Id);
+        if (refreshed == null) return null;
+
+        if (IsMigrationDefault(refreshed))
+        {
+            CustomMessageBox.Show(
+                Lang.MigratedRenewStillBlocked,
+                Lang.MigratedRenewBlockedTitle,
+                MsgType.Warning,
+                System.Windows.Application.Current.MainWindow);
+            return null;
+        }
+
+        return refreshed;
+    }
+
+    private static bool IsMigrationDefault(EmployeeDto e)
+    {
+        bool phoneIsDefault = !string.IsNullOrEmpty(e.Phone)
+            && Regex.IsMatch(e.Phone, @"^MIG-\d+$", RegexOptions.IgnoreCase);
+        bool subTypeIsDefault = string.Equals(e.SubscriptionType, "Migrated",
+            StringComparison.OrdinalIgnoreCase);
+        return phoneIsDefault || subTypeIsDefault;
+    }
+
     [RelayCommand]
     private async Task RenewSubscriptionAsync(EmployeeDto? employee)
     {
+        if (employee == null) return;
+
+        // Block renewal on still-migrated records. Migration sets sentinels (Phone="MIG-N",
+        // SubscriptionType="Migrated") for records imported from the old DB without enough
+        // info. Forcing the user to update via Edit dialog before renewal ensures the player
+        // record actually reflects real data and matches what's in the device.
+        employee = await EnsureMigrationDefaultsResolvedAsync(employee);
         if (employee == null) return;
 
         var devices = (await _deviceService.GetAllDevicesAsync()).ToList();

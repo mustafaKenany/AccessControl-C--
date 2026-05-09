@@ -91,7 +91,82 @@ public partial class AddEmployeeDialog : Window
             LoadPhotoFromBytes(existing.PhotoData);
         }
 
+        ApplyMigratedDefaultsHighlighting(existing);
+
         UpdateRemaining();
+    }
+
+    // Soft red used to flag fields that still hold a migration-default value.
+    // Migrated records come in with sentinels (Phone="MIG-N", SubscriptionType="Migrated",
+    // numeric fields=0). The highlight stays until the user types a real value into the
+    // field, at which point the TextChanged/SelectionChanged handler clears it.
+    private static readonly SolidColorBrush MigratedDefaultBrush =
+        new(Color.FromRgb(0xE5, 0x73, 0x73));
+
+    private void ApplyMigratedDefaultsHighlighting(EmployeeDto existing)
+    {
+        bool phoneIsDefault = !string.IsNullOrEmpty(existing.Phone)
+            && Regex.IsMatch(existing.Phone, @"^MIG-\d+$", RegexOptions.IgnoreCase);
+        bool subTypeIsDefault = string.Equals(existing.SubscriptionType, "Migrated",
+            StringComparison.OrdinalIgnoreCase);
+
+        // Only highlight the numeric-zero fields while the record is *still* migrated.
+        // Once Phone and SubscriptionType are real, assume the user has reviewed the row
+        // and stop pestering them about Height/Weight/Fee/Paid being 0 (those are valid
+        // values for a non-migrated player too).
+        bool stillMigrated = phoneIsDefault || subTypeIsDefault;
+        if (!stillMigrated) return;
+
+        if (phoneIsDefault)
+        {
+            SetMigratedHighlight(PhoneTextBox, true);
+            PhoneTextBox.TextChanged += (_, _) =>
+                SetMigratedHighlight(PhoneTextBox,
+                    Regex.IsMatch(PhoneTextBox.Text.Trim(), @"^MIG-\d+$", RegexOptions.IgnoreCase));
+        }
+        if (subTypeIsDefault)
+        {
+            SetMigratedHighlight(SubscriptionTypeCombo, true);
+            SubscriptionTypeCombo.SelectionChanged += (_, _) =>
+                SetMigratedHighlight(SubscriptionTypeCombo,
+                    string.Equals(GetSelectedSubscriptionType(), "Migrated",
+                        StringComparison.OrdinalIgnoreCase));
+        }
+
+        HighlightIfStillZero(FeeTextBox);
+        HighlightIfStillZero(PaidTextBox);
+        HighlightIfStillZero(HeightTextBox);
+        HighlightIfStillZero(WeightTextBox);
+    }
+
+    private static void HighlightIfStillZero(TextBox box)
+    {
+        // The edit constructor already set Text="" for zero values, so checking emptiness
+        // here is equivalent to checking the original numeric == 0.
+        if (string.IsNullOrWhiteSpace(box.Text))
+            SetMigratedHighlight(box, true);
+
+        box.TextChanged += (_, _) =>
+        {
+            var current = box.Text.Trim();
+            bool stillZero = string.IsNullOrEmpty(current)
+                || (decimal.TryParse(current, out var v) && v == 0);
+            SetMigratedHighlight(box, stillZero);
+        };
+    }
+
+    private static void SetMigratedHighlight(Control ctrl, bool needsUpdate)
+    {
+        if (needsUpdate)
+        {
+            ctrl.BorderBrush = MigratedDefaultBrush;
+            ctrl.BorderThickness = new Thickness(2);
+        }
+        else
+        {
+            ctrl.ClearValue(Control.BorderBrushProperty);
+            ctrl.ClearValue(Control.BorderThicknessProperty);
+        }
     }
 
     public void SetValidationService(IEmployeeService employeeService)

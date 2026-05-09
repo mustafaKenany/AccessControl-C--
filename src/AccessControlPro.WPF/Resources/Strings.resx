@@ -220,6 +220,19 @@
   <data name="UnfreezeSuccess" xml:space="preserve"><value>Player unfrozen successfully. Subscription period extended.</value></data>
   <data name="RenewSubscription" xml:space="preserve"><value>Renew Subscription</value></data>
   <data name="RenewSuccess" xml:space="preserve"><value>Subscription renewed successfully.</value></data>
+  <data name="MigratedRenewBlockedTitle" xml:space="preserve"><value>Update Required Before Renewal</value></data>
+  <data name="MigratedRenewBlockedMessage" xml:space="preserve"><value>⚠ This player was imported from your old system with placeholder values:
+
+• Phone (currently: {0})
+• Subscription type (currently: {1})
+• Fees, height and weight may also be missing
+
+Please update this information before renewing the subscription, so the player record reflects real data.
+
+Click OK to open the Edit Player form now.</value></data>
+  <data name="MigratedRenewStillBlocked" xml:space="preserve"><value>Renewal blocked.
+
+Phone or subscription type is still a placeholder value (MIG-... or "Migrated"). Please update them with real values and try again.</value></data>
   <!-- Edit Reason -->
   <data name="EditReason" xml:space="preserve"><value>Edit Reason</value></data>
   <data name="EnterEditReason" xml:space="preserve"><value>Please enter the reason for editing this player:</value></data>

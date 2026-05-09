@@ -225,6 +225,19 @@
   <data name="UnfreezeSuccess" xml:space="preserve"><value>تم إلغاء تجميد اللاعب بنجاح. تم تمديد فترة الاشتراك.</value></data>
   <data name="RenewSubscription" xml:space="preserve"><value>تجديد الاشتراك</value></data>
   <data name="RenewSuccess" xml:space="preserve"><value>تم تجديد الاشتراك بنجاح.</value></data>
+  <data name="MigratedRenewBlockedTitle" xml:space="preserve"><value>تحديث البيانات مطلوب قبل التجديد</value></data>
+  <data name="MigratedRenewBlockedMessage" xml:space="preserve"><value>⚠ تم استيراد هذا اللاعب من النظام القديم بقيم مؤقتة:
+
+• الهاتف (الحالي: {0})
+• نوع الاشتراك (الحالي: {1})
+• قد تكون الرسوم والطول والوزن غير مدخلة أيضاً
+
+يرجى تحديث هذه البيانات قبل تجديد الاشتراك حتى يعكس سجل اللاعب بيانات حقيقية.
+
+اضغط موافق لفتح نموذج تعديل اللاعب الآن.</value></data>
+  <data name="MigratedRenewStillBlocked" xml:space="preserve"><value>تم منع التجديد.
+
+الهاتف أو نوع الاشتراك لا يزال قيمة مؤقتة (MIG-... أو "Migrated"). يرجى تحديثهما بقيم حقيقية والمحاولة مرة أخرى.</value></data>
   <!-- Edit Reason -->
   <data name="EditReason" xml:space="preserve"><value>سبب التعديل</value></data>
   <data name="EnterEditReason" xml:space="preserve"><value>يرجى إدخال سبب تعديل هذا اللاعب:</value></data>
