@@ -9,4 +9,10 @@ public interface ILookupRepository
     Task AddAsync(LookupItem item);
     Task UpdateAsync(LookupItem item);
     Task DeleteAsync(int id);
+
+    /// <summary>
+    /// Returns active subscription plans defined in the Admin Panel ("Subscription Plans" page).
+    /// Source-of-truth for the dropdown shown in Add/Edit/Renew player dialogs.
+    /// </summary>
+    Task<List<SubscriptionPlan>> GetActiveSubscriptionPlansAsync();
 }

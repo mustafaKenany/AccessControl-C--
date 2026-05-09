@@ -57,4 +57,14 @@ public class LookupRepository : ILookupRepository
             await db.SaveChangesAsync();
         }
     }
+
+    public async Task<List<SubscriptionPlan>> GetActiveSubscriptionPlansAsync()
+    {
+        await using var db = _factory.CreateDbContext();
+        return await db.SubscriptionPlans
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Id)
+            .ToListAsync();
+    }
 }

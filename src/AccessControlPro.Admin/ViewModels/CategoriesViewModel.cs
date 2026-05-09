@@ -30,7 +30,11 @@ public partial class CategoriesViewModel : ObservableObject
         new() { Key = "IncomeCategory", DisplayEn = "Income Categories", DisplayAr = "فئات الدخل" },
         new() { Key = "ExpenseCategory", DisplayEn = "Expense Categories", DisplayAr = "فئات المصروفات" },
         new() { Key = "ProductCategory", DisplayEn = "Product Categories", DisplayAr = "فئات المنتجات" },
-        new() { Key = "SubscriptionPlan", DisplayEn = "Subscription Plans", DisplayAr = "خطط الاشتراك", ShowRate = true },
+        // Subscription Plans intentionally not exposed here — they live on the dedicated
+        // "Subscription Plans" admin page (SubscriptionPlansViewModel) which writes to the
+        // SubscriptionPlans table that the main app's player dialogs read from. The old
+        // LookupItem-based path was abandoned 2026-05-09 to fix the disconnect where plans
+        // added in this Categories page never appeared in Add Player.
     ];
 
     [ObservableProperty] private CategoryType? _selectedCategoryType;

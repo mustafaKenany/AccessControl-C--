@@ -24,4 +24,7 @@ public class LookupService : ILookupService
 
     public Task DeleteAsync(int id)
         => _repo.DeleteAsync(id);
+
+    public Task<List<SubscriptionPlan>> GetActiveSubscriptionPlansAsync()
+        => _repo.GetActiveSubscriptionPlansAsync();
 }

@@ -123,20 +123,33 @@ public partial class RenewSubscriptionDialog : Window
     {
         try
         {
-            var items = await _lookupService!.GetByCategoryAsync("SubscriptionPlan");
-            if (items.Count > 0)
+            // Source-of-truth: the SubscriptionPlans table that the Admin Panel manages.
+            // Same data path as AddEmployeeDialog so both dialogs always show identical
+            // plan lists and the admin's edits are immediately visible everywhere.
+            var dbPlans = await _lookupService!.GetActiveSubscriptionPlansAsync();
+            if (dbPlans.Count > 0)
             {
                 var lang = LanguageManager.Instance;
-                _plans = items.Select(i => new SubscriptionPlan
+                _plans = dbPlans.Select(p => new SubscriptionPlan
                 {
-                    Type = i.Name,
-                    MonthlyRate = i.NumericValue,
-                    DisplayName = lang.IsArabic && !string.IsNullOrWhiteSpace(i.NameAr) ? i.NameAr : i.Name
+                    Type = p.NameEn,
+                    MonthlyRate = NormalizeToMonthlyRate(p.Price, p.Duration, p.DurationType),
+                    DisplayName = lang.IsArabic && !string.IsNullOrWhiteSpace(p.NameAr) ? p.NameAr : p.NameEn
                 }).ToList();
                 PopulateSubscriptionTypes();
             }
         }
         catch { }
+    }
+
+    private static decimal NormalizeToMonthlyRate(decimal price, int duration, string durationType)
+    {
+        if (duration <= 0) return price;
+        if (string.Equals(durationType, "Months", StringComparison.OrdinalIgnoreCase))
+            return price / duration;
+        if (string.Equals(durationType, "Unlimited", StringComparison.OrdinalIgnoreCase))
+            return price;
+        return price * 30m / duration;
     }
 
     private void PopulateSubscriptionTypes()
