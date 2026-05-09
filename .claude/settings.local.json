@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(git commit -m 'Add demo data seeder for screenshots *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "PowerShell(Get-ChildItem -Path src -Recurse -Directory -Include bin,obj | ForEach-Object { Remove-Item -Recurse -Force -LiteralPath $_.FullName -ErrorAction SilentlyContinue }; Write-Output \"bin/obj cleanup done\")",
+      "PowerShell(Get-ChildItem -Path src -Recurse -Directory -Include bin,obj | ForEach-Object { Remove-Item -Recurse -Force -LiteralPath $_.FullName -ErrorAction SilentlyContinue }; Remove-Item -Recurse -Force 'publish/customer-deploy' -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Path 'publish/customer-deploy' -Force | Out-Null; Write-Output 'cleaned, ready for sequential publish')",
+      "PowerShell(Get-ChildItem 'publish/customer-deploy' -Directory | ForEach-Object { $folder = $_.FullName; $name = $_.Name; $sizeMB = [math]::Round\\(\\(Get-ChildItem $folder -Recurse -File | Measure-Object -Property Length -Sum\\).Sum / 1MB, 1\\); $fileCount = \\(Get-ChildItem $folder -Recurse -File\\).Count; $exeName = switch \\($name\\) { 'main-app' { 'AccessControlPro.WPF.exe' }; 'admin-panel' { 'AccessControlPro.Admin.exe' }; 'pos-terminal' { 'AccessControlPro.POS.exe' } }; $exePath = Join-Path $folder $exeName; $exeOk = Test-Path $exePath; Write-Output \\(\"{0,-15} size={1,6} MB  files={2,4}  {3} {4}\" -f $name, $sizeMB, $fileCount, $exeName, $\\(if \\($exeOk\\) { 'OK' } else { 'MISSING' }\\)\\) })",
+      "PowerShell(New-Item -ItemType Directory -Path 'src/AccessControlPro.Web/wwwroot/images/screenshots' -Force)"
     ],
     "additionalDirectories": [
       "d:\\AccessControlPro\\tools"
