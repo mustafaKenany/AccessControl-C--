@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
@@ -37,8 +38,43 @@ public partial class App : System.Windows.Application
     private DispatcherTimer? _qrPoolTimer;
     private static readonly string CrashLogPath = Path.Combine(AppContext.BaseDirectory, "crash_log.txt");
 
+    // === Native debug-dialog suppression =================================================
+    // The Hikvision/Dnake SDK (FCardCDrive.dll and friends) is built against the DEBUG
+    // MFC runtime. Whenever the SDK re-initializes (e.g., closing/reopening Monitor),
+    // its internal asserts fire and pop up "Microsoft Visual C++ Debug Library" dialogs.
+    // We can't fix the vendor's DLL, but we can silence the popups so they don't
+    // interrupt the user.
+    [DllImport("kernel32.dll")] private static extern uint SetErrorMode(uint uMode);
+    [DllImport("ucrtbased.dll", EntryPoint = "_CrtSetReportMode")]
+    private static extern int _CrtSetReportMode_Debug(int reportType, int reportMode);
+    private const int _CRT_WARN = 0;
+    private const int _CRT_ERROR = 1;
+    private const int _CRT_ASSERT = 2;
+    private const int _CRTDBG_MODE_DEBUG = 0x2; // Send to OutputDebugString only — no UI dialog
+
+    private static void SuppressNativeDebugDialogs()
+    {
+        // Windows-level: suppress critical-error / GP-fault popups
+        SetErrorMode(0x0001 /*SEM_FAILCRITICALERRORS*/ | 0x0002 /*SEM_NOGPFAULTERRORBOX*/ | 0x8000 /*SEM_NOOPENFILEERRORBOX*/);
+
+        // CRT-level: route MFC asserts to debug output instead of a dialog.
+        // Wrapped in try/catch because ucrtbased.dll only exists on machines that have
+        // the debug Universal CRT installed; on plain customer machines it's absent
+        // and we don't need it (no debug DLL = no debug asserts).
+        try
+        {
+            _CrtSetReportMode_Debug(_CRT_ASSERT, _CRTDBG_MODE_DEBUG);
+            _CrtSetReportMode_Debug(_CRT_ERROR, _CRTDBG_MODE_DEBUG);
+            _CrtSetReportMode_Debug(_CRT_WARN, _CRTDBG_MODE_DEBUG);
+        }
+        catch { /* ucrtbased not present — fine, just no native debug dialogs anyway */ }
+    }
+
     public App()
     {
+        // Run BEFORE the SDK loads, so its initialization can't pop debug dialogs
+        SuppressNativeDebugDialogs();
+
         // Global exception handlers — write crash log before app dies
         DispatcherUnhandledException += (s, e) =>
         {
