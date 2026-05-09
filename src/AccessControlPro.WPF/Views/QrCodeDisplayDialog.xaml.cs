@@ -21,10 +21,28 @@ public partial class QrCodeDisplayDialog : Window
         DisplayPassInfo();
     }
 
+    /// <summary>
+    /// Converts the pass code into the format the access control device expects in the QR.
+    /// The device is configured with "8H10D" QR card-number format: it reads 8 hex characters
+    /// from the QR and interprets them as a decimal card number. So our numeric pool code
+    /// (e.g. 50001050) needs to be embedded in the QR as its 8-char uppercase hex
+    /// representation ("02FAF49A"). The device then converts back: 0x02FAF49A = 50001050,
+    /// which matches the card we already uploaded — door opens.
+    /// Falls back to raw text for non-numeric pass codes (legacy QR0504... format).
+    /// </summary>
+    private static string ToDeviceQrPayload(string passCode)
+    {
+        if (long.TryParse(passCode, out var numeric) && numeric >= 0 && numeric <= 0xFFFFFFFFL)
+            return numeric.ToString("X8"); // 8-char uppercase hex, e.g. 50001050 -> "02FAF49A"
+        return passCode;
+    }
+
     private void GenerateQrCode()
     {
+        var qrPayload = ToDeviceQrPayload(_pass.PassCode);
+
         using var qrGenerator = new QRCodeGenerator();
-        using var qrData = qrGenerator.CreateQrCode(_pass.PassCode, QRCodeGenerator.ECCLevel.M);
+        using var qrData = qrGenerator.CreateQrCode(qrPayload, QRCodeGenerator.ECCLevel.M);
         using var qrCode = new PngByteQRCode(qrData);
         var qrBytes = qrCode.GetGraphic(10);
 
