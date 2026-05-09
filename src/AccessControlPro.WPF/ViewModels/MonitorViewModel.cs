@@ -21,6 +21,7 @@ public partial class MonitorViewModel : ObservableObject
     private readonly IAccessEventService _eventService;
     private readonly IDoorService _doorService;
     private readonly IEmployeeService _employeeService;
+    private readonly IQrPassService _qrPassService;
     private readonly IMonitorLockService _monitorLockService;
     private readonly CurrentUserService _currentUser;
     private readonly Application.Helpers.DeviceOperationHelper _opHelper;
@@ -58,6 +59,7 @@ public partial class MonitorViewModel : ObservableObject
         IAccessEventService eventService,
         IDoorService doorService,
         IEmployeeService employeeService,
+        IQrPassService qrPassService,
         IMonitorLockService monitorLockService,
         CurrentUserService currentUser,
         Application.Helpers.DeviceOperationHelper opHelper)
@@ -69,6 +71,7 @@ public partial class MonitorViewModel : ObservableObject
         _eventService = eventService;
         _doorService = doorService;
         _employeeService = employeeService;
+        _qrPassService = qrPassService;
         _monitorLockService = monitorLockService;
         _currentUser = currentUser;
         _opHelper = opHelper;
@@ -351,10 +354,50 @@ public partial class MonitorViewModel : ObservableObject
                 ? !door.Name.Contains("خروج") && !door.Name.ToLower().Contains("exit")
                 : evt.ReaderType == 1;
 
+            // QR-pass lookup: if no AccessCard match, the scanned number may be a QR Daily Pass
+            // (pool code like "10000001" assigned to a visitor). Treat it as a valid guest entry
+            // and surface visitor name + pass status instead of falsely showing "Not Registered".
+            QrPassDto? qrPass = null;
+            string? qrPassStatus = null;
+            string? qrPassStatusKey = null;
+            if (cardEntity == null && !string.IsNullOrEmpty(evt.CardNumber))
+            {
+                try
+                {
+                    var (isValid, _, pass) = await _qrPassService.ValidateAndUseAsync(evt.CardNumber);
+                    if (pass != null)
+                    {
+                        qrPass = pass;
+                        if (isValid)
+                        {
+                            qrPassStatus = $"{lang.DispQrPass} ({pass.UsedCount}/{pass.MaxUses})";
+                            qrPassStatusKey = "QrPass";
+                        }
+                        else if (DateTime.Now > pass.ValidTo)
+                        {
+                            qrPassStatus = lang.DispQrPassExpired;
+                            qrPassStatusKey = "QrPassExpired";
+                        }
+                        else
+                        {
+                            qrPassStatus = lang.DispQrPassUsedUp;
+                            qrPassStatusKey = "QrPassUsedUp";
+                        }
+                        playerName = !string.IsNullOrEmpty(pass.PlayerName) ? pass.PlayerName : lang.DispQrGuest;
+                    }
+                }
+                catch { /* fall through to NotRegistered display */ }
+            }
+
             // Card status: from validation result + employee state (AFTER visit increment)
             string cardStatus;
             string cardStatusKey;
-            if (cardEntity == null)
+            if (qrPass != null)
+            {
+                cardStatus = qrPassStatus!;
+                cardStatusKey = qrPassStatusKey!;
+            }
+            else if (cardEntity == null)
             {
                 cardStatus = lang.DispNotRegistered;
                 cardStatusKey = "NotRegistered";
@@ -401,15 +444,10 @@ public partial class MonitorViewModel : ObservableObject
             var deviceName = door?.Device?.Name ?? evt.DeviceSN;
             var doorName = door?.Name ?? $"Door {evt.DoorNumber}";
 
-            // Detect QR code vs regular card (QR codes start with "5000")
-            bool isQrCode = evt.CardNumber?.StartsWith("5000") ?? false;
-
-            // For QR events, override player name to show "QR Guest"
-            if (isQrCode && string.IsNullOrEmpty(playerName))
-            {
-                var lang2 = LanguageManager.Instance;
-                playerName = lang2.IsArabic ? "ضيف QR" : "QR Guest";
-            }
+            // QR detection: anything matched via the QR pass lookup above is a QR scan.
+            // The old "starts with 5000" heuristic was wrong (pool range can change) and missed
+            // codes outside that range entirely.
+            bool isQrCode = qrPass != null;
 
             // Combine event description with card status for display
             // Format: "Card Open (Active 3/50)" or "Card Not Found (Unregistered)"

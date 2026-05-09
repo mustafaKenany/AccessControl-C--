@@ -22,24 +22,20 @@ public partial class QrCodeDisplayDialog : Window
     }
 
     /// <summary>
-    /// Converts the pass code into the format the access control device expects in the QR.
-    /// The device is configured with "8H10D" QR card-number format: it reads 8 hex characters
-    /// from the QR and interprets them as a decimal card number. So our numeric pool code
-    /// (e.g. 50001050) needs to be embedded in the QR as its 8-char uppercase hex
-    /// representation ("02FAF49A"). The device then converts back: 0x02FAF49A = 50001050,
-    /// which matches the card we already uploaded — door opens.
-    /// Falls back to raw text for non-numeric pass codes (legacy QR0504... format).
+    /// QR payload is the pass code verbatim (plain decimal, e.g. "50001050").
+    ///
+    /// Earlier versions hex-encoded this on the theory that the device's "8H10D" config meant
+    /// "read 8 hex characters and convert to a 10-digit decimal card number." That theory was
+    /// wrong. Empirical testing on 2026-05-09 with a real Hikvision/Dnake controller showed:
+    ///   - QR text "02FAF59F"  →  device reports card "2"      (reads digits, stops at first letter)
+    ///   - QR text "00989681"  →  device reports card "989681"  (strips leading zeros, all digits OK)
+    ///   - QR text "10000001"  →  device reports card "10000001" + door opens (uploaded as 10000001)
+    /// So the device just reads the numeric digits from the QR text and uses them as the card
+    /// number to look up — no hex conversion ever happens. Hex-encoding only mangled the value.
     /// </summary>
-    private static string ToDeviceQrPayload(string passCode)
-    {
-        if (long.TryParse(passCode, out var numeric) && numeric >= 0 && numeric <= 0xFFFFFFFFL)
-            return numeric.ToString("X8"); // 8-char uppercase hex, e.g. 50001050 -> "02FAF49A"
-        return passCode;
-    }
-
     private void GenerateQrCode()
     {
-        var qrPayload = ToDeviceQrPayload(_pass.PassCode);
+        var qrPayload = _pass.PassCode;
 
         using var qrGenerator = new QRCodeGenerator();
         using var qrData = qrGenerator.CreateQrCode(qrPayload, QRCodeGenerator.ECCLevel.M);

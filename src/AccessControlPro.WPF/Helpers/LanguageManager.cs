@@ -701,6 +701,10 @@ public class LanguageManager : INotifyPropertyChanged
     public string DispExpiredCard => GetString("DispExpiredCard");
     public string DispFrozenCard => GetString("DispFrozenCard");
     public string DispNotRegistered => GetString("DispNotRegistered");
+    public string DispQrPass => GetString("DispQrPass");
+    public string DispQrPassExpired => GetString("DispQrPassExpired");
+    public string DispQrPassUsedUp => GetString("DispQrPassUsedUp");
+    public string DispQrGuest => GetString("DispQrGuest");
     public string DispActive => GetString("DispActive");
     public string DispEntry => GetString("DispEntry");
     public string DispExit => GetString("DispExit");
@@ -1530,6 +1534,10 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(DispExpiredCard));
         OnPropertyChanged(nameof(DispFrozenCard));
         OnPropertyChanged(nameof(DispNotRegistered));
+        OnPropertyChanged(nameof(DispQrPass));
+        OnPropertyChanged(nameof(DispQrPassExpired));
+        OnPropertyChanged(nameof(DispQrPassUsedUp));
+        OnPropertyChanged(nameof(DispQrGuest));
         OnPropertyChanged(nameof(DispActive));
         OnPropertyChanged(nameof(DispEntry));
         OnPropertyChanged(nameof(DispExit));

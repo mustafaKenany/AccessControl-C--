@@ -611,6 +611,10 @@
   <data name="DispExpiredCard" xml:space="preserve"><value>Expired Card</value></data>
   <data name="DispFrozenCard" xml:space="preserve"><value>Frozen Card</value></data>
   <data name="DispNotRegistered" xml:space="preserve"><value>Not Registered</value></data>
+  <data name="DispQrPass" xml:space="preserve"><value>QR Pass</value></data>
+  <data name="DispQrPassExpired" xml:space="preserve"><value>QR Pass Expired</value></data>
+  <data name="DispQrPassUsedUp" xml:space="preserve"><value>QR Pass Used Up</value></data>
+  <data name="DispQrGuest" xml:space="preserve"><value>QR Guest</value></data>
   <data name="DispActive" xml:space="preserve"><value>Active</value></data>
   <data name="DispEntry" xml:space="preserve"><value>Entry</value></data>
   <data name="DispExit" xml:space="preserve"><value>Exit</value></data>

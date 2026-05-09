@@ -617,6 +617,10 @@
   <data name="DispExpiredCard" xml:space="preserve"><value>بطاقة منتهية</value></data>
   <data name="DispFrozenCard" xml:space="preserve"><value>بطاقة مجمدة</value></data>
   <data name="DispNotRegistered" xml:space="preserve"><value>غير مسجل</value></data>
+  <data name="DispQrPass" xml:space="preserve"><value>تصريح QR</value></data>
+  <data name="DispQrPassExpired" xml:space="preserve"><value>تصريح QR منتهي</value></data>
+  <data name="DispQrPassUsedUp" xml:space="preserve"><value>تصريح QR مستهلك</value></data>
+  <data name="DispQrGuest" xml:space="preserve"><value>ضيف QR</value></data>
   <data name="DispActive" xml:space="preserve"><value>نشط</value></data>
   <data name="DispEntry" xml:space="preserve"><value>دخول</value></data>
   <data name="DispExit" xml:space="preserve"><value>خروج</value></data>
