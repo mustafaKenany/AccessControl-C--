@@ -70,10 +70,29 @@ public partial class App : System.Windows.Application
         catch { /* ucrtbased not present — fine, just no native debug dialogs anyway */ }
     }
 
+    // FCardCDrive SDK writes its own debug log file (ocsm, ocsm_1..ocsm_9 — 10-file rotation
+    // by the vendor DLL). The contents are CP936-mojibake socket noise we can't read, can't
+    // disable via any C# API, and never need. We delete on startup so they don't accumulate
+    // forever; the SDK may recreate them during the session but they'll be cleared again next
+    // launch. Failures are non-fatal: a locked file just stays until the next clean restart.
+    private static void CleanupSdkDebugLogs()
+    {
+        try
+        {
+            foreach (var path in Directory.EnumerateFiles(AppContext.BaseDirectory, "ocsm*"))
+            {
+                try { File.Delete(path); }
+                catch { /* file in use by another instance — leave it */ }
+            }
+        }
+        catch { /* enumerate failed — base dir gone or unreadable, nothing we can do */ }
+    }
+
     public App()
     {
         // Run BEFORE the SDK loads, so its initialization can't pop debug dialogs
         SuppressNativeDebugDialogs();
+        CleanupSdkDebugLogs();
 
         // Global exception handlers — write crash log before app dies
         DispatcherUnhandledException += (s, e) =>
@@ -122,19 +141,7 @@ public partial class App : System.Windows.Application
     }
 
     private static void WriteCrashLog(string source, Exception? ex)
-    {
-        try
-        {
-            var msg = $"\n=== [{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {source} ===\n" +
-                      $"{ex?.GetType().FullName}: {ex?.Message}\n" +
-                      $"Stack:\n{ex?.StackTrace}\n" +
-                      (ex?.InnerException != null
-                          ? $"Inner: {ex.InnerException.GetType().FullName}: {ex.InnerException.Message}\n{ex.InnerException.StackTrace}\n"
-                          : "");
-            File.AppendAllText(CrashLogPath, msg);
-        }
-        catch { /* Last resort — can't even write log */ }
-    }
+        => CrashContextLogger.Write(CrashLogPath, source, ex);
 
     private static string LoadConnectionString()
     {
@@ -273,6 +280,14 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
         StartupLog("=== APP STARTING ===");
+
+        // Diagnose how the previous session ended (clean exit / system shutdown /
+        // killed-or-crashed) so silent restarts in the log become explainable.
+        StartupLog(LastRunStateTracker.ReadPreviousAndRecordStartup());
+
+        // Catch Windows logoff / shutdown so we can distinguish them from kills.
+        SessionEnding += (_, args) =>
+            LastRunStateTracker.RecordSystemShutdown(args.ReasonSessionEnding.ToString());
 
         // ── Disable WiFi only if cloud sync is NOT enabled ──
         // If cloud sync is enabled, WiFi is needed for internet access
@@ -913,6 +928,10 @@ public partial class App : System.Windows.Application
     protected override void OnExit(ExitEventArgs e)
     {
         StartupLog($"=== APP EXITING (code={e.ApplicationExitCode}) ===");
+
+        // Record clean exit FIRST — if anything below crashes during teardown, at least
+        // we still know we got to OnExit (i.e. it wasn't a force-kill).
+        LastRunStateTracker.RecordCleanExit();
         _cleanupTimer?.Stop();
         _cleanupTimer = null;
         _expiryMonitorTimer?.Stop();

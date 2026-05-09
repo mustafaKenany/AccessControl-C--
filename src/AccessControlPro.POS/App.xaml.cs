@@ -60,16 +60,7 @@ public partial class App : System.Windows.Application
     }
 
     private static void WriteCrashLog(string source, Exception? ex)
-    {
-        try
-        {
-            var msg = $"\n=== [{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {source} ===\n" +
-                      $"{ex?.GetType().FullName}: {ex?.Message}\n" +
-                      $"Stack:\n{ex?.StackTrace}\n";
-            File.AppendAllText(CrashLogPath, msg);
-        }
-        catch { }
-    }
+        => CrashContextLogger.Write(CrashLogPath, source, ex);
 
     private static string LoadConnectionString()
     {
