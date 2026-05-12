@@ -14,13 +14,12 @@
                 <a href="#pricing">@L("Pricing", "الأسعار")</a>
                 <a href="#screenshots">@L("Screenshots", "لقطات")</a>
                 <a href="#contact">@L("Contact", "تواصل")</a>
-                <button class="lang-btn" @onclick="ToggleLang">@(Session.IsArabic ? "EN" : "عربي")</button>
+                @* Language toggle hidden 2026-05-13 — site is Arabic-only. *@
                 <a href="/login" class="landing-nav-login">
                     <i class="fas fa-sign-in-alt"></i> @L("Login", "دخول")
                 </a>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <button class="lang-btn lang-btn-mobile" @onclick="ToggleLang">@(Session.IsArabic ? "EN" : "عربي")</button>
                 <a href="/login" class="landing-nav-login-mobile">
                     <i class="fas fa-sign-in-alt"></i> @L("Login", "دخول")
                 </a>

@@ -1,17 +1,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
 
 :root {
-    --bg-primary: #081B1D;
-    --bg-card: #0E2E30;
-    --bg-card-hover: #123A3D;
-    --accent: #44A1A0;
-    --accent-hover: #5BB8B7;
-    --text-primary: #FFFFFF;
-    --text-secondary: #A0B4B5;
+    /* Light & Clean theme — switched 2026-05-13 from dark teal to bright/airy */
+    --bg-primary: #F5F7FA;        /* page background — very light gray */
+    --bg-card: #FFFFFF;           /* card / panel surface — pure white */
+    --bg-card-hover: #EEF2F5;     /* card hover — slightly darker */
+    --accent: #44A1A0;            /* primary teal accent — kept from brand */
+    --accent-hover: #38898A;      /* deeper teal for hover on light bg */
+    --text-primary: #1A2E2F;      /* near-black with a teal tint, on light bg */
+    --text-secondary: #5F7374;    /* muted secondary text */
     --danger: #E74C3C;
-    --warning: #F39C12;
-    --success: #27AE60;
-    --border: #1A4A4D;
+    --warning: #E67E22;
+    --success: #2ED47A;
+    --border: #D9E1E5;            /* soft gray border, replaces the dark teal one */
+}
+
+/* Sidebar still uses dark surface for contrast against light main content. */
+:root {
+    --sidebar-bg: #0E2E30;
+    --sidebar-text: #FFFFFF;
+    --sidebar-text-muted: #A0B4B5;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,8 +40,9 @@ html, body {
 
 .sidebar {
     width: 240px;
-    background: var(--bg-card);
-    border-right: 1px solid var(--border);
+    /* Sidebar keeps the dark teal surface so it stands out against the new light main area. */
+    background: var(--sidebar-bg);
+    border-right: 1px solid #0A2426;
     display: flex;
     flex-direction: column;
     padding: 0;
@@ -42,11 +51,12 @@ html, body {
     left: 0;
     bottom: 0;
     z-index: 100;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.08);
 }
 
 .sidebar-brand {
     padding: 1.5rem 1rem;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     text-align: center;
 }
 
@@ -58,7 +68,7 @@ html, body {
 }
 
 .user-role {
-    color: var(--text-secondary);
+    color: var(--sidebar-text-muted);
     font-size: 0.8rem;
 }
 
@@ -72,7 +82,7 @@ html, body {
 .nav-link {
     display: block;
     padding: 0.75rem 1.25rem;
-    color: var(--text-secondary);
+    color: var(--sidebar-text-muted);
     text-decoration: none;
     font-size: 0.95rem;
     transition: all 0.2s;
@@ -87,26 +97,26 @@ html, body {
 }
 
 .nav-link:hover {
-    color: var(--text-primary);
-    background: rgba(68, 161, 160, 0.1);
+    color: var(--sidebar-text);
+    background: rgba(68, 161, 160, 0.15);
     border-left-color: var(--accent);
 }
 
 .nav-link.active {
     color: var(--accent);
-    background: rgba(68, 161, 160, 0.15);
+    background: rgba(68, 161, 160, 0.2);
     border-left-color: var(--accent);
     font-weight: 600;
 }
 
 .nav-link.logout, .nav-link.logout-link {
     margin-top: auto;
-    border-top: 1px solid var(--border);
-    color: var(--danger);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    color: #FF8A80;  /* lighter red for dark sidebar */
 }
 
 .nav-link.logout:hover, .nav-link.logout-link:hover {
-    background: rgba(231, 76, 60, 0.1);
+    background: rgba(231, 76, 60, 0.18);
     border-left-color: var(--danger);
 }
 

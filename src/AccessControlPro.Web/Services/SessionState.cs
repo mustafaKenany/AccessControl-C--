@@ -6,14 +6,18 @@ namespace AccessControlPro.Web.Services;
 /// </summary>
 public class SessionState
 {
-    // Language is now INSTANCE-based (per circuit/user) — no longer affects other users
-    public string Language { get; set; } = "en";
-    public bool IsArabic => Language == "ar";
-    public string Dir => IsArabic ? "rtl" : "ltr";
+    // The website is Arabic-only as of 2026-05-13. The Language field, IsArabic property,
+    // and Dir getter all remain so the dozens of existing @L("en","ar") helpers and dir=
+    // attributes in razor pages keep compiling without a sweeping rewrite — they just
+    // always render the Arabic branch / RTL. ToggleLanguage() is intentionally a no-op
+    // so any leftover toggle button click does nothing visible.
+    public string Language { get; set; } = "ar";
+    public bool IsArabic => true;
+    public string Dir => "rtl";
 
     public void ToggleLanguage()
     {
-        Language = IsArabic ? "en" : "ar";
+        // No-op — website is Arabic-only.
     }
 
     // Session data — INSTANCE fields (per circuit/user)

@@ -79,9 +79,7 @@
                 <a href="/change-password" class="nav-link @ActiveClass("change-password")">
                     <i class="fas fa-key"></i> <span class="nav-text">@L("Password", "كلمة المرور")</span>
                 </a>
-                <a href="javascript:void(0)" class="nav-link lang-toggle" @onclick="ToggleLang">
-                    <i class="fas fa-globe"></i> <span class="nav-text">@(Session.IsArabic ? "EN" : "عربي")</span>
-                </a>
+                @* Language toggle hidden 2026-05-13 — site is Arabic-only. *@
                 <a href="/logout" class="nav-link logout-link" style="color: #e74c3c; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 0.5rem; padding-top: 0.75rem;">
                     <i class="fas fa-sign-out-alt"></i> <span class="nav-text">@L("Logout", "خروج")</span>
                 </a>
