@@ -25,17 +25,46 @@ public class AccessCardRepository : IAccessCardRepository
     public async Task<AccessCard?> GetByCardNumberAsync(string cardNumber)
     {
         await using var db = _factory.CreateDbContext();
-        // Try exact match first, then try without leading zeros (readers add leading zeros)
+
+        // Exact match — works for registered cards typed identically to what the device reads.
         var card = await db.AccessCards.Include(c => c.Employee)
             .FirstOrDefaultAsync(c => c.CardNumber == cardNumber);
-        if (card == null && cardNumber.StartsWith('0'))
+        if (card != null) return card;
+
+        // Leading-zero variant — handles "0366549" vs "366549" (registered without leading 0).
+        if (cardNumber.StartsWith('0'))
         {
             var trimmed = cardNumber.TrimStart('0');
             if (trimmed.Length > 0)
+            {
                 card = await db.AccessCards.Include(c => c.Employee)
                     .FirstOrDefaultAsync(c => c.CardNumber == trimmed);
+                if (card != null) return card;
+            }
         }
-        return card;
+
+        // Wiegand 8H10D variant — the device reads cards with an extra trailing digit
+        // (check/parity bit). E.g. card registered as "0366549" gets scanned as "3665490";
+        // card registered as "0374205" gets scanned as "3742052". Diving the scanned value
+        // by 10 and stripping leading zeros recovers the registered number.
+        // Verified pattern: 3665490 / 10 == 366549 (== "0366549" without leading zero).
+        if (cardNumber.Length > 1 && cardNumber.All(char.IsDigit))
+        {
+            if (long.TryParse(cardNumber, out var asInt))
+            {
+                var truncated = (asInt / 10).ToString();
+                if (truncated.Length > 0)
+                {
+                    // Try truncated (e.g. "366549") AND truncated with leading 0 (e.g. "0366549")
+                    var paddedTruncated = "0" + truncated;
+                    card = await db.AccessCards.Include(c => c.Employee)
+                        .FirstOrDefaultAsync(c => c.CardNumber == truncated || c.CardNumber == paddedTruncated);
+                    if (card != null) return card;
+                }
+            }
+        }
+
+        return null;
     }
 
     public async Task<IEnumerable<AccessCard>> GetByEmployeeIdAsync(int employeeId)

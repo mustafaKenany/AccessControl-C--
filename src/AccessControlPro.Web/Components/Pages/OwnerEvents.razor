@@ -343,15 +343,28 @@ else
                 _totalCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
             }
 
-            // Data with JOINs for card number and player name
+            // Data with JOINs for card number and player name.
+            //
+            // The 2nd Players join (p2) catches events whose AccessCard is an orphan: the
+            // device scans a card in 8H10D Wiegand format ("3665490") which doesn't match
+            // the manually-registered player CardNo ("0366549"), so an orphan AccessCard
+            // gets created and the event links to it without an Employee. We recover the
+            // player by matching p2.CardNo numerically against c.CardNumber / 10 — the
+            // same /10 normalisation AccessCardRepository now applies in WPF.
+            // Wrapped in regex guards to avoid casting non-numeric (QR) codes to bigint.
             var joinDateWhere = isAll ? "" : @"WHERE e.""EventDate"" >= @from AND e.""EventDate"" < @to";
             var dataSql = @"SELECT e.""Id"", e.""DoorId"", e.""CardId"", e.""EventCode"", e.""EventDate"", COALESCE(e.""Details"",''),
                           COALESCE(d.""Name"", ''), COALESCE(c.""CardNumber"", ''),
-                          COALESCE(p.""FullNameEn"", ''), COALESCE(p.""FullNameAr"", '')
+                          COALESCE(NULLIF(p.""FullNameEn"", ''), p2.""FullNameEn"", ''),
+                          COALESCE(NULLIF(p.""FullNameAr"", ''), p2.""FullNameAr"", '')
                   FROM ""AccessEvents"" e
                   LEFT JOIN ""Doors"" d ON e.""DoorId"" = d.""Id""
                   LEFT JOIN ""AccessCards"" c ON e.""CardId"" = c.""Id""
-                  LEFT JOIN ""Players"" p ON c.""EmployeeId"" = p.""Id"" "
+                  LEFT JOIN ""Players"" p ON c.""EmployeeId"" = p.""Id""
+                  LEFT JOIN ""Players"" p2 ON p.""Id"" IS NULL
+                       AND c.""CardNumber"" ~ '^[0-9]+$'
+                       AND p2.""CardNo"" ~ '^[0-9]+$'
+                       AND p2.""CardNo""::bigint = c.""CardNumber""::bigint / 10 "
                   + joinDateWhere +
                   @" ORDER BY e.""EventDate"" DESC LIMIT @limit OFFSET @offset";
             using (var cmd = new Npgsql.NpgsqlCommand(dataSql, conn))
