@@ -364,39 +364,46 @@ html, body {
 .content-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 1.25rem;
     margin-bottom: 1rem;
 }
 
 .content-card h3 {
-    color: var(--accent);
-    font-size: 1.1rem;
+    color: var(--text-primary);
+    font-size: 1.05rem;
+    font-weight: 700;
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border);
 }
 
-/* === Data Table === */
+/* === Data Table — card-style rows on white === */
 .data-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.9rem;
+    background: var(--bg-card);
 }
 
 .data-table th {
-    text-align: left;
-    padding: 0.6rem 0.75rem;
-    color: var(--accent);
+    text-align: start;
+    padding: 0.85rem 1rem;
+    background: #F8FAFB;
+    color: var(--text-secondary);
     font-weight: 600;
-    border-bottom: 2px solid var(--border);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
     white-space: nowrap;
 }
 
 .data-table td {
-    padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid rgba(26, 74, 77, 0.4);
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
     color: var(--text-primary);
+    vertical-align: middle;
 }
 
 .data-table tbody tr {
@@ -404,30 +411,47 @@ html, body {
 }
 
 .data-table tbody tr:hover {
-    background: rgba(68, 161, 160, 0.08);
+    background: rgba(68, 161, 160, 0.06);
 }
 
+/* Drop the heavy zebra stripe — clean white reads better on the light theme.
+   Keep an ultra-light row separator instead. */
 .data-table tbody tr:nth-child(even) {
-    background: rgba(14, 46, 48, 0.5);
+    background: transparent;
 }
 
 .data-table tbody tr:nth-child(even):hover {
-    background: rgba(68, 161, 160, 0.08);
+    background: rgba(68, 161, 160, 0.06);
 }
 
-/* === Badges === */
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* When a .data-table sits directly inside a .content-card, drop the card's
+   inner padding so the table edges meet the card border cleanly. */
+.content-card.table-card { padding: 0; overflow: hidden; }
+.content-card.table-card .data-table th:first-child,
+.content-card.table-card .data-table td:first-child { padding-inline-start: 1.25rem; }
+.content-card.table-card .data-table th:last-child,
+.content-card.table-card .data-table td:last-child  { padding-inline-end:   1.25rem; }
+
+/* === Badges (legacy class — kept as a pill alias for older pages) === */
 .badge {
-    display: inline-block;
-    padding: 0.2rem 0.6rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
     font-weight: 600;
+    line-height: 1.2;
 }
 
-.badge-active { background: rgba(39, 174, 96, 0.2); color: var(--success); }
-.badge-expired { background: rgba(231, 76, 60, 0.2); color: var(--danger); }
-.badge-frozen { background: rgba(52, 152, 219, 0.2); color: #3498db; }
-.badge.large { font-size: 0.9rem; padding: 0.3rem 1rem; }
+.badge-active  { background: rgba(34, 197, 94, 0.12); color: #16A34A; }
+.badge-expired { background: rgba(239, 68, 68, 0.12); color: #DC2626; }
+.badge-frozen  { background: rgba(100, 116, 139, 0.12); color: #64748B; }
+.badge.large   { font-size: 0.88rem; padding: 0.35rem 1rem; }
 
 /* === Colors === */
 .text-success { color: var(--success) !important; }
@@ -453,39 +477,41 @@ html, body {
 
 .form-input {
     width: 100%;
-    padding: 0.6rem 0.75rem;
-    background: var(--bg-primary);
+    padding: 0.65rem 0.9rem;
+    background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 10px;
     color: var(--text-primary);
     font-family: 'Cairo', sans-serif;
-    font-size: 0.9rem;
-    transition: border-color 0.2s;
+    font-size: 0.92rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
+
+.form-input::placeholder { color: var(--text-secondary); opacity: 0.7; }
 
 .form-input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(68, 161, 160, 0.2);
+    box-shadow: 0 0 0 3px rgba(68, 161, 160, 0.15);
 }
 
 .form-select {
     width: 100%;
-    padding: 0.6rem 0.75rem;
-    background: var(--bg-primary);
+    padding: 0.65rem 0.9rem;
+    background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 10px;
     color: var(--text-primary);
     font-family: 'Cairo', sans-serif;
-    font-size: 0.9rem;
-    transition: border-color 0.2s;
+    font-size: 0.92rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
     cursor: pointer;
 }
 
 .form-select:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(68, 161, 160, 0.2);
+    box-shadow: 0 0 0 3px rgba(68, 161, 160, 0.15);
 }
 
 .search-bar {
@@ -514,23 +540,25 @@ html, body {
     background: var(--accent);
     color: #fff;
     border: none;
-    border-radius: 6px;
+    border-radius: 10px;
     cursor: pointer;
     font-family: 'Cairo', sans-serif;
     font-size: 0.9rem;
     font-weight: 600;
-    transition: background 0.2s;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+    box-shadow: 0 2px 6px rgba(68, 161, 160, 0.25);
 }
 
-.btn-accent:hover { background: var(--accent-hover); }
-.btn-accent:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-accent:hover { background: var(--accent-hover); box-shadow: 0 4px 10px rgba(68, 161, 160, 0.30); }
+.btn-accent:active { transform: translateY(1px); }
+.btn-accent:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
 .btn-danger {
     padding: 0.6rem 1.25rem;
     background: var(--danger);
     color: #fff;
     border: none;
-    border-radius: 6px;
+    border-radius: 10px;
     cursor: pointer;
     font-family: 'Cairo', sans-serif;
     font-size: 0.9rem;
@@ -548,10 +576,10 @@ html, body {
 
 .btn-outline {
     padding: 0.6rem 1.25rem;
-    background: transparent;
+    background: var(--bg-card);
     color: var(--accent);
     border: 1px solid var(--accent);
-    border-radius: 6px;
+    border-radius: 10px;
     cursor: pointer;
     font-family: 'Cairo', sans-serif;
     font-size: 0.9rem;
@@ -563,6 +591,55 @@ html, body {
     background: var(--accent);
     color: #fff;
 }
+
+/* === Icon Button (row actions: edit, delete, renew, etc.) === */
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    padding: 0;
+}
+
+.btn-icon:hover {
+    background: rgba(68, 161, 160, 0.10);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.btn-icon.btn-icon-danger:hover {
+    background: rgba(231, 76, 60, 0.10);
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+.btn-icon:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* === Status pill (used in table rows for Active/Expired/Frozen etc.) === */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.status-pill.active   { background: rgba(34, 197, 94, 0.12); color: #16A34A; }
+.status-pill.expired  { background: rgba(239, 68, 68, 0.12); color: #DC2626; }
+.status-pill.expiring { background: rgba(245, 158, 11, 0.12); color: #D97706; }
+.status-pill.frozen   { background: rgba(100, 116, 139, 0.12); color: #64748B; }
+.status-pill.info     { background: rgba(59, 130, 246, 0.12); color: #2563EB; }
 
 /* === Login === */
 .login-container {
@@ -701,9 +778,9 @@ html, body {
 }
 
 .info-item {
-    background: var(--bg-primary);
-    padding: 0.75rem;
-    border-radius: 6px;
+    background: var(--bg-card);
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
     border: 1px solid var(--border);
 }
 
@@ -735,15 +812,11 @@ html, body {
 }
 
 .filter-btn {
-    padding: 0.4rem 0.9rem;
-    /* Tinted background so the pills stand out from white panels.
-       On the dark sidebar this still reads — the rgba teal stays visible. */
+    padding: 0.45rem 1rem;
     background: rgba(68, 161, 160, 0.08);
-    /* Use primary (dark) text instead of muted — secondary was too low-contrast
-       against the new white panel background. */
     color: var(--text-primary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     font-family: 'Cairo', sans-serif;
     font-size: 0.85rem;
@@ -762,44 +835,56 @@ html, body {
     color: #fff;
     border-color: var(--accent);
     font-weight: 600;
+    box-shadow: 0 2px 6px rgba(68, 161, 160, 0.25);
 }
 
-/* === Date Filter Group === */
+/* === Filter container (date filter strip etc.) — card-style wrapper === */
 .filter-group {
     display: flex;
-    gap: 0.4rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
     margin-bottom: 1rem;
     padding: 0.75rem;
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
 }
 
+/* Inherit the standard filter-btn look inside the wrapper — no dark override. */
 .filter-group .filter-btn {
-    background: rgba(8, 27, 29, 0.5);
+    background: rgba(68, 161, 160, 0.08);
 }
 
-/* === Player Avatar === */
-.player-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+.filter-group .filter-btn:hover {
+    background: rgba(68, 161, 160, 0.15);
+}
+
+.filter-group .filter-btn.active {
     background: var(--accent);
     color: #fff;
+}
+
+/* === Player Avatar — tinted rounded square, matches .stat-icon family === */
+.player-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(68, 161, 160, 0.15);
+    color: var(--accent);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    flex-shrink: 0;
 }
 
 .player-avatar-large {
     width: 80px;
     height: 80px;
-    border-radius: 50%;
-    background: var(--accent);
-    color: #fff;
+    border-radius: 14px;
+    background: rgba(68, 161, 160, 0.15);
+    color: var(--accent);
     display: flex;
     align-items: center;
     justify-content: center;
