@@ -1,0 +1,192 @@
+@page "/superadmin/diagnostics"
+@layout AccessControlPro.Web.Components.Layout.SuperAdminLayout
+@inject AccessControlPro.Web.Data.GymDbHelper GymDb
+@inject AccessControlPro.Web.Services.SessionState Session
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<div class="page-header">
+    <h1 style="color: #7E57C2;">Diagnostics Bundles</h1>
+    <button class="btn-accent btn-sm" style="background: #7E57C2;" @onclick="LoadAsync">
+        <i class="fas fa-sync"></i> Refresh
+    </button>
+</div>
+
+<p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+    Each gym's WPF main app uploads a small diagnostics bundle (recent logs + system snapshot)
+    on demand and once every 15 days. We keep the 12 most recent bundles per gym; older ones are
+    deleted automatically. Click <i class="fas fa-download"></i> to download a bundle as a ZIP.
+</p>
+
+@if (_loading)
+{
+    <p class="no-data">Loading diagnostics...</p>
+}
+else if (_bundles.Count == 0)
+{
+    <div class="content-card" style="text-align: center; padding: 2.5rem;">
+        <i class="fas fa-inbox" style="font-size: 2.5rem; color: var(--text-secondary); margin-bottom: 0.75rem;"></i>
+        <p class="no-data" style="margin: 0;">No diagnostics bundles uploaded yet.</p>
+    </div>
+}
+else
+{
+    <div class="stats-grid">
+        <div class="stat-card purple">
+            <div class="stat-icon" style="background: rgba(126, 87, 194, 0.15); color: #7E57C2;">
+                <i class="fas fa-archive"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number" style="color: #7E57C2;">@_bundles.Count</div>
+                <div class="stat-label">Total Bundles</div>
+            </div>
+        </div>
+        <div class="stat-card teal">
+            <div class="stat-icon">
+                <i class="fas fa-building"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number">@_bundles.Select(b => b.GymId).Distinct().Count()</div>
+                <div class="stat-label">Gyms Reporting</div>
+            </div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-icon" style="background: rgba(34, 197, 94, 0.15); color: #16A34A;">
+                <i class="fas fa-database"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number" style="color: #16A34A; font-size: 1.3rem;">@FormatSize(_bundles.Sum(b => b.SizeBytes))</div>
+                <div class="stat-label">Total Storage</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-card table-card">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Gym</th>
+                        <th>Uploaded</th>
+                        <th>Trigger</th>
+                        <th>App Version</th>
+                        <th>Size</th>
+                        <th style="text-align: end;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var b in _bundles)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@b.GymName</strong>
+                                <span style="color: var(--text-secondary); font-size: 0.8rem; display: block;">#@b.GymId</span>
+                            </td>
+                            <td>
+                                @b.UploadedAt.ToString("yyyy-MM-dd HH:mm")
+                                <span style="color: var(--text-secondary); font-size: 0.78rem; display: block;">@FormatAgo(b.UploadedAt)</span>
+                            </td>
+                            <td>
+                                <span class="status-pill @(b.Trigger == "auto" ? "info" : "active")">
+                                    @b.Trigger
+                                </span>
+                            </td>
+                            <td>@b.AppVersion</td>
+                            <td>@FormatSize(b.SizeBytes)</td>
+                            <td style="text-align: end;">
+                                <a href="/api/diagnostics/download/@b.Id" class="btn-icon" title="Download bundle" target="_blank">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private List<BundleRow> _bundles = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            using var master = await GymDb.GetMasterConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT d.""Id"", d.""GymId"", COALESCE(g.""Name"", '(unknown)'),
+                         d.""FileName"", d.""FileSizeBytes"", d.""AppVersion"",
+                         d.""Trigger"", d.""UploadedAt""
+                  FROM ""DiagnosticsUploads"" d
+                  LEFT JOIN ""Gyms"" g ON g.""Id"" = d.""GymId""
+                  ORDER BY d.""UploadedAt"" DESC
+                  LIMIT 200", master);
+            using var r = await cmd.ExecuteReaderAsync();
+            var rows = new List<BundleRow>();
+            while (await r.ReadAsync())
+            {
+                rows.Add(new BundleRow
+                {
+                    Id = r.GetInt32(0),
+                    GymId = r.GetInt32(1),
+                    GymName = r.GetString(2),
+                    FileName = r.GetString(3),
+                    SizeBytes = r.GetInt64(4),
+                    AppVersion = r.GetString(5),
+                    Trigger = r.GetString(6),
+                    UploadedAt = r.GetDateTime(7)
+                });
+            }
+            _bundles = rows;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Diagnostics page] Load error: {ex.Message}");
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes >= 1024 * 1024) return $"{bytes / 1024.0 / 1024.0:F1} MB";
+        if (bytes >= 1024) return $"{bytes / 1024.0:F0} KB";
+        return $"{bytes} B";
+    }
+
+    private static string FormatAgo(DateTime utc)
+    {
+        var delta = DateTime.UtcNow - utc;
+        if (delta.TotalMinutes < 1) return "just now";
+        if (delta.TotalHours < 1) return $"{(int)delta.TotalMinutes} min ago";
+        if (delta.TotalDays < 1) return $"{(int)delta.TotalHours} h ago";
+        if (delta.TotalDays < 30) return $"{(int)delta.TotalDays} d ago";
+        return $"{(int)(delta.TotalDays / 30)} mo ago";
+    }
+
+    private class BundleRow
+    {
+        public int Id { get; set; }
+        public int GymId { get; set; }
+        public string GymName { get; set; } = "";
+        public string FileName { get; set; } = "";
+        public long SizeBytes { get; set; }
+        public string AppVersion { get; set; } = "";
+        public string Trigger { get; set; } = "";
+        public DateTime UploadedAt { get; set; }
+    }
+}

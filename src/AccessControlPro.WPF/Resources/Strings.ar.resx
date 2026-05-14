@@ -496,6 +496,14 @@
   <data name="CpwPasswordChanged" xml:space="preserve"><value>تم تغيير كلمة المرور بنجاح.</value></data>
   <data name="CpwDefaultPasswordWarning" xml:space="preserve"><value>أنت تستخدم كلمة المرور الافتراضية. يرجى تغييرها الآن لأمان حسابك.</value></data>
 
+  <!-- Diagnostics -->
+  <data name="DiagSendDiagnostics" xml:space="preserve"><value>إرسال ملفات التشخيص</value></data>
+  <data name="DiagConfirmTitle" xml:space="preserve"><value>إرسال التشخيص إلى الدعم الفني</value></data>
+  <data name="DiagConfirmBody" xml:space="preserve"><value>سيتم رفع ملفات السجلات الأخيرة ولمحة بسيطة عن النظام إلى الدعم الفني لمعالجة أي مشكلة. لا يتم تضمين أي كلمات مرور. هل تريد المتابعة؟</value></data>
+  <data name="DiagUploading" xml:space="preserve"><value>جاري رفع ملفات التشخيص...</value></data>
+  <data name="DiagUploadSuccess" xml:space="preserve"><value>تم رفع ملفات التشخيص بنجاح. يستطيع الدعم الفني الوصول إليها الآن.</value></data>
+  <data name="DiagUploadFailed" xml:space="preserve"><value>فشل رفع ملفات التشخيص:</value></data>
+
   <!-- Settings -->
   <data name="SetSaved" xml:space="preserve"><value>تم حفظ الإعدادات بنجاح.</value></data>
   <data name="SetBrowseLogo" xml:space="preserve"><value>اختيار الشعار</value></data>

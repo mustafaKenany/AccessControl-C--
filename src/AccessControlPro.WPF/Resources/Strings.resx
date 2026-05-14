@@ -491,6 +491,14 @@ Phone or subscription type is still a placeholder value (MIG-... or "Migrated").
   <data name="CpwPasswordChanged" xml:space="preserve"><value>Password changed successfully.</value></data>
   <data name="CpwDefaultPasswordWarning" xml:space="preserve"><value>You are using the default password. Please change it now for security.</value></data>
 
+  <!-- Diagnostics (logs upload to support) -->
+  <data name="DiagSendDiagnostics" xml:space="preserve"><value>Send Diagnostics</value></data>
+  <data name="DiagConfirmTitle" xml:space="preserve"><value>Send Diagnostics to Support</value></data>
+  <data name="DiagConfirmBody" xml:space="preserve"><value>This will upload your recent log files and a small system snapshot to support so we can investigate any issues. No passwords are included. Continue?</value></data>
+  <data name="DiagUploading" xml:space="preserve"><value>Uploading diagnostics...</value></data>
+  <data name="DiagUploadSuccess" xml:space="preserve"><value>Diagnostics uploaded successfully. Support will be able to access them now.</value></data>
+  <data name="DiagUploadFailed" xml:space="preserve"><value>Diagnostics upload failed:</value></data>
+
   <!-- Settings -->
   <data name="SetSaved" xml:space="preserve"><value>Settings saved successfully.</value></data>
   <data name="SetBrowseLogo" xml:space="preserve"><value>Browse Logo</value></data>

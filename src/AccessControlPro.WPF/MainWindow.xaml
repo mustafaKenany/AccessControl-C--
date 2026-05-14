@@ -97,6 +97,18 @@
                             </StackPanel>
                         </Button>
 
+                        <!-- Send Diagnostics to Support -->
+                        <Button Style="{StaticResource SidebarButton}"
+                                Click="SendDiagnosticsClick">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="CloudUpload" Width="16" Height="16"
+                                                 Foreground="{StaticResource TextMutedBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <TextBlock Text="{Binding Lang.DiagSendDiagnostics}"
+                                           FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
                         <!-- Language Toggle -->
                         <Button Style="{StaticResource SidebarButton}"
                                 Command="{Binding ToggleLanguageCommand}">

@@ -68,4 +68,33 @@ public partial class MainWindow : Window
                 MsgType.Success, this);
         }
     }
+
+    private async void SendDiagnosticsClick(object sender, RoutedEventArgs e)
+    {
+        var lang = LanguageManager.Instance;
+        var ok = CustomMessageBox.Confirm(lang.DiagConfirmBody, lang.DiagConfirmTitle, MsgType.Info, this);
+        if (!ok) return;
+
+        // Disable the clicked button while uploading so the user can't fire it twice
+        if (sender is System.Windows.Controls.Button btn) btn.IsEnabled = false;
+
+        try
+        {
+            var diag = _serviceProvider.GetRequiredService<IDiagnosticsService>();
+            var result = await Task.Run(() => diag.UploadAsync("manual"));
+
+            if (result.Success)
+            {
+                CustomMessageBox.Show(lang.DiagUploadSuccess, lang.DiagConfirmTitle, MsgType.Success, this);
+            }
+            else
+            {
+                CustomMessageBox.Show($"{lang.DiagUploadFailed} {result.Message}", lang.DiagConfirmTitle, MsgType.Error, this);
+            }
+        }
+        finally
+        {
+            if (sender is System.Windows.Controls.Button b) b.IsEnabled = true;
+        }
+    }
 }

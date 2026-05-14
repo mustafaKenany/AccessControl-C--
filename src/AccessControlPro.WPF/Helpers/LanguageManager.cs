@@ -525,6 +525,14 @@ public class LanguageManager : INotifyPropertyChanged
     public string CpwPasswordChanged => GetString("CpwPasswordChanged");
     public string CpwDefaultPasswordWarning => GetString("CpwDefaultPasswordWarning");
 
+    // Diagnostics
+    public string DiagSendDiagnostics => GetString("DiagSendDiagnostics");
+    public string DiagConfirmTitle => GetString("DiagConfirmTitle");
+    public string DiagConfirmBody => GetString("DiagConfirmBody");
+    public string DiagUploading => GetString("DiagUploading");
+    public string DiagUploadSuccess => GetString("DiagUploadSuccess");
+    public string DiagUploadFailed => GetString("DiagUploadFailed");
+
     // Settings
     public string SetSaved => GetString("SetSaved");
     public string SetBrowseLogo => GetString("SetBrowseLogo");
@@ -1375,6 +1383,13 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(CpwMinLength));
         OnPropertyChanged(nameof(CpwPasswordChanged));
         OnPropertyChanged(nameof(CpwDefaultPasswordWarning));
+        // Diagnostics
+        OnPropertyChanged(nameof(DiagSendDiagnostics));
+        OnPropertyChanged(nameof(DiagConfirmTitle));
+        OnPropertyChanged(nameof(DiagConfirmBody));
+        OnPropertyChanged(nameof(DiagUploading));
+        OnPropertyChanged(nameof(DiagUploadSuccess));
+        OnPropertyChanged(nameof(DiagUploadFailed));
         // Settings
         OnPropertyChanged(nameof(SetSaved));
         OnPropertyChanged(nameof(SetBrowseLogo));

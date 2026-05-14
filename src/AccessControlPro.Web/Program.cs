@@ -574,6 +574,162 @@ app.MapPost("/api/auth/impersonate", async (HttpContext ctx, GymDbHelper gymDb, 
     return Results.Ok(new { success = true, redirect = "/dashboard" });
 });
 
+// ============================================================================
+// Diagnostics — WPF main app uploads a ZIP of logs + system snapshot here so
+// support can investigate issues without an AnyDesk session. Auth reuses the
+// same X-Api-Key that the sync client already sends; the key resolves to a
+// specific gym row so bundles are stored per-tenant automatically.
+// ============================================================================
+app.MapPost("/api/diagnostics/upload", async (HttpContext context, GymDbHelper gymDb) =>
+{
+    if (!await IsApiKeyValidAsync(context, gymDb))
+        return Results.Unauthorized();
+
+    var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault() ?? "";
+    var trigger = context.Request.Headers["X-Trigger"].FirstOrDefault() ?? "manual";
+    var appVersion = context.Request.Headers["X-App-Version"].FirstOrDefault() ?? "unknown";
+
+    // Resolve which gym this bundle belongs to so we can scope storage + the row.
+    int gymId = 0;
+    string gymName = "";
+    try
+    {
+        using var master = await gymDb.GetMasterConnectionAsync();
+        using var cmd = new Npgsql.NpgsqlCommand(
+            @"SELECT ""Id"", ""Name"" FROM ""Gyms"" WHERE ""ApiKey"" = @k AND ""IsActive"" = TRUE", master);
+        cmd.Parameters.AddWithValue("k", apiKey);
+        using var r = await cmd.ExecuteReaderAsync();
+        if (await r.ReadAsync())
+        {
+            gymId = r.GetInt32(0);
+            gymName = r.GetString(1);
+        }
+    }
+    catch (Exception ex) { Console.WriteLine($"[diagnostics] gym resolve failed: {ex.Message}"); }
+
+    // 25 MB hard cap on the wire (WPF caps the bundle at 20 MB; this gives headroom)
+    const long MaxBundleBytes = 25L * 1024 * 1024;
+
+    // Stream the body to a temp file first so we don't hold large requests in memory
+    var storageRoot = app.Configuration["DiagnosticsStoragePath"];
+    if (string.IsNullOrWhiteSpace(storageRoot))
+        storageRoot = Path.Combine(app.Environment.ContentRootPath, "diagnostics");
+
+    var gymFolder = Path.Combine(storageRoot, gymId > 0 ? gymId.ToString() : "_unknown");
+    Directory.CreateDirectory(gymFolder);
+
+    var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+    var fileName = $"{stamp}.zip";
+    var fullPath = Path.Combine(gymFolder, fileName);
+
+    long bytesWritten = 0;
+    try
+    {
+        using (var fs = File.Create(fullPath))
+        {
+            var buffer = new byte[81920];
+            int read;
+            while ((read = await context.Request.Body.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            {
+                bytesWritten += read;
+                if (bytesWritten > MaxBundleBytes)
+                {
+                    fs.Close();
+                    try { File.Delete(fullPath); } catch { }
+                    return Results.BadRequest($"Bundle exceeds {MaxBundleBytes / 1024 / 1024} MB limit");
+                }
+                await fs.WriteAsync(buffer.AsMemory(0, read));
+            }
+        }
+
+        // Insert metadata row in master DB
+        int newId;
+        using (var master = await gymDb.GetMasterConnectionAsync())
+        using (var ins = new Npgsql.NpgsqlCommand(
+            @"INSERT INTO ""DiagnosticsUploads""
+                (""GymId"", ""FileName"", ""FilePath"", ""FileSizeBytes"", ""AppVersion"", ""Trigger"", ""UploadedAt"")
+              VALUES (@gym, @fn, @path, @size, @ver, @trig, @ts)
+              RETURNING ""Id""", master))
+        {
+            ins.Parameters.AddWithValue("gym", gymId);
+            ins.Parameters.AddWithValue("fn", fileName);
+            ins.Parameters.AddWithValue("path", fullPath);
+            ins.Parameters.AddWithValue("size", bytesWritten);
+            ins.Parameters.AddWithValue("ver", appVersion);
+            ins.Parameters.AddWithValue("trig", trigger);
+            ins.Parameters.AddWithValue("ts", DateTime.UtcNow);
+            newId = Convert.ToInt32(await ins.ExecuteScalarAsync());
+        }
+
+        // Cleanup: keep only the 12 most-recent bundles per gym
+        if (gymId > 0)
+        {
+            try
+            {
+                using var master = await gymDb.GetMasterConnectionAsync();
+                using var sel = new Npgsql.NpgsqlCommand(
+                    @"SELECT ""Id"", ""FilePath"" FROM ""DiagnosticsUploads""
+                      WHERE ""GymId"" = @g
+                      ORDER BY ""UploadedAt"" DESC
+                      OFFSET 12", master);
+                sel.Parameters.AddWithValue("g", gymId);
+                var toDelete = new List<(int id, string path)>();
+                using (var rr = await sel.ExecuteReaderAsync())
+                    while (await rr.ReadAsync())
+                        toDelete.Add((rr.GetInt32(0), rr.IsDBNull(1) ? "" : rr.GetString(1)));
+
+                foreach (var (id, path) in toDelete)
+                {
+                    try { if (!string.IsNullOrEmpty(path) && File.Exists(path)) File.Delete(path); } catch { }
+                    using var del = new Npgsql.NpgsqlCommand(@"DELETE FROM ""DiagnosticsUploads"" WHERE ""Id"" = @i", master);
+                    del.Parameters.AddWithValue("i", id);
+                    await del.ExecuteNonQueryAsync();
+                }
+            }
+            catch (Exception ex) { Console.WriteLine($"[diagnostics] cleanup failed: {ex.Message}"); }
+        }
+
+        Console.WriteLine($"[diagnostics] uploaded {bytesWritten / 1024} KB from gym {gymId} ({gymName}), trigger={trigger}, v={appVersion}");
+        return Results.Ok(new { success = true, id = newId, sizeBytes = bytesWritten });
+    }
+    catch (Exception ex)
+    {
+        try { if (File.Exists(fullPath)) File.Delete(fullPath); } catch { }
+        Console.WriteLine($"[diagnostics] upload exception: {ex}");
+        return Results.Problem("Diagnostics upload failed");
+    }
+});
+
+// SuperAdmin-only download — streams a stored bundle back to the browser.
+// Auth: the SessionInfo cookie populated by the early middleware must carry Role=SuperAdmin.
+app.MapGet("/api/diagnostics/download/{id:int}", async (int id, HttpContext context, GymDbHelper gymDb) =>
+{
+    var session = context.Items["SessionInfo"] as AccessControlPro.Web.Services.SessionInfo;
+    if (session == null || session.Role != "SuperAdmin")
+        return Results.Unauthorized();
+
+    string? filePath = null;
+    string? fileName = null;
+    using (var master = await gymDb.GetMasterConnectionAsync())
+    using (var cmd = new Npgsql.NpgsqlCommand(
+        @"SELECT ""FilePath"", ""FileName"" FROM ""DiagnosticsUploads"" WHERE ""Id"" = @i", master))
+    {
+        cmd.Parameters.AddWithValue("i", id);
+        using var r = await cmd.ExecuteReaderAsync();
+        if (await r.ReadAsync())
+        {
+            filePath = r.IsDBNull(0) ? null : r.GetString(0);
+            fileName = r.IsDBNull(1) ? null : r.GetString(1);
+        }
+    }
+
+    if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+        return Results.NotFound("Bundle not found on disk");
+
+    var stream = File.OpenRead(filePath);
+    return Results.File(stream, "application/zip", fileName ?? $"diagnostics-{id}.zip");
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

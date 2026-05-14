@@ -190,6 +190,18 @@ CREATE TABLE IF NOT EXISTS ""Gyms"" (
     ""PlayerCount"" INT DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS ""DiagnosticsUploads"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""GymId"" INT NOT NULL DEFAULT 0,
+    ""FileName"" VARCHAR(200) DEFAULT '',
+    ""FilePath"" TEXT DEFAULT '',
+    ""FileSizeBytes"" BIGINT DEFAULT 0,
+    ""AppVersion"" VARCHAR(50) DEFAULT '',
+    ""Trigger"" VARCHAR(20) DEFAULT 'manual',
+    ""UploadedAt"" TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_diagnostics_gym_time ON ""DiagnosticsUploads"" (""GymId"", ""UploadedAt"" DESC);
+
 CREATE TABLE IF NOT EXISTS ""SubscriptionPlans"" (
     ""Id"" SERIAL PRIMARY KEY,
     ""NameEn"" VARCHAR(200) NOT NULL DEFAULT '',

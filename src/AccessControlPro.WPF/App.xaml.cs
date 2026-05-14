@@ -248,6 +248,9 @@ public partial class App : System.Windows.Application
         // Cloud sync
         services.AddSingleton<ICloudSyncService>(sp => new CloudSyncService(connectionString));
 
+        // Diagnostics uploader — manual button + 15-day auto uploader
+        services.AddSingleton<IDiagnosticsService>(sp => new DiagnosticsService(connectionString));
+
         // ViewModels
         services.AddTransient<MainViewModel>();
         services.AddTransient<QrPassViewModel>();
@@ -782,6 +785,24 @@ public partial class App : System.Windows.Application
                     });
                 }
             }
+
+            // Diagnostics auto-uploader — fires once per launch ~2 minutes in. The
+            // service itself bails out unless 15+ days have passed since the last
+            // successful upload, so this is safe to call on every startup.
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromMinutes(2));
+                try
+                {
+                    var diag = new DiagnosticsService(LoadConnectionString());
+                    var result = await diag.UploadIfDueAsync();
+                    StartupLog($"Diagnostics auto: success={result.Success}, msg={result.Message}");
+                }
+                catch (Exception ex2)
+                {
+                    StartupLog($"Diagnostics auto error: {ex2.Message}");
+                }
+            });
 
             // QR Pool device sync timer — checks every 12 hours, runs on 1st and 15th of each month
             _qrPoolTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(12) };
