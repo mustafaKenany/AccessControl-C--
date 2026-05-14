@@ -19,20 +19,32 @@ else
 
     <div class="stats-grid">
         <div class="stat-card green">
-            <div class="stat-number">@_periodIncome.ToString("N2")</div>
-            <div class="stat-label">@L("Total Revenue", "إجمالي الإيرادات")</div>
+            <div class="stat-icon"><i class="fas fa-arrow-up"></i></div>
+            <div class="stat-content">
+                <div class="stat-number">@_periodIncome.ToString("N2")</div>
+                <div class="stat-label">@L("Total Revenue", "إجمالي الإيرادات")</div>
+            </div>
         </div>
         <div class="stat-card red">
-            <div class="stat-number">@_periodExpense.ToString("N2")</div>
-            <div class="stat-label">@L("Total Expenses", "إجمالي المصروفات")</div>
+            <div class="stat-icon"><i class="fas fa-arrow-down"></i></div>
+            <div class="stat-content">
+                <div class="stat-number">@_periodExpense.ToString("N2")</div>
+                <div class="stat-label">@L("Total Expenses", "إجمالي المصروفات")</div>
+            </div>
         </div>
         <div class="stat-card @(_periodProfit >= 0 ? "teal" : "red")">
-            <div class="stat-number">@_periodProfit.ToString("N2")</div>
-            <div class="stat-label">@L("Net Profit", "صافي الربح")</div>
+            <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+            <div class="stat-content">
+                <div class="stat-number">@_periodProfit.ToString("N2")</div>
+                <div class="stat-label">@L("Net Profit", "صافي الربح")</div>
+            </div>
         </div>
         <div class="stat-card orange">
-            <div class="stat-number">@_outstanding.ToString("N2")</div>
-            <div class="stat-label">@L("Outstanding", "المتبقي")</div>
+            <div class="stat-icon"><i class="fas fa-exclamation-circle"></i></div>
+            <div class="stat-content">
+                <div class="stat-number">@_outstanding.ToString("N2")</div>
+                <div class="stat-label">@L("Outstanding", "المتبقي")</div>
+            </div>
         </div>
     </div>
 

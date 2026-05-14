@@ -248,80 +248,110 @@ html, body {
     margin-bottom: 1.5rem;
 }
 
+/*
+ * Stat card — clean Light & Clean design, unified across all pages.
+ *
+ * Layout: a flex row of "icon container | content". If a card omits the icon
+ * child, the content takes the full width and we add a coloured left-edge
+ * accent bar instead so the card still reads as categorical (used on
+ * Finance/Dashboard where Razor markup has no icons).
+ *
+ * Color modifier classes (.green / .red / .teal / .orange / .blue /
+ * .purple / .accent / .warning / .danger) only swap the icon tint and
+ * number colour — the card body stays consistent (white bg, soft border).
+ *
+ * border-inline-start (not border-left) so the accent flips to the right
+ * side in RTL Arabic layout automatically.
+ */
 .stat-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1.25rem;
-    text-align: center;
-    transition: transform 0.2s;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: start;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.stat-card:hover { transform: translateY(-2px); }
+/* Fallback accent bar for cards that don't have a .stat-icon child. */
+.stat-card:not(:has(.stat-icon)) {
+    border-inline-start: 4px solid var(--accent);
+}
 
-.stat-card.accent { border-color: var(--accent); }
-.stat-card.warning { border-color: var(--warning); }
-.stat-card.danger { border-color: var(--danger); }
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+.stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: rgba(68, 161, 160, 0.15);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.stat-content {
+    flex: 1;
+    min-width: 0;
+}
 
 .stat-number {
-    font-size: 2rem;
+    font-size: 1.75rem;
     font-weight: 700;
-    color: var(--text-primary);
-    line-height: 1;
+    color: var(--accent);  /* default — overridden per modifier below */
+    line-height: 1.1;
     margin-bottom: 0.25rem;
 }
-
-.stat-card.accent .stat-number { color: var(--accent); }
-.stat-card.warning .stat-number { color: var(--warning); }
-.stat-card.danger .stat-number { color: var(--danger); }
 
 .stat-label {
     color: var(--text-secondary);
     font-size: 0.85rem;
 }
 
-/* === Gradient Stat Cards (WPF-matching) === */
-.stat-card.green {
-    background: linear-gradient(135deg, #2ed47a, #1a9c5a);
-    border-color: transparent;
-}
-.stat-card.green .stat-number,
-.stat-card.green .stat-label { color: #fff; }
+/* Color modifiers — swap icon tint, accent-bar (when no icon), and number color. */
+.stat-card.accent  { border-inline-start-color: var(--accent); }
+.stat-card.accent  .stat-icon { background: rgba(68, 161, 160, 0.15); color: var(--accent); }
+.stat-card.accent  .stat-number { color: var(--accent); }
 
-.stat-card.blue {
-    background: linear-gradient(135deg, #4fc3f7, #2196f3);
-    border-color: transparent;
-}
-.stat-card.blue .stat-number,
-.stat-card.blue .stat-label { color: #fff; }
+.stat-card.warning { border-inline-start-color: var(--warning); }
+.stat-card.warning .stat-icon { background: rgba(230, 126, 34, 0.15); color: var(--warning); }
+.stat-card.warning .stat-number { color: var(--warning); }
 
-.stat-card.orange {
-    background: linear-gradient(135deg, #ffb74d, #ff9800);
-    border-color: transparent;
-}
-.stat-card.orange .stat-number,
-.stat-card.orange .stat-label { color: #fff; }
+.stat-card.danger  { border-inline-start-color: var(--danger); }
+.stat-card.danger  .stat-icon { background: rgba(231, 76, 60, 0.15); color: var(--danger); }
+.stat-card.danger  .stat-number { color: var(--danger); }
 
-.stat-card.red {
-    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-    border-color: transparent;
-}
-.stat-card.red .stat-number,
-.stat-card.red .stat-label { color: #fff; }
+.stat-card.green   { border-inline-start-color: #2ED47A; }
+.stat-card.green   .stat-icon { background: rgba(46, 212, 122, 0.15); color: #2ED47A; }
+.stat-card.green   .stat-number { color: #2ED47A; }
 
-.stat-card.teal {
-    background: linear-gradient(135deg, #44a1a0, #2d7a79);
-    border-color: transparent;
-}
-.stat-card.teal .stat-number,
-.stat-card.teal .stat-label { color: #fff; }
+.stat-card.blue    { border-inline-start-color: #4FC3F7; }
+.stat-card.blue    .stat-icon { background: rgba(33, 150, 243, 0.15); color: #2196F3; }
+.stat-card.blue    .stat-number { color: #2196F3; }
 
-.stat-card.purple {
-    background: linear-gradient(135deg, #b39ddb, #7e57c2);
-    border-color: transparent;
-}
-.stat-card.purple .stat-number,
-.stat-card.purple .stat-label { color: #fff; }
+.stat-card.orange  { border-inline-start-color: #FFB74D; }
+.stat-card.orange  .stat-icon { background: rgba(230, 126, 34, 0.15); color: #E67E22; }
+.stat-card.orange  .stat-number { color: #E67E22; }
+
+.stat-card.red     { border-inline-start-color: #E57373; }
+.stat-card.red     .stat-icon { background: rgba(229, 115, 115, 0.15); color: #E57373; }
+.stat-card.red     .stat-number { color: #E57373; }
+
+.stat-card.teal    { border-inline-start-color: var(--accent); }
+.stat-card.teal    .stat-icon { background: rgba(68, 161, 160, 0.15); color: var(--accent); }
+.stat-card.teal    .stat-number { color: var(--accent); }
+
+.stat-card.purple  { border-inline-start-color: #B39DDB; }
+.stat-card.purple  .stat-icon { background: rgba(126, 87, 194, 0.15); color: #7E57C2; }
+.stat-card.purple  .stat-number { color: #7E57C2; }
 
 /* === Content Grid === */
 .content-grid {

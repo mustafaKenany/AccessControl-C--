@@ -65,39 +65,63 @@ else if (Session.IsAuthenticated && Session.IsOwner)
 
     <div class="stats-grid">
         <div class="stat-card teal">
-            <div class="stat-number">@_totalPlayers</div>
-            <div class="stat-label">@L("Total Players", "إجمالي اللاعبين")</div>
+            <div class="stat-icon"><i class="fas fa-users"></i></div>
+            <div class="stat-content">
+                <div class="stat-number">@_totalPlayers</div>
+                <div class="stat-label">@L("Total Players", "إجمالي اللاعبين")</div>
+            </div>
         </div>
         <div class="stat-card green">
-            <div class="stat-number">@_activePlayers</div>
-            <div class="stat-label">@L("Active Players", "اللاعبون النشطون")</div>
+            <div class="stat-icon"><i class="fas fa-user-check"></i></div>
+            <div class="stat-content">
+                <div class="stat-number">@_activePlayers</div>
+                <div class="stat-label">@L("Active Players", "اللاعبون النشطون")</div>
+            </div>
         </div>
         <div class="stat-card orange">
-            <div class="stat-number">@_expiringPlayers</div>
-            <div class="stat-label">@L("Expiring Soon (7 days)", "ينتهي قريباً (7 أيام)")</div>
+            <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
+            <div class="stat-content">
+                <div class="stat-number">@_expiringPlayers</div>
+                <div class="stat-label">@L("Expiring Soon (7 days)", "ينتهي قريباً (7 أيام)")</div>
+            </div>
         </div>
         <div class="stat-card red">
-            <div class="stat-number">@_expiredPlayers</div>
-            <div class="stat-label">@L("Expired", "منتهي")</div>
+            <div class="stat-icon"><i class="fas fa-user-slash"></i></div>
+            <div class="stat-content">
+                <div class="stat-number">@_expiredPlayers</div>
+                <div class="stat-label">@L("Expired", "منتهي")</div>
+            </div>
         </div>
     </div>
 
     <div class="stats-grid">
         <div class="stat-card blue">
-            <div class="stat-number">@_frozenPlayers</div>
-            <div class="stat-label">@L("Frozen", "مجمد")</div>
+            <div class="stat-icon"><i class="fas fa-snowflake"></i></div>
+            <div class="stat-content">
+                <div class="stat-number">@_frozenPlayers</div>
+                <div class="stat-label">@L("Frozen", "مجمد")</div>
+            </div>
         </div>
         <div class="stat-card purple">
-            <div class="stat-number">@_todayEntries</div>
-            <div class="stat-label">@L("Today's Entries", "دخول اليوم")</div>
+            <div class="stat-icon"><i class="fas fa-door-open"></i></div>
+            <div class="stat-content">
+                <div class="stat-number">@_todayEntries</div>
+                <div class="stat-label">@L("Today's Entries", "دخول اليوم")</div>
+            </div>
         </div>
         <div class="stat-card green">
-            <div class="stat-number">@_monthRevenue.ToString("N0")</div>
-            <div class="stat-label">@L("Monthly Revenue", "إيرادات الشهر")</div>
+            <div class="stat-icon"><i class="fas fa-arrow-up"></i></div>
+            <div class="stat-content">
+                <div class="stat-number">@_monthRevenue.ToString("N0")</div>
+                <div class="stat-label">@L("Monthly Revenue", "إيرادات الشهر")</div>
+            </div>
         </div>
         <div class="stat-card orange">
-            <div class="stat-number">@_outstanding.ToString("N0")</div>
-            <div class="stat-label">@L("Outstanding Balance", "المبالغ المتبقية")</div>
+            <div class="stat-icon"><i class="fas fa-exclamation-circle"></i></div>
+            <div class="stat-content">
+                <div class="stat-number">@_outstanding.ToString("N0")</div>
+                <div class="stat-label">@L("Outstanding Balance", "المبالغ المتبقية")</div>
+            </div>
         </div>
     </div>
 
