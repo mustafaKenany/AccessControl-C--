@@ -22,6 +22,13 @@
     --sidebar-text-muted: #A0B4B5;
 }
 
+/* Aliases — some razor files use inline styles with these older variable names
+   (e.g. var(--card-bg, #0d2628)). Without these aliases the inline-style fallback
+   kicks in and those elements stay dark on the new Light theme. */
+:root {
+    --card-bg: var(--bg-card);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -699,17 +706,23 @@ html, body {
 
 .filter-btn {
     padding: 0.4rem 0.9rem;
-    background: var(--bg-card);
-    color: var(--text-secondary);
+    /* Tinted background so the pills stand out from white panels.
+       On the dark sidebar this still reads — the rgba teal stays visible. */
+    background: rgba(68, 161, 160, 0.08);
+    /* Use primary (dark) text instead of muted — secondary was too low-contrast
+       against the new white panel background. */
+    color: var(--text-primary);
     border: 1px solid var(--border);
     border-radius: 6px;
     cursor: pointer;
     font-family: 'Cairo', sans-serif;
     font-size: 0.85rem;
+    font-weight: 500;
     transition: all 0.2s;
 }
 
 .filter-btn:hover {
+    background: rgba(68, 161, 160, 0.15);
     color: var(--text-primary);
     border-color: var(--accent);
 }
