@@ -1,0 +1,310 @@
+==========================================
+  CLOUD DB AUDIT  —  gymcloud_drag
+==========================================
+
+--- 1. CARDS & PLAYERS ---
+
+1a. AccessCards with no Employee linked (orphan cards from format mismatch):
+ orphan_card_count 
+-------------------
+                 0
+(1 row)
+
+    Examples of orphan card numbers:
+ Id | CardNumber | ValidFrom | ValidTo | IsActive 
+----+------------+-----------+---------+----------
+(0 rows)
+
+
+1b. Orphan cards that COULD be matched to a Player via /10 rule:
+ recoverable_orphan_count 
+--------------------------
+                        0
+(1 row)
+
+    Examples of recoverable orphans + their matching players:
+ orphan_card_id | scanned_card | player_id | registered_card | FullNameAr 
+----------------+--------------+-----------+-----------------+------------
+(0 rows)
+
+
+1c. Duplicate AccessCard rows (same CardNumber appears more than once):
+ CardNumber | dup_count 
+------------+-----------
+ 02190620   |         2
+(1 row)
+
+
+1d. Two Players with the same CardNo (data corruption):
+ CardNo | player_count | players 
+--------+--------------+---------
+(0 rows)
+
+
+1e. Players with no card assigned:
+ players_without_card 
+----------------------
+                    0
+(1 row)
+
+
+1f. Players with multiple cards (could be legitimate or duplicates):
+  Id  |     FullNameAr      | card_count 
+------+---------------------+------------
+ 1161 | زيد فاضل عبد الزهرء |          2
+(1 row)
+
+
+--- 2. ACCESS EVENTS ---
+
+2a. Total events in cloud:
+ total_events 
+--------------
+         2141
+(1 row)
+
+
+2b. Events with CardId = NULL (unmatched card at time of scan):
+ unmatched_event_count 
+-----------------------
+                   748
+(1 row)
+
+
+2c. Events with EventDate in the future (clock skew or bad timezone):
+ future_event_count 
+--------------------
+                  0
+(1 row)
+
+    Examples of future events:
+ Id | EventDate | details 
+----+-----------+---------
+(0 rows)
+
+
+2d. Events with EventDate before 2024 (suspicious old data):
+ ancient_event_count 
+---------------------
+                   0
+(1 row)
+
+
+2e. Events for doors that no longer exist (referential integrity gap):
+ orphan_door_event_count 
+-------------------------
+                       0
+(1 row)
+
+
+2f. Distribution of event ages (helps spot a sync gap):
+  bucket  | events 
+----------+--------
+ last 24h |     17
+ last 7d  |    173
+ last 30d |   1951
+(3 rows)
+
+
+--- 3. PLAYERS / SUBSCRIPTIONS ---
+
+3a. Total active players in cloud:
+ total_players 
+---------------
+          2203
+(1 row)
+
+
+3b. Players still flagged as Migrated (Phone="MIG-N" or SubscriptionType="Migrated"):
+ still_migrated_count 
+----------------------
+                 1853
+(1 row)
+
+    Examples:
+ Id  |    FullNameAr    |  Phone  | SubscriptionType | SubscriptionFee 
+-----+------------------+---------+------------------+-----------------
+ 467 | احمد علي حميد    | MIG-467 | Fitness          |        25000.00
+ 452 | احمد مجيد احمد   | MIG-452 | Migrated         |            0.00
+ 465 | بلال فاضل احمد   | MIG-465 | Fitness          |        25000.00
+ 413 | حارث عدنان حنتوش | MIG-413 | Fitness          |        25000.00
+ 407 | سجاد عباس حسين   | MIG-407 | Migrated         |            0.00
+(5 rows)
+
+
+3c. Players with EndDate < StartDate (invalid date range):
+ invalid_date_range_count 
+--------------------------
+                        0
+(1 row)
+
+
+3d. Players with EndDate in past but not flagged Frozen or Expired in any way:
+ expired_but_active_count 
+--------------------------
+                     1265
+(1 row)
+
+
+3e. Players with SubscriptionFee = 0 (free or unpaid):
+ zero_fee_count 
+----------------
+           1358
+(1 row)
+
+
+3f. Players where AmountPaid > SubscriptionFee (overpaid):
+ overpaid_count 
+----------------
+             30
+(1 row)
+
+
+3g. SubscriptionTypes in use that DON'T exist in SubscriptionPlans table:
+ SubscriptionType | player_count 
+------------------+--------------
+ Migrated         |         1361
+ Fitness          |          842
+(2 rows)
+
+
+--- 4. FINANCE / TRANSACTIONS ---
+
+4a. Total transactions:
+ total_transactions 
+--------------------
+                881
+(1 row)
+
+
+4b. Transactions with NULL or empty Category:
+ uncategorised_count 
+---------------------
+                   0
+(1 row)
+
+
+4c. Transactions with Amount = 0 or negative (suspicious):
+ zero_amount_count 
+-------------------
+                 0
+(1 row)
+
+
+4d. Transactions with TransactionDate in the future:
+ future_txn_count 
+------------------
+                0
+(1 row)
+
+
+--- 5. QR POOL ---
+
+5a. QR Pool stats by status:
+ Status | status_name | count 
+--------+-------------+-------
+      0 | Available   |  3500
+(1 row)
+
+
+5b. Assigned QR codes with NULL AssignedAt (logic error):
+ assigned_no_timestamp_count 
+-----------------------------
+                           0
+(1 row)
+
+
+5c. QrPool entries where ValidTo < ValidFrom (invalid window):
+ invalid_window_count 
+----------------------
+                    0
+(1 row)
+
+
+5d. QrPool entries where ValidTo < NOW() but Status still = 1 (should be Expired):
+ stale_assigned_count 
+----------------------
+                    0
+(1 row)
+
+
+--- 6. CLOUD SYNC HEALTH ---
+
+6a. Sync attempts in last 7 days by status:
+ Status  | sync_count 
+---------+------------
+ Success |       1999
+(1 row)
+
+
+6b. Last 5 failed syncs (if any):
+ Id | Status | details | SyncedAt 
+----+--------+---------+----------
+(0 rows)
+
+
+6c. Gap detection — longest period without ANY sync in last 30 days:
+         gap_start          |          gap_end           |       gap       
+----------------------------+----------------------------+-----------------
+ 2026-05-12 21:28:51.714975 | 2026-05-12 22:13:51.588862 | 00:44:59.873887
+ 2026-05-09 10:28:37.768832 | 2026-05-09 10:59:02.756301 | 00:30:24.987469
+(2 rows)
+
+
+--- 7. AUDIT LOGS ---
+
+7a. Total audit log entries:
+ total_audit_logs 
+------------------
+             1292
+(1 row)
+
+
+7b. Most frequent actions in audit log:
+       Action       | action_count 
+--------------------+--------------
+ SyncCard           |          607
+ Create             |          370
+ Renew              |          269
+ Update             |           24
+ SoftDelete         |           15
+ SyncCardAllDevices |            6
+ Freeze             |            1
+(7 rows)
+
+
+7c. Audit log entries with NULL PerformedBy (unknown user actions):
+ anonymous_action_count 
+------------------------
+                      0
+(1 row)
+
+
+--- 8. REFERENTIAL INTEGRITY ---
+
+8a. AccessCards referencing non-existent Player:
+ dangling_card_employee_ref 
+----------------------------
+                         32
+(1 row)
+
+
+8b. Transactions referencing non-existent Player:
+ dangling_txn_employee_ref 
+---------------------------
+                         1
+(1 row)
+
+
+8c. DeletedEmployees with no OriginalId (lost tombstone):
+ lost_tombstone_count 
+----------------------
+                    0
+(1 row)
+
+
+==========================================
+  AUDIT COMPLETE
+==========================================
+
+Send the entire output back to Claude for analysis.

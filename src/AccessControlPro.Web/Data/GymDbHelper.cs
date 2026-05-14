@@ -3,6 +3,20 @@ using Npgsql;
 namespace AccessControlPro.Web.Data;
 
 /// <summary>
+/// Snapshot of a Gyms row, returned by <see cref="GymDbHelper.ResolveGymBySubdomainAsync"/>.
+/// Stored in <c>HttpContext.Items["CurrentGym"]</c> for the lifetime of one request so
+/// every downstream page can know which tenant is being served without re-querying.
+/// </summary>
+public class GymInfo
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Subdomain { get; set; } = "";
+    public string DatabaseName { get; set; } = "";
+    public string ApiKey { get; set; } = "";
+}
+
+/// <summary>
 /// Manages connections to gym-specific databases.
 /// Master DB (gymcloud) stores the Gyms table.
 /// Each gym has its own database (gymcloud_gymX).
@@ -43,6 +57,34 @@ public class GymDbHelper
         cmd.Parameters.AddWithValue("key", apiKey);
         var result = await cmd.ExecuteScalarAsync();
         return result?.ToString();
+    }
+
+    /// <summary>
+    /// Resolve a gym by URL subdomain (e.g. "basmia" from basmia.hmtech.solutions).
+    /// Returns null if the subdomain is empty, doesn't match, or maps to an inactive gym.
+    /// Comparison is case-insensitive.
+    /// </summary>
+    public async Task<GymInfo?> ResolveGymBySubdomainAsync(string subdomain)
+    {
+        if (string.IsNullOrWhiteSpace(subdomain)) return null;
+
+        using var conn = await GetMasterConnectionAsync();
+        using var cmd = new NpgsqlCommand(
+            @"SELECT ""Id"", ""Name"", ""Subdomain"", ""DatabaseName"", ""ApiKey""
+              FROM ""Gyms""
+              WHERE LOWER(""Subdomain"") = LOWER(@s) AND ""IsActive"" = TRUE
+              LIMIT 1", conn);
+        cmd.Parameters.AddWithValue("s", subdomain);
+        using var r = await cmd.ExecuteReaderAsync();
+        if (!await r.ReadAsync()) return null;
+        return new GymInfo
+        {
+            Id = r.GetInt32(0),
+            Name = r.GetString(1),
+            Subdomain = r.GetString(2),
+            DatabaseName = r.GetString(3),
+            ApiKey = r.GetString(4)
+        };
     }
 
     /// <summary>Find which gym database contains a user with this username</summary>

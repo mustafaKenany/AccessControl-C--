@@ -101,6 +101,11 @@ app.UseStaticFiles(new StaticFileOptions
 });
 app.UseAntiforgery();
 
+// Resolve which gym (tenant) the request is for, based on the URL subdomain.
+// Must run BEFORE the session reader so login pages can know which gym DB to
+// authenticate against. Reserved subdomains (www, admin, api) are skipped.
+app.UseMiddleware<AccessControlPro.Web.Middleware.GymSubdomainMiddleware>();
+
 // Session-reader middleware: validates the cookie and populates HttpContext.Items
 // so Blazor components can read the session in OnInitialized. Placed AFTER
 // UseStaticFiles so CSS/JS/images don't trigger DB lookups. Sync API endpoints
@@ -431,18 +436,24 @@ app.MapPost("/api/auth/login", async (HttpContext ctx, WebAuthService auth, Sess
     var root = doc.RootElement;
     var mode = root.TryGetProperty("mode", out var m) ? m.GetString() ?? "owner" : "owner";
 
+    // If the request came from a gym subdomain (e.g. basmia.hmtech.solutions),
+    // the GymSubdomainMiddleware has already resolved which gym DB to authenticate
+    // against. Restricting login to that gym fixes the username-collision risk
+    // and avoids the N-database scan in WebAuthService.FindUserDatabaseAsync.
+    var requiredGym = AccessControlPro.Web.Middleware.GymContextAccessor.GetCurrentGym(ctx);
+
     AuthResult result;
     if (mode == "player")
     {
         var phone = root.TryGetProperty("phone", out var p) ? p.GetString() ?? "" : "";
         var cardLast4 = root.TryGetProperty("cardLast4", out var c) ? c.GetString() ?? "" : "";
-        result = await auth.PlayerLoginAsync(phone, cardLast4);
+        result = await auth.PlayerLoginAsync(phone, cardLast4, requiredGym);
     }
     else
     {
         var username = root.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
         var password = root.TryGetProperty("password", out var pw) ? pw.GetString() ?? "" : "";
-        result = await auth.OwnerLoginAsync(username, password);
+        result = await auth.OwnerLoginAsync(username, password, requiredGym);
     }
 
     if (!result.IsAuthenticated)

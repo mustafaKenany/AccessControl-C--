@@ -45,7 +45,14 @@ public class WebAuthService
         _loginAttempts.TryRemove(identifier, out _);
     }
 
-    public async Task<AuthResult> OwnerLoginAsync(string username, string password)
+    /// <summary>
+    /// Authenticate a gym owner/admin/user.
+    /// <paramref name="requiredGym"/> — when set, restricts the lookup to that one gym's DB
+    /// (set by the subdomain-resolver middleware so basmia.hmtech.solutions/login can only
+    /// authenticate Basmia users). When null, falls back to scanning every active gym DB —
+    /// only used for root-domain logins as a backward-compat path.
+    /// </summary>
+    public async Task<AuthResult> OwnerLoginAsync(string username, string password, GymInfo? requiredGym = null)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             return AuthResult.Failed("Username and password are required.");
@@ -54,25 +61,34 @@ public class WebAuthService
         if (IsBlocked(identifier))
             return AuthResult.Failed("Too many failed attempts. Please try again in 15 minutes.");
 
-        // Try to find which gym database has this user
-        string gymDatabase = "";
-        int gymId = 0;
+        // Find which gym database has this user
+        string gymDatabase;
+        int gymId;
         NpgsqlConnection? conn = null;
 
         try
         {
-            var found = await _gymDb.FindUserDatabaseAsync(username);
-            if (found.HasValue)
+            if (requiredGym != null)
             {
-                gymDatabase = found.Value.dbName ?? "";
-                gymId = found.Value.gymId;
+                // Subdomain-scoped login — only check this gym's DB. Username collisions
+                // across gyms are now harmless, and the lookup is one query instead of
+                // N (one per gym).
+                gymDatabase = requiredGym.DatabaseName;
+                gymId = requiredGym.Id;
                 conn = await _gymDb.GetGymConnectionAsync(gymDatabase);
             }
             else
             {
-                // No gym found for this user — login fails
-                RecordFailedAttempt(identifier);
-                return AuthResult.Failed("Invalid username or password.");
+                // Root-domain fallback — scan all gyms (legacy behaviour).
+                var found = await _gymDb.FindUserDatabaseAsync(username);
+                if (!found.HasValue)
+                {
+                    RecordFailedAttempt(identifier);
+                    return AuthResult.Failed("Invalid username or password.");
+                }
+                gymDatabase = found.Value.dbName ?? "";
+                gymId = found.Value.gymId;
+                conn = await _gymDb.GetGymConnectionAsync(gymDatabase);
             }
         }
         catch
@@ -151,7 +167,11 @@ public class WebAuthService
         }
     }
 
-    public async Task<AuthResult> PlayerLoginAsync(string phone, string cardLast4)
+    /// <summary>
+    /// Authenticate a gym player.
+    /// <paramref name="requiredGym"/> — when set, restricts the lookup to that one gym's DB.
+    /// </summary>
+    public async Task<AuthResult> PlayerLoginAsync(string phone, string cardLast4, GymInfo? requiredGym = null)
     {
         if (string.IsNullOrWhiteSpace(phone) || string.IsNullOrWhiteSpace(cardLast4))
             return AuthResult.Failed("Phone and card digits are required.");
@@ -160,25 +180,30 @@ public class WebAuthService
         if (IsBlocked(identifier))
             return AuthResult.Failed("Too many failed attempts. Please try again in 15 minutes.");
 
-        // Try to find which gym database has this player
-        string gymDatabase = "";
-        int gymId = 0;
+        // Find which gym database has this player
+        string gymDatabase;
+        int gymId;
         NpgsqlConnection? conn = null;
 
         try
         {
-            var found = await _gymDb.FindPlayerDatabaseAsync(phone);
-            if (found.HasValue)
+            if (requiredGym != null)
             {
-                gymDatabase = found.Value.dbName ?? "";
-                gymId = found.Value.gymId;
+                gymDatabase = requiredGym.DatabaseName;
+                gymId = requiredGym.Id;
                 conn = await _gymDb.GetGymConnectionAsync(gymDatabase);
             }
             else
             {
-                // No gym found for this player — login fails
-                RecordFailedAttempt(identifier);
-                return AuthResult.Failed("Player not found. Check your phone number.");
+                var found = await _gymDb.FindPlayerDatabaseAsync(phone);
+                if (!found.HasValue)
+                {
+                    RecordFailedAttempt(identifier);
+                    return AuthResult.Failed("Player not found. Check your phone number.");
+                }
+                gymDatabase = found.Value.dbName ?? "";
+                gymId = found.Value.gymId;
+                conn = await _gymDb.GetGymConnectionAsync(gymDatabase);
             }
         }
         catch
