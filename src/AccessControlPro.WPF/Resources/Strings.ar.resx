@@ -503,6 +503,9 @@
   <data name="DiagUploading" xml:space="preserve"><value>جاري رفع ملفات التشخيص...</value></data>
   <data name="DiagUploadSuccess" xml:space="preserve"><value>تم رفع ملفات التشخيص بنجاح. يستطيع الدعم الفني الوصول إليها الآن.</value></data>
   <data name="DiagUploadFailed" xml:space="preserve"><value>فشل رفع ملفات التشخيص:</value></data>
+  <data name="DiagNoteLabel" xml:space="preserve"><value>ماذا حدث؟ (اختياري)</value></data>
+  <data name="DiagNoteHint" xml:space="preserve"><value>أمثلة: "البطاقة 0366549 لا تُسجَّل"، "البرنامج يتجمد عند فتح الأحداث"، "المزامنة توقفت أمس"</value></data>
+  <data name="DiagSendNow" xml:space="preserve"><value>إرسال الآن</value></data>
 
   <!-- Settings -->
   <data name="SetSaved" xml:space="preserve"><value>تم حفظ الإعدادات بنجاح.</value></data>

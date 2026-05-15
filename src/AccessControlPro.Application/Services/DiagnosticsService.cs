@@ -17,8 +17,9 @@ namespace AccessControlPro.Application.Services;
 /// </summary>
 public interface IDiagnosticsService
 {
-    Task<DiagnosticsResult> UploadAsync(string trigger);
+    Task<DiagnosticsResult> UploadAsync(string trigger, string userNote = "");
     Task<DiagnosticsResult> UploadIfDueAsync(int intervalDays = 15);
+    Task<DiagnosticsResult> UploadIfPreviousRunCrashedAsync(Func<bool> wasPreviousRunACrash);
 }
 
 public class DiagnosticsResult
@@ -58,7 +59,33 @@ public class DiagnosticsService : IDiagnosticsService
         return await UploadAsync("auto");
     }
 
-    public async Task<DiagnosticsResult> UploadAsync(string trigger)
+    /// <summary>
+    /// Fire immediately if the caller-supplied probe says the previous run died without
+    /// a clean shutdown. Adds a small dedupe guard so we don't upload twice for the same
+    /// crash window (e.g. crash → restart → crash again would only upload once per day).
+    /// </summary>
+    public async Task<DiagnosticsResult> UploadIfPreviousRunCrashedAsync(Func<bool> wasPreviousRunACrash)
+    {
+        try
+        {
+            if (!wasPreviousRunACrash())
+                return new DiagnosticsResult { Success = true, Message = "Previous run was clean — no crash upload" };
+
+            // Dedupe: only one crash-recovery upload per 4 hours.
+            var last = LoadLastUpload();
+            if (last != null && (DateTime.UtcNow - last.Value).TotalHours < 4)
+                return new DiagnosticsResult { Success = true, Message = "Crash detected but recent upload exists" };
+
+            return await UploadAsync("crash-recovery");
+        }
+        catch (Exception ex)
+        {
+            Log($"crash-recovery probe failed: {ex.Message}");
+            return new DiagnosticsResult { Success = false, Message = ex.Message };
+        }
+    }
+
+    public async Task<DiagnosticsResult> UploadAsync(string trigger, string userNote = "")
     {
         try
         {
@@ -69,8 +96,8 @@ public class DiagnosticsService : IDiagnosticsService
                 return new DiagnosticsResult { Success = false, Message = "Cloud URL not configured" };
             }
 
-            Log($"Building diagnostics bundle (trigger={trigger})...");
-            var bundle = await BuildBundleAsync();
+            Log($"Building diagnostics bundle (trigger={trigger}, note={(string.IsNullOrEmpty(userNote) ? "(none)" : "yes")})...");
+            var bundle = await BuildBundleAsync(trigger, userNote);
             Log($"Bundle ready: {bundle.Length / 1024} KB");
 
             using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(2) };
@@ -103,16 +130,21 @@ public class DiagnosticsService : IDiagnosticsService
 
     // ------------------------------------------------------------------ bundle
 
-    private async Task<byte[]> BuildBundleAsync()
+    private async Task<byte[]> BuildBundleAsync(string trigger, string userNote)
     {
         using var ms = new MemoryStream();
         using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
         {
-            // System + app info first — small and always wanted
+            // Customer's own description first — the single highest-signal file
+            AddText(zip, "user-note.txt", BuildUserNote(trigger, userNote));
+
+            // System + app info next — small and always wanted
             AddText(zip, "system-info.json", BuildSystemInfo());
             AddText(zip, "app-info.json", BuildAppInfo());
             AddText(zip, "gym-info.json", BuildGymInfo());
             AddText(zip, "settings-sanitized.json", BuildSanitizedSettings());
+            AddText(zip, "network-test.txt", await BuildNetworkTestAsync());
+            AddText(zip, "db-snapshot.json", await BuildDbSnapshotAsync());
             AddText(zip, "event-tail.csv", await BuildEventTailAsync());
 
             // Logs: flat .txt files in app base directory (per the existing logger).
@@ -267,6 +299,228 @@ public class DiagnosticsService : IDiagnosticsService
         {
             return "{ \"error\": \"" + ex.Message.Replace("\"", "'") + "\" }";
         }
+    }
+
+    private static string BuildUserNote(string trigger, string userNote)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Trigger:   {trigger}");
+        sb.AppendLine($"BundledAt: {DateTime.Now:yyyy-MM-dd HH:mm:ss zzz}");
+        sb.AppendLine();
+        sb.AppendLine("User note:");
+        sb.AppendLine("----------");
+        sb.AppendLine(string.IsNullOrWhiteSpace(userNote) ? "(no note provided)" : userNote.Trim());
+        return sb.ToString();
+    }
+
+    private static async Task<string> BuildNetworkTestAsync()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"# Network self-test — generated {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        sb.AppendLine();
+
+        // Pull the cloud host from settings so we test the actual configured endpoint
+        string host = "hmtech.solutions";
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            if (File.Exists(path))
+            {
+                var doc = JsonDocument.Parse(File.ReadAllText(path));
+                if (doc.RootElement.TryGetProperty("CloudSyncUrl", out var u))
+                {
+                    var url = u.GetString() ?? "";
+                    if (!string.IsNullOrEmpty(url) && Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                        host = uri.Host;
+                }
+            }
+        }
+        catch { }
+
+        sb.AppendLine($"Target host: {host}");
+        sb.AppendLine();
+
+        // DNS resolve
+        try
+        {
+            var addrs = await System.Net.Dns.GetHostAddressesAsync(host);
+            sb.AppendLine($"DNS resolve: OK ({addrs.Length} address(es))");
+            foreach (var a in addrs) sb.AppendLine($"  - {a}");
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine($"DNS resolve: FAILED — {ex.Message}");
+        }
+        sb.AppendLine();
+
+        // Ping (best-effort; firewalls may block ICMP — that's OK, HTTPS is what we care about)
+        try
+        {
+            using var ping = new System.Net.NetworkInformation.Ping();
+            var reply = await ping.SendPingAsync(host, 3000);
+            sb.AppendLine($"Ping: {reply.Status} ({reply.RoundtripTime} ms)");
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine($"Ping: FAILED (often firewalled — not necessarily bad) — {ex.Message}");
+        }
+        sb.AppendLine();
+
+        // HTTPS HEAD — actual connectivity test
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            using var req = new HttpRequestMessage(HttpMethod.Head, $"https://{host}/");
+            using var resp = await http.SendAsync(req);
+            sw.Stop();
+            sb.AppendLine($"HTTPS HEAD https://{host}/: {(int)resp.StatusCode} {resp.StatusCode} ({sw.ElapsedMilliseconds} ms)");
+            sb.AppendLine($"  Server: {string.Join(", ", resp.Headers.Where(h => h.Key.Equals("Server", StringComparison.OrdinalIgnoreCase)).SelectMany(h => h.Value))}");
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine($"HTTPS HEAD: FAILED — {ex.Message}");
+            if (ex.InnerException != null) sb.AppendLine($"  Inner: {ex.InnerException.Message}");
+        }
+        sb.AppendLine();
+
+        // Sync API reachability — POST a tiny invalid body and look for HTTP-level response.
+        // We don't care about 200/401 — we care that we can REACH the endpoint at all.
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            using var req = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/api/sync-control");
+            using var resp = await http.SendAsync(req);
+            sw.Stop();
+            sb.AppendLine($"Sync API reachability: HTTP {(int)resp.StatusCode} ({sw.ElapsedMilliseconds} ms)  — endpoint is alive");
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine($"Sync API reachability: FAILED — {ex.Message}");
+        }
+
+        return sb.ToString();
+    }
+
+    private async Task<string> BuildDbSnapshotAsync()
+    {
+        // High-signal one-shot snapshot: row counts + recent audit log + last sync result.
+        // We swallow per-section errors so one missing table doesn't blank the whole file.
+        var rowCounts = new Dictionary<string, object?>();
+        var lastSync = new Dictionary<string, object?>();
+        var auditTail = new List<Dictionary<string, object?>>();
+        var subscriptionPlans = new List<Dictionary<string, object?>>();
+        string? error = null;
+
+        try
+        {
+            using var conn = new SqlConnection(_localConnectionString);
+            await conn.OpenAsync();
+
+            // Row counts (one round-trip via UNION ALL — cheap)
+            var countQueries = new (string name, string sql)[]
+            {
+                ("employees",        "SELECT COUNT(*) FROM Employees"),
+                ("employees_active", "SELECT COUNT(*) FROM Employees WHERE EndDate >= GETDATE()"),
+                ("employees_frozen", "SELECT COUNT(*) FROM Employees WHERE IsFrozen = 1"),
+                ("deleted_employees","SELECT COUNT(*) FROM DeletedEmployees"),
+                ("access_cards",     "SELECT COUNT(*) FROM AccessCards"),
+                ("access_events",    "SELECT COUNT(*) FROM AccessEvents"),
+                ("doors",            "SELECT COUNT(*) FROM Doors"),
+                ("devices",          "SELECT COUNT(*) FROM Devices"),
+                ("transactions",     "SELECT COUNT(*) FROM Transactions"),
+                ("users",            "SELECT COUNT(*) FROM Users"),
+                ("audit_logs",       "SELECT COUNT(*) FROM AuditLogs"),
+                ("qr_pool",          "SELECT COUNT(*) FROM QrPool"),
+                ("subscription_plans","SELECT COUNT(*) FROM SubscriptionPlans"),
+                ("products",         "SELECT COUNT(*) FROM Products"),
+                ("freeze_histories", "SELECT COUNT(*) FROM FreezeHistories"),
+                ("time_groups",      "SELECT COUNT(*) FROM TimeGroups"),
+                ("pos_shifts",       "SELECT COUNT(*) FROM PosShifts"),
+            };
+            foreach (var (name, sql) in countQueries)
+            {
+                try
+                {
+                    using var cmd = new SqlCommand(sql, conn);
+                    cmd.CommandTimeout = 5;
+                    var v = await cmd.ExecuteScalarAsync();
+                    rowCounts[name] = v;
+                }
+                catch (Exception ex) { rowCounts[name] = $"error: {ex.Message}"; }
+            }
+
+            // Last audit log entries — what was the user doing right before something broke?
+            try
+            {
+                using var cmd = new SqlCommand(
+                    "SELECT TOP 100 Id, Action, EntityType, EntityId, PerformedBy, [Timestamp], Details " +
+                    "FROM AuditLogs ORDER BY [Timestamp] DESC", conn);
+                cmd.CommandTimeout = 10;
+                using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync())
+                {
+                    auditTail.Add(new Dictionary<string, object?>
+                    {
+                        ["id"] = r["Id"],
+                        ["action"] = r["Action"]?.ToString(),
+                        ["entityType"] = r["EntityType"]?.ToString(),
+                        ["entityId"] = r["EntityId"],
+                        ["performedBy"] = r["PerformedBy"]?.ToString(),
+                        ["timestamp"] = r["Timestamp"] is DateTime dt ? dt.ToString("O") : null,
+                        ["details"] = Truncate(r["Details"]?.ToString() ?? "", 300)
+                    });
+                }
+            }
+            catch (Exception ex) { lastSync["audit_error"] = ex.Message; }
+
+            // Subscription plans — to diagnose "Fitness doesn't exist in admin" type issues
+            try
+            {
+                using var cmd = new SqlCommand(
+                    "SELECT Id, NameEn, NameAr, Duration, Price, IsActive FROM SubscriptionPlans", conn);
+                cmd.CommandTimeout = 5;
+                using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync())
+                {
+                    subscriptionPlans.Add(new Dictionary<string, object?>
+                    {
+                        ["id"] = r["Id"],
+                        ["nameEn"] = r["NameEn"]?.ToString(),
+                        ["nameAr"] = r["NameAr"]?.ToString(),
+                        ["duration"] = r["Duration"],
+                        ["price"] = r["Price"],
+                        ["isActive"] = r["IsActive"]
+                    });
+                }
+            }
+            catch (Exception ex) { lastSync["plans_error"] = ex.Message; }
+
+            // Last successful sync info — from SyncStateManager
+            try
+            {
+                var lastSyncAt = SyncStateManager.LoadLastSyncAt();
+                lastSync["lastSyncAt"] = lastSyncAt?.ToString("O") ?? "(never)";
+                lastSync["minutesAgo"] = lastSyncAt.HasValue ? (DateTime.UtcNow - lastSyncAt.Value).TotalMinutes : (object?)null;
+            }
+            catch (Exception ex) { lastSync["sync_state_error"] = ex.Message; }
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+
+        var payload = new Dictionary<string, object?>
+        {
+            ["generatedAt"] = DateTime.UtcNow.ToString("O"),
+            ["error"] = error,
+            ["rowCounts"] = rowCounts,
+            ["lastSync"] = lastSync,
+            ["subscriptionPlans"] = subscriptionPlans,
+            ["auditTail"] = auditTail
+        };
+        return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
     }
 
     private async Task<string> BuildEventTailAsync()

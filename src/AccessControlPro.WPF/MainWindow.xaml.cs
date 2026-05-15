@@ -72,7 +72,7 @@ public partial class MainWindow : Window
     private async void SendDiagnosticsClick(object sender, RoutedEventArgs e)
     {
         var lang = LanguageManager.Instance;
-        var ok = CustomMessageBox.Confirm(lang.DiagConfirmBody, lang.DiagConfirmTitle, MsgType.Info, this);
+        var (ok, note) = SendDiagnosticsDialog.Show(this);
         if (!ok) return;
 
         // Disable the clicked button while uploading so the user can't fire it twice
@@ -81,7 +81,7 @@ public partial class MainWindow : Window
         try
         {
             var diag = _serviceProvider.GetRequiredService<IDiagnosticsService>();
-            var result = await Task.Run(() => diag.UploadAsync("manual"));
+            var result = await Task.Run(() => diag.UploadAsync("manual", note));
 
             if (result.Success)
             {

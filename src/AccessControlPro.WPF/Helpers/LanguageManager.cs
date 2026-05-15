@@ -532,6 +532,9 @@ public class LanguageManager : INotifyPropertyChanged
     public string DiagUploading => GetString("DiagUploading");
     public string DiagUploadSuccess => GetString("DiagUploadSuccess");
     public string DiagUploadFailed => GetString("DiagUploadFailed");
+    public string DiagNoteLabel => GetString("DiagNoteLabel");
+    public string DiagNoteHint => GetString("DiagNoteHint");
+    public string DiagSendNow => GetString("DiagSendNow");
 
     // Settings
     public string SetSaved => GetString("SetSaved");
@@ -1390,6 +1393,9 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(DiagUploading));
         OnPropertyChanged(nameof(DiagUploadSuccess));
         OnPropertyChanged(nameof(DiagUploadFailed));
+        OnPropertyChanged(nameof(DiagNoteLabel));
+        OnPropertyChanged(nameof(DiagNoteHint));
+        OnPropertyChanged(nameof(DiagSendNow));
         // Settings
         OnPropertyChanged(nameof(SetSaved));
         OnPropertyChanged(nameof(SetBrowseLogo));

@@ -786,17 +786,28 @@ public partial class App : System.Windows.Application
                 }
             }
 
-            // Diagnostics auto-uploader — fires once per launch ~2 minutes in. The
-            // service itself bails out unless 15+ days have passed since the last
-            // successful upload, so this is safe to call on every startup.
+            // Diagnostics — two triggers run independently on every startup:
+            //   1) Crash-recovery (immediate): if LastRunStateTracker says the previous
+            //      session died without OnExit, fire an upload right away so support
+            //      gets the bundle before the user does anything that overwrites logs.
+            //   2) Auto-due (~2 min in): no-op unless 15+ days have passed since the
+            //      last successful upload.
             _ = Task.Run(async () =>
             {
-                await Task.Delay(TimeSpan.FromMinutes(2));
                 try
                 {
                     var diag = new DiagnosticsService(LoadConnectionString());
-                    var result = await diag.UploadIfDueAsync();
-                    StartupLog($"Diagnostics auto: success={result.Success}, msg={result.Message}");
+
+                    // Wait a short beat so SQL Server is reachable before we snapshot it.
+                    await Task.Delay(TimeSpan.FromSeconds(20));
+                    var crashResult = await diag.UploadIfPreviousRunCrashedAsync(
+                        Helpers.LastRunStateTracker.WasPreviousRunACrash);
+                    StartupLog($"Diagnostics crash-check: success={crashResult.Success}, msg={crashResult.Message}");
+
+                    // Auto-due check a couple of minutes in — independent of crash-recovery.
+                    await Task.Delay(TimeSpan.FromMinutes(2));
+                    var autoResult = await diag.UploadIfDueAsync();
+                    StartupLog($"Diagnostics auto: success={autoResult.Success}, msg={autoResult.Message}");
                 }
                 catch (Exception ex2)
                 {

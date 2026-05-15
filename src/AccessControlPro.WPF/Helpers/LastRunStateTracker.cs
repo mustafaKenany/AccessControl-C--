@@ -36,6 +36,24 @@ public static class LastRunStateTracker
         return summary;
     }
 
+    /// <summary>
+    /// True iff the most recent state on disk says "running" — meaning the previous
+    /// process died without going through OnExit (crash, kill, BSOD, power loss).
+    /// Snapshot taken at startup; safe to call after ReadPreviousAndRecordStartup
+    /// because the running-state file at that moment reflects THIS session, not the
+    /// previous one. So callers must capture it BEFORE that call, OR use this
+    /// helper which keeps a static snapshot.
+    /// </summary>
+    public static bool WasPreviousRunACrash() => _previousWasCrash;
+
+    private static bool _previousWasCrash;
+    static LastRunStateTracker()
+    {
+        // Snapshot the previous state at static-init time, before anyone writes "running".
+        var prev = TryReadState();
+        _previousWasCrash = prev?.Status == "running";
+    }
+
     public static void RecordCleanExit()
     {
         try

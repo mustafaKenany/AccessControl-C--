@@ -498,6 +498,9 @@ Phone or subscription type is still a placeholder value (MIG-... or "Migrated").
   <data name="DiagUploading" xml:space="preserve"><value>Uploading diagnostics...</value></data>
   <data name="DiagUploadSuccess" xml:space="preserve"><value>Diagnostics uploaded successfully. Support will be able to access them now.</value></data>
   <data name="DiagUploadFailed" xml:space="preserve"><value>Diagnostics upload failed:</value></data>
+  <data name="DiagNoteLabel" xml:space="preserve"><value>What happened? (optional)</value></data>
+  <data name="DiagNoteHint" xml:space="preserve"><value>Examples: "card 0366549 not registering", "app freezes when opening Events", "sync stopped working yesterday"</value></data>
+  <data name="DiagSendNow" xml:space="preserve"><value>Send Now</value></data>
 
   <!-- Settings -->
   <data name="SetSaved" xml:space="preserve"><value>Settings saved successfully.</value></data>
