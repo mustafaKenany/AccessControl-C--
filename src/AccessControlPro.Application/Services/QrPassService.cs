@@ -89,20 +89,20 @@ public class QrPassService : IQrPassService
 
         if (pass == null)
         {
-            QrPoolService.Log($"ValidateAndUse: code={passCode} not found");
+            QrPoolService.Log($"ValidateAndUse: code={passCode} not found", "warn");
             return (false, "QR code not found", null);
         }
 
         if (!pass.IsActive)
         {
-            QrPoolService.Log($"ValidateAndUse: code={passCode} player={pass.PlayerName} deactivated");
+            QrPoolService.Log($"ValidateAndUse: code={passCode} player={pass.PlayerName} deactivated", "warn");
             return (false, "QR pass has been deactivated", MapToDto(pass));
         }
 
         var now = DateTime.Now;
         if (now < pass.ValidFrom)
         {
-            QrPoolService.Log($"ValidateAndUse: code={passCode} player={pass.PlayerName} not-yet-valid (validFrom={pass.ValidFrom:O})");
+            QrPoolService.Log($"ValidateAndUse: code={passCode} player={pass.PlayerName} not-yet-valid (validFrom={pass.ValidFrom:O})", "warn");
             return (false, "QR pass is not yet valid", MapToDto(pass));
         }
 
@@ -110,7 +110,7 @@ public class QrPassService : IQrPassService
         {
             pass.IsActive = false;
             await _qrPassRepository.UpdateAsync(pass);
-            QrPoolService.Log($"ValidateAndUse: code={passCode} player={pass.PlayerName} expired (validTo={pass.ValidTo:O})");
+            QrPoolService.Log($"ValidateAndUse: code={passCode} player={pass.PlayerName} expired (validTo={pass.ValidTo:O})", "warn");
             return (false, "QR pass has expired", MapToDto(pass));
         }
 
@@ -118,7 +118,7 @@ public class QrPassService : IQrPassService
         {
             pass.IsActive = false;
             await _qrPassRepository.UpdateAsync(pass);
-            QrPoolService.Log($"ValidateAndUse: code={passCode} player={pass.PlayerName} max-uses-reached ({pass.UsedCount}/{pass.MaxUses})");
+            QrPoolService.Log($"ValidateAndUse: code={passCode} player={pass.PlayerName} max-uses-reached ({pass.UsedCount}/{pass.MaxUses})", "warn");
             return (false, "QR pass has reached maximum uses", MapToDto(pass));
         }
 

@@ -19,7 +19,8 @@ public class AuthService : IAuthService
     // File log — captured in diagnostics bundles. Username is logged, password
     // never is, not even in failure paths.
     private static readonly string LogPath = Path.Combine(AppContext.BaseDirectory, "auth_log.txt");
-    private static void Log(string msg) => RollingLogFile.Append(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n");
+    private static void Log(string msg, string level = "info") =>
+        RollingLogFile.Append(LogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {msg}\n");
 
     public AuthService(IUserRepository userRepository)
     {
@@ -30,7 +31,7 @@ public class AuthService : IAuthService
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            Log("Login rejected: empty username or password");
+            Log("Login rejected: empty username or password", "warn");
             return new LoginResult(null, LoginError.UserNotFound);
         }
 
@@ -41,7 +42,7 @@ public class AuthService : IAuthService
         {
             if (attempts.Count >= MaxFailedAttempts && DateTime.UtcNow - attempts.LastAttempt < LockoutDuration)
             {
-                Log($"Login rejected: account locked (user={username}, failed={attempts.Count})");
+                Log($"Login rejected: account locked (user={username}, failed={attempts.Count})", "warn");
                 return new LoginResult(null, LoginError.AccountLockedOut);
             }
 
@@ -54,20 +55,20 @@ public class AuthService : IAuthService
         if (user == null)
         {
             RecordFailedAttempt(username);
-            Log($"Login failed: user not found (user={username})");
+            Log($"Login failed: user not found (user={username})", "warn");
             return new LoginResult(null, LoginError.UserNotFound);
         }
 
         if (!user.IsActive)
         {
-            Log($"Login rejected: account disabled (user={username})");
+            Log($"Login rejected: account disabled (user={username})", "warn");
             return new LoginResult(null, LoginError.AccountDisabled);
         }
 
         if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
         {
             RecordFailedAttempt(username);
-            Log($"Login failed: wrong password (user={username})");
+            Log($"Login failed: wrong password (user={username})", "warn");
             return new LoginResult(null, LoginError.WrongPassword);
         }
 
@@ -164,7 +165,7 @@ public class AuthService : IAuthService
 
         if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
         {
-            Log($"ChangePassword failed: current password wrong (user={username})");
+            Log($"ChangePassword failed: current password wrong (user={username})", "warn");
             throw new InvalidOperationException("Current password is incorrect.");
         }
 

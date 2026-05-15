@@ -21,9 +21,9 @@ public class CloudSyncService : ICloudSyncService
         _localConnectionString = localConnectionString;
     }
 
-    private static void Log(string msg)
+    private static void Log(string msg, string level = "info")
     {
-        RollingLogFile.Append(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n");
+        RollingLogFile.Append(LogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {msg}\n");
     }
 
     public bool IsCloudEnabled()
@@ -51,7 +51,7 @@ public class CloudSyncService : ICloudSyncService
         }
         catch (Exception ex)
         {
-            Log($"Sync control check failed (non-critical): {ex.Message}");
+            Log($"Sync control check failed (non-critical): {ex.Message}", "warn");
         }
 
         // Capture the sync start time BEFORE reading any data — this becomes the next
@@ -83,7 +83,7 @@ public class CloudSyncService : ICloudSyncService
             }
             catch (Exception pullEx)
             {
-                Log($"Pre-pull users error (non-critical): {pullEx.Message}");
+                Log($"Pre-pull users error (non-critical): {pullEx.Message}", "warn");
             }
 
             try
@@ -92,7 +92,7 @@ public class CloudSyncService : ICloudSyncService
             }
             catch (Exception pullEx)
             {
-                Log($"Pre-pull QR assignments error (non-critical): {pullEx.Message}");
+                Log($"Pre-pull QR assignments error (non-critical): {pullEx.Message}", "warn");
             }
 
             var payload = new Dictionary<string, List<Dictionary<string, object?>>>();
@@ -221,13 +221,13 @@ public class CloudSyncService : ICloudSyncService
             else
             {
                 var truncated = responseBody.Length > 500 ? responseBody.Substring(0, 500) + "...(truncated)" : responseBody;
-                Log($"Cloud sync API error: {response.StatusCode} - {truncated}");
+                Log($"Cloud sync API error: {response.StatusCode} - {truncated}", "error");
                 return $"Sync API error: {response.StatusCode}";
             }
         }
         catch (Exception ex)
         {
-            Log($"Cloud sync FAILED: {ex.Message}");
+            Log($"Cloud sync FAILED: {ex.Message}", "error");
             return $"Sync failed: {ex.Message}";
         }
     }
@@ -284,11 +284,11 @@ public class CloudSyncService : ICloudSyncService
                     if (shown >= 3) break;
                     var text = err.GetString() ?? "";
                     if (text.Length > 300) text = text.Substring(0, 300) + "...";
-                    Log($"  [error sample] {text}");
+                    Log($"  [error sample] {text}", "warn");
                     shown++;
                 }
                 if (errs.GetArrayLength() > 3)
-                    Log($"  ({errs.GetArrayLength() - 3} more error(s) suppressed — see server logs for full list)");
+                    Log($"  ({errs.GetArrayLength() - 3} more error(s) suppressed — see server logs for full list)", "warn");
             }
         }
         catch { }
@@ -324,7 +324,7 @@ public class CloudSyncService : ICloudSyncService
         }
         catch (Exception ex)
         {
-            Log($"  Read error: {ex.Message}");
+            Log($"  Read error: {ex.Message}", "warn");
         }
         return rows;
     }
@@ -392,7 +392,7 @@ public class CloudSyncService : ICloudSyncService
             }
             catch (Exception ex)
             {
-                Log($"Pull users: error adding user: {ex.Message}");
+                Log($"Pull users: error adding user: {ex.Message}", "warn");
             }
         }
 
@@ -481,7 +481,7 @@ public class CloudSyncService : ICloudSyncService
             }
             catch (Exception ex)
             {
-                Log($"Pull QR: error adding entry: {ex.Message}");
+                Log($"Pull QR: error adding entry: {ex.Message}", "warn");
             }
         }
 

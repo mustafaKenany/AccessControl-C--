@@ -32,7 +32,7 @@ public static class DbErrorLog
             };
 
             var sb = new System.Text.StringBuilder();
-            sb.Append('[').Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")).Append("] ");
+            sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")).Append(" [error] ");
             sb.Append(operation).Append(" — ").AppendLine(details);
             if (ex.InnerException != null)
                 sb.Append("    Inner: ").Append(ex.InnerException.GetType().Name).Append(": ").AppendLine(ex.InnerException.Message);

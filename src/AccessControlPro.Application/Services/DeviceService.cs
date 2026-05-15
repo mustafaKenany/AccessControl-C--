@@ -21,7 +21,8 @@ public class DeviceService : IDeviceService
     // High-impact area: card-not-opening / time-drift / device-offline issues
     // are nearly always traced to one of the calls in this service.
     private static readonly string LogPath = Path.Combine(AppContext.BaseDirectory, "device_log.txt");
-    private static void Log(string msg) => RollingLogFile.Append(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n");
+    private static void Log(string msg, string level = "info") =>
+        RollingLogFile.Append(LogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {msg}\n");
 
     public DeviceService(IDeviceRepository deviceRepository, IDoorRepository doorRepository, ICardDeviceSyncRepository syncRepository, IAccessControlSdk sdk, DeviceOperationHelper opHelper)
     {
@@ -130,7 +131,7 @@ public class DeviceService : IDeviceService
         Log("SearchNetwork: starting");
         _sdk.Initialize();
         var deviceInfo = await _sdk.SearchDeviceAsync();
-        if (deviceInfo == null) { Log("SearchNetwork: no device found"); return null; }
+        if (deviceInfo == null) { Log("SearchNetwork: no device found", "warn"); return null; }
         Log($"SearchNetwork: found SN={deviceInfo.SerialNumber} IP={deviceInfo.IP} MAC={deviceInfo.MAC}");
 
         // Determine device type from serial number (6th char = door count)
@@ -165,7 +166,7 @@ public class DeviceService : IDeviceService
     public async Task<bool> ConnectDeviceAsync(int deviceId)
     {
         var device = await _deviceRepository.GetByIdAsync(deviceId);
-        if (device == null) { Log($"Connect: device id={deviceId} not in DB"); return false; }
+        if (device == null) { Log($"Connect: device id={deviceId} not in DB", "warn"); return false; }
 
         try
         {
@@ -178,12 +179,12 @@ public class DeviceService : IDeviceService
 
             device.IsOnline = isReachable;
             await _deviceRepository.UpdateAsync(device);
-            Log($"Connect: id={deviceId} IP={device.IP} reachable={isReachable}");
+            Log($"Connect: id={deviceId} IP={device.IP} reachable={isReachable}", isReachable ? "info" : "warn");
             return isReachable;
         }
         catch (Exception ex)
         {
-            Log($"Connect FAILED: id={deviceId} IP={device.IP} error={ex.Message}");
+            Log($"Connect FAILED: id={deviceId} IP={device.IP} error={ex.Message}", "error");
             throw;
         }
     }
@@ -203,7 +204,7 @@ public class DeviceService : IDeviceService
         }
         catch (Exception ex)
         {
-            Log($"GetDeviceInfo FAILED: id={deviceId} IP={device.IP} error={ex.Message}");
+            Log($"GetDeviceInfo FAILED: id={deviceId} IP={device.IP} error={ex.Message}", "error");
             throw;
         }
     }
@@ -211,7 +212,7 @@ public class DeviceService : IDeviceService
     public async Task<bool> RemoteOpenDoorAsync(int deviceId, int doorNumber)
     {
         var device = await _deviceRepository.GetByIdAsync(deviceId);
-        if (device == null) { Log($"RemoteOpenDoor: device id={deviceId} not in DB"); return false; }
+        if (device == null) { Log($"RemoteOpenDoor: device id={deviceId} not in DB", "warn"); return false; }
 
         try
         {
@@ -222,7 +223,7 @@ public class DeviceService : IDeviceService
         }
         catch (Exception ex)
         {
-            Log($"RemoteOpenDoor FAILED: id={deviceId} IP={device.IP} door={doorNumber} error={ex.Message}");
+            Log($"RemoteOpenDoor FAILED: id={deviceId} IP={device.IP} door={doorNumber} error={ex.Message}", "error");
             throw;
         }
     }
@@ -230,7 +231,7 @@ public class DeviceService : IDeviceService
     public async Task<bool> RemoteOpenAllDoorsAsync(int deviceId)
     {
         var device = await _deviceRepository.GetByIdAsync(deviceId);
-        if (device == null) { Log($"RemoteOpenAllDoors: device id={deviceId} not in DB"); return false; }
+        if (device == null) { Log($"RemoteOpenAllDoors: device id={deviceId} not in DB", "warn"); return false; }
 
         try
         {
@@ -243,7 +244,7 @@ public class DeviceService : IDeviceService
         }
         catch (Exception ex)
         {
-            Log($"RemoteOpenAllDoors FAILED: id={deviceId} IP={device.IP} error={ex.Message}");
+            Log($"RemoteOpenAllDoors FAILED: id={deviceId} IP={device.IP} error={ex.Message}", "error");
             throw;
         }
     }
@@ -251,7 +252,7 @@ public class DeviceService : IDeviceService
     public async Task<bool> SyncTimeAsync(int deviceId)
     {
         var device = await _deviceRepository.GetByIdAsync(deviceId);
-        if (device == null) { Log($"SyncTime: device id={deviceId} not in DB"); return false; }
+        if (device == null) { Log($"SyncTime: device id={deviceId} not in DB", "warn"); return false; }
 
         try
         {
@@ -262,7 +263,7 @@ public class DeviceService : IDeviceService
         }
         catch (Exception ex)
         {
-            Log($"SyncTime FAILED: id={deviceId} IP={device.IP} error={ex.Message}");
+            Log($"SyncTime FAILED: id={deviceId} IP={device.IP} error={ex.Message}", "error");
             throw;
         }
     }
@@ -282,7 +283,7 @@ public class DeviceService : IDeviceService
         }
         catch (Exception ex)
         {
-            Log($"FactoryReset FAILED: id={deviceId} IP={device.IP} error={ex.Message}");
+            Log($"FactoryReset FAILED: id={deviceId} IP={device.IP} error={ex.Message}", "error");
             throw;
         }
     }

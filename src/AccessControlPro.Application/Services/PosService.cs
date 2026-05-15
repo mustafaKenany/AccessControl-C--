@@ -12,7 +12,8 @@ public class PosService : IPosService
     // File log for POS — sale/refund/shift events go here. Captures the trail when
     // a customer says "I sold X but it doesn't show in receipts" or "shift balance off".
     private static readonly string LogPath = Path.Combine(AppContext.BaseDirectory, "pos_log.txt");
-    private static void Log(string msg) => RollingLogFile.Append(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n");
+    private static void Log(string msg, string level = "info") =>
+        RollingLogFile.Append(LogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {msg}\n");
 
     private readonly IProductRepository _productRepo;
     private readonly ITransactionRepository _transactionRepo;
@@ -318,7 +319,7 @@ public class PosService : IPosService
         if (staleShifts.Count > 0)
         {
             await _shiftRepo.UpdateRangeAsync(staleShifts);
-            Log($"OpenShift: auto-closed {staleShifts.Count} stale shift(s)");
+            Log($"OpenShift: auto-closed {staleShifts.Count} stale shift(s)", "warn");
         }
 
         var shift = new PosShift

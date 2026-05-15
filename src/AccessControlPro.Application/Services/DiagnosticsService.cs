@@ -40,9 +40,9 @@ public class DiagnosticsService : IDiagnosticsService
         _localConnectionString = localConnectionString;
     }
 
-    private static void Log(string msg)
+    private static void Log(string msg, string level = "info")
     {
-        RollingLogFile.Append(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n");
+        RollingLogFile.Append(LogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {msg}\n");
     }
 
     /// <summary>
@@ -80,7 +80,7 @@ public class DiagnosticsService : IDiagnosticsService
         }
         catch (Exception ex)
         {
-            Log($"crash-recovery probe failed: {ex.Message}");
+            Log($"crash-recovery probe failed: {ex.Message}", "error");
             return new DiagnosticsResult { Success = false, Message = ex.Message };
         }
     }
@@ -118,12 +118,12 @@ public class DiagnosticsService : IDiagnosticsService
                 return new DiagnosticsResult { Success = true, Message = "Uploaded", BytesUploaded = bundle.Length };
             }
 
-            Log($"Upload failed: {resp.StatusCode}, body: {Truncate(body, 300)}");
+            Log($"Upload failed: {resp.StatusCode}, body: {Truncate(body, 300)}", "error");
             return new DiagnosticsResult { Success = false, Message = $"Server returned {resp.StatusCode}" };
         }
         catch (Exception ex)
         {
-            Log($"Upload exception: {ex.Message}");
+            Log($"Upload exception: {ex.Message}", "error");
             return new DiagnosticsResult { Success = false, Message = ex.Message };
         }
     }

@@ -28,7 +28,8 @@ public class QrPoolService : IQrPoolService
 
     // QR pool + pass operations both write to the same file — same family of bugs.
     internal static readonly string LogPath = Path.Combine(AppContext.BaseDirectory, "qr_log.txt");
-    internal static void Log(string msg) => RollingLogFile.Append(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n");
+    internal static void Log(string msg, string level = "info") =>
+        RollingLogFile.Append(LogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {msg}\n");
 
     public QrPoolService(string connectionString)
     {
@@ -100,7 +101,7 @@ public class QrPoolService : IQrPoolService
 
         if (string.IsNullOrEmpty(code))
         {
-            Log($"AssignCode FAILED: no available Local codes (guest={guestName})");
+            Log($"AssignCode FAILED: no available Local codes (guest={guestName})", "warn");
             return null;
         }
 
@@ -317,7 +318,7 @@ public class QrPoolService : IQrPoolService
                 }
                 else if (lastErr != null)
                 {
-                    Log($"  upload-to-device FAILED for code={code}: {lastErr.Message}");
+                    Log($"  upload-to-device FAILED for code={code}: {lastErr.Message}", "error");
                 }
             }
         }
