@@ -79,6 +79,7 @@ public class QrPassService : IQrPassService
             await _transactionRepository.AddAsync(transaction);
         }
 
+        QrPoolService.Log($"CreatePass OK: code={passCode} player={playerName} fee={fee} validUntil={qrPass.ValidTo:yyyy-MM-dd HH:mm} maxUses={maxUses}");
         return MapToDto(qrPass);
     }
 
@@ -87,19 +88,29 @@ public class QrPassService : IQrPassService
         var pass = await _qrPassRepository.GetByPassCodeAsync(passCode);
 
         if (pass == null)
+        {
+            QrPoolService.Log($"ValidateAndUse: code={passCode} not found");
             return (false, "QR code not found", null);
+        }
 
         if (!pass.IsActive)
+        {
+            QrPoolService.Log($"ValidateAndUse: code={passCode} player={pass.PlayerName} deactivated");
             return (false, "QR pass has been deactivated", MapToDto(pass));
+        }
 
         var now = DateTime.Now;
         if (now < pass.ValidFrom)
+        {
+            QrPoolService.Log($"ValidateAndUse: code={passCode} player={pass.PlayerName} not-yet-valid (validFrom={pass.ValidFrom:O})");
             return (false, "QR pass is not yet valid", MapToDto(pass));
+        }
 
         if (now > pass.ValidTo)
         {
             pass.IsActive = false;
             await _qrPassRepository.UpdateAsync(pass);
+            QrPoolService.Log($"ValidateAndUse: code={passCode} player={pass.PlayerName} expired (validTo={pass.ValidTo:O})");
             return (false, "QR pass has expired", MapToDto(pass));
         }
 
@@ -107,6 +118,7 @@ public class QrPassService : IQrPassService
         {
             pass.IsActive = false;
             await _qrPassRepository.UpdateAsync(pass);
+            QrPoolService.Log($"ValidateAndUse: code={passCode} player={pass.PlayerName} max-uses-reached ({pass.UsedCount}/{pass.MaxUses})");
             return (false, "QR pass has reached maximum uses", MapToDto(pass));
         }
 
@@ -118,6 +130,7 @@ public class QrPassService : IQrPassService
         await _qrPassRepository.UpdateAsync(pass);
 
         var remaining = pass.MaxUses - pass.UsedCount;
+        QrPoolService.Log($"ValidateAndUse OK: code={passCode} player={pass.PlayerName} usesNow={pass.UsedCount}/{pass.MaxUses}");
         return (true, $"Access granted. {remaining} uses remaining.", MapToDto(pass));
     }
 
@@ -140,6 +153,7 @@ public class QrPassService : IQrPassService
         if (pass == null) throw new InvalidOperationException("QR pass not found");
         pass.IsActive = false;
         await _qrPassRepository.UpdateAsync(pass);
+        QrPoolService.Log($"DeactivatePass: id={id} code={pass.PassCode} player={pass.PlayerName}");
     }
 
     public async Task<int> ExpireOldPassesAsync()
@@ -152,6 +166,7 @@ public class QrPassService : IQrPassService
             await _qrPassRepository.UpdateAsync(pass);
             count++;
         }
+        if (count > 0) QrPoolService.Log($"ExpireOldPasses: expired={count}");
         return count;
     }
 

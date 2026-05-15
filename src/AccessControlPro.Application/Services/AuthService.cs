@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.IO;
 using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Domain.Entities;
 using AccessControlPro.Domain.Interfaces;
@@ -15,6 +16,11 @@ public class AuthService : IAuthService
     private const int MaxFailedAttempts = 5;
     private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(5);
 
+    // File log — captured in diagnostics bundles. Username is logged, password
+    // never is, not even in failure paths.
+    private static readonly string LogPath = Path.Combine(AppContext.BaseDirectory, "auth_log.txt");
+    private static void Log(string msg) => RollingLogFile.Append(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n");
+
     public AuthService(IUserRepository userRepository)
     {
         _userRepository = userRepository;
@@ -23,7 +29,10 @@ public class AuthService : IAuthService
     public async Task<LoginResult> LoginAsync(string username, string password)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            Log("Login rejected: empty username or password");
             return new LoginResult(null, LoginError.UserNotFound);
+        }
 
         username = username.Trim().ToLowerInvariant();
 
@@ -31,7 +40,10 @@ public class AuthService : IAuthService
         if (_failedAttempts.TryGetValue(username, out var attempts))
         {
             if (attempts.Count >= MaxFailedAttempts && DateTime.UtcNow - attempts.LastAttempt < LockoutDuration)
+            {
+                Log($"Login rejected: account locked (user={username}, failed={attempts.Count})");
                 return new LoginResult(null, LoginError.AccountLockedOut);
+            }
 
             // Reset if lockout expired
             if (DateTime.UtcNow - attempts.LastAttempt >= LockoutDuration)
@@ -42,20 +54,26 @@ public class AuthService : IAuthService
         if (user == null)
         {
             RecordFailedAttempt(username);
+            Log($"Login failed: user not found (user={username})");
             return new LoginResult(null, LoginError.UserNotFound);
         }
 
         if (!user.IsActive)
+        {
+            Log($"Login rejected: account disabled (user={username})");
             return new LoginResult(null, LoginError.AccountDisabled);
+        }
 
         if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
         {
             RecordFailedAttempt(username);
+            Log($"Login failed: wrong password (user={username})");
             return new LoginResult(null, LoginError.WrongPassword);
         }
 
         // Clear failed attempts on successful login
         _failedAttempts.TryRemove(username, out _);
+        Log($"Login OK (user={username}, role={user.Role})");
         return new LoginResult(user, LoginError.None);
     }
 
@@ -110,6 +128,7 @@ public class AuthService : IAuthService
             Permissions = permissions
         };
         await _userRepository.AddAsync(user);
+        Log($"CreateUser OK (user={username}, role={role})");
     }
 
     public async Task UpdateUserAsync(int userId, string displayName, string role, bool isActive, string permissions = "")
@@ -122,6 +141,7 @@ public class AuthService : IAuthService
         user.IsActive = isActive;
         user.Permissions = permissions;
         await _userRepository.UpdateAsync(user);
+        Log($"UpdateUser OK (id={userId}, user={user.Username}, role={role}, active={isActive})");
     }
 
     public async Task ResetPasswordAsync(int userId, string newPassword)
@@ -131,6 +151,7 @@ public class AuthService : IAuthService
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
         await _userRepository.UpdateAsync(user);
+        Log($"ResetPassword OK (id={userId}, user={user.Username})");
     }
 
     public async Task ChangePasswordAsync(string username, string currentPassword, string newPassword)
@@ -142,10 +163,14 @@ public class AuthService : IAuthService
             ?? throw new InvalidOperationException("User not found.");
 
         if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
+        {
+            Log($"ChangePassword failed: current password wrong (user={username})");
             throw new InvalidOperationException("Current password is incorrect.");
+        }
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
         await _userRepository.UpdateAsync(user);
+        Log($"ChangePassword OK (user={username})");
     }
 
     public bool IsDefaultPassword(string passwordHash)
@@ -168,5 +193,6 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Cannot delete the default admin account.");
 
         await _userRepository.DeleteAsync(userId);
+        Log($"DeleteUser OK (id={userId}, user={user.Username})");
     }
 }

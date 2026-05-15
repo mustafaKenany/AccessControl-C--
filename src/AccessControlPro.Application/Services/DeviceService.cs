@@ -17,6 +17,12 @@ public class DeviceService : IDeviceService
     private readonly IAccessControlSdk _sdk;
     private readonly DeviceOperationHelper _opHelper;
 
+    // File log for device SDK operations — captured in diagnostics bundles.
+    // High-impact area: card-not-opening / time-drift / device-offline issues
+    // are nearly always traced to one of the calls in this service.
+    private static readonly string LogPath = Path.Combine(AppContext.BaseDirectory, "device_log.txt");
+    private static void Log(string msg) => RollingLogFile.Append(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n");
+
     public DeviceService(IDeviceRepository deviceRepository, IDoorRepository doorRepository, ICardDeviceSyncRepository syncRepository, IAccessControlSdk sdk, DeviceOperationHelper opHelper)
     {
         _deviceRepository = deviceRepository;
@@ -121,9 +127,11 @@ public class DeviceService : IDeviceService
 
     public async Task<DeviceDto?> SearchNetworkAsync()
     {
+        Log("SearchNetwork: starting");
         _sdk.Initialize();
         var deviceInfo = await _sdk.SearchDeviceAsync();
-        if (deviceInfo == null) return null;
+        if (deviceInfo == null) { Log("SearchNetwork: no device found"); return null; }
+        Log($"SearchNetwork: found SN={deviceInfo.SerialNumber} IP={deviceInfo.IP} MAC={deviceInfo.MAC}");
 
         // Determine device type from serial number (6th char = door count)
         var deviceType = "CR3222T";
@@ -157,18 +165,27 @@ public class DeviceService : IDeviceService
     public async Task<bool> ConnectDeviceAsync(int deviceId)
     {
         var device = await _deviceRepository.GetByIdAsync(deviceId);
-        if (device == null) return false;
+        if (device == null) { Log($"Connect: device id={deviceId} not in DB"); return false; }
 
-        _sdk.Initialize();
-        var info = ToDeviceInfo(device);
+        try
+        {
+            _sdk.Initialize();
+            var info = ToDeviceInfo(device);
 
-        // Use getDevInfo to verify device is reachable (install() crashes in .NET 8 due to MFC context)
-        var devInfo = _sdk.GetDeviceInfo(info);
-        var isReachable = !string.IsNullOrEmpty(devInfo);
+            // Use getDevInfo to verify device is reachable (install() crashes in .NET 8 due to MFC context)
+            var devInfo = _sdk.GetDeviceInfo(info);
+            var isReachable = !string.IsNullOrEmpty(devInfo);
 
-        device.IsOnline = isReachable;
-        await _deviceRepository.UpdateAsync(device);
-        return isReachable;
+            device.IsOnline = isReachable;
+            await _deviceRepository.UpdateAsync(device);
+            Log($"Connect: id={deviceId} IP={device.IP} reachable={isReachable}");
+            return isReachable;
+        }
+        catch (Exception ex)
+        {
+            Log($"Connect FAILED: id={deviceId} IP={device.IP} error={ex.Message}");
+            throw;
+        }
     }
 
     public async Task<string> GetDeviceInfoAsync(int deviceId)
@@ -176,41 +193,78 @@ public class DeviceService : IDeviceService
         var device = await _deviceRepository.GetByIdAsync(deviceId);
         if (device == null) return string.Empty;
 
-        _sdk.Initialize();
-        var info = ToDeviceInfo(device);
-        return _sdk.GetDeviceInfo(info);
+        try
+        {
+            _sdk.Initialize();
+            var info = ToDeviceInfo(device);
+            var result = _sdk.GetDeviceInfo(info);
+            Log($"GetDeviceInfo: id={deviceId} IP={device.IP} resultLen={result?.Length ?? 0}");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Log($"GetDeviceInfo FAILED: id={deviceId} IP={device.IP} error={ex.Message}");
+            throw;
+        }
     }
 
     public async Task<bool> RemoteOpenDoorAsync(int deviceId, int doorNumber)
     {
         var device = await _deviceRepository.GetByIdAsync(deviceId);
-        if (device == null) return false;
+        if (device == null) { Log($"RemoteOpenDoor: device id={deviceId} not in DB"); return false; }
 
-        var info = ToDeviceInfo(device);
-        _opHelper.ExecuteWithLock(() => _sdk.RemoteOpenDoor(info, new[] { doorNumber - 1 }));
-        return true;
+        try
+        {
+            var info = ToDeviceInfo(device);
+            _opHelper.ExecuteWithLock(() => _sdk.RemoteOpenDoor(info, new[] { doorNumber - 1 }));
+            Log($"RemoteOpenDoor OK: id={deviceId} IP={device.IP} door={doorNumber}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log($"RemoteOpenDoor FAILED: id={deviceId} IP={device.IP} door={doorNumber} error={ex.Message}");
+            throw;
+        }
     }
 
     public async Task<bool> RemoteOpenAllDoorsAsync(int deviceId)
     {
         var device = await _deviceRepository.GetByIdAsync(deviceId);
-        if (device == null) return false;
+        if (device == null) { Log($"RemoteOpenAllDoors: device id={deviceId} not in DB"); return false; }
 
-        var info = ToDeviceInfo(device);
-        var doorCount = GetDoorCount(device.DeviceType.ToString());
-        var allDoors = Enumerable.Range(0, doorCount).ToArray();
-        _opHelper.ExecuteWithLock(() => _sdk.RemoteOpenDoor(info, allDoors));
-        return true;
+        try
+        {
+            var info = ToDeviceInfo(device);
+            var doorCount = GetDoorCount(device.DeviceType.ToString());
+            var allDoors = Enumerable.Range(0, doorCount).ToArray();
+            _opHelper.ExecuteWithLock(() => _sdk.RemoteOpenDoor(info, allDoors));
+            Log($"RemoteOpenAllDoors OK: id={deviceId} IP={device.IP} doors={doorCount}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log($"RemoteOpenAllDoors FAILED: id={deviceId} IP={device.IP} error={ex.Message}");
+            throw;
+        }
     }
 
     public async Task<bool> SyncTimeAsync(int deviceId)
     {
         var device = await _deviceRepository.GetByIdAsync(deviceId);
-        if (device == null) return false;
+        if (device == null) { Log($"SyncTime: device id={deviceId} not in DB"); return false; }
 
-        var info = ToDeviceInfo(device);
-        _opHelper.ExecuteWithLock(() => _sdk.CalibrateTime(info));
-        return true;
+        try
+        {
+            var info = ToDeviceInfo(device);
+            _opHelper.ExecuteWithLock(() => _sdk.CalibrateTime(info));
+            Log($"SyncTime OK: id={deviceId} IP={device.IP} localTime={DateTime.Now:O}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log($"SyncTime FAILED: id={deviceId} IP={device.IP} error={ex.Message}");
+            throw;
+        }
     }
 
     public async Task FactoryResetAsync(int deviceId)
@@ -219,9 +273,18 @@ public class DeviceService : IDeviceService
         if (device == null)
             throw new InvalidOperationException("Device not found.");
 
-        var info = ToDeviceInfo(device);
-        var doorCount = GetDoorCount(device.DeviceType.ToString());
-        _opHelper.ExecuteWithLock(() => _sdk.InitializeDevice(info, doorCount));
+        try
+        {
+            var info = ToDeviceInfo(device);
+            var doorCount = GetDoorCount(device.DeviceType.ToString());
+            _opHelper.ExecuteWithLock(() => _sdk.InitializeDevice(info, doorCount));
+            Log($"FactoryReset OK: id={deviceId} IP={device.IP} doors={doorCount}");
+        }
+        catch (Exception ex)
+        {
+            Log($"FactoryReset FAILED: id={deviceId} IP={device.IP} error={ex.Message}");
+            throw;
+        }
     }
 
     public async Task<bool> RenameDeviceAsync(int deviceId, string newName)

@@ -1,3 +1,4 @@
+using System.IO;
 using AccessControlPro.Application.DTOs;
 using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Domain.Entities;
@@ -8,6 +9,11 @@ namespace AccessControlPro.Application.Services;
 
 public class PosService : IPosService
 {
+    // File log for POS — sale/refund/shift events go here. Captures the trail when
+    // a customer says "I sold X but it doesn't show in receipts" or "shift balance off".
+    private static readonly string LogPath = Path.Combine(AppContext.BaseDirectory, "pos_log.txt");
+    private static void Log(string msg) => RollingLogFile.Append(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n");
+
     private readonly IProductRepository _productRepo;
     private readonly ITransactionRepository _transactionRepo;
     private readonly IEmployeeRepository _employeeRepo;
@@ -192,6 +198,7 @@ public class PosService : IPosService
             CreatedBy = _currentUser.Username ?? "System"
         });
 
+        Log($"Sale OK: items={items.Count} subtotal={subtotal} discount={totalDiscount} total={totalAmount} method={method} employeeId={(employeeId?.ToString() ?? "n/a")} by={_currentUser.Username}");
         return true;
     }
 
@@ -209,6 +216,7 @@ public class PosService : IPosService
         var employee = await _employeeRepo.GetByIdWithCardsAsync(employeeId)
             ?? throw new InvalidOperationException($"Employee with ID {employeeId} not found.");
 
+        var balanceBefore = employee.CardBalance;
         employee.CardBalance += amount;
         await _employeeRepo.UpdateAsync(employee);
 
@@ -223,6 +231,8 @@ public class PosService : IPosService
             PaymentMethod = PaymentMethod.Cash,
             CreatedBy = _currentUser.Username ?? "System"
         });
+
+        Log($"TopUpCard OK: employeeId={employeeId} player={employee.FullNameEn} amount={amount} before={balanceBefore} after={employee.CardBalance}");
     }
 
     public async Task<(int Count, decimal Total)> GetTodaySalesAsync()
@@ -306,7 +316,10 @@ public class PosService : IPosService
             stale.ClosedAt = DateTime.UtcNow;
         }
         if (staleShifts.Count > 0)
+        {
             await _shiftRepo.UpdateRangeAsync(staleShifts);
+            Log($"OpenShift: auto-closed {staleShifts.Count} stale shift(s)");
+        }
 
         var shift = new PosShift
         {
@@ -317,6 +330,7 @@ public class PosService : IPosService
         };
 
         await _shiftRepo.AddAsync(shift);
+        Log($"OpenShift OK: id={shift.Id} openingCash={openingCash} openedBy={shift.OpenedBy}");
         return shift;
     }
 
@@ -340,6 +354,7 @@ public class PosService : IPosService
         shift.Status = "Closed";
 
         await _shiftRepo.UpdateAsync(shift);
+        Log($"CloseShift OK: id={shift.Id} openingCash={shift.OpeningCash} cashSales={shift.TotalCashSales} cardSales={shift.TotalCardSales} closingCash={closingCash} variance={shift.Variance}");
         return shift;
     }
 }

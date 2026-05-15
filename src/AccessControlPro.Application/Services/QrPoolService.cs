@@ -1,3 +1,4 @@
+using System.IO;
 using AccessControlPro.Domain.Entities;
 using AccessControlPro.SDK.Models;
 using AccessControlPro.SDK.Wrapper;
@@ -25,6 +26,10 @@ public class QrPoolService : IQrPoolService
     private readonly int _configPoolSize;
     private readonly int _configRangeStart;
 
+    // QR pool + pass operations both write to the same file — same family of bugs.
+    internal static readonly string LogPath = Path.Combine(AppContext.BaseDirectory, "qr_log.txt");
+    internal static void Log(string msg) => RollingLogFile.Append(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\n");
+
     public QrPoolService(string connectionString)
     {
         _connectionString = connectionString;
@@ -51,9 +56,11 @@ public class QrPoolService : IQrPoolService
 
     public async Task<int> GeneratePoolAsync(int count = 3500, int startFrom = 50001001, string source = "Local")
     {
+        Log($"GeneratePool: requested count={count} startFrom={startFrom} source={source}");
         using var conn = new SqlConnection(_connectionString);
         await conn.OpenAsync();
         int generated = 0;
+        int skipped = 0;
         var validTo = DateTime.UtcNow.AddYears(1);
 
         for (int i = 0; i < count; i++)
@@ -71,8 +78,9 @@ public class QrPoolService : IQrPoolService
                 await cmd.ExecuteNonQueryAsync();
                 generated++;
             }
-            catch { /* skip duplicates */ }
+            catch { skipped++; /* duplicate or constraint */ }
         }
+        Log($"GeneratePool DONE: generated={generated} skipped={skipped}");
         return generated;
     }
 
@@ -90,7 +98,11 @@ public class QrPoolService : IQrPoolService
             code = result?.ToString();
         }
 
-        if (string.IsNullOrEmpty(code)) return null;
+        if (string.IsNullOrEmpty(code))
+        {
+            Log($"AssignCode FAILED: no available Local codes (guest={guestName})");
+            return null;
+        }
 
         // Assign the code
         using (var updateCmd = new SqlCommand(
@@ -104,6 +116,8 @@ public class QrPoolService : IQrPoolService
             updateCmd.Parameters.AddWithValue("@code", code);
             await updateCmd.ExecuteNonQueryAsync();
         }
+
+        Log($"AssignCode OK: code={code} guest={guestName} doors={doorPermissions}");
 
         // Return the entry
         return await GetEntryByCodeAsync(conn, code);
@@ -144,7 +158,8 @@ public class QrPoolService : IQrPoolService
               Status = CASE WHEN UsedCount + 1 >= MaxUses THEN 2 ELSE Status END
               WHERE Code = @code", conn);
         cmd.Parameters.AddWithValue("@code", code);
-        await cmd.ExecuteNonQueryAsync();
+        var rows = await cmd.ExecuteNonQueryAsync();
+        Log($"MarkUsed: code={code} affected={rows}");
     }
 
     public async Task<int> CleanupExpiredAsync()
@@ -155,7 +170,9 @@ public class QrPoolService : IQrPoolService
         using var cmd = new SqlCommand(
             @"UPDATE QrPool SET Status = 3, ExpiredAt = GETUTCDATE()
               WHERE Status IN (0, 1) AND ValidTo < GETUTCDATE()", conn);
-        return await cmd.ExecuteNonQueryAsync();
+        var affected = await cmd.ExecuteNonQueryAsync();
+        if (affected > 0) Log($"CleanupExpired: expired={affected}");
+        return affected;
     }
 
     public async Task<List<QrPoolEntry>> GetAssignedAsync()
@@ -207,6 +224,7 @@ public class QrPoolService : IQrPoolService
     public async Task<(int uploaded, int deleted, int generated)> SyncQrPoolToDeviceAsync(
         IAccessControlSdk sdk, List<DeviceInfo> devices)
     {
+        Log($"SyncQrPoolToDevice: starting (devices={devices.Count})");
         int uploaded = 0, deleted = 0, generated = 0;
 
         using var conn = new SqlConnection(_connectionString);
@@ -277,6 +295,7 @@ public class QrPoolService : IQrPoolService
             foreach (var (code, doors, validTo) in codesToUpload)
             {
                 bool success = false;
+                Exception? lastErr = null;
                 foreach (var device in devices)
                 {
                     try
@@ -285,7 +304,7 @@ public class QrPoolService : IQrPoolService
                         sdk.AddAccessCard(device, code, "", 0, doors, permitTime, 2, 0, false);
                         success = true;
                     }
-                    catch { /* device might be offline */ }
+                    catch (Exception ex) { lastErr = ex; /* device might be offline */ }
                 }
 
                 if (success)
@@ -296,9 +315,14 @@ public class QrPoolService : IQrPoolService
                     await updateCmd.ExecuteNonQueryAsync();
                     uploaded++;
                 }
+                else if (lastErr != null)
+                {
+                    Log($"  upload-to-device FAILED for code={code}: {lastErr.Message}");
+                }
             }
         }
 
+        Log($"SyncQrPoolToDevice DONE: uploaded={uploaded} deleted={deleted} generated={generated}");
         return (uploaded, deleted, generated);
     }
 
