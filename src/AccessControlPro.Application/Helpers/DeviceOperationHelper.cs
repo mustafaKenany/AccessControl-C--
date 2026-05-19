@@ -62,14 +62,27 @@ public class DeviceOperationHelper
     }
 
     /// <summary>
-    /// Execute an SDK operation with proper locking:
-    /// StopMonitoring → Shutdown → wait for device TCP release → ReInitialize → execute → cleanup → RestartMonitoring
+    /// Execute an SDK operation with proper locking.
+    /// Happy path: PauseMonitoring → operation → ResumeMonitoring (SDK stays initialized,
+    /// no native re-init). Retry path: full SDK Shutdown+Initialize + retry once.
+    ///
+    /// History: this used to call StopAndReset (full Shutdown+Initialize) every time —
+    /// roughly 30 card-adds per day × full native init was leaking ~345 MB/day of native
+    /// memory and was a co-cause (with the WPF DataGrid Visual tree leak) of the OOM
+    /// crashes after 3+ days of uptime. The lightweight PauseMonitoring path avoids the
+    /// native re-init while preserving the original behavior: monitoring is paused so the
+    /// SDK can do card operations without conflicting with the watch socket.
     /// </summary>
     public T ExecuteWithLock<T>(Func<T> operation)
     {
         lock (_sdkLock)
         {
-            var wasMonitoring = StopAndReset();
+            bool wasMonitoring = _lastMonitoredDevices != null;
+            bool didFullReset = false;
+
+            if (wasMonitoring) _sdk.PauseMonitoring();
+            Thread.Sleep(200); // brief pause so device can process CloseWatch
+
             try
             {
                 T result;
@@ -79,7 +92,10 @@ public class DeviceOperationHelper
                 }
                 catch
                 {
+                    // Lightweight pause wasn't enough. Fall back to the original
+                    // full-SDK-reset path and retry once. Loses no functionality.
                     ExtendedReset();
+                    didFullReset = true;
                     result = operation();
                 }
                 CleanupAfterCall();
@@ -87,20 +103,25 @@ public class DeviceOperationHelper
             }
             finally
             {
-                if (wasMonitoring) RestartMonitoring();
+                if (wasMonitoring) ResumeAfterOperation(didFullReset);
             }
         }
     }
 
     /// <summary>
-    /// Execute an SDK operation (void) with proper locking.
-    /// If first attempt fails, does extended reset (10s) and retries once.
+    /// Execute an SDK operation (void) with the same pause-vs-reset strategy as the
+    /// generic variant. See <see cref="ExecuteWithLock{T}"/> for the full explanation.
     /// </summary>
     public void ExecuteWithLock(Action operation)
     {
         lock (_sdkLock)
         {
-            var wasMonitoring = StopAndReset();
+            bool wasMonitoring = _lastMonitoredDevices != null;
+            bool didFullReset = false;
+
+            if (wasMonitoring) _sdk.PauseMonitoring();
+            Thread.Sleep(200);
+
             try
             {
                 try
@@ -109,16 +130,34 @@ public class DeviceOperationHelper
                 }
                 catch
                 {
-                    // First attempt failed — extended reset and retry
                     ExtendedReset();
-                    operation(); // Retry once — if this fails too, exception propagates
+                    didFullReset = true;
+                    operation();
                 }
                 CleanupAfterCall();
             }
             finally
             {
-                if (wasMonitoring) RestartMonitoring();
+                if (wasMonitoring) ResumeAfterOperation(didFullReset);
             }
+        }
+    }
+
+    /// <summary>
+    /// Restore monitoring after an operation. If we only paused (happy path), send
+    /// BeginWatch again. If we did a full SDK reset (retry path), the SDK lost track
+    /// of the monitored devices, so we need a full StartMonitoring restart.
+    /// </summary>
+    private void ResumeAfterOperation(bool didFullReset)
+    {
+        if (didFullReset)
+        {
+            RestartMonitoring();
+        }
+        else
+        {
+            try { _sdk.ResumeMonitoring(); }
+            catch { /* best-effort — if Resume fails, monitoring will recover on next ping */ }
         }
     }
 
