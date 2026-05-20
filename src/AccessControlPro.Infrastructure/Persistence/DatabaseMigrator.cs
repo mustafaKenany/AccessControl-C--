@@ -541,6 +541,22 @@ public static class DatabaseMigrator
               CREATE INDEX IX_SubscriptionPlans_IsActive ON SubscriptionPlans(IsActive, SortOrder);
             END",
 
+            // Auto-seed default plans if the table is empty. The Basmia 2026-05-09 deep audit
+            // found 842 players using SubscriptionType='Fitness' that didn't exist in the
+            // admin's plans table — because the table was empty and the renew dialog
+            // defaults to the literal string 'Fitness'. Seeding 5 sensible defaults here
+            // means even untouched installs have a usable dropdown, and existing 'Fitness'
+            // rows match the seeded 'Fitness' plan name automatically.
+            @"IF NOT EXISTS (SELECT 1 FROM SubscriptionPlans)
+            BEGIN
+              INSERT INTO SubscriptionPlans (NameEn, NameAr, Duration, DurationType, Price, IsActive, SortOrder) VALUES
+                ('Fitness',    N'لياقة بدنية',  30, 'Days', 25000, 1, 1),
+                ('Cardio',     N'كارديو',       30, 'Days', 20000, 1, 2),
+                ('CrossFit',   N'كروس فيت',     30, 'Days', 35000, 1, 3),
+                ('Full Access',N'وصول كامل',    30, 'Days', 50000, 1, 4),
+                ('Daily Pass', N'بطاقة يومية',   1, 'Days',  3000, 1, 5);
+            END",
+
             // v4.4: Additional indexes for new tables
             @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_QrPool_Status' AND object_id = OBJECT_ID('QrPool'))
               CREATE INDEX IX_QrPool_Status ON QrPool(Status);",

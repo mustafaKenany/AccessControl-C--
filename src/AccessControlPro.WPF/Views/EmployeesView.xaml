@@ -365,8 +365,22 @@
         <!-- Table Body -->
         <Border Grid.Row="4" Background="{StaticResource BgCardBrush}" CornerRadius="0,0,12,12">
             <Grid>
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding Employees}">
+                <!-- Virtualization: ItemsControl by itself materializes ALL rows in the
+                     Visual tree. With 2000+ players that meant ~2000 row containers held
+                     in memory, never released on filter switch — the Basmia OOM root cause.
+                     Switching to VirtualizingStackPanel + ScrollViewer.CanContentScroll
+                     means only ~20 visible rows have Visual containers at any time.
+                     Recycling mode reuses containers as the user scrolls. -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" CanContentScroll="True">
+                    <ItemsControl ItemsSource="{Binding Employees}"
+                                  VirtualizingStackPanel.IsVirtualizing="True"
+                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                  ScrollViewer.CanContentScroll="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border x:Name="row" Background="Transparent"

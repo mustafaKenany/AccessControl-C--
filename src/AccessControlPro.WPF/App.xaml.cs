@@ -36,7 +36,11 @@ public partial class App : System.Windows.Application
     private DispatcherTimer? _cloudSyncTimer;
     private DispatcherTimer? _cleanupDailyTimer;
     private DispatcherTimer? _qrPoolTimer;
+    private DispatcherTimer? _memoryMonitorTimer;
+    private DispatcherTimer? _restartBannerTimer;
+    private static readonly DateTime _appStartedAt = DateTime.Now;
     private static readonly string CrashLogPath = Path.Combine(AppContext.BaseDirectory, "crash_log.txt");
+    private static readonly string MemoryLogPath = Path.Combine(AppContext.BaseDirectory, "memory_log.txt");
 
     // === Native debug-dialog suppression =================================================
     // The Hikvision/Dnake SDK (FCardCDrive.dll and friends) is built against the DEBUG
@@ -99,6 +103,21 @@ public partial class App : System.Windows.Application
         {
             WriteCrashLog("DispatcherUnhandledException", e.Exception);
             e.Handled = true; // Prevent crash — show message instead
+
+            // OutOfMemoryException special-case: do NOT show a CustomMessageBox.
+            // The previous code did, and on the Basmia 2026-05-18 crash storm the
+            // message box's own render call triggered another OOM, opening another
+            // (invisible) message box, opening another... within 35 ms we had 10
+            // cascading OOM exceptions with 10 invisible windows piling up. The user
+            // saw a frozen window with no error message. By skipping UI on OOM we
+            // log the crash and let background tasks (sync, backup) keep running.
+            // The next "Restart Recommended" banner check will tell the user to
+            // close + reopen the app.
+            if (e.Exception is OutOfMemoryException)
+            {
+                try { GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true); } catch { }
+                return;
+            }
 
             if (DbConnectionHelper.IsConnectionError(e.Exception))
             {
@@ -814,6 +833,101 @@ public partial class App : System.Windows.Application
                     StartupLog($"Diagnostics auto error: {ex2.Message}");
                 }
             });
+
+            // Memory pressure monitor — logs working set + heap stats every 10 min to
+            // memory_log.txt. Picked up by the diagnostics bundler. After the Basmia
+            // OOM crashes on 2026-05-18 we want clear breadcrumbs showing memory growth
+            // BEFORE the next OOM, not just at the crash moment. Logs are tiny (~80 bytes
+            // per sample) so 60-day rolling retention costs <100 KB total.
+            _memoryMonitorTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(10) };
+            _memoryMonitorTimer.Tick += (_, _) =>
+            {
+                try
+                {
+                    var proc = Process.GetCurrentProcess();
+                    var ws = proc.WorkingSet64 / (1024 * 1024);
+                    var priv = proc.PrivateMemorySize64 / (1024 * 1024);
+                    var heap = GC.GetTotalMemory(forceFullCollection: false) / (1024 * 1024);
+                    var uptime = DateTime.Now - _appStartedAt;
+
+                    var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [info] " +
+                               $"ws={ws}MB private={priv}MB heap={heap}MB " +
+                               $"gen0={GC.CollectionCount(0)} gen1={GC.CollectionCount(1)} gen2={GC.CollectionCount(2)} " +
+                               $"uptime={uptime.TotalHours:F1}h\n";
+                    RollingLogFile.Append(MemoryLogPath, line);
+
+                    // Warning thresholds: at >500 MB working set we shout, at >700 MB we
+                    // proactively trigger a Gen2 compacting GC and log a critical entry.
+                    if (ws > 700)
+                    {
+                        RollingLogFile.Append(MemoryLogPath,
+                            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [error] working set high ({ws} MB) — forcing Gen2 compacting GC\n");
+                        GC.Collect(2, GCCollectionMode.Aggressive, blocking: false, compacting: true);
+                    }
+                    else if (ws > 500)
+                    {
+                        RollingLogFile.Append(MemoryLogPath,
+                            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [warn] working set elevated ({ws} MB) — consider closing/reopening the app today\n");
+                    }
+                }
+                catch (Exception ex2)
+                {
+                    try { RollingLogFile.Append(MemoryLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [error] monitor failed: {ex2.Message}\n"); } catch { }
+                }
+            };
+            _memoryMonitorTimer.Start();
+            // Fire one sample on startup so we have a baseline reading
+            _memoryMonitorTimer.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    var proc = Process.GetCurrentProcess();
+                    var ws = proc.WorkingSet64 / (1024 * 1024);
+                    RollingLogFile.Append(MemoryLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [info] === STARTUP === ws={ws}MB pid={proc.Id}\n");
+                }
+                catch { }
+            }), System.Windows.Threading.DispatcherPriority.Background);
+
+            // Restart-recommended reminder. Both leaks (WPF Visual tree + native SDK)
+            // are usage-driven but accumulate over time. At 5+ days uptime the customer
+            // should close+reopen the app before the next OOM. Soft-prompts once on
+            // crossing 5d, then once every 12h after. Easy to dismiss — never blocks work.
+            bool restartShownAlready = false;
+            DateTime lastRestartPrompt = DateTime.MinValue;
+            _restartBannerTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(30) };
+            _restartBannerTimer.Tick += (_, _) =>
+            {
+                try
+                {
+                    var uptime = DateTime.Now - _appStartedAt;
+                    if (uptime.TotalDays < 5) return;
+
+                    // First crossing of 5 days, OR 12+ hours since last reminder.
+                    if (!restartShownAlready || (DateTime.Now - lastRestartPrompt).TotalHours >= 12)
+                    {
+                        restartShownAlready = true;
+                        lastRestartPrompt = DateTime.Now;
+                        StartupLog($"Restart reminder fired (uptime={uptime.TotalDays:F1}d)");
+
+                        Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            try
+                            {
+                                var msg = LanguageManager.Instance.IsArabic
+                                    ? $"البرنامج يعمل منذ {(int)uptime.TotalDays} أيام. للحصول على أداء أفضل يُنصح بإغلاق البرنامج ثم فتحه من جديد عندما يناسب ذلك."
+                                    : $"The app has been running for {(int)uptime.TotalDays} days. For best performance, close and reopen it when convenient.";
+                                CustomMessageBox.Show(msg, "AccessControlPro", MsgType.Info, MainWindow);
+                            }
+                            catch { /* MainWindow might be null during shutdown */ }
+                        }), System.Windows.Threading.DispatcherPriority.Background);
+                    }
+                }
+                catch (Exception ex2)
+                {
+                    StartupLog($"Restart banner check failed: {ex2.Message}");
+                }
+            };
+            _restartBannerTimer.Start();
 
             // QR Pool device sync timer — checks every 12 hours, runs on 1st and 15th of each month
             _qrPoolTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(12) };

@@ -948,6 +948,18 @@ public partial class EmployeesViewModel : ObservableObject
         CurrentPage = 1;
         IsDataLoaded = true;
         await LoadPagedAsync();
+
+        // Filter switching is the documented OOM trigger from the Basmia 2026-05-18
+        // crash storm (~25 filter switches per minute leaked enough WPF Visual tree
+        // refs to OOM after 3.5 days). Force a Gen2 collection here to release the
+        // orphaned row containers the DataGrid holds across filter changes. Cheap
+        // (~10-20 ms) and only on the relatively rare filter-change event, not on
+        // page navigation within the same filter.
+        try
+        {
+            GC.Collect(2, GCCollectionMode.Optimized, blocking: false, compacting: true);
+        }
+        catch { /* GC must never throw, but defensive */ }
     }
 
     [RelayCommand]
