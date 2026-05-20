@@ -449,7 +449,15 @@ public partial class SetupWizardWindow : Window
                 ["LogoPath"] = ""
             },
             ["CloudSyncUrl"] = "https://hmtech.solutions/api/sync",
-            ["CloudApiKey"] = string.IsNullOrWhiteSpace(CloudApiKeyBox.Text) ? "HMTech-Sync-2026" : CloudApiKeyBox.Text.Trim(),
+            // Auto-generate a unique CloudApiKey if the operator left the box blank.
+            // The previous fallback ("HMTech-Sync-2026") was a single hardcoded key
+            // reused across every install — meaning gym B could impersonate gym A by
+            // sending the right header. The new format HMT-XXXXXXXX-XXXXXXXX is a
+            // 16-char cryptographically random hex string per install, easy for support
+            // to identify by prefix, impossible to guess.
+            ["CloudApiKey"] = string.IsNullOrWhiteSpace(CloudApiKeyBox.Text)
+                ? GenerateUniqueApiKey()
+                : CloudApiKeyBox.Text.Trim(),
             ["QrRangeStart"] = 50001001,
             ["QrPoolSize"] = 3500,
             ["DeviceMode"] = (DeviceModeCombo?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag?.ToString() ?? "Single",
@@ -460,6 +468,21 @@ public partial class SetupWizardWindow : Window
 
         var options = new JsonSerializerOptions { WriteIndented = true };
         File.WriteAllText(settingsPath, root.ToJsonString(options));
+    }
+
+    /// <summary>
+    /// Generates a cryptographically random API key in the form "HMT-XXXXXXXX-XXXXXXXX".
+    /// Used as the auto-fallback in the setup wizard when the operator leaves the
+    /// CloudApiKey box blank — replaces the old shared default "HMTech-Sync-2026"
+    /// which would have let any installed app impersonate any other.
+    /// 16 hex chars = 64 bits of entropy, comfortably unguessable.
+    /// </summary>
+    private static string GenerateUniqueApiKey()
+    {
+        var bytes = new byte[8];
+        System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
+        var hex = Convert.ToHexString(bytes);  // 16 hex chars, upper-case
+        return $"HMT-{hex.Substring(0, 8)}-{hex.Substring(8, 8)}";
     }
 
     private static void UpdateAppSettingsLogoPaths(string? devLogoPath, string? gymLogoPath)

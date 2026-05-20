@@ -1,0 +1,311 @@
+@page "/superadmin/gym-health"
+@layout AccessControlPro.Web.Components.Layout.SuperAdminLayout
+@inject AccessControlPro.Web.Data.GymDbHelper GymDb
+@inject AccessControlPro.Web.Services.SessionState Session
+@rendermode InteractiveServer
+
+<div class="page-header">
+    <h1 style="color: #7E57C2;">Gym Health</h1>
+    <button class="btn-accent btn-sm" style="background: #7E57C2;" @onclick="LoadAsync" disabled="@_loading">
+        <i class="fas fa-sync @(_loading ? "fa-spin" : "")"></i> Refresh
+    </button>
+</div>
+
+<p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+    Per-gym vital signs sourced from the master DB's <code>Gyms</code> + <code>DiagnosticsUploads</code> tables.
+    Red rows need attention. Yellow rows are healthy but worth watching. Green rows are quiet.
+</p>
+
+@if (_loading)
+{
+    <p class="no-data">Loading gym health...</p>
+}
+else if (_rows.Count == 0)
+{
+    <div class="content-card" style="text-align: center; padding: 2.5rem;">
+        <i class="fas fa-building" style="font-size: 2.5rem; color: var(--text-secondary); margin-bottom: 0.75rem;"></i>
+        <p class="no-data" style="margin: 0;">No active gyms registered.</p>
+    </div>
+}
+else
+{
+    <div class="stats-grid">
+        <div class="stat-card purple">
+            <div class="stat-icon" style="background: rgba(126, 87, 194, 0.15); color: #7E57C2;">
+                <i class="fas fa-building"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number" style="color: #7E57C2;">@_rows.Count</div>
+                <div class="stat-label">Active Gyms</div>
+            </div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-icon" style="background: rgba(34, 197, 94, 0.15); color: #16A34A;">
+                <i class="fas fa-heart"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number" style="color: #16A34A;">@_rows.Count(r => r.HealthScore == "Green")</div>
+                <div class="stat-label">Healthy</div>
+            </div>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-icon" style="background: rgba(245, 158, 11, 0.15); color: #D97706;">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number" style="color: #D97706;">@_rows.Count(r => r.HealthScore == "Yellow")</div>
+                <div class="stat-label">Watch</div>
+            </div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15); color: #DC2626;">
+                <i class="fas fa-fire"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number" style="color: #DC2626;">@_rows.Count(r => r.HealthScore == "Red")</div>
+                <div class="stat-label">Critical</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-card table-card">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Gym</th>
+                        <th title="Players synced from local DB">Players</th>
+                        <th title="Last successful cloud sync">Last sync</th>
+                        <th title="Latest diagnostics bundle">Last diag</th>
+                        <th title="Latest bundle's app version">Version</th>
+                        <th title="Crash-recovery uploads in the last 14 days">Recent crashes</th>
+                        <th>Health</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in _rows)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@r.GymName</strong>
+                                <span style="color: var(--text-secondary); font-size: 0.78rem; display: block;">@r.Subdomain</span>
+                            </td>
+                            <td>@(r.PlayerCount?.ToString() ?? "—")</td>
+                            <td>
+                                @if (r.LastSyncAt.HasValue)
+                                {
+                                    var ago = DateTime.UtcNow - r.LastSyncAt.Value;
+                                    @if (ago.TotalMinutes < 30)
+                                    {
+                                        <span class="status-pill active">@FormatAgo(ago)</span>
+                                    }
+                                    else if (ago.TotalHours < 24)
+                                    {
+                                        <span class="status-pill expiring">@FormatAgo(ago)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="status-pill expired">@FormatAgo(ago)</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary);">never</span>
+                                }
+                            </td>
+                            <td>
+                                @if (r.LastDiagnosticsAt.HasValue)
+                                {
+                                    @FormatAgo(DateTime.UtcNow - r.LastDiagnosticsAt.Value)
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary);">—</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(r.AppVersion))
+                                {
+                                    <code style="font-size: 0.85rem;">@r.AppVersion</code>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary);">—</span>
+                                }
+                            </td>
+                            <td>
+                                @if (r.RecentCrashes > 0)
+                                {
+                                    <span class="status-pill expired">@r.RecentCrashes</span>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary);">0</span>
+                                }
+                            </td>
+                            <td>
+                                @if (r.HealthScore == "Red")
+                                {
+                                    <span class="status-pill expired" title="@r.HealthReason">
+                                        <i class="fas fa-fire"></i> Critical
+                                    </span>
+                                }
+                                else if (r.HealthScore == "Yellow")
+                                {
+                                    <span class="status-pill expiring" title="@r.HealthReason">
+                                        <i class="fas fa-exclamation-triangle"></i> Watch
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="status-pill active" title="@r.HealthReason">
+                                        <i class="fas fa-heart"></i> Healthy
+                                    </span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="content-card" style="margin-top: 1.5rem;">
+        <h3 style="color: var(--text-primary);">How health is scored</h3>
+        <ul style="line-height: 1.8; color: var(--text-secondary); font-size: 0.9rem;">
+            <li><span class="status-pill expired" style="font-size: 0.78rem;">Critical</span> &nbsp; Last sync more than 24h ago, OR 2+ crashes in last 14 days. Customer needs help.</li>
+            <li><span class="status-pill expiring" style="font-size: 0.78rem;">Watch</span> &nbsp; Last sync 30 min – 24h ago, OR 1 crash in last 14 days, OR no diagnostics ever uploaded. Healthy but worth checking.</li>
+            <li><span class="status-pill active" style="font-size: 0.78rem;">Healthy</span> &nbsp; Last sync within 30 min, no recent crashes, diagnostics bundle exists. Quiet customer.</li>
+        </ul>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="content-card" style="margin-top: 1rem; border-color: var(--danger);">
+        <strong style="color: var(--danger);">Error:</strong> @_error
+    </div>
+}
+
+@code {
+    private List<GymHealthRow> _rows = new();
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            using var master = await GymDb.GetMasterConnectionAsync();
+            // Single round-trip: join Gyms with their latest DiagnosticsUploads row +
+            // recent-crash count. Two scalar subqueries are cheap with the indexes
+            // we already have on DiagnosticsUploads(GymId, UploadedAt).
+            using var cmd = new Npgsql.NpgsqlCommand(@"
+                SELECT
+                    g.""Id"", g.""Name"", g.""Subdomain"", g.""PlayerCount"", g.""LastSyncAt"",
+                    (SELECT MAX(""UploadedAt"") FROM ""DiagnosticsUploads"" d WHERE d.""GymId"" = g.""Id"") AS last_diag,
+                    (SELECT ""AppVersion"" FROM ""DiagnosticsUploads"" d WHERE d.""GymId"" = g.""Id""
+                       ORDER BY ""UploadedAt"" DESC LIMIT 1)                                          AS last_version,
+                    (SELECT COUNT(*) FROM ""DiagnosticsUploads"" d
+                       WHERE d.""GymId"" = g.""Id"" AND d.""Trigger"" = 'crash-recovery'
+                       AND d.""UploadedAt"" > NOW() - INTERVAL '14 days')                            AS recent_crashes
+                FROM ""Gyms"" g
+                WHERE g.""IsActive"" = TRUE
+                ORDER BY g.""Name""", master);
+            using var r = await cmd.ExecuteReaderAsync();
+
+            var rows = new List<GymHealthRow>();
+            while (await r.ReadAsync())
+            {
+                var row = new GymHealthRow
+                {
+                    GymId             = r.GetInt32(0),
+                    GymName           = r.GetString(1),
+                    Subdomain         = r.IsDBNull(2) ? "" : r.GetString(2),
+                    PlayerCount       = r.IsDBNull(3) ? null : r.GetInt32(3),
+                    LastSyncAt        = r.IsDBNull(4) ? null : DateTime.SpecifyKind(r.GetDateTime(4), DateTimeKind.Utc),
+                    LastDiagnosticsAt = r.IsDBNull(5) ? null : DateTime.SpecifyKind(r.GetDateTime(5), DateTimeKind.Utc),
+                    AppVersion        = r.IsDBNull(6) ? "" : r.GetString(6),
+                    RecentCrashes     = r.IsDBNull(7) ? 0 : (int)r.GetInt64(7)
+                };
+                ScoreHealth(row);
+                rows.Add(row);
+            }
+
+            _rows = rows;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private static void ScoreHealth(GymHealthRow r)
+    {
+        var reasons = new List<string>();
+
+        // Red: sync > 24h ago, or 2+ crashes recent
+        var hoursSinceSync = r.LastSyncAt.HasValue ? (DateTime.UtcNow - r.LastSyncAt.Value).TotalHours : double.MaxValue;
+        var manyCrashes = r.RecentCrashes >= 2;
+
+        if (hoursSinceSync > 24 || manyCrashes)
+        {
+            r.HealthScore = "Red";
+            if (hoursSinceSync > 24) reasons.Add($"sync {hoursSinceSync:F1} h ago");
+            if (manyCrashes) reasons.Add($"{r.RecentCrashes} crash uploads in last 14d");
+            r.HealthReason = string.Join("; ", reasons);
+            return;
+        }
+
+        // Yellow: 30 min < sync < 24h, OR 1 crash, OR no diagnostics ever
+        var someCrashes = r.RecentCrashes == 1;
+        var noDiagnostics = !r.LastDiagnosticsAt.HasValue;
+
+        if (hoursSinceSync > 0.5 || someCrashes || noDiagnostics)
+        {
+            r.HealthScore = "Yellow";
+            if (hoursSinceSync > 0.5) reasons.Add($"sync {hoursSinceSync:F1} h ago");
+            if (someCrashes) reasons.Add("1 crash upload in last 14d");
+            if (noDiagnostics) reasons.Add("no diagnostics bundle yet");
+            r.HealthReason = string.Join("; ", reasons);
+            return;
+        }
+
+        r.HealthScore = "Green";
+        r.HealthReason = "All vitals nominal";
+    }
+
+    private static string FormatAgo(TimeSpan delta)
+    {
+        if (delta.TotalMinutes < 1) return "just now";
+        if (delta.TotalMinutes < 60) return $"{(int)delta.TotalMinutes} min ago";
+        if (delta.TotalHours < 24) return $"{(int)delta.TotalHours} h ago";
+        if (delta.TotalDays < 30) return $"{(int)delta.TotalDays} d ago";
+        return $"{(int)(delta.TotalDays / 30)} mo ago";
+    }
+
+    private class GymHealthRow
+    {
+        public int GymId { get; set; }
+        public string GymName { get; set; } = "";
+        public string Subdomain { get; set; } = "";
+        public int? PlayerCount { get; set; }
+        public DateTime? LastSyncAt { get; set; }
+        public DateTime? LastDiagnosticsAt { get; set; }
+        public string AppVersion { get; set; } = "";
+        public int RecentCrashes { get; set; }
+        public string HealthScore { get; set; } = "Green";
+        public string HealthReason { get; set; } = "";
+    }
+}
