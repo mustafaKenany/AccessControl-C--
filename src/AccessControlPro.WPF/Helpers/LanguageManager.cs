@@ -136,6 +136,7 @@ public class LanguageManager : INotifyPropertyChanged
     public string ConfirmDeletePlayer => GetString("ConfirmDeletePlayer");
     public string PlayerName => GetString("PlayerName");
     public string CardNo => GetString("CardNo");
+    public string SearchBoxHint => GetString("SearchBoxHint");
     public string Subscription => GetString("Subscription");
     public string Fee => GetString("Fee");
     public string Paid => GetString("Paid");

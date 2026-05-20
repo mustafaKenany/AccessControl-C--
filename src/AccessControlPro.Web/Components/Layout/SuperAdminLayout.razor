@@ -5,7 +5,21 @@
 @inject IHttpContextAccessor HttpCtx
 
 <div class="app-container superadmin-container">
-    @if (_isLoading)
+    @if (_wrongSubdomain)
+    {
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:100vh; padding:2rem; text-align:center;">
+            <i class="fas fa-lock" style="font-size:3rem; color:#7E57C2; margin-bottom:1rem;"></i>
+            <h2 style="color:#7E57C2; margin-bottom:0.5rem;">Super Admin is restricted</h2>
+            <p style="color:var(--text-secondary); margin-bottom:1.5rem; max-width:480px;">
+                The Super Admin panel is only reachable from <strong>admin.hmtech.solutions</strong>.<br/>
+                You're currently on <code>@_currentHost</code>.
+            </p>
+            <a href="https://admin.hmtech.solutions/superadmin/dashboard" class="btn-accent" style="background:#7E57C2; text-decoration:none; padding:0.6rem 1.25rem; border-radius:10px; color:white;">
+                Go to admin.hmtech.solutions
+            </a>
+        </div>
+    }
+    else if (_isLoading)
     {
         <div style="display:flex; justify-content:center; align-items:center; min-height:100vh; color:#7E57C2;">
             <i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i>
@@ -51,9 +65,30 @@
 
 @code {
     private bool _isLoading = true;
+    private bool _wrongSubdomain;
+    private string _currentHost = "";
 
     protected override void OnInitialized()
     {
+        // SuperAdmin pages must only be reachable from the admin.* subdomain.
+        // Without this check, basmia.hmtech.solutions/superadmin/dashboard would
+        // expose the cross-gym admin panel to anyone who guesses the URL. The
+        // GymSubdomainMiddleware treats 'admin' as a reserved subdomain (no gym
+        // resolution) so the only way to legitimately reach /superadmin/* is via
+        // exactly admin.hmtech.solutions OR root hmtech.solutions (for dev).
+        var host = HttpCtx.HttpContext?.Request.Host.Host ?? "";
+        _currentHost = host;
+        var isAdminSubdomain = host.StartsWith("admin.", StringComparison.OrdinalIgnoreCase);
+        var isRootDomain     = host.Equals("hmtech.solutions", StringComparison.OrdinalIgnoreCase)
+                            || host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                            || host.StartsWith("localhost:", StringComparison.OrdinalIgnoreCase);
+        if (!isAdminSubdomain && !isRootDomain && !string.IsNullOrEmpty(host))
+        {
+            _wrongSubdomain = true;
+            _isLoading = false;
+            return;
+        }
+
         // Hydrate from the server-validated session that the request middleware stashed
         // in HttpContext.Items (no file reads, no cookie parsing in user-land code).
         if (!Session.IsSuperAdmin)

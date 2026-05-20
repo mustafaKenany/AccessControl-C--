@@ -118,6 +118,7 @@
   <data name="ConfirmDeletePlayer" xml:space="preserve"><value>هل أنت متأكد من حذف هذا اللاعب؟</value></data>
   <data name="PlayerName" xml:space="preserve"><value>اسم اللاعب</value></data>
   <data name="CardNo" xml:space="preserve"><value>رقم البطاقة</value></data>
+  <data name="SearchBoxHint" xml:space="preserve"><value>ابحث بالاسم أو الهاتف أو رقم البطاقة. أرقام البطاقات تعمل مع أو بدون الصفر في البداية — مثلًا "0366549" و "366549" يبحثان عن نفس البطاقة.</value></data>
   <data name="Subscription" xml:space="preserve"><value>الاشتراك</value></data>
   <data name="Fee" xml:space="preserve"><value>الرسوم</value></data>
   <data name="Paid" xml:space="preserve"><value>المدفوع</value></data>

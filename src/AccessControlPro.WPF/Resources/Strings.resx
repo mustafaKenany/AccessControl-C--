@@ -118,6 +118,7 @@
   <data name="ConfirmDeletePlayer" xml:space="preserve"><value>Are you sure you want to delete this player?</value></data>
   <data name="PlayerName" xml:space="preserve"><value>Player Name</value></data>
   <data name="CardNo" xml:space="preserve"><value>Card No</value></data>
+  <data name="SearchBoxHint" xml:space="preserve"><value>Search by name, phone, or card number. Card numbers work with or without the leading 0 — e.g. both '0366549' and '366549' will find the same card.</value></data>
   <data name="Subscription" xml:space="preserve"><value>Subscription</value></data>
   <data name="Fee" xml:space="preserve"><value>Fee</value></data>
   <data name="Paid" xml:space="preserve"><value>Paid</value></data>

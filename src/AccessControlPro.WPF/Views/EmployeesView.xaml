@@ -23,7 +23,8 @@
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                         HorizontalAlignment="Right" VerticalAlignment="Center">
                 <Border Background="{StaticResource BgInputBrush}" CornerRadius="10"
-                        Padding="12,8" Margin="0,0,10,0" MinWidth="220">
+                        Padding="12,8" Margin="0,0,10,0" MinWidth="220"
+                        ToolTip="{Binding Lang.SearchBoxHint}">
                     <DockPanel>
                         <fa:ImageAwesome Icon="Search" Width="13" Height="13"
                                          Foreground="{StaticResource TextMutedBrush}"
@@ -32,7 +33,8 @@
                                  Background="Transparent" BorderThickness="0"
                                  Foreground="{StaticResource TextPrimaryBrush}"
                                  FontSize="13" VerticalAlignment="Center"
-                                 CaretBrush="{StaticResource TextPrimaryBrush}"/>
+                                 CaretBrush="{StaticResource TextPrimaryBrush}"
+                                 ToolTip="{Binding Lang.SearchBoxHint}"/>
                     </DockPanel>
                 </Border>
 
