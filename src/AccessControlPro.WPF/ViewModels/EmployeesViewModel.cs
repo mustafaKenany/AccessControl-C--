@@ -22,6 +22,32 @@ public partial class EmployeesViewModel : ObservableObject
     private const int PageSize = 100;
     private CancellationTokenSource? _searchCts;
 
+    // Double-click guard for player-mutation commands. The Basmia session.log shows
+    // staff repeatedly clicking Renew/AssignCard twice within 1-2 seconds when they
+    // don't get instant visual feedback — causing duplicate transactions and double
+    // re-uploads of the same card to the device. Tracking the EmployeeId set here
+    // lets us silently swallow the second click until the first operation finishes.
+    private readonly HashSet<int> _activeMutations = new();
+    private readonly object _activeMutationsLock = new();
+
+    private bool TryClaimMutation(int employeeId)
+    {
+        lock (_activeMutationsLock)
+        {
+            if (_activeMutations.Contains(employeeId)) return false;
+            _activeMutations.Add(employeeId);
+            return true;
+        }
+    }
+
+    private void ReleaseMutation(int employeeId)
+    {
+        lock (_activeMutationsLock)
+        {
+            _activeMutations.Remove(employeeId);
+        }
+    }
+
     public LanguageManager Lang => LanguageManager.Instance;
 
     // Permission-based action visibility
@@ -333,6 +359,14 @@ public partial class EmployeesViewModel : ObservableObject
     {
         if (employee == null) return;
 
+        // Silently swallow rapid double-click on the same player's Assign button.
+        // Without this guard, every second click in the Basmia session.log produced
+        // a duplicate AddAccessCard call to the device.
+        if (!TryClaimMutation(employee.Id)) return;
+        var mutationKey = employee.Id;
+        try
+        {
+
         // Check if this is a card RE-assignment (player already has an active card)
         bool isReassignment = employee.Cards != null && employee.Cards.Any(c => c.IsActive);
         if (isReassignment)
@@ -514,6 +548,8 @@ public partial class EmployeesViewModel : ObservableObject
         {
             IsLoading = false;
         }
+        } // end of double-click try
+        finally { ReleaseMutation(mutationKey); }
     }
 
     [RelayCommand]
@@ -780,6 +816,14 @@ public partial class EmployeesViewModel : ObservableObject
     {
         if (employee == null) return;
 
+        // Silently swallow rapid double-click on the same player's Renew button —
+        // Basmia's session.log showed multiple back-to-back renewal clicks creating
+        // duplicate transactions.
+        if (!TryClaimMutation(employee.Id)) return;
+        var mutationKey = employee.Id;
+        try
+        {
+
         // Block renewal on still-migrated records. Migration sets sentinels (Phone="MIG-N",
         // SubscriptionType="Migrated") for records imported from the old DB without enough
         // info. Forcing the user to update via Edit dialog before renewal ensures the player
@@ -912,6 +956,8 @@ public partial class EmployeesViewModel : ObservableObject
         {
             IsLoading = false;
         }
+        } // end of double-click try
+        finally { ReleaseMutation(mutationKey); }
     }
 
     [RelayCommand]
