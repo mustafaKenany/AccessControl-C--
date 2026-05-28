@@ -462,6 +462,12 @@ public partial class App : System.Windows.Application
             }
             catch (Exception ex) { StartupLog($"Monitor lock cleanup failed (non-critical): {ex.Message}"); }
 
+            // Startup backup safety net: if last backup is stale (>12h), run silent backup
+            // before showing the login window. Catches the case where the customer turns the
+            // PC off at night and the 02:00 AM scheduled backup never fires.
+            try { RunStartupBackupIfStale(); }
+            catch (Exception ex) { StartupLog($"Startup backup failed (non-critical): {ex.Message}"); }
+
             // Prevent auto-shutdown when LoginWindow closes (it's the only window at that point)
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
@@ -1226,5 +1232,129 @@ public partial class App : System.Windows.Application
         window.Topmost = true;
         window.Topmost = false;
         window.Focus();
+    }
+
+    // Runs a silent backup on startup if the last successful backup is older than 12 hours.
+    // Catches the case where the customer turns the PC off at night and the 02:00 AM
+    // scheduled backup never fires. RunBackupAsync internally does:
+    //   1. Delete old .bak files (3-day retention)
+    //   2. DBCC SHRINKFILE on the transaction log
+    //   3. REBUILD indexes + update statistics
+    //   4. BACKUP DATABASE
+    // So this single call covers all of "shrink + cleanup + backup" silently before login.
+    private void RunStartupBackupIfStale()
+    {
+        const double STALE_HOURS = 12.0;
+
+        var status = BackupService.LoadStatus();
+        if (status.LastSuccess.HasValue)
+        {
+            var ageHours = (DateTime.Now - status.LastSuccess.Value).TotalHours;
+            if (ageHours < STALE_HOURS)
+            {
+                StartupLog($"Startup backup skipped (last backup {ageHours:F1}h ago, threshold {STALE_HOURS}h)");
+                return;
+            }
+            StartupLog($"Startup backup needed (last backup {ageHours:F1}h ago, > {STALE_HOURS}h)");
+        }
+        else
+        {
+            StartupLog("Startup backup needed (no previous successful backup recorded)");
+        }
+
+        // Verify a backup path is configured — if not, skip silently (first-run install before setup wizard saves config)
+        var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+        try
+        {
+            if (File.Exists(settingsPath))
+            {
+                var doc = JsonDocument.Parse(File.ReadAllText(settingsPath));
+                if (!doc.RootElement.TryGetProperty("BackupPath", out var bp) || string.IsNullOrWhiteSpace(bp.GetString()))
+                {
+                    StartupLog("Startup backup skipped (BackupPath not configured)");
+                    return;
+                }
+            }
+            else { return; }
+        }
+        catch { return; }
+
+        // Build a minimal splash window so the customer sees something is happening
+        var isArabic = Helpers.LanguageManager.Instance.IsArabic;
+        var splash = new Window
+        {
+            Title = "Backup",
+            Width = 460,
+            Height = 200,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            WindowStyle = WindowStyle.None,
+            ResizeMode = ResizeMode.NoResize,
+            ShowInTaskbar = false,
+            Topmost = true,
+            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x0F, 0x3D, 0x3E))
+        };
+        var stack = new System.Windows.Controls.StackPanel
+        {
+            Margin = new Thickness(30),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        stack.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = isArabic ? "جاري النسخ الاحتياطي للبيانات..." : "Backing up database...",
+            Foreground = System.Windows.Media.Brushes.White,
+            FontSize = 18,
+            FontWeight = FontWeights.SemiBold,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 8)
+        });
+        stack.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = isArabic ? "قد يستغرق حتى دقيقة واحدة. لا تغلق التطبيق." : "This may take up to a minute. Please don't close the app.",
+            Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC0, 0xC8, 0xC8)),
+            FontSize = 12,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 22)
+        });
+        stack.Children.Add(new System.Windows.Controls.ProgressBar
+        {
+            IsIndeterminate = true,
+            Height = 6,
+            Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x4C, 0xA1, 0xA3)),
+            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1A, 0x55, 0x57))
+        });
+        splash.Content = stack;
+        splash.Show();
+
+        // Run the backup on a background thread, pump the dispatcher so the splash stays painted
+        var frame = new DispatcherFrame();
+        string result = "(unknown)";
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                var backupService = _serviceProvider.GetRequiredService<IBackupService>();
+                result = await backupService.RunBackupAsync();
+            }
+            catch (Exception ex)
+            {
+                result = "ERROR: " + ex.Message;
+            }
+            finally
+            {
+                // Marshal back to UI thread to close splash + unblock the frame
+                Dispatcher.Invoke(() =>
+                {
+                    try { splash.Close(); } catch { }
+                    frame.Continue = false;
+                });
+            }
+        });
+
+        // Blocks until backup task completes, but keeps the splash window responsive
+        Dispatcher.PushFrame(frame);
+
+        StartupLog($"Startup backup: {result}");
     }
 }

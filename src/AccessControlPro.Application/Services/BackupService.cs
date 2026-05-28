@@ -80,9 +80,10 @@ public class BackupService : IBackupService
                 // Ensure backup directory exists
                 Directory.CreateDirectory(backupPath);
 
-                // Step 1: Delete old backups (older than 2 days)
+                // Step 1: Delete old backups (older than 3 days)
+                // 3 days = 6 auto-backups kept (2/day) = covers a weekend if a backup fails
                 Log("Step 1: Cleaning old backups...");
-                DeleteOldBackups(backupPath, 2);
+                DeleteOldBackups(backupPath, 3);
 
                 // Step 2: Optimize database
                 Log("Step 2: Optimizing database...");

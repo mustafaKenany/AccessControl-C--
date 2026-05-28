@@ -271,4 +271,59 @@ Plus this session log itself, at `docs/session-logs/2026-05-basmia-stability-loc
 
 ---
 
-*End of session log. Tomorrow's job is to execute the 8-step install procedure at Basmia. Everything is ready.*
+*End of original session log. Tomorrow's job is to execute the 8-step install procedure at Basmia. Everything is ready.*
+
+---
+
+# 2026-05-28 — Install day at Basmia + backup-on-launch follow-up
+
+## What happened today
+
+**Morning — Install at Basmia** (via AnyDesk):
+- Customer install procedure executed cleanly. WPF launched, device connected on first try, diagnostics upload succeeded (customer saw the green "تم رفع ملفات التشخيص بنجاح" success dialog). First clean exit in 12 days.
+- Cloud QR seed had to handle a PostgreSQL sequence collision (`duplicate key (Id)=(1201)`) because the sync-explicit-IDs pattern doesn't advance the sequence. Fixed on the VPS with `SELECT setval(pg_get_serial_sequence(...), MAX("Id"))` for QrPool, then ran a preemptive sweep on all 8 tables that the WPF→cloud sync ever inserts to. Sequences now match `MAX(Id)` on every table — no more collisions for any future sync.
+- VPS Blazor host needed a JSON comma fix in `appsettings.json` (user edit was missing one) — gymapp was crash-looping until that was corrected.
+
+**Afternoon — Backup investigation**:
+- Customer paste-bombed `backup_log.txt` showing automatic backups failing since 2026-05-27 with "transaction log full due to LOG_BACKUP" errors. Root cause: SQL Server defaults to FULL recovery model when restoring a `.bak`, and FULL recovery grows the transaction log until it fills the disk unless you also schedule log backups (which AccessControlPro doesn't and shouldn't need to).
+- Patched `tools/customer-pc-tuneup/tuneup.sql` to set the recovery model to SIMPLE during the tuneup step (idempotent — checks current state first) and shrink the log file. Committed as `0b8d151`. Customer applied a temporary fix manually via SSMS but **switched the DB back to FULL recovery** at the end of their script — flagged that this means the problem will return in 2-4 weeks and gave them the SIMPLE-recovery SQL to run once and leave alone.
+
+**Evening — Backup-on-launch safety net**:
+- Customer asked for old-backup cleanup and auto-backup-on-close (silent). After explaining the trade-offs (on-close blocks app exit and risks corruption if user force-kills mid-write), customer agreed on the cleaner approach: **on-launch backup if stale**.
+- Bumped `BackupService.cs` retention from 2 → 3 days (covers a weekend gap if a backup fails).
+- Added `tools/backup-cleanup/cleanup-old-backups.bat` — standalone manual cleanup script for AnyDesk sessions where you need to free disk on demand without waiting for the next 02:24 / 14:24 auto-run.
+- Added `RunStartupBackupIfStale()` in `App.xaml.cs` (~line 1237): on every launch, if last successful backup is >12 hours old, show a small dark-teal splash (`Backing up database... / جاري النسخ الاحتياطي...`) with an indeterminate progress bar and run a synchronous backup via `BackupService.RunBackupAsync()`. The splash stays painted via `DispatcherFrame` while the backup runs on a `Task.Run` background thread. Backup failure is non-fatal (caught + logged, login proceeds).
+
+## Why on-launch instead of on-close
+
+| Scenario | On-close | On-launch (chosen) |
+|---|---|---|
+| User force-kills via Task Manager because they think the app is "stuck closing" | Corrupted `.bak` | N/A — backup is running while app is fully alive |
+| PC power loss mid-backup | Corrupted `.bak` | Less likely — happens at customer-attended startup, not unattended shutdown |
+| 24/7 PC, app never restarts | Same — 02:00/14:00 schedule still works | Skipped on each launch (already fresh, < 12h since last) |
+| PC off at night, app launches at 09:00 | 02:00 backup missed → no backup that day | Stale detected → silent backup before login |
+
+## Files touched today (2026-05-28)
+
+- `tools/customer-pc-tuneup/tuneup.sql` — SIMPLE recovery model fix + log shrink (commit `0b8d151`)
+- `src/AccessControlPro.Application/Services/BackupService.cs` — retention 2 → 3 days (this commit)
+- `src/AccessControlPro.WPF/App.xaml.cs` — `RunStartupBackupIfStale()` + call from `OnStartup` (this commit)
+- `tools/backup-cleanup/cleanup-old-backups.bat` — manual disk-cleanup script (this commit)
+
+## Pending / unresolved at end of day
+
+1. **Basmia needs to re-apply SIMPLE recovery model** — their manual fix today only shrank the log but flipped the DB back to FULL. The next 2-4 weeks will refill the log. Either AnyDesk in and run `ALTER DATABASE AccessControlPro SET RECOVERY SIMPLE WITH NO_WAIT;` once, or `git pull && tools\post-install\post-install.bat` which now does it automatically.
+2. The 3 original pending decisions are unchanged (timezone direction, 1853 Migrated players, beta-customer comms).
+
+## How to pick up in the next conversation
+
+Everything from this session is committed and pushed. The next build/install at any customer will:
+- Generate a unique API key automatically (existing)
+- Set DB recovery to SIMPLE in the tuneup script (existing as of `0b8d151`)
+- Keep 3 days of backups (existing as of this commit)
+- Run a startup backup if stale (existing as of this commit)
+- Show a backup splash before login if backup is needed
+
+If a customer reports "the app takes a long time to start once a day" — that's the on-launch backup running. Expected behavior, not a bug. Splash text tells them what's happening.
+
+*End of 2026-05-28 update.*
