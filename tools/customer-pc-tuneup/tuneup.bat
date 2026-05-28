@@ -38,11 +38,12 @@ echo.
 echo  This will apply the following changes on this PC:
 echo.
 echo    1. Cap SQL Server max memory at 2 GB
-echo    2. Add indexes on hot tables (Events, Cards, Players, QR)
-echo    3. Refresh SQL statistics
-echo    4. Set Windows Power Plan to High Performance
-echo    5. Add AccessControlPro folder to Defender exclusions
-echo    6. Set Visual Effects to Best Performance
+echo    2. Set DB recovery model to SIMPLE (so backups never break)
+echo    3. Add indexes on hot tables (Events, Cards, Players, QR)
+echo    4. Refresh SQL statistics
+echo    5. Set Windows Power Plan to High Performance
+echo    6. Add AccessControlPro folder to Defender exclusions
+echo    7. Set Visual Effects to Best Performance
 echo.
 echo  Safe to re-run. Existing settings will be re-applied.
 echo.

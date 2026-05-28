@@ -5,17 +5,20 @@ One-shot performance tuneup for AccessControlPro installs on typical customer ha
 
 ## What it does
 
-Default WPF + SQL Server installs feel slow not because of the app's code,
-but because of three hardware-level defaults that are wrong for a co-located
-setup:
+Default WPF + SQL Server installs feel slow / become unstable not because of
+the app's code, but because of four hardware-level defaults that are wrong
+for a co-located setup:
 
 1. **SQL Server eats 87% of RAM** — leaves WPF starved, Windows starts paging.
-2. **Missing indexes** — Events page, card lookups, and QR pool scans hit full
+2. **Recovery model = FULL by default** — transaction log grows forever and
+   eventually fills up, breaking auto-backups with "log full due to LOG_BACKUP"
+   errors. (Basmia hit this on 2026-05-27.)
+3. **Missing indexes** — Events page, card lookups, and QR pool scans hit full
    table scans on every query.
-3. **Windows Power Plan = Balanced + Defender real-time scanning every DB write**
+4. **Windows Power Plan = Balanced + Defender real-time scanning every DB write**
    — random CPU throttling + I/O latency spikes.
 
-This tuneup fixes all three in one shot.
+This tuneup fixes all four in one shot.
 
 ## Files
 

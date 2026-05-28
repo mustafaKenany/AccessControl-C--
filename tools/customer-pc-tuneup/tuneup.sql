@@ -37,6 +37,51 @@ PRINT '== SQL Server memory cap set to 2 GB ==';
 GO
 
 -- ------------------------------------------------------------------
+-- 1b. Recovery model = SIMPLE on the app database
+-- ------------------------------------------------------------------
+-- Without this, the default FULL recovery model on a restored .bak grows
+-- the transaction log forever until it fills up — which then breaks the
+-- nightly backups with "transaction log full due to LOG_BACKUP" errors.
+-- (This is exactly what happened on Basmia 2026-05-27 onwards.)
+--
+-- A gym doesn't need point-in-time recovery (the use case for FULL).
+-- SIMPLE recovery auto-truncates the log after each transaction, so it
+-- never grows unboundedly. Backups continue to work normally.
+-- ------------------------------------------------------------------
+USE master;
+GO
+
+IF EXISTS (SELECT 1 FROM sys.databases WHERE name = 'AccessControlPro' AND recovery_model_desc <> 'SIMPLE')
+BEGIN
+    PRINT '== Recovery model on AccessControlPro is not SIMPLE — switching now ==';
+    ALTER DATABASE AccessControlPro SET RECOVERY SIMPLE WITH NO_WAIT;
+    PRINT '== Recovery model set to SIMPLE ==';
+END
+ELSE
+BEGIN
+    PRINT '== Recovery model on AccessControlPro is already SIMPLE — nothing to do ==';
+END
+GO
+
+-- Shrink the log file to reclaim the space the old FULL-recovery log was
+-- holding. Safe in SIMPLE mode; if the DB is fresh / log is already small,
+-- this is a no-op.
+USE AccessControlPro;
+GO
+
+IF DB_ID('AccessControlPro') IS NOT NULL
+BEGIN
+    BEGIN TRY
+        DBCC SHRINKFILE (AccessControlPro_log, 50);
+        PRINT '== Transaction log shrunk to 50 MB target ==';
+    END TRY
+    BEGIN CATCH
+        PRINT '== Log shrink skipped (file name may differ — non-critical) ==';
+    END CATCH
+END
+GO
+
+-- ------------------------------------------------------------------
 -- 2. Indexes on hot tables
 -- ------------------------------------------------------------------
 -- SQL Server <2016 doesn't have "CREATE INDEX IF NOT EXISTS", so we
