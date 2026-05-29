@@ -270,6 +270,11 @@ public partial class App : System.Windows.Application
         // Diagnostics uploader — manual button + 15-day auto uploader
         services.AddSingleton<IDiagnosticsService>(sp => new DiagnosticsService(connectionString));
 
+        // Auto-update — checks VPS on launch, surfaces prompt, downloads + verifies + stages
+        services.AddSingleton<IUpdateCheckService, UpdateCheckService>();
+        services.AddSingleton<IUpdateInstallerService>(sp =>
+            new UpdateInstallerService(sp.GetRequiredService<IBackupService>()));
+
         // ViewModels
         services.AddTransient<MainViewModel>();
         services.AddTransient<QrPassViewModel>();
@@ -467,6 +472,21 @@ public partial class App : System.Windows.Application
             // PC off at night and the 02:00 AM scheduled backup never fires.
             try { RunStartupBackupIfStale(); }
             catch (Exception ex) { StartupLog($"Startup backup failed (non-critical): {ex.Message}"); }
+
+            // Post-update "What's new" dialog: if Updater.exe left a .post_update marker,
+            // show the release notes once then delete the marker. Done BEFORE the update
+            // check so we don't show "What's new" and "Update available" simultaneously.
+            try { ShowPostUpdateNotesIfAny(); }
+            catch (Exception ex) { StartupLog($"Post-update notes failed (non-critical): {ex.Message}"); }
+
+            // Auto-update check: fire-and-forget HTTP GET to /api/version/latest. If a newer
+            // build is available and the customer hasn't snoozed/skipped this version, show
+            // a non-blocking prompt after login. Fully non-fatal — login proceeds either way.
+            _ = Task.Run(async () =>
+            {
+                try { await CheckForUpdateAndPromptAsync(); }
+                catch (Exception ex) { StartupLog($"Update check failed (non-critical): {ex.Message}"); }
+            });
 
             // Prevent auto-shutdown when LoginWindow closes (it's the only window at that point)
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -1356,5 +1376,288 @@ public partial class App : System.Windows.Application
         Dispatcher.PushFrame(frame);
 
         StartupLog($"Startup backup: {result}");
+
+        // Surface low-disk warning if the backup flagged it. Done AFTER the splash closes
+        // so it doesn't overlap the splash visually. Read the freshly-saved status.
+        try
+        {
+            var postStatus = BackupService.LoadStatus();
+            if (postStatus.LowDiskWarning && postStatus.LastFreeSpaceMb > 0)
+            {
+                var isAr = Helpers.LanguageManager.Instance.IsArabic;
+                var freeMb = postStatus.LastFreeSpaceMb;
+                var refused = result.StartsWith("Backup REFUSED", StringComparison.OrdinalIgnoreCase);
+
+                string title = isAr ? "تحذير: مساحة التخزين منخفضة" : "Warning: Low disk space";
+                string msg = refused
+                    ? (isAr
+                        ? $"تم إيقاف النسخ الاحتياطي لأن المساحة المتاحة على القرص {freeMb} ميجابايت فقط.\n\nيرجى تحرير مساحة على القرص ثم إعادة تشغيل التطبيق."
+                        : $"Backup was refused — only {freeMb} MB free on the backup drive.\n\nFree up disk space and restart the app to retry the backup.")
+                    : (isAr
+                        ? $"المساحة المتاحة على قرص النسخ الاحتياطي {freeMb} ميجابايت فقط.\n\nالنسخ الاحتياطي لا يزال يعمل، لكن يرجى تحرير مساحة قريباً."
+                        : $"The backup drive has only {freeMb} MB free.\n\nBackups are still working, but please free up disk space soon.");
+
+                Views.CustomMessageBox.Show(msg, title, refused ? Views.MsgType.Error : Views.MsgType.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            StartupLog($"Low-disk warning surface failed (non-critical): {ex.Message}");
+        }
+    }
+
+    // Update check — runs in background a few seconds after launch. If the VPS has a
+    // newer build and this version isn't snoozed/skipped, shows a CustomMessageBox
+    // prompt. Customer choices:
+    //   • Yes (Update Now) → download + verify + stage → exit + Updater.exe takes over
+    //   • No  (Later)      → snooze for 24h
+    //   • Cancel           → if mandatory: re-prompt next launch; else: skip this version
+    private async Task CheckForUpdateAndPromptAsync()
+    {
+        // Wait a bit so the prompt doesn't fight the login window for focus
+        await Task.Delay(5000);
+
+        var checker = _serviceProvider.GetRequiredService<IUpdateCheckService>();
+        var result = await checker.CheckAsync();
+
+        if (!result.UpdateAvailable || result.Manifest == null)
+        {
+            if (!string.IsNullOrEmpty(result.ErrorMessage))
+                StartupLog($"Update check: {result.ErrorMessage}");
+            else
+                StartupLog($"Update check: already on latest (v{result.CurrentVersion})");
+            return;
+        }
+
+        StartupLog($"Update available: v{result.CurrentVersion} → v{result.LatestVersion}, mandatory={result.IsMandatory}");
+
+        // Respect snooze/skip unless it's a mandatory update
+        if (!result.IsMandatory && checker.IsSnoozed(result.Manifest.Version))
+        {
+            StartupLog($"Update v{result.Manifest.Version} is snoozed/skipped — not prompting");
+            return;
+        }
+
+        // Marshal back to UI thread for the prompt
+        Dispatcher.Invoke(() =>
+        {
+            try { ShowUpdatePrompt(result, checker); }
+            catch (Exception ex) { StartupLog($"Update prompt error: {ex.Message}"); }
+        });
+    }
+
+    private void ShowUpdatePrompt(UpdateCheckResult check, IUpdateCheckService checker)
+    {
+        var manifest = check.Manifest!;
+        var isAr = Helpers.LanguageManager.Instance.IsArabic;
+        var notes = isAr ? manifest.ReleaseNotesAr : manifest.ReleaseNotesEn;
+        if (string.IsNullOrWhiteSpace(notes)) notes = "—";
+
+        var sizeMb = manifest.SizeBytes > 0 ? $"{manifest.SizeBytes / 1024 / 1024} MB" : "?";
+
+        var title = isAr
+            ? (check.IsMandatory ? $"تحديث إلزامي — الإصدار {manifest.Version}" : $"تحديث جديد متاح — الإصدار {manifest.Version}")
+            : (check.IsMandatory ? $"Required update — version {manifest.Version}" : $"New update available — version {manifest.Version}");
+
+        var msg = isAr
+            ? $"الإصدار الحالي: {check.CurrentVersion}\nالإصدار الجديد: {manifest.Version}\nالحجم: {sizeMb}\n\nما الجديد:\n{notes}\n\nهل تريد التحديث الآن؟"
+            : $"Current version: {check.CurrentVersion}\nNew version: {manifest.Version}\nSize: {sizeMb}\n\nWhat's new:\n{notes}\n\nUpdate now?";
+
+        // For mandatory updates we hide the Cancel branch — only Yes/No.
+        // For optional updates: Yes=update, No=snooze 24h, Cancel=skip this version forever.
+        var buttons = check.IsMandatory ? MessageBoxButton.YesNo : MessageBoxButton.YesNoCancel;
+        var choice = MessageBox.Show(msg, title, buttons, MessageBoxImage.Information);
+
+        if (choice == MessageBoxResult.Yes)
+        {
+            // Download + stage → exit + Updater.exe takes over
+            _ = Task.Run(() => DownloadStageAndInstallAsync(manifest));
+        }
+        else if (choice == MessageBoxResult.No)
+        {
+            checker.SnoozeVersion(manifest.Version, TimeSpan.FromHours(24));
+            StartupLog($"Update v{manifest.Version} snoozed for 24h");
+        }
+        else // Cancel
+        {
+            if (check.IsMandatory)
+            {
+                // Mandatory updates re-prompt next launch — but warn the customer first.
+                MessageBox.Show(
+                    isAr
+                        ? "هذا التحديث إلزامي. سيتم سؤالك مرة أخرى في كل مرة تفتح فيها التطبيق."
+                        : "This update is mandatory. You will be asked again every time you launch the app.",
+                    title, MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            else
+            {
+                checker.SkipVersion(manifest.Version);
+                StartupLog($"Update v{manifest.Version} skipped (won't prompt again)");
+            }
+        }
+    }
+
+    // Reads .post_update written by Updater.exe and shows a one-time "What's new" dialog.
+    // The release notes are stashed in the pending_update.json's stagedAt copy, but since
+    // we delete that during install, we fall back to fetching the manifest fresh.
+    private void ShowPostUpdateNotesIfAny()
+    {
+        var markerPath = Path.Combine(AppContext.BaseDirectory, ".post_update");
+        if (!File.Exists(markerPath)) return;
+
+        string installedVersion;
+        try { installedVersion = File.ReadAllText(markerPath).Trim(); }
+        catch { installedVersion = ""; }
+
+        // Always delete the marker, even if we fail to show the dialog — otherwise it
+        // would re-prompt forever.
+        try { File.Delete(markerPath); } catch { }
+
+        var isAr = Helpers.LanguageManager.Instance.IsArabic;
+        var title = isAr ? $"تم التحديث إلى الإصدار {installedVersion}" : $"Updated to version {installedVersion}";
+
+        // Fetch the manifest one more time to get release notes (the staged ZIP is gone).
+        // This is best-effort: if the VPS is unreachable, we just show a generic success message.
+        string notes;
+        try
+        {
+            var checker = _serviceProvider.GetRequiredService<IUpdateCheckService>();
+            var checkTask = Task.Run(() => checker.CheckAsync());
+            checkTask.Wait(5000);
+            var m = checkTask.IsCompletedSuccessfully ? checkTask.Result.Manifest : null;
+            notes = m != null
+                ? (isAr ? m.ReleaseNotesAr : m.ReleaseNotesEn)
+                : "";
+        }
+        catch { notes = ""; }
+
+        var body = string.IsNullOrWhiteSpace(notes)
+            ? (isAr ? $"تم تثبيت الإصدار {installedVersion} بنجاح." : $"Version {installedVersion} installed successfully.")
+            : (isAr ? $"ما الجديد في الإصدار {installedVersion}:\n\n{notes}" : $"What's new in version {installedVersion}:\n\n{notes}");
+
+        MessageBox.Show(body, title, MessageBoxButton.OK, MessageBoxImage.Information);
+        StartupLog($"Post-update dialog shown for v{installedVersion}");
+    }
+
+    private async Task DownloadStageAndInstallAsync(VersionManifest manifest)
+    {
+        var installer = _serviceProvider.GetRequiredService<IUpdateInstallerService>();
+
+        // Show a download splash with a progress bar
+        Window? splash = null;
+        System.Windows.Controls.ProgressBar? bar = null;
+        System.Windows.Controls.TextBlock? statusText = null;
+        var isAr = Helpers.LanguageManager.Instance.IsArabic;
+
+        await Dispatcher.InvokeAsync(() =>
+        {
+            splash = new Window
+            {
+                Title = "Update",
+                Width = 480,
+                Height = 220,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                WindowStyle = WindowStyle.None,
+                ResizeMode = ResizeMode.NoResize,
+                ShowInTaskbar = false,
+                Topmost = true,
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x0F, 0x3D, 0x3E))
+            };
+            var stack = new System.Windows.Controls.StackPanel { Margin = new Thickness(30), VerticalAlignment = VerticalAlignment.Center };
+            stack.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = isAr ? $"تنزيل التحديث {manifest.Version}..." : $"Downloading update {manifest.Version}...",
+                Foreground = System.Windows.Media.Brushes.White,
+                FontSize = 18,
+                FontWeight = FontWeights.SemiBold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 8)
+            });
+            statusText = new System.Windows.Controls.TextBlock
+            {
+                Text = isAr ? "جاري الاتصال..." : "Connecting...",
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC0, 0xC8, 0xC8)),
+                FontSize = 12,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 16)
+            };
+            stack.Children.Add(statusText);
+            bar = new System.Windows.Controls.ProgressBar
+            {
+                Minimum = 0, Maximum = 100, Value = 0,
+                Height = 10,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x4C, 0xA1, 0xA3)),
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1A, 0x55, 0x57))
+            };
+            stack.Children.Add(bar);
+            splash.Content = stack;
+            splash.Show();
+        });
+
+        var progress = new Progress<UpdateProgress>(p =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (bar != null && p.BytesTotal > 0)
+                    bar.Value = p.PercentComplete;
+                if (statusText != null)
+                {
+                    statusText.Text = p.Phase switch
+                    {
+                        "downloading" => isAr
+                            ? $"تنزيل... {p.BytesDownloaded / 1024 / 1024} / {p.BytesTotal / 1024 / 1024} ميجابايت"
+                            : $"Downloading... {p.BytesDownloaded / 1024 / 1024} / {p.BytesTotal / 1024 / 1024} MB",
+                        "verifying" => isAr ? "التحقق من سلامة الملف..." : "Verifying integrity...",
+                        "backing-up" => isAr ? "نسخة احتياطية قبل التحديث..." : "Pre-update backup...",
+                        "ready" => isAr ? "جاهز — إعادة التشغيل..." : "Ready — restarting...",
+                        _ => statusText.Text
+                    };
+                }
+            });
+        });
+
+        UpdateInstallResult staged;
+        try
+        {
+            staged = await installer.DownloadAndStageAsync(manifest, progress);
+        }
+        catch (Exception ex)
+        {
+            staged = new UpdateInstallResult { Success = false, ErrorMessage = ex.Message };
+        }
+
+        Dispatcher.Invoke(() => { try { splash?.Close(); } catch { } });
+
+        if (!staged.Success)
+        {
+            StartupLog($"Update download failed: {staged.ErrorMessage}");
+            Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show(
+                    isAr ? $"فشل تنزيل التحديث:\n{staged.ErrorMessage}" : $"Update download failed:\n{staged.ErrorMessage}",
+                    isAr ? "خطأ في التحديث" : "Update error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            });
+            return;
+        }
+
+        // Launch Updater.exe and exit the WPF app so file locks release
+        StartupLog($"Update staged successfully — handing off to Updater.exe");
+        Dispatcher.Invoke(() =>
+        {
+            try
+            {
+                installer.TriggerInstallAndExit(staged);
+                Shutdown();
+            }
+            catch (Exception ex)
+            {
+                StartupLog($"Failed to launch Updater.exe: {ex.Message}");
+                MessageBox.Show(
+                    isAr ? $"فشل بدء تثبيت التحديث:\n{ex.Message}" : $"Failed to start update install:\n{ex.Message}",
+                    isAr ? "خطأ في التحديث" : "Update error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        });
     }
 }

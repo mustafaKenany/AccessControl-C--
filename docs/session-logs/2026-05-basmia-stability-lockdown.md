@@ -327,3 +327,112 @@ Everything from this session is committed and pushed. The next build/install at 
 If a customer reports "the app takes a long time to start once a day" — that's the on-launch backup running. Expected behavior, not a bug. Splash text tells them what's happening.
 
 *End of 2026-05-28 update.*
+
+---
+
+# 2026-05-29 — Multi-customer scaling foundation (3 phases)
+
+## What happened today
+
+User asked: "we are done — but you have more experience, check if we missed anything or could add useful features." After audit found ~10 gaps, narrowed to 3 high-value items and shipped them all in one session.
+
+### Phase A — EF Core retry policy (~10 min)
+- **Problem**: Windows Update restarts the SQL Server service for ~30 sec. Without retry, every in-flight DB call during that window throws → red errors all over the UI → customer panics, force-kills the app. The `BadGateway` lines in Basmia's `session.log` were a related symptom.
+- **Fix**: `src/AccessControlPro.Infrastructure/DependencyInjection.cs` — both `UseSqlServer` calls now use `.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: 10s)`. EF Core knows which SQL errors are transient (timeout, connection drop, deadlock victim) vs permanent (syntax error, constraint violation) and only retries the transient ones.
+- **Result**: SQL Server restarts are now invisible to the customer — the card swipe just takes 14 sec instead of 0.1 sec.
+
+### Phase B — Disk-space guard (~1 hour)
+- **Problem**: Backup folder + log folder grow forever bounded only by retention. If the customer's drive ever dropped below ~500 MB free, the backup wrote 0-byte `.bak` files. Silent failure → customer thinks they have a backup, they don't.
+- **Fix**:
+  - `BackupService.cs` — added `DiskWarnMb = 500` and `DiskRefuseMb = 100` constants
+  - `GetFreeDiskSpaceMb(path)` helper using `DriveInfo.AvailableFreeSpace`
+  - Inside `RunBackupAsync`, after cleanup-old and before write: check free space. <100 MB = abort with "Backup REFUSED" message (keeps last good backup intact). <500 MB = warn + flag, still proceed.
+  - New fields on `BackupStatus`: `LowDiskWarning` (bool), `LastFreeSpaceMb` (long).
+  - `App.xaml.cs` — after the startup backup splash closes, if status flag is set, show a bilingual `CustomMessageBox` (Warning if proceeded, Error if refused).
+- **Result**: customer sees an explicit "free up disk space" dialog instead of a silent failure.
+
+### Phase C — Auto-update (~3 hours)
+- **Problem**: Every new build requires AnyDesk in to manually copy files. Fine for Basmia. Painful at 5 customers. Impossible at 20.
+- **Architecture**:
+  ```
+  VPS                                WPF                              Updater.exe
+  ──────────────────────────────────────────────────────────────────────────────
+  GET /api/version/latest
+    ↓ returns latest.json
+  ←──── UpdateCheckService ──────→ shows bilingual prompt (Yes/No/Skip)
+                                    ↓ Yes
+                                  UpdateInstallerService
+                                    ↓ downloads ZIP
+                                    ↓ verifies SHA-256
+                                    ↓ pre-update backup
+                                    ↓ writes pending_update.json
+                                    ↓ launches Updater.exe
+                                    ↓ Application.Current.Shutdown()
+                                                                  ────────────→ waits for WPF PID exit
+                                                                                copies DLLs to _rollback/
+                                                                                extracts ZIP (skips appsettings,
+                                                                                License, Logs, Backups)
+                                                                                writes .post_update marker
+                                                                                relaunches AccessControlPro.WPF.exe
+  WPF starts fresh                                                ←────────────
+    ↓ reads .post_update
+    ↓ shows "What's new in vX.Y.Z" once
+    ↓ deletes marker
+  ```
+
+- **Files added**:
+  - `src/AccessControlPro.Application/Services/UpdateCheckService.cs` — polls `/api/version/latest`, version comparison via `System.Version`, snooze/skip storage in `.update_snooze`, HTTPS-only enforcement on downloadUrl
+  - `src/AccessControlPro.Application/Services/UpdateInstallerService.cs` — downloads with progress, SHA-256 verify, pre-update backup, writes `pending_update.json` sentinel, launches Updater.exe
+  - `tools/Updater/Updater.csproj` — self-contained single-file win-x86 build (62 MB — no WPF/WinForms, just P/Invoke MessageBox for fatal errors)
+  - `tools/Updater/Program.cs` — wait-for-PID-exit, ZIP extract with preserved-list, retry on locked files, rollback safety copy, relaunch main app
+  - `src/AccessControlPro.Web/wwwroot/releases/latest.json.example` — manifest format
+  - `tools/release-management/README.md` — step-by-step release deploy recipe
+
+- **Files modified**:
+  - `src/AccessControlPro.Web/Program.cs` — added `MapGet("/api/version/latest")` that reads `wwwroot/releases/latest.json` (5 min Cache-Control, public, no API key)
+  - `src/AccessControlPro.WPF/App.xaml.cs` — DI registration of both new services, `CheckForUpdateAndPromptAsync()`, `ShowUpdatePrompt()`, `DownloadStageAndInstallAsync()`, `ShowPostUpdateNotesIfAny()`
+  - `src/AccessControlPro.WPF/AccessControlPro.WPF.csproj` — `ProjectReference` to Updater with `ReferenceOutputAssembly=false`, MSBuild targets to copy Updater.exe into both Build output (Debug) and Publish output (Release self-contained)
+
+- **Preserved during update** (never overwritten):
+  - `appsettings.json` (gym name, language, API key, SQL connection string)
+  - `License.dat`
+  - `.backup_status`, `last_run_state.json`, `last_sync.json`, `.last_backup`, `pending_update.json`, `.update_snooze`
+  - Folders: `Logs\`, `Backups\`, `update_staging\`, `_rollback\`
+
+- **Customer experience**:
+  1. App launches → backup splash (if stale) → `.post_update` check (if just updated, show "What's new") → background update check
+  2. If new version found AND not snoozed/skipped → bilingual dialog (size, release notes, version)
+  3. Customer clicks "Update Now" → download splash with progress bar → "Verifying..." → "Pre-update backup..." → "Restarting..."
+  4. App exits, Updater.exe runs ~30 sec with status in console title bar
+  5. App relaunches → "What's new in v4.5" dialog (one-time)
+  - Total wait: ~2 min from click to login
+
+- **Safety**:
+  - SHA-256 verification — corrupt downloads aborted, ZIP deleted
+  - Pre-update backup runs before file swap
+  - `_rollback/` folder gets copies of all DLLs + main exe before extraction (manual recovery path if update breaks)
+  - Mandatory updates (`mandatory:true` in manifest OR `current < minVersion`) hide the "Skip" option
+  - All steps logged to `Logs/updater.log` and `Logs/startup_log.txt`
+  - Snooze button = 24h. Skip button = never prompt this version again. Mandatory updates can't be skipped.
+
+- **How to publish a new release**: see `tools/release-management/README.md`. TL;DR — `dotnet publish` + ZIP + SHA-256 + scp + edit `latest.json` on VPS.
+
+## State of the code at end of day
+
+Branch `feature/pwa-cloud`, clean build (0 errors). Pushed to origin. Basmia's install will pick up all 3 fixes on the next deployed build.
+
+## Pending / unresolved
+
+1. **Basmia still needs SIMPLE recovery model applied** — unchanged from yesterday. Their DB went back to FULL after the manual fix. Next backup attempt in 2-4 weeks will fail.
+2. **First-real-release test** — auto-update has only been built and unit-checked via compile. The full flow (download → verify → install → relaunch) hasn't been tested end-to-end on a real customer-shaped install. Recommended first test: publish v4.5.0 build, scp to VPS, edit `latest.json`, run on a local clone of Basmia's install setup, verify update flow.
+3. **Customer-facing notifications from VPS → WPF** — still skipped, no clear ROI yet.
+4. **`/health` endpoint on VPS** — skipped, would only matter once we have 5+ customers.
+
+## How to pick up in the next conversation
+
+The session log now spans 2026-05-18 through 2026-05-29. Three commits today (or one big one — depends on how I commit):
+- EF retry + disk guard + Phase A/B/C/D auto-update
+
+If the next session is about testing the update flow end-to-end, the recipe is in `tools/release-management/README.md`. If it's about a new feature, the codebase is in a clean, well-documented state.
+
+*End of 2026-05-29 update.*

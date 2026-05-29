@@ -10,6 +10,10 @@ public class BackupStatus
     public DateTime? LastAttempt { get; set; }
     public string? LastError { get; set; }
     public int ConsecutiveFailures { get; set; }
+    // Disk-space warning state — surfaced to the UI so the customer sees a toast
+    // when free space drops below WarnMb and an error toast when it drops below RefuseMb.
+    public bool LowDiskWarning { get; set; }
+    public long LastFreeSpaceMb { get; set; }
 }
 
 public interface IBackupService
@@ -24,6 +28,12 @@ public class BackupService : IBackupService
     private static readonly string StatusPath = Path.Combine(AppContext.BaseDirectory, ".backup_status");
     private const int MaxRetries = 3;
     private const int RetryIntervalMinutes = 30;
+
+    // Disk-space thresholds. WarnMb = log + flag status so the UI can show a toast.
+    // RefuseMb = abort the backup so we don't write a 0-byte / corrupt .bak that
+    // would overwrite a good one and leave the customer with no restore point.
+    private const long DiskWarnMb = 500;
+    private const long DiskRefuseMb = 100;
 
     public BackupService(string connectionString)
     {
@@ -84,6 +94,23 @@ public class BackupService : IBackupService
                 // 3 days = 6 auto-backups kept (2/day) = covers a weekend if a backup fails
                 Log("Step 1: Cleaning old backups...");
                 DeleteOldBackups(backupPath, 3);
+
+                // Step 1b: Disk-space guard — after cleanup, before writing the new .bak.
+                // Cleanup-first order matters: deleting yesterday's .bak might free enough
+                // space to bring us back above the refuse threshold.
+                var freeMb = GetFreeDiskSpaceMb(backupPath);
+                status.LastFreeSpaceMb = freeMb;
+                if (freeMb >= 0 && freeMb < DiskRefuseMb)
+                {
+                    status.LowDiskWarning = true;
+                    SaveStatus(status);
+                    var msg = $"Backup REFUSED: only {freeMb} MB free on backup drive (threshold {DiskRefuseMb} MB). Free disk space and retry.";
+                    Log(msg);
+                    return msg;
+                }
+                status.LowDiskWarning = freeMb >= 0 && freeMb < DiskWarnMb;
+                if (status.LowDiskWarning)
+                    Log($"WARNING: backup drive has only {freeMb} MB free (threshold {DiskWarnMb} MB) — backup will proceed but free up space soon");
 
                 // Step 2: Optimize database
                 Log("Step 2: Optimizing database...");
@@ -214,6 +241,23 @@ public class BackupService : IBackupService
         catch (Exception ex)
         {
             Log($"Cleanup warning: {ex.Message}");
+        }
+    }
+
+    private static long GetFreeDiskSpaceMb(string path)
+    {
+        try
+        {
+            var fullPath = Path.GetFullPath(path);
+            var root = Path.GetPathRoot(fullPath);
+            if (string.IsNullOrEmpty(root)) return -1;
+            var drive = new DriveInfo(root);
+            if (!drive.IsReady) return -1;
+            return drive.AvailableFreeSpace / 1024 / 1024;
+        }
+        catch
+        {
+            return -1; // unknown — treat as "don't block"
         }
     }
 

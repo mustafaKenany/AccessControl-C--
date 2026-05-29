@@ -40,7 +40,39 @@
     <ProjectReference Include="..\AccessControlPro.Infrastructure\AccessControlPro.Infrastructure.csproj" />
     <ProjectReference Include="..\AccessControlPro.Domain\AccessControlPro.Domain.csproj" />
     <ProjectReference Include="..\AccessControlPro.SDK\AccessControlPro.SDK.csproj" />
+    <!-- Updater.exe ships next to AccessControlPro.WPF.exe so the auto-update flow
+         can hand off the file-swap to a separate process. We build it but don't
+         link its assembly (it's launched via Process.Start, not loaded). -->
+    <ProjectReference Include="..\..\tools\Updater\Updater.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <Private>false</Private>
+      <SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>
+    </ProjectReference>
   </ItemGroup>
+
+  <!-- For Debug builds: copy framework-dependent Updater.exe + sidecars next to the
+       WPF binary so the auto-update flow can be tested in dev (with .NET 8 installed
+       on the dev machine). -->
+  <Target Name="CopyUpdaterToDebugOutput" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <ItemGroup>
+      <UpdaterFiles Include="..\..\tools\Updater\bin\Debug\net8.0-windows\Updater.exe" />
+      <UpdaterFiles Include="..\..\tools\Updater\bin\Debug\net8.0-windows\Updater.dll" />
+      <UpdaterFiles Include="..\..\tools\Updater\bin\Debug\net8.0-windows\Updater.deps.json" />
+      <UpdaterFiles Include="..\..\tools\Updater\bin\Debug\net8.0-windows\Updater.runtimeconfig.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(UpdaterFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" ContinueOnError="true" />
+  </Target>
+
+  <!-- For Release publish: explicitly publish the Updater as self-contained single-file
+       so it runs on customer PCs without .NET 8 installed system-wide, then copy the
+       resulting Updater.exe (single ~15 MB file) into the WPF publish folder. -->
+  <Target Name="PublishUpdaterForRelease" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release'">
+    <Exec Command="dotnet publish &quot;$(MSBuildProjectDirectory)\..\..\tools\Updater\Updater.csproj&quot; -c Release -o &quot;$(MSBuildProjectDirectory)\..\..\tools\Updater\bin\publish&quot;" />
+    <ItemGroup>
+      <UpdaterPublished Include="..\..\tools\Updater\bin\publish\Updater.exe" />
+    </ItemGroup>
+    <Copy SourceFiles="@(UpdaterPublished)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" ContinueOnError="true" />
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />

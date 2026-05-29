@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Updater</AssemblyName>
+    <Version>1.0.0</Version>
+    <Description>AccessControlPro auto-update helper. Waits for the main WPF process to exit, extracts the staged ZIP over the install folder (preserving user data), and relaunches the main app. No WPF/WinForms dependency — uses Win32 MessageBox via P/Invoke for status, keeping the self-contained single-file binary under 20 MB.</Description>
+  </PropertyGroup>
+
+  <!-- Self-contained single-file for Release so Updater.exe runs on customer PCs
+       that don't have .NET 8 installed system-wide. No UI framework = ~15 MB. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+</Project>

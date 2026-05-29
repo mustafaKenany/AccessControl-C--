@@ -19,13 +19,23 @@ public static class DependencyInjection
         // Add MARS to prevent "open DataReader" errors in concurrent scenarios
         var marsConn = connectionString.TrimEnd(';') + ";MultipleActiveResultSets=True;";
 
+        // Retry policy: survives transient SQL Server outages (Windows Update restarts the
+        // SQL Server service, brief network hiccups, deadlock victims). EF Core uses
+        // exponential backoff between retries (~2s, ~4s, ~8s) and only retries SQL errors
+        // tagged as transient — never retries syntax errors, constraint violations, etc.
+        static void ConfigureSql(Microsoft.EntityFrameworkCore.Infrastructure.SqlServerDbContextOptionsBuilder b)
+            => b.EnableRetryOnFailure(
+                maxRetryCount: 3,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorNumbersToAdd: null);
+
         // DbContextFactory for WPF desktop — each repo method creates its own context
         services.AddDbContextFactory<AppDbContext>(options =>
-            options.UseSqlServer(marsConn));
+            options.UseSqlServer(marsConn, ConfigureSql));
 
         // Also register AppDbContext directly (used by DatabaseMigrator via scope)
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(marsConn), ServiceLifetime.Transient);
+            options.UseSqlServer(marsConn, ConfigureSql), ServiceLifetime.Transient);
 
         // Repositories — singleton is safe because they use factory per-method
         services.AddSingleton<IDeviceRepository, DeviceRepository>();

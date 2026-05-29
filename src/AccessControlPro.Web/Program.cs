@@ -730,6 +730,37 @@ app.MapGet("/api/diagnostics/download/{id:int}", async (int id, HttpContext cont
     return Results.File(stream, "application/zip", fileName ?? $"diagnostics-{id}.zip");
 });
 
+// ============================================================================
+// Version manifest — WPF app polls this on launch to see if a new build is
+// available. Public (no API key), so installs that haven't completed setup yet
+// can still check for updates. Manifest is a static JSON file on disk; pushing
+// a new release = scp the .zip into wwwroot/releases/ and edit latest.json.
+// See tools/release-management/README.md for the deploy recipe.
+// ============================================================================
+app.MapGet("/api/version/latest", async (HttpContext context) =>
+{
+    var manifestPath = app.Configuration["VersionManifestPath"];
+    if (string.IsNullOrWhiteSpace(manifestPath))
+        manifestPath = Path.Combine(app.Environment.WebRootPath, "releases", "latest.json");
+
+    if (!File.Exists(manifestPath))
+        return Results.NotFound(new { error = "No version manifest published yet" });
+
+    try
+    {
+        var json = await File.ReadAllTextAsync(manifestPath);
+        // Don't cache aggressively — we want customers to pick up new releases the
+        // same day we publish, not on next CDN-edge-expiry.
+        context.Response.Headers["Cache-Control"] = "public, max-age=300"; // 5 min
+        return Results.Content(json, "application/json");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[api/version] read failed: {ex.Message}");
+        return Results.Problem("Failed to read version manifest");
+    }
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

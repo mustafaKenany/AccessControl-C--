@@ -1,0 +1,11 @@
+{
+  "version": "4.5.0",
+  "downloadUrl": "https://hmtech.solutions/releases/AccessControlPro-v4.5.0.zip",
+  "sha256": "REPLACE_WITH_ACTUAL_HASH_OF_THE_ZIP_FILE",
+  "sizeBytes": 84123456,
+  "releaseNotes_en": "• Auto-update mechanism\n• Disk-space monitoring\n• SQL Server retry policy\n• Faster Events page",
+  "releaseNotes_ar": "• آلية التحديث التلقائي\n• مراقبة مساحة القرص\n• سياسة إعادة المحاولة لـ SQL Server\n• صفحة الأحداث أسرع",
+  "mandatory": false,
+  "minVersion": "4.0.0",
+  "releasedAt": "2026-05-28T18:00:00Z"
+}
