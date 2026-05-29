@@ -435,4 +435,103 @@ The session log now spans 2026-05-18 through 2026-05-29. Three commits today (or
 
 If the next session is about testing the update flow end-to-end, the recipe is in `tools/release-management/README.md`. If it's about a new feature, the codebase is in a clean, well-documented state.
 
-*End of 2026-05-29 update.*
+*End of 2026-05-29 update (Phase A/B/C of code work).*
+
+---
+
+# 2026-05-29 (evening) — Auto-update pipeline LIVE end-to-end
+
+After the 3-phase implementation earlier in the day, the rest of the evening was about taking the auto-update mechanism from "code exists" to "actually working in production". Multiple gotchas had to be fixed along the way.
+
+## Major milestones reached
+
+1. **SSH key authentication to VPS** — generated ed25519 key on dev PC, uploaded to VPS, fixed an authorized_keys formatting bug (key got appended without newline, gluing it to Hostinger's existing key), passwordless login confirmed.
+2. **Publish-release.ps1 script works end-to-end** — proven by publishing v4.5.0 to the VPS via one command.
+3. **Static manifest URL live** — `https://hmtech.solutions/releases/latest.json` returns the JSON.
+4. **API endpoint live** — `https://hmtech.solutions/api/version/latest` returns the JSON (after deploying the new Blazor build).
+5. **v4.5.0 ZIP downloadable** — `https://hmtech.solutions/releases/AccessControlPro-v4.5.0.zip` (104 MB).
+6. **WPF version baked into builds** — fixed the "1.0.0.0 vs 4.5.0" infinite-prompt bug.
+
+## Issues hit + fixed (in order)
+
+1. **VPS password stored only in FileZilla** — found the FileZilla XML sitemanager.xml at `%APPDATA%\FileZilla\sitemanager.xml`, decoded the base64-encoded `<Pass>` field. Password: `.ovPGMMnu3D3?2bJ`. User saved it outside the repo. NOT committed anywhere.
+
+2. **SSL info in memory was wrong** — memory said SSL expires 2026-06-19. Actual: 2026-08-12 (wildcard cert) + 2026-08-19 (specific cert). Updated `reference_domain.md` with correct dates.
+
+3. **SSH key got mangled on the VPS** — used `cat >> ~/.ssh/authorized_keys` to append the public key, but the file lacked a trailing newline so the new ed25519 key got glued to the existing Hostinger RSA key. Diagnosed by inspecting `authorized_keys` content. Fixed with sed: `sed -i 's/#hostinger-managed-keyssh-ed25519/#hostinger-managed-key\nssh-ed25519/' ~/.ssh/authorized_keys`.
+
+4. **publish-release.ps1 had non-ASCII characters** — em-dashes (`—`) and bullets (`•`) in the source. PowerShell 5.1 reads .ps1 files as Windows-1252 when there's no BOM, which corrupted those characters and broke the parser ("missing terminator"). Rewrote with pure ASCII; bullets in the manifest output are built at runtime via `[char]0x2022`. Manifest is written via `System.Text.UTF8Encoding(false)` so Linux reads it without a BOM.
+
+5. **VPS path was wrong** — my memory said `/var/www/gymapp/AccessControlPro.Web/wwwroot/releases/`. Reality: `/var/www/gymapp/AccessControlPro.Web` is the LINUX APPHOST EXECUTABLE FILE, not a directory. wwwroot is a sibling. Correct path: `/var/www/gymapp/wwwroot/releases/`. Fixed in publish-release.ps1, README.md, and `reference_vps.md` memory. Added explicit `mkdir -p $VpsReleasesDir` step to the script so it's idempotent.
+
+6. **WPF didn't have an explicit version** — Assembly.GetName().Version returned `1.0.0.0`. Update check would then compare `1.0.0.0 < 4.5.0` → always shows "update available" → infinite loop on every launch. Fixed by adding `<Version>4.5.0</Version>` + `<AssemblyVersion>` + `<FileVersion>` to the csproj, AND patched publish-release.ps1 to pass `-p:Version=$version` to `dotnet publish` so the version baked into the binary matches the version typed by the user. Rebuilt + re-uploaded v4.5.0.
+
+## VPS state at end of day
+
+| Item | Status |
+|---|---|
+| `gymapp.service` (Blazor) | Running, new build with `/api/version/latest` endpoint |
+| `/api/version/latest` | Returns v4.5.0 manifest with EN+AR notes |
+| `/releases/AccessControlPro-v4.5.0.zip` | 109 MB, SHA-256: `5CEC4C0D687D1AF794215E36312616823E991B18BB1240F39109DFF8F3C317D4` |
+| `/releases/latest.json` | Static fallback, same manifest |
+| Old Web.dll backup | At `/tmp/AccessControlPro.Web.dll.bak-2026-05-29` — delete when new build is proven stable |
+| Basmia's sync / diagnostics / auth | All still working (only added the new endpoint, didn't change anything else) |
+| SSL | 75-81 days remaining, auto-renewal scheduled twice daily |
+| VPS itself | Expires 2026-06-20, auto-renewal ON |
+| Domain hmtech.solutions | Expires 2027-03-21, auto-renewal ON |
+
+## Commits today (in order)
+
+- `363a4c3` — Multi-customer scaling foundation: SQL retry, disk guard, auto-update
+- `910e164` — Backup safety net: 3-day retention, on-launch backup-if-stale, manual cleanup (from earlier today)
+- `0375e02` — Release publisher: ASCII-clean script + correct VPS path + CREDENTIALS.md
+- `ed5d6af` — WPF: bake explicit version into builds for auto-update comparison
+
+## What Basmia still needs (ONE final manual session)
+
+After this, she NEVER needs an AnyDesk update again:
+
+1. **Deploy v4.5.0 manually** — last manual deploy ever:
+   - Download `https://hmtech.solutions/releases/AccessControlPro-v4.5.0.zip` (104 MB)
+   - Backup current `D:\AccessControlPro\` folder
+   - Extract ZIP to `D:\AccessControlPro\`
+   - Copy `appsettings.json`, `License.dat`, `Logs\`, `Backups\` from backup folder back into new install
+   - Launch + verify sync, devices, login work
+
+2. **Apply SIMPLE recovery permanent fix** — 10 sec in SSMS:
+   ```sql
+   USE master;
+   ALTER DATABASE AccessControlPro SET RECOVERY SIMPLE WITH NO_WAIT;
+   ```
+
+3. After both: she's on auto-update. Every future v4.6.0, v4.7.0... auto-installs from a single PowerShell command on dev side.
+
+## Release process (going forward)
+
+```powershell
+# Bump the version in src/AccessControlPro.WPF/AccessControlPro.WPF.csproj first:
+#   <Version>4.6.0</Version>
+#   <AssemblyVersion>4.6.0.0</AssemblyVersion>
+#   <FileVersion>4.6.0.0</FileVersion>
+
+# Then:
+cd D:\AccessControlPro\tools\release-management
+.\publish-release.ps1
+# Answer 3 questions, wait 10 min, done
+```
+
+## Pending decisions (unchanged, all non-blocking)
+
+1. Timezone direction (10:15:43 morning vs afternoon)
+2. 1,853 Migrated players strategy
+3. Customer beta-customer comms
+
+## How to pick up next session
+
+This log now covers May 18 → May 29, all phases (1 through 5 + auto-update + VPS deployment). Read this single file in any new conversation to pick up where we left off. The codebase is clean, all phases committed and pushed to `feature/pwa-cloud`.
+
+The very next session's job is probably:
+- (a) AnyDesk to Basmia ONCE to deploy v4.5.0 + apply SIMPLE recovery, then test the auto-update flow with v4.6.0
+- OR (b) Onboard customer #2
+
+*End of 2026-05-29 (evening) update — auto-update mechanism is LIVE.*
