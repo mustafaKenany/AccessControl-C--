@@ -33,7 +33,7 @@ Get-FileHash publish\AccessControlPro-v4.5.0.zip -Algorithm SHA256 | Select-Obje
 ### 2. Upload the ZIP to the VPS
 
 ```bash
-scp publish/AccessControlPro-v4.5.0.zip root@89.116.39.155:/var/www/gymapp/AccessControlPro.Web/wwwroot/releases/
+scp publish/AccessControlPro-v4.5.0.zip root@89.116.39.155:/var/www/gymapp/wwwroot/releases/
 ```
 
 ### 3. Update the manifest
@@ -41,7 +41,7 @@ scp publish/AccessControlPro-v4.5.0.zip root@89.116.39.155:/var/www/gymapp/Acces
 SSH into the VPS:
 ```bash
 ssh root@89.116.39.155
-cd /var/www/gymapp/AccessControlPro.Web/wwwroot/releases/
+cd /var/www/gymapp/wwwroot/releases/
 nano latest.json
 ```
 
