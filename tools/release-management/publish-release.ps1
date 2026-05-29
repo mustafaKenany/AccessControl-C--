@@ -109,12 +109,18 @@ if (Test-Path $publishDir) {
     Remove-Item $publishDir -Recurse -Force
 }
 
-dotnet publish $WpfCsproj -c Release -o $publishDir --nologo
+# Bake the version into the build via MSBuild parameter so the WPF's
+# Assembly.GetName().Version returns the same number the manifest advertises.
+# Without this, the app reports 1.0.0.0 and the update prompt loops forever.
+dotnet publish $WpfCsproj -c Release -o $publishDir --nologo `
+    -p:Version=$version `
+    -p:AssemblyVersion="$version.0" `
+    -p:FileVersion="$version.0"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: dotnet publish failed." -ForegroundColor Red
     exit 1
 }
-Write-Host "  OK - published to $publishDir" -ForegroundColor Green
+Write-Host "  OK - published to $publishDir (Version=$version)" -ForegroundColor Green
 
 # ----- Step 4: ZIP -----
 Write-Host ""

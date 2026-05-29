@@ -9,6 +9,12 @@
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Resources\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Version is read at runtime by UpdateCheckService and compared against
+         the VPS manifest. Bump this with EVERY release before running
+         publish-release.ps1 — otherwise the update prompt loops forever. -->
+    <Version>4.5.0</Version>
+    <AssemblyVersion>4.5.0.0</AssemblyVersion>
+    <FileVersion>4.5.0.0</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
