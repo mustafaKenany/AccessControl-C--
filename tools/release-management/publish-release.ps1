@@ -29,7 +29,14 @@ $VpsReleasesDir = "/var/www/gymapp/wwwroot/releases"
 $VerifyUrl      = "https://hmtech.solutions/api/version/latest"
 $StaticUrl      = "https://hmtech.solutions/releases/latest.json"
 $RepoRoot       = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+
+# All 3 customer apps publish into the SAME folder so they share DLLs.
+# WPF builds first (also pulls in Updater.exe via its ProjectReference).
+# Admin + POS then add their own .exe files; shared DLLs are identical so
+# overwrites are a no-op.
 $WpfCsproj      = Join-Path $RepoRoot "src\AccessControlPro.WPF\AccessControlPro.WPF.csproj"
+$AdminCsproj    = Join-Path $RepoRoot "src\AccessControlPro.Admin\AccessControlPro.Admin.csproj"
+$PosCsproj      = Join-Path $RepoRoot "src\AccessControlPro.POS\AccessControlPro.POS.csproj"
 
 # Bullet character used in release notes (built at runtime so the script source
 # stays pure ASCII and PowerShell 5.1 can parse it without BOM)
@@ -52,6 +59,14 @@ if (-not $scp -or -not $ssh) {
 }
 if (-not (Test-Path $WpfCsproj)) {
     Write-Host "ERROR: WPF csproj not found at $WpfCsproj" -ForegroundColor Red
+    exit 1
+}
+if (-not (Test-Path $AdminCsproj)) {
+    Write-Host "ERROR: Admin csproj not found at $AdminCsproj" -ForegroundColor Red
+    exit 1
+}
+if (-not (Test-Path $PosCsproj)) {
+    Write-Host "ERROR: POS csproj not found at $PosCsproj" -ForegroundColor Red
     exit 1
 }
 
@@ -109,18 +124,46 @@ if (Test-Path $publishDir) {
     Remove-Item $publishDir -Recurse -Force
 }
 
-# Bake the version into the build via MSBuild parameter so the WPF's
+# Bake the version into the build via MSBuild parameter so each .exe's
 # Assembly.GetName().Version returns the same number the manifest advertises.
 # Without this, the app reports 1.0.0.0 and the update prompt loops forever.
-dotnet publish $WpfCsproj -c Release -o $publishDir --nologo `
-    -p:Version=$version `
-    -p:AssemblyVersion="$version.0" `
-    -p:FileVersion="$version.0"
+$versionArgs = @("-p:Version=$version", "-p:AssemblyVersion=$version.0", "-p:FileVersion=$version.0")
+
+# Build 1/3: Main WPF app (also produces Updater.exe via ProjectReference)
+Write-Host "  Building Main WPF app + Updater..."
+dotnet publish $WpfCsproj -c Release -o $publishDir --nologo @versionArgs
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: dotnet publish failed." -ForegroundColor Red
+    Write-Host "ERROR: dotnet publish (WPF) failed." -ForegroundColor Red
     exit 1
 }
-Write-Host "  OK - published to $publishDir (Version=$version)" -ForegroundColor Green
+
+# Build 2/3: Admin back-office app (publishes into same folder, shared DLLs overwrite identically)
+Write-Host "  Building Admin app..."
+dotnet publish $AdminCsproj -c Release -o $publishDir --nologo @versionArgs
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: dotnet publish (Admin) failed." -ForegroundColor Red
+    exit 1
+}
+
+# Build 3/3: POS cashier app
+Write-Host "  Building POS app..."
+dotnet publish $PosCsproj -c Release -o $publishDir --nologo @versionArgs
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: dotnet publish (POS) failed." -ForegroundColor Red
+    exit 1
+}
+
+# Verify all 3 .exe files landed
+$expectedExes = @("AccessControlPro.WPF.exe", "AccessControlPro.Admin.exe", "AccessControlPro.POS.exe", "Updater.exe")
+$missing = @()
+foreach ($exe in $expectedExes) {
+    if (-not (Test-Path (Join-Path $publishDir $exe))) { $missing += $exe }
+}
+if ($missing.Count -gt 0) {
+    Write-Host "ERROR: Expected executables not found in publish folder: $($missing -join ', ')" -ForegroundColor Red
+    exit 1
+}
+Write-Host "  OK - all 4 .exe files published (WPF + Admin + POS + Updater), Version=$version" -ForegroundColor Green
 
 # ----- Step 4: ZIP -----
 Write-Host ""
