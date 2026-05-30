@@ -70,7 +70,16 @@
                          VerticalContentAlignment="Center"
                          TextChanged="LicenseKeyBox_TextChanged"/>
                 <TextBlock Text="Format: XXXX-XXXX-XXXX-XXXX-XXXX" FontSize="11"
-                           Foreground="#556677" Margin="0,0,0,20"/>
+                           Foreground="#556677" Margin="0,0,0,8"/>
+
+                <!-- Helpful hint for customers who just reinstalled Windows -->
+                <Border Background="#1A2A35" CornerRadius="6" Padding="10,7" Margin="0,0,0,15">
+                    <TextBlock FontSize="11" Foreground="#88B4D0" TextWrapping="Wrap"
+                               TextAlignment="Center">
+                        <Run FontWeight="Bold" Foreground="#4FC3F7">💡 </Run><Run>If you just reinstalled Windows, enter your original license key — it still works on this PC.</Run><LineBreak/>
+                        <Run FontWeight="Bold" Foreground="#4FC3F7">💡 </Run><Run>إذا قمت بإعادة تثبيت Windows، أدخل مفتاح الترخيص الأصلي — لا يزال يعمل على هذا الجهاز.</Run>
+                    </TextBlock>
+                </Border>
 
                 <!-- Error Message -->
                 <TextBlock x:Name="ErrorText" FontSize="12" Foreground="#FF6B6B"
