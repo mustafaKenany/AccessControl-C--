@@ -535,3 +535,134 @@ The very next session's job is probably:
 - OR (b) Onboard customer #2
 
 *End of 2026-05-29 (evening) update — auto-update mechanism is LIVE.*
+
+---
+
+# 2026-05-30 — Bundled-release, video scripts, license strategy
+
+A day of strategic decisions + one important codebase improvement.
+
+## What shipped (code)
+
+### Bundled-release (commit `73c6ef0`)
+Customers now get all 3 apps in ONE ZIP, not three separate ones:
+- `src/AccessControlPro.Admin/AccessControlPro.Admin.csproj` — added `<Version>4.5.0</Version>` + AssemblyVersion + FileVersion
+- `src/AccessControlPro.POS/AccessControlPro.POS.csproj` — same versioning
+- `tools/release-management/publish-release.ps1` — now publishes WPF + Admin + POS into the same output folder (shared DLLs deduplicate identically). Added pre-flight check that all 4 .exe files landed (WPF + Admin + POS + Updater).
+- Rebuilt v4.5.0: 110 MB (up from 104 MB — only 1 extra MB for 2 extra .exes because DLLs are shared).
+- New SHA-256: `56C539B213DE5C006762F37456A2041BF8CBF258803A05F00E9E99251E886E54`
+- Manifest at `/api/version/latest` updated.
+
+### Activation Window bilingual hint (commit `a76de05`)
+- `src/AccessControlPro.WPF/Views/ActivationWindow.xaml` — added a small box under the license-key input that tells customers (in EN + AR) they can re-enter their original key after Windows reinstall — no support call needed.
+- Reason: `GetHardwareFingerprint()` uses motherboard + BIOS serials, which survive Windows reinstall. Machine ID stays identical. The original key still validates.
+
+## Major decisions made today (NOT implemented, intentional)
+
+### Decision 1: License file STAYS on C: drive (not moved to install folder on D:)
+The license file currently lives at `C:\Users\<user>\AppData\Local\AccessControlPro\license.dat`. I proposed moving it to the install folder so it survives Windows reinstall. **User vetoed for business reasons:**
+
+- Each Windows reinstall = customer must contact Mustafa for re-activation
+- = touchpoint = relationship maintenance
+- = chance to learn what's happening on customer PCs
+- = chance to charge a maintenance fee
+- = word-of-mouth ("Mustafa responds in 5 min")
+- = soft lock-in to the service
+
+This is a deliberate business strategy, not a technical limitation. Code stays unchanged. Common pattern in Adobe / AutoCAD / many small-developer SaaS in countries with strong relationship-based business culture.
+
+### Decision 2: Sequencing of next features (discussed, not built)
+- **#1 Attendance reports** (1 day) — quick win, ships first
+- **#2 SMS sending** (1-2 weeks) — multiplies value of #1
+- **#3 Public landing page per gym** (1-2 weeks, no payment yet) — sales tool for customer #2
+- **#4 Full reports dashboard** (2 weeks) — absorbs #1 as widget, charts + PDF export
+- **#5 Online payment** (months 3-4) — biggest single revenue unlock
+
+### Decision 3: Video tutorial strategy
+- Mustafa needs to onboard new customers via video
+- Decided on Arabic video scripts (Path B from the earlier discussion)
+- Path A (Arabic PDF) deferred for now
+- Mustafa will record screen + voice-over himself, I provide the scripts
+- OBS Studio chosen as recording tool (free, professional, no watermark)
+
+### Decision 4: First 3 video scripts written
+Full Arabic scripts ready for recording (in chat — not yet checked into the repo as the user may iterate on them):
+- **Video 1**: Installation (4-5 min) — download ZIP, extract to D:\, run post-install.bat, setup wizard
+- **Video 2**: Login + Main Menu tour (3-4 min) — default credentials, navigating sections, language toggle, logout
+- **Video 3**: Adding a Device (5-6 min) — prep checklist (IP, port, password, model), test connection, naming doors
+
+Future videos (queue, not yet scripted):
+- Video 4: Adding a player + assigning a card
+- Video 5: POS sale
+- Video 6: Subscription renewal + freeze
+- Video 7: Daily reports + closing day
+- Video 8: Backup + cloud sync
+- Video 9: Troubleshooting
+- Video 10: Auto-update (showcase the new feature!)
+
+## Session diagnostics / housekeeping
+
+### Cleanup of confusing artifacts
+The `publish/` folder had leftover folders from the old workflow (`customer-deploy/`, `web-deploy/`) and test builds (`v4.5.1/`). Identified as cruft. User-prompted cleanup commands provided:
+```powershell
+Remove-Item D:\AccessControlPro\publish\AccessControlPro-v4.5.1.zip -Force
+Remove-Item D:\AccessControlPro\publish\v4.5.1 -Recurse -Force
+Remove-Item D:\AccessControlPro\publish\customer-deploy -Recurse -Force
+Remove-Item D:\AccessControlPro\publish\web-deploy -Recurse -Force
+```
+
+Going forward: ONLY use `AccessControlPro-vX.Y.Z.zip` files. Folders are intermediate build artifacts.
+
+### Demo install procedure clarified
+- ONE install only on Mustafa's PC (he initially had multiple, found it confusing)
+- Path: `D:\AccessControlPro-Demo\`
+- Database: `AccessControlProDemo`
+- For recording the install video later: wipe entire install + drop database, then record from clean state
+
+### Hostinger settings verified
+- VPS auto-renewal: ON (expires 2026-06-20)
+- Domain auto-renewal: ON (expires 2027-03-21)
+- SSL: 75-81 days left (auto-renewing)
+- Weekly backups: ✅ FREE, working, off-site in Lithuania (separate from main server in Frankfurt)
+- Snapshots: skipped (paid feature, weekly backups are sufficient)
+
+## What Basmia STILL needs (unchanged from previous session)
+
+1. Manual deploy of v4.5.0 ZIP via AnyDesk (last manual update ever)
+2. Apply `ALTER DATABASE AccessControlPro SET RECOVERY SIMPLE WITH NO_WAIT;` once
+3. After both: she gets auto-updates forever
+
+## Commits today (in order)
+
+- `73c6ef0` — Release bundle: ship all 3 apps in one ZIP
+- `a76de05` — Activation: add bilingual hint about Windows-reinstall
+
+(Previous session's last commit was `964b7fa`. Today's branch tip is now `a76de05`.)
+
+## How to pick up in the next session
+
+Session log now covers May 18 → May 30, all phases of work. Read this single file (`docs/session-logs/2026-05-basmia-stability-lockdown.md`) for full context.
+
+The next session's likely tasks:
+- (a) Mustafa records Videos 1-3 with OBS following the scripts in this conversation
+- (b) Build the **Attendance Report** feature (1 day, the agreed quick win)
+- (c) AnyDesk to Basmia for final v4.5.0 deploy + SIMPLE recovery
+- (d) Start onboarding customer #2
+
+If session is about more video scripts, I have Videos 4-10 to write (mentioned above).
+If session is about Attendance Report — code starts in `EmployeesView` + new `AttendanceReportsView`, uses existing `AccessEvents` table data.
+
+## Pending decisions (carried over, all non-blocking)
+
+1. Timezone direction
+2. 1,853 Migrated players strategy
+3. Customer beta comms
+
+## Strategy snapshot — where Mustafa is positioning the business
+
+- **Pricing model**: Per-customer license + yearly maintenance fee
+- **Customer touchpoint strategy**: KEEP the Windows-reinstall re-activation requirement (license on C:) — it's a feature, not a bug
+- **Onboarding**: Self-service via video tutorials (in Arabic, recording starts soon)
+- **Sales pipeline**: Get to 5-10 gym customers first, then expand to swimming pools / yoga studios / sports clubs (~1 week adaptation each)
+
+*End of 2026-05-30 update.*
