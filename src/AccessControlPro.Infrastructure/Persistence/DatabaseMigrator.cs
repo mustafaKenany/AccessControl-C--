@@ -651,6 +651,18 @@ public static class DatabaseMigrator
             // Index on UpdatedAt for the Players table — hot path for delta sync queries.
             @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Employees_UpdatedAt' AND object_id = OBJECT_ID('Employees'))
               CREATE INDEX IX_Employees_UpdatedAt ON Employees(UpdatedAt);",
+
+            // v4.5: Force SIMPLE recovery model. This product takes twice-daily FULL backups
+            // and never takes log backups — so FULL recovery (SQL Server's default when a .bak
+            // is restored) grows the transaction log until it fills the disk ("transaction log
+            // full due to LOG_BACKUP"), which broke Basmia's backups in May 2026. SIMPLE
+            // auto-truncates the log and is correct for this single-PC, full-backup product.
+            // Idempotent (only switches when not already SIMPLE) and non-fatal (if the login
+            // lacks ALTER permission the loop just logs and continues). EXEC() isolates the
+            // ALTER DATABASE into its own batch. Replaces the manual tuneup.sql step so every
+            // customer — including new ones — gets it automatically on first launch.
+            @"IF (SELECT recovery_model_desc FROM sys.databases WHERE database_id = DB_ID()) <> 'SIMPLE'
+              EXEC('ALTER DATABASE CURRENT SET RECOVERY SIMPLE WITH NO_WAIT');",
         };
 
         var failedMigrations = new List<string>();

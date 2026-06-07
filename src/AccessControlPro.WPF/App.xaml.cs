@@ -39,6 +39,10 @@ public partial class App : System.Windows.Application
     private DispatcherTimer? _memoryMonitorTimer;
     private DispatcherTimer? _restartBannerTimer;
     private static readonly DateTime _appStartedAt = DateTime.Now;
+    // Latest working-set sample (MB) from the memory monitor. Read by the restart-nudge
+    // timer so it can prompt a graceful restart when memory creeps high — before the
+    // receptionist force-kills a "heavy" app (the observed Basmia pattern).
+    private static volatile int _lastWorkingSetMb;
     private static readonly string CrashLogPath = Path.Combine(AppContext.BaseDirectory, "crash_log.txt");
     private static readonly string MemoryLogPath = Path.Combine(AppContext.BaseDirectory, "memory_log.txt");
 
@@ -875,6 +879,7 @@ public partial class App : System.Windows.Application
                     var priv = proc.PrivateMemorySize64 / (1024 * 1024);
                     var heap = GC.GetTotalMemory(forceFullCollection: false) / (1024 * 1024);
                     var uptime = DateTime.Now - _appStartedAt;
+                    _lastWorkingSetMb = (int)ws;
 
                     var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [info] " +
                                $"ws={ws}MB private={priv}MB heap={heap}MB " +
@@ -888,7 +893,12 @@ public partial class App : System.Windows.Application
                     {
                         RollingLogFile.Append(MemoryLogPath,
                             $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [error] working set high ({ws} MB) — forcing Gen2 compacting GC\n");
-                        GC.Collect(2, GCCollectionMode.Aggressive, blocking: false, compacting: true);
+                        // GCCollectionMode.Aggressive requires blocking:true — passing false throws
+                        // "AggressiveGC requires setting the blocking parameter to true", which made
+                        // this emergency compaction fail every time it was needed (the very moment
+                        // memory was highest). Blocking here is fine: it runs on the monitor's
+                        // background timer thread, not the UI thread.
+                        GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
                     }
                     else if (ws > 500)
                     {
@@ -926,22 +936,37 @@ public partial class App : System.Windows.Application
                 try
                 {
                     var uptime = DateTime.Now - _appStartedAt;
-                    if (uptime.TotalDays < 5) return;
 
-                    // First crossing of 5 days, OR 12+ hours since last reminder.
+                    // Nudge a graceful restart when EITHER the app has been up 5+ days OR memory
+                    // has crept high (>750 MB working set — above the 700 MB GC ceiling, so it's
+                    // genuinely not recoverable). The memory trigger is the important one: Basmia's
+                    // receptionist force-kills the app once it feels heavy (~700 MB after a full
+                    // day), which produces false "crash-recovery" bundles and loses the clean
+                    // shutdown. A polite "please restart" converts that into a graceful restart
+                    // that resets memory to ~180 MB.
+                    bool highMemory = _lastWorkingSetMb > 750;
+                    if (uptime.TotalDays < 5 && !highMemory) return;
+
+                    // First qualifying tick, OR 12+ hours since last reminder.
                     if (!restartShownAlready || (DateTime.Now - lastRestartPrompt).TotalHours >= 12)
                     {
                         restartShownAlready = true;
                         lastRestartPrompt = DateTime.Now;
-                        StartupLog($"Restart reminder fired (uptime={uptime.TotalDays:F1}d)");
+                        StartupLog($"Restart reminder fired (uptime={uptime.TotalDays:F1}d, ws={_lastWorkingSetMb}MB, highMemory={highMemory})");
 
                         Dispatcher.BeginInvoke(new Action(() =>
                         {
                             try
                             {
+                                // Memory-driven message avoids saying "X days" when it fired after
+                                // only a few hours of heavy use.
                                 var msg = LanguageManager.Instance.IsArabic
-                                    ? $"البرنامج يعمل منذ {(int)uptime.TotalDays} أيام. للحصول على أداء أفضل يُنصح بإغلاق البرنامج ثم فتحه من جديد عندما يناسب ذلك."
-                                    : $"The app has been running for {(int)uptime.TotalDays} days. For best performance, close and reopen it when convenient.";
+                                    ? (uptime.TotalDays >= 5
+                                        ? $"البرنامج يعمل منذ {(int)uptime.TotalDays} أيام. للحصول على أداء أفضل يُنصح بإغلاق البرنامج ثم فتحه من جديد عندما يناسب ذلك."
+                                        : "البرنامج يستهلك ذاكرة كبيرة. للحصول على أداء أفضل يُنصح بإغلاق البرنامج ثم فتحه من جديد عندما يناسب ذلك.")
+                                    : (uptime.TotalDays >= 5
+                                        ? $"The app has been running for {(int)uptime.TotalDays} days. For best performance, close and reopen it when convenient."
+                                        : "The app is using a lot of memory. For best performance, close and reopen it when convenient.");
                                 CustomMessageBox.Show(msg, "AccessControlPro", MsgType.Info, MainWindow);
                             }
                             catch { /* MainWindow might be null during shutdown */ }

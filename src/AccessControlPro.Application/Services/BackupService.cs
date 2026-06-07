@@ -78,6 +78,18 @@ public class BackupService : IBackupService
             return "No backup path configured";
         }
 
+        // Guard against a BackupPath whose drive doesn't exist on this machine —
+        // e.g. appsettings.json copied from a PC that had a D: partition onto a PC
+        // that only has C:. Without this, Directory.CreateDirectory throws
+        // DirectoryNotFoundException, the retry loop waits 30 min between each of 3
+        // attempts, and the on-launch backup splash appears frozen for ~1 hour.
+        if (!DriveExists(backupPath))
+        {
+            var fallback = DefaultBackupPath();
+            Log($"Backup path '{backupPath}' is on a drive that does not exist on this PC — falling back to '{fallback}'");
+            backupPath = fallback;
+        }
+
         var status = LoadStatus();
         string lastResult = "";
 
@@ -147,11 +159,20 @@ public class BackupService : IBackupService
                 status.ConsecutiveFailures++;
                 SaveStatus(status);
 
-                // Wait before retry (unless it's the last attempt)
-                if (attempt < MaxRetries)
+                // Only delay-retry for transient errors (SQL connectivity, timeouts —
+                // e.g. SQL Server restarting during a Windows Update). A bad path, missing
+                // directory, or permission error won't fix itself by waiting, and a 30-min
+                // wait would freeze the on-launch backup splash. Fail fast on those.
+                bool transient = ex is SqlException || ex is TimeoutException;
+                if (attempt < MaxRetries && transient)
                 {
                     Log($"Waiting {RetryIntervalMinutes} minutes before retry...");
                     await Task.Delay(TimeSpan.FromMinutes(RetryIntervalMinutes));
+                }
+                else if (!transient)
+                {
+                    Log("Non-transient error — not retrying.");
+                    break;
                 }
             }
         }
@@ -259,6 +280,24 @@ public class BackupService : IBackupService
         {
             return -1; // unknown — treat as "don't block"
         }
+    }
+
+    // Fallback backup location when the configured BackupPath points at a drive
+    // that doesn't exist on this machine. Always on the system drive, so it always
+    // resolves — and matches the setup wizard's default for a blank BackupPath.
+    private static string DefaultBackupPath() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                     "AccessControlPro", "Backups");
+
+    private static bool DriveExists(string path)
+    {
+        try
+        {
+            var root = Path.GetPathRoot(Path.GetFullPath(path));
+            if (string.IsNullOrEmpty(root)) return false;
+            return new DriveInfo(root).IsReady;
+        }
+        catch { return false; }
     }
 
     private static string? LoadBackupPath()
