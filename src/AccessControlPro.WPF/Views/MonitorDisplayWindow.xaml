@@ -39,115 +39,106 @@
             </Grid.RowDefinitions>
 
             <!-- Status Banner -->
-            <Border x:Name="StatusBanner" Grid.Row="0" Padding="0,30" Margin="0,40,0,0">
+            <Border x:Name="StatusBanner" Grid.Row="0" Padding="0,34" Margin="0,40,0,0">
                 <StackPanel HorizontalAlignment="Center">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <fa:ImageAwesome x:Name="StatusIcon" Icon="CheckCircle" Width="50" Height="50"
-                                         Foreground="White" VerticalAlignment="Center" Margin="0,0,20,0"/>
-                        <TextBlock x:Name="StatusText" FontSize="52" Foreground="White"
+                        <fa:ImageAwesome x:Name="StatusIcon" Icon="CheckCircle" Width="58" Height="58"
+                                         Foreground="White" VerticalAlignment="Center" Margin="0,0,22,0"/>
+                        <TextBlock x:Name="StatusText" FontSize="58" Foreground="White"
                                    VerticalAlignment="Center" FontWeight="Bold"/>
                     </StackPanel>
                     <!-- Door Name -->
-                    <TextBlock x:Name="DoorNameText" FontSize="22" Foreground="#78CDD7"
-                               HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                    <TextBlock x:Name="DoorNameText" FontSize="24" Foreground="#78CDD7"
+                               HorizontalAlignment="Center" Margin="0,10,0,0"/>
                 </StackPanel>
             </Border>
 
             <!-- Player Info Card -->
-            <Border Grid.Row="1" Margin="60,20,60,40" CornerRadius="24" Background="#0D2B2E" Padding="40">
-                <Grid>
+            <Border Grid.Row="1" Margin="60,20,60,40" CornerRadius="24" Background="#0D2B2E" Padding="50">
+                <Grid VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Player Photo -->
-                    <Border Grid.Column="0" Width="160" Height="160" CornerRadius="80"
-                            BorderBrush="#44A1A0" BorderThickness="4" Margin="0,0,50,0"
-                            VerticalAlignment="Top">
+                    <!-- Player Photo — enlarged to 300px so the member is clearly recognisable
+                         from a few metres away (was 160px). -->
+                    <Border Grid.Column="0" Width="300" Height="300" CornerRadius="150"
+                            BorderBrush="#44A1A0" BorderThickness="5" Margin="0,0,60,0"
+                            VerticalAlignment="Center">
                         <Border.Background>
                             <ImageBrush x:Name="PlayerPhoto" Stretch="UniformToFill"/>
                         </Border.Background>
-                        <Border CornerRadius="110" ClipToBounds="True">
+                        <Border CornerRadius="150" ClipToBounds="True">
                             <!-- Fallback icon when no photo -->
-                            <fa:ImageAwesome x:Name="NoPhotoIcon" Icon="User" Width="80" Height="80"
+                            <fa:ImageAwesome x:Name="NoPhotoIcon" Icon="User" Width="150" Height="150"
                                              Foreground="#334455" HorizontalAlignment="Center"
                                              VerticalAlignment="Center" Visibility="Collapsed"/>
                         </Border>
                     </Border>
 
-                    <!-- Player Details -->
+                    <!-- Player Details — member-first ordering: name, then the two things a
+                         member actually cares about (what plan, valid until), then balance due
+                         if any. Receptionist-only fields (card no, start, fee, paid, time) drop
+                         to a small quiet row at the bottom. -->
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <!-- Name -->
-                        <TextBlock x:Name="PlayerNameText" FontSize="32" Foreground="#E0E6ED"
-                                   TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <TextBlock x:Name="PlayerNameText" FontSize="44" Foreground="#E0E6ED"
+                                   TextWrapping="Wrap" Margin="0,0,0,16"/>
 
-                        <!-- Info Grid -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
+                        <!-- Divider -->
+                        <Border Height="2" Background="#1C4044" Margin="0,0,40,20"/>
 
-                            <!-- Subscription Type -->
-                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
-                                <TextBlock x:Name="SubLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="SubValue" FontSize="22" Foreground="#78CDD7"/>
-                            </StackPanel>
+                        <!-- PRIMARY: Subscription type -->
+                        <StackPanel Margin="0,0,0,16">
+                            <TextBlock x:Name="SubLabel" FontSize="18" Foreground="#556677"/>
+                            <TextBlock x:Name="SubValue" FontSize="34" Foreground="#78CDD7"/>
+                        </StackPanel>
 
+                        <!-- PRIMARY: Valid until (End Date) -->
+                        <StackPanel Margin="0,0,0,16">
+                            <TextBlock x:Name="EndLabel" FontSize="18" Foreground="#556677"/>
+                            <TextBlock x:Name="EndValue" FontSize="34" Foreground="#78CDD7"/>
+                        </StackPanel>
+
+                        <!-- PRIMARY: Remaining balance — only shown when the member owes money -->
+                        <StackPanel x:Name="BalancePanel" Margin="0,0,0,16" Visibility="Collapsed">
+                            <TextBlock x:Name="BalanceLabel" FontSize="18" Foreground="#556677"/>
+                            <TextBlock x:Name="BalanceValue" FontSize="40" Foreground="#F7685B"
+                                       FontWeight="Bold"/>
+                        </StackPanel>
+
+                        <!-- Divider -->
+                        <Border Height="2" Background="#1C4044" Margin="0,4,40,18"/>
+
+                        <!-- SECONDARY: quiet receptionist details -->
+                        <WrapPanel>
                             <!-- Card Number -->
-                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,10">
-                                <TextBlock x:Name="CardLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="CardValue" FontSize="20" Foreground="#AABBCC"/>
+                            <StackPanel Margin="0,0,44,12">
+                                <TextBlock x:Name="CardLabel" FontSize="15" Foreground="#556677"/>
+                                <TextBlock x:Name="CardValue" FontSize="22" Foreground="#AABBCC"/>
                             </StackPanel>
-
                             <!-- Start Date -->
-                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
-                                <TextBlock x:Name="StartLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="StartValue" FontSize="20" Foreground="#AABBCC"/>
+                            <StackPanel Margin="0,0,44,12">
+                                <TextBlock x:Name="StartLabel" FontSize="15" Foreground="#556677"/>
+                                <TextBlock x:Name="StartValue" FontSize="22" Foreground="#AABBCC"/>
                             </StackPanel>
-
-                            <!-- End Date -->
-                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,10">
-                                <TextBlock x:Name="EndLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="EndValue" FontSize="20" Foreground="#AABBCC"/>
-                            </StackPanel>
-
                             <!-- Fee -->
-                            <StackPanel x:Name="FeePanel" Grid.Row="2" Grid.Column="0" Margin="0,0,0,10"
-                                        Visibility="Collapsed">
-                                <TextBlock x:Name="FeeLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="FeeValue" FontSize="20" Foreground="#AABBCC"/>
+                            <StackPanel x:Name="FeePanel" Margin="0,0,44,12" Visibility="Collapsed">
+                                <TextBlock x:Name="FeeLabel" FontSize="15" Foreground="#556677"/>
+                                <TextBlock x:Name="FeeValue" FontSize="22" Foreground="#AABBCC"/>
                             </StackPanel>
-
                             <!-- Paid -->
-                            <StackPanel x:Name="PaidPanel" Grid.Row="2" Grid.Column="1" Margin="0,0,0,10"
-                                        Visibility="Collapsed">
-                                <TextBlock x:Name="PaidLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="PaidValue" FontSize="20" Foreground="#2ED47A"/>
+                            <StackPanel x:Name="PaidPanel" Margin="0,0,44,12" Visibility="Collapsed">
+                                <TextBlock x:Name="PaidLabel" FontSize="15" Foreground="#556677"/>
+                                <TextBlock x:Name="PaidValue" FontSize="22" Foreground="#2ED47A"/>
                             </StackPanel>
-
-                            <!-- Remaining Balance -->
-                            <StackPanel x:Name="BalancePanel" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
-                                        Margin="0,0,0,10" Visibility="Collapsed">
-                                <TextBlock x:Name="BalanceLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="BalanceValue" FontSize="32" Foreground="#F7685B"
-                                           FontWeight="Bold"/>
-                            </StackPanel>
-
                             <!-- Time -->
-                            <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,0,10">
-                                <TextBlock x:Name="TimeLabel" FontSize="16" Foreground="#556677"/>
-                                <TextBlock x:Name="TimeValue" FontSize="20" Foreground="#AABBCC"/>
+                            <StackPanel Margin="0,0,44,12">
+                                <TextBlock x:Name="TimeLabel" FontSize="15" Foreground="#556677"/>
+                                <TextBlock x:Name="TimeValue" FontSize="22" Foreground="#AABBCC"/>
                             </StackPanel>
-                        </Grid>
+                        </WrapPanel>
                     </StackPanel>
                 </Grid>
             </Border>
