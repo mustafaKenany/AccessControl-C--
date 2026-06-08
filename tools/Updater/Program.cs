@@ -67,6 +67,46 @@ public class Program
             return 1;
         }
 
+        // -------- Step 0: Self-relocate so we can overwrite our own Updater.exe --------
+        // The Updater ships INSIDE the release ZIP and is launched FROM the install folder,
+        // so extracting the new Updater.exe over the running one fails with "the process
+        // cannot access the file because it is being used by another process" — which aborts
+        // the whole update. Fix: copy ourselves to %TEMP% and relaunch from there. The temp
+        // copy is free to overwrite the install-folder Updater.exe. The "--relocated" sentinel
+        // prevents an infinite relaunch loop.
+        const string RelocatedFlag = "--relocated";
+        if (!args.Contains(RelocatedFlag))
+        {
+            try
+            {
+                var selfPath = Environment.ProcessPath
+                    ?? Process.GetCurrentProcess().MainModule!.FileName;
+                var tempDir = Path.Combine(Path.GetTempPath(), $"acp_updater_{Environment.ProcessId}");
+                Directory.CreateDirectory(tempDir);
+                var tempExe = Path.Combine(tempDir, "Updater.exe");
+                File.Copy(selfPath!, tempExe, overwrite: true);
+
+                // Re-quote args that contain spaces (e.g. the install path) so the temp copy
+                // receives them intact, then append the sentinel flag.
+                var relaunchArgs = string.Join(" ",
+                    args.Select(a => a.Contains(' ') ? $"\"{a}\"" : a)) + " " + RelocatedFlag;
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = tempExe,
+                    Arguments = relaunchArgs,
+                    UseShellExecute = true,
+                    WorkingDirectory = tempDir
+                });
+                return 0; // install-folder copy exits; the temp copy takes over the update
+            }
+            catch
+            {
+                // If relocation fails for any reason, fall through and run in place — the
+                // per-file retry/skip below still applies, so at worst Updater.exe stays old.
+            }
+        }
+
         if (!int.TryParse(args[0], out var mainPid))
         {
             ShowError("Invalid main-app process ID.");
