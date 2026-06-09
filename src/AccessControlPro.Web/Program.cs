@@ -27,6 +27,11 @@ builder.Services.AddSingleton<SessionService>();
 builder.Services.AddScoped<SessionState>();
 builder.Services.AddHttpContextAccessor();
 
+// Web push (member renewal reminders). PushService is a no-op until VAPID keys are
+// set in config; the hosted service sweeps gyms twice a day for expiring members.
+builder.Services.AddSingleton<PushService>();
+builder.Services.AddHostedService<PushReminderHostedService>();
+
 // Allow large request bodies for sync API (50MB)
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
 {

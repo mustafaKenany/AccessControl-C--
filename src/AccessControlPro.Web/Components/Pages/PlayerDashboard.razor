@@ -3,6 +3,9 @@
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.DbHelper Db
 @inject AccessControlPro.Web.Data.GymDbHelper GymDb
+@inject Microsoft.JSInterop.IJSRuntime JS
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
+@inject AccessControlPro.Web.Services.PushService Push
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsPlayer)
@@ -191,6 +194,44 @@ else if (_player != null)
                 <p class="no-data">@L("No card is linked to your account yet. Ask the reception.", "لا توجد بطاقة مرتبطة بحسابك بعد. يرجى مراجعة الاستقبال.")</p>
             }
         </div>
+
+        @* Renewal reminder opt-in (web push) *@
+        <div class="content-card" style="text-align:center;margin-top:1rem;">
+            <h3><i class="fas fa-bell"></i> @L("Renewal Reminders", "تذكير التجديد")</h3>
+            @if (!Push.Configured)
+            {
+                <p class="no-data">@L("Reminders are not available right now.", "التذكيرات غير متاحة حالياً.")</p>
+            }
+            else if (_pushStatus == "subscribed")
+            {
+                <p style="color:var(--green,#2ED47A);">
+                    <i class="fas fa-check-circle"></i>
+                    @L("Reminders are on. We'll notify you before your subscription expires.", "التذكيرات مفعّلة. سننبهك قبل انتهاء اشتراكك.")
+                </p>
+            }
+            else if (_pushStatus == "denied")
+            {
+                <p class="text-danger">@L("Notifications are blocked in your browser settings.", "الإشعارات محظورة في إعدادات المتصفح.")</p>
+            }
+            else if (_pushStatus == "unsupported")
+            {
+                <p class="no-data">@L("Install the app to your home screen first, then enable reminders.", "ثبّت التطبيق على الشاشة الرئيسية أولاً، ثم فعّل التذكيرات.")</p>
+            }
+            else
+            {
+                <p style="color:var(--text-secondary);max-width:340px;margin:0 auto 0.75rem;">
+                    @L("Get a reminder before your subscription expires.", "احصل على تذكير قبل انتهاء اشتراكك.")
+                </p>
+                <button class="btn-accent" @onclick="EnableRemindersAsync" disabled="@_pushBusy">
+                    <i class="fas fa-bell"></i>
+                    @(_pushBusy ? L("Enabling...", "جارٍ التفعيل...") : L("Enable reminders", "تفعيل التذكيرات"))
+                </button>
+                @if (_pushStatus == "error")
+                {
+                    <p class="text-danger" style="margin-top:0.5rem;">@L("Couldn't enable reminders. Try again.", "تعذّر تفعيل التذكيرات. حاول مرة أخرى.")</p>
+                }
+            }
+        </div>
     }
 
     @* === PAYMENTS TAB === *@
@@ -366,6 +407,11 @@ else
 
     // Freeze history
     private List<AuditRow> _freezes = new();
+
+    // Push reminders: "" | subscribed | none | denied | unsupported | error
+    private string _pushStatus = "";
+    private bool _pushBusy;
+    private bool _pushStatusChecked;
 
     private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
@@ -582,6 +628,62 @@ else
             }
         }
         catch (Exception ex) { Console.WriteLine($"[PlayerDashboard] LoadFreezeHistoryAsync Error: {ex.Message}"); }
+    }
+
+    // Check the current push-permission/subscription state once, after first render
+    // (JS interop isn't available during prerender).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Push.Configured && !_pushStatusChecked)
+        {
+            _pushStatusChecked = true;
+            try
+            {
+                _pushStatus = await JS.InvokeAsync<string>("acpPush.status");
+                StateHasChanged();
+            }
+            catch { /* JS not ready / unsupported */ }
+        }
+    }
+
+    private async Task EnableRemindersAsync()
+    {
+        if (_player == null) return;
+        var pub = Config["WebPush:PublicKey"];
+        if (string.IsNullOrEmpty(pub)) { _pushStatus = "unsupported"; return; }
+
+        _pushBusy = true; _pushStatus = ""; StateHasChanged();
+        try
+        {
+            var json = await JS.InvokeAsync<string>("acpPush.subscribe", pub);
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("error", out var errEl))
+            {
+                var err = errEl.GetString();
+                _pushStatus = err == "denied" ? "denied" : err == "unsupported" ? "unsupported" : "error";
+                return;
+            }
+
+            var endpoint = root.GetProperty("endpoint").GetString() ?? "";
+            var keys = root.GetProperty("keys");
+            var p256dh = keys.GetProperty("p256dh").GetString() ?? "";
+            var auth = keys.GetProperty("auth").GetString() ?? "";
+
+            var dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            await Push.SaveSubscriptionAsync(dbName, Session.UserId, endpoint, p256dh, auth);
+            _pushStatus = "subscribed";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PlayerDashboard] EnableReminders Error: {ex.Message}");
+            _pushStatus = "error";
+        }
+        finally
+        {
+            _pushBusy = false;
+            StateHasChanged();
+        }
     }
 
     private string GetEventTypeName(int code) => code switch
