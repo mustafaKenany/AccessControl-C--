@@ -85,10 +85,18 @@ else
                 title="@GetFilterTooltip("last6months")">
             @L("Last 6 Months", "آخر 6 أشهر")
         </button>
-        <button class="filter-btn @(_period == "thisyear" ? "active" : "")" @onclick='() => SetPeriod("thisyear")'
-                title="@GetFilterTooltip("thisyear")">
-            @L("This Year", "هذا العام")
-        </button>
+    </div>
+
+    <div class="filter-bar" style="margin-top: 0.5rem;">
+        <input type="text" @bind="_search" @bind:event="oninput" @onkeyup="OnSearch"
+               class="form-input" style="max-width: 320px;"
+               placeholder="@L("Search by player name or card...", "بحث باسم اللاعب أو البطاقة...")" />
+        @if (!string.IsNullOrWhiteSpace(_search))
+        {
+            <span style="color: var(--text-secondary); font-size: 0.8rem; margin-inline-start: 0.5rem;">
+                <i class="fas fa-search"></i> @L("Searching all dates", "بحث في كل التواريخ")
+            </span>
+        }
     </div>
 
     <div class="content-card">
@@ -119,7 +127,7 @@ else
                                 <td><span class="badge @typeClass">@typeLabel</span></td>
                                 <td>@t.Category</td>
                                 <td class="@amountClass">@t.Amount.ToString("N2")</td>
-                                <td>@t.Description</td>
+                                <td>@DescLabel(t.Description)</td>
                                 <td>@t.RecordedBy</td>
                             </tr>
                         }
@@ -154,7 +162,7 @@ else
                         {
                             <div class="mobile-card-row">
                                 <span class="mobile-card-label">@L("Description", "الوصف")</span>
-                                <span class="mobile-card-value">@t.Description</span>
+                                <span class="mobile-card-value">@DescLabel(t.Description)</span>
                             </div>
                         }
                         @if (!string.IsNullOrEmpty(t.RecordedBy))
@@ -193,6 +201,7 @@ else
 
 @code {
     private string _period = "thismonth";
+    private string _search = "";
     private decimal _periodIncome, _periodExpense, _periodProfit, _outstanding;
     private List<TransactionRow> _transactions = new();
 
@@ -328,32 +337,35 @@ else
             }
             _periodProfit = _periodIncome - _periodExpense;
 
+            // List + count. Join Players so we can search by player name or card number.
+            // While searching we ignore the date filter so a person's FULL history shows
+            // (no more paging through to find one member).
+            var searching = !string.IsNullOrWhiteSpace(_search);
+            var applyDate = !searching && !isAll;
+            var conds = new List<string>();
+            if (applyDate) conds.Add(@"t.""TransactionDate"" >= @from AND t.""TransactionDate"" < @to");
+            if (searching) conds.Add(@"(t.""Description"" LIKE @q OR t.""Category"" ILIKE @q
+                                       OR p.""FullNameEn"" ILIKE @q OR p.""FullNameAr"" LIKE @q OR p.""CardNo"" LIKE @q)");
+            var where = conds.Count > 0 ? "WHERE " + string.Join(" AND ", conds) : "";
+            const string fromJoin = @"FROM ""Transactions"" t LEFT JOIN ""Players"" p ON t.""RelatedEmployeeId"" = p.""Id""";
+
             // Count
-            var txWhere = isAll ? "" : @" WHERE ""TransactionDate"" >= @from AND ""TransactionDate"" < @to";
-            using (var countCmd = new Npgsql.NpgsqlCommand(
-                $@"SELECT COUNT(*) FROM ""Transactions""{txWhere}", conn))
+            using (var countCmd = new Npgsql.NpgsqlCommand($"SELECT COUNT(*) {fromJoin} {where}", conn))
             {
-                if (!isAll)
-                {
-                    countCmd.Parameters.AddWithValue("from", from);
-                    countCmd.Parameters.AddWithValue("to", to);
-                }
+                if (applyDate) { countCmd.Parameters.AddWithValue("from", from); countCmd.Parameters.AddWithValue("to", to); }
+                if (searching) countCmd.Parameters.AddWithValue("q", $"%{_search.Trim()}%");
                 _totalCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
             }
 
             // Transactions (paginated)
-            var txWhere2 = isAll ? "" : @" WHERE ""TransactionDate"" >= @from2 AND ""TransactionDate"" < @to2";
             using (var cmd = new Npgsql.NpgsqlCommand(
-                $@"SELECT ""Id"", ""Type"", COALESCE(""Category"",''), ""Amount"", COALESCE(""Description"",''),
-                         ""TransactionDate"", COALESCE(""RecordedBy"",'')
-                  FROM ""Transactions""{txWhere2}
-                  ORDER BY ""TransactionDate"" DESC LIMIT @limit OFFSET @offset", conn))
+                $@"SELECT t.""Id"", t.""Type"", COALESCE(t.""Category"",''), t.""Amount"", COALESCE(t.""Description"",''),
+                         t.""TransactionDate"", COALESCE(t.""RecordedBy"",'')
+                  {fromJoin} {where}
+                  ORDER BY t.""TransactionDate"" DESC LIMIT @limit OFFSET @offset", conn))
             {
-                if (!isAll)
-                {
-                    cmd.Parameters.AddWithValue("from2", from);
-                    cmd.Parameters.AddWithValue("to2", to);
-                }
+                if (applyDate) { cmd.Parameters.AddWithValue("from", from); cmd.Parameters.AddWithValue("to", to); }
+                if (searching) cmd.Parameters.AddWithValue("q", $"%{_search.Trim()}%");
                 cmd.Parameters.AddWithValue("limit", PageSize);
                 cmd.Parameters.AddWithValue("offset", (_page - 1) * PageSize);
 
@@ -368,6 +380,30 @@ else
             }
         }
         catch (Exception ex) { Console.WriteLine($"[OwnerFinance] LoadDataAsync Error: {ex.Message}"); }
+    }
+
+    private async Task OnSearch()
+    {
+        if (_search.Length > 100) _search = _search[..100];
+        _page = 1;
+        await LoadDataAsync();
+    }
+
+    // Collapse the stored description to what the gym owner wants to read:
+    //   subscription payments -> "اشتراك جديد" / "تجديد اشتراك"
+    //   everything else (manual income/expense) -> the Arabic text only (strip English).
+    private string DescLabel(string desc)
+    {
+        var d = desc ?? "";
+        var low = d.ToLowerInvariant();
+        if (low.Contains("renew") || d.Contains("تجديد")) return "تجديد اشتراك";
+        if ((low.Contains("new") && low.Contains("subsc")) || d.Contains("اشتراك جديد")) return "اشتراك جديد";
+
+        // Non-subscription: keep only the Arabic portion (drop Latin words like the EN label).
+        var arabic = System.Text.RegularExpressions.Regex.Replace(d, "[A-Za-z]+", " ");
+        arabic = System.Text.RegularExpressions.Regex.Replace(arabic, @"\s{2,}", " ").Trim();
+        arabic = arabic.Trim(' ', ':', '-', '(', ')', '|');
+        return string.IsNullOrWhiteSpace(arabic) ? d : arabic;
     }
 
     private async Task NextPage()
