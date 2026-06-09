@@ -428,7 +428,11 @@ static CookieOptions BuildSessionCookie(HttpContext ctx, TimeSpan lifetime)
     {
         HttpOnly = true,
         Secure = ctx.Request.IsHttps, // ForwardedHeaders ensures this reflects the proxy's scheme
-        SameSite = SameSiteMode.Strict,
+        // Lax (not Strict): a Strict cookie is withheld on an installed PWA's cold-launch
+        // navigation to its start_url (no same-site context), so the app opened to a stuck
+        // spinner / login loop while a normal browser tab worked. Lax still sends on
+        // top-level GET navigations and remains CSRF-safe for the POST sync/login endpoints.
+        SameSite = SameSiteMode.Lax,
         Expires = DateTimeOffset.UtcNow.Add(lifetime),
         Path = "/"
     };

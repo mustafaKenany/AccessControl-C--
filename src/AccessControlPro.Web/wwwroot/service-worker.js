@@ -7,7 +7,7 @@
 // fall back to a friendly offline page when the network is unreachable.
 //
 // Bump CACHE_VERSION on each release so old shell assets are evicted.
-const CACHE_VERSION = 'acp-shell-v1';
+const CACHE_VERSION = 'acp-shell-v2';
 const OFFLINE_URL = '/offline.html';
 
 const SHELL_ASSETS = [
