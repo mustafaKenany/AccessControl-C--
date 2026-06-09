@@ -19,52 +19,27 @@ else
     </div>
 
     <div class="filter-group">
-        <button class="filter-btn @(_period == "all" ? "active" : "")" @onclick='() => SetPeriod("all")'
-                title="@GetFilterTooltip("all")">
-            @L("All", "الكل")
-        </button>
-        <button class="filter-btn @(_period == "today" ? "active" : "")" @onclick='() => SetPeriod("today")'
-                title="@GetFilterTooltip("today")">
-            @L("Today", "اليوم")
-        </button>
-        <button class="filter-btn @(_period == "yesterday" ? "active" : "")" @onclick='() => SetPeriod("yesterday")'
-                title="@GetFilterTooltip("yesterday")">
-            @L("Yesterday", "أمس")
-        </button>
-        <button class="filter-btn @(_period == "thisweek" ? "active" : "")" @onclick='() => SetPeriod("thisweek")'
-                title="@GetFilterTooltip("thisweek")">
-            @L("This Week", "هذا الأسبوع")
-        </button>
-        <button class="filter-btn @(_period == "lastweek" ? "active" : "")" @onclick='() => SetPeriod("lastweek")'
-                title="@GetFilterTooltip("lastweek")">
-            @L("Last Week", "الأسبوع الماضي")
-        </button>
-        <button class="filter-btn @(_period == "thismonth" ? "active" : "")" @onclick='() => SetPeriod("thismonth")'
-                title="@GetFilterTooltip("thismonth")">
-            @L("This Month", "هذا الشهر")
-        </button>
-        <button class="filter-btn @(_period == "lastmonth" ? "active" : "")" @onclick='() => SetPeriod("lastmonth")'
-                title="@GetFilterTooltip("lastmonth")">
-            @L("Last Month", "الشهر الماضي")
-        </button>
-        <button class="filter-btn @(_period == "last3months" ? "active" : "")" @onclick='() => SetPeriod("last3months")'
-                title="@GetFilterTooltip("last3months")">
-            @L("Last 3 Months", "آخر 3 أشهر")
-        </button>
-        <button class="filter-btn @(_period == "last6months" ? "active" : "")" @onclick='() => SetPeriod("last6months")'
-                title="@GetFilterTooltip("last6months")">
-            @L("Last 6 Months", "آخر 6 أشهر")
-        </button>
-        <button class="filter-btn @(_period == "thisyear" ? "active" : "")" @onclick='() => SetPeriod("thisyear")'
-                title="@GetFilterTooltip("thisyear")">
-            @L("This Year", "هذا العام")
-        </button>
+        <button class="filter-btn @(_period == "all" ? "active" : "")" @onclick='() => SetPeriod("all")' title="@GetFilterTooltip("all")">@L("All", "الكل")</button>
+        <button class="filter-btn @(_period == "today" ? "active" : "")" @onclick='() => SetPeriod("today")' title="@GetFilterTooltip("today")">@L("Today", "اليوم")</button>
+        <button class="filter-btn @(_period == "yesterday" ? "active" : "")" @onclick='() => SetPeriod("yesterday")' title="@GetFilterTooltip("yesterday")">@L("Yesterday", "أمس")</button>
+        <button class="filter-btn @(_period == "thisweek" ? "active" : "")" @onclick='() => SetPeriod("thisweek")' title="@GetFilterTooltip("thisweek")">@L("This Week", "هذا الأسبوع")</button>
+        <button class="filter-btn @(_period == "lastweek" ? "active" : "")" @onclick='() => SetPeriod("lastweek")' title="@GetFilterTooltip("lastweek")">@L("Last Week", "الأسبوع الماضي")</button>
+        <button class="filter-btn @(_period == "thismonth" ? "active" : "")" @onclick='() => SetPeriod("thismonth")' title="@GetFilterTooltip("thismonth")">@L("This Month", "هذا الشهر")</button>
+        <button class="filter-btn @(_period == "lastmonth" ? "active" : "")" @onclick='() => SetPeriod("lastmonth")' title="@GetFilterTooltip("lastmonth")">@L("Last Month", "الشهر الماضي")</button>
+        <button class="filter-btn @(_period == "last3months" ? "active" : "")" @onclick='() => SetPeriod("last3months")' title="@GetFilterTooltip("last3months")">@L("Last 3 Months", "آخر 3 أشهر")</button>
+        <button class="filter-btn @(_period == "last6months" ? "active" : "")" @onclick='() => SetPeriod("last6months")' title="@GetFilterTooltip("last6months")">@L("Last 6 Months", "آخر 6 أشهر")</button>
     </div>
 
     <div class="filter-bar">
         <input type="text" @bind="_search" @bind:event="oninput" @onkeyup="OnSearch"
-               class="form-input" style="max-width: 300px;"
-               placeholder="@L("Search card/player...", "بحث بطاقة/لاعب...")" />
+               class="form-input" style="max-width: 320px;"
+               placeholder="@L("Search by player name or card...", "بحث باسم اللاعب أو البطاقة...")" />
+        @if (!string.IsNullOrWhiteSpace(_search))
+        {
+            <span style="color: var(--text-secondary); font-size: 0.8rem; margin-inline-start: 0.5rem;">
+                <i class="fas fa-search"></i> @L("Searching all dates", "بحث في كل التواريخ")
+            </span>
+        }
     </div>
 
     <div class="content-card">
@@ -80,7 +55,6 @@ else
                             <th>@L("Card No", "رقم البطاقة")</th>
                             <th>@L("Player", "اللاعب")</th>
                             <th>@L("Event Type", "نوع الحدث")</th>
-                            <th>@L("Details", "التفاصيل")</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -104,7 +78,6 @@ else
                                         @GetEventTypeName(ev.EventCode)
                                     </span>
                                 </td>
-                                <td>@ev.Details</td>
                             </tr>
                         }
                     </tbody>
@@ -143,13 +116,6 @@ else
                                 @(string.IsNullOrEmpty(mobCardNo) ? "-" : mobCardNo)
                             </span>
                         </div>
-                        @if (!string.IsNullOrEmpty(ev.Details))
-                        {
-                            <div class="mobile-card-row">
-                                <span class="mobile-card-label">@L("Details", "التفاصيل")</span>
-                                <span class="mobile-card-value">@ev.Details</span>
-                            </div>
-                        }
                     </div>
                 }
             </div>
@@ -157,21 +123,26 @@ else
 
         @if (!_events.Any())
         {
-            <p class="no-data">@L("No events found for the selected period", "لم يتم العثور على أحداث للفترة المحددة")</p>
+            <p class="no-data">
+                @(string.IsNullOrWhiteSpace(_search)
+                    ? L("No events found for the selected period", "لم يتم العثور على أحداث للفترة المحددة")
+                    : L("No events found for this search", "لم يتم العثور على أحداث لهذا البحث"))
+            </p>
         }
 
-        @if (_totalCount > 0)
+        @if (_events.Any())
         {
-            <div class="pagination">
-                <button class="btn-outline btn-sm" disabled="@(_page <= 1)" @onclick="PrevPage">
-                    <i class="fas fa-chevron-left"></i> @L("Previous", "السابق")
-                </button>
-                <span class="page-info">
-                    @L("Page", "صفحة") @_page / @TotalPages (@_totalCount @L("records", "سجل"))
-                </span>
-                <button class="btn-outline btn-sm" disabled="@(!_hasMore)" @onclick="NextPage">
-                    @L("Next", "التالي") <i class="fas fa-chevron-right"></i>
-                </button>
+            <div style="text-align:center; margin-top:1rem;">
+                @if (_hasMore)
+                {
+                    <button class="btn-outline" @onclick="LoadMore" disabled="@_loadingMore">
+                        <i class="fas @(_loadingMore ? "fa-spinner fa-spin" : "fa-chevron-down")"></i>
+                        @L("Load more", "تحميل المزيد")
+                    </button>
+                }
+                <div style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.5rem;">
+                    @L("Showing", "عرض") @_events.Count @L("of", "من") @_totalCount
+                </div>
             </div>
         }
     </div>
@@ -185,11 +156,11 @@ else
     private Dictionary<int, string> _deviceByDoor = new();
     private Dictionary<int, string> _playerByCard = new();
 
-    private int _page = 1;
-    private const int PageSize = 20;
-    private int _totalCount;
-    private bool _hasMore => _page * PageSize < _totalCount;
-    private int TotalPages => _totalCount == 0 ? 1 : (int)Math.Ceiling((double)_totalCount / PageSize);
+    private const int PageSize = 100;
+    private int _loaded;          // how many rows we've fetched so far (the SQL OFFSET)
+    private int _totalCount;      // total rows matching the current period/search
+    private bool _hasMore;        // last batch was full -> more available
+    private bool _loadingMore;
 
     private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
@@ -202,32 +173,10 @@ else
         }
 
         await LoadLookupsAsync();
-        await LoadEventsAsync();
+        await LoadEventsAsync(reset: true);
     }
 
-    private (DateTime start, DateTime end) GetDateRange()
-    {
-        // Events are stored in gym's local time (e.g., Baghdad UTC+3)
-        // VPS runs UTC. Use wide ranges to cover any timezone up to UTC+12
-        var now = DateTime.UtcNow;
-        var future = now.AddHours(12); // Cover timezones ahead of UTC
-        var today = now.Date;
-        return _period switch
-        {
-            "today" => (today.AddHours(-6), future),
-            "yesterday" => (today.AddDays(-1).AddHours(-6), today.AddHours(-6)),
-            "thisweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7).AddHours(-6), future),
-            "lastweek" => (today.AddDays(-((int)today.DayOfWeek + 1) % 7 - 7).AddHours(-6), today.AddDays(-((int)today.DayOfWeek + 1) % 7).AddHours(-6)),
-            "thismonth" => (new DateTime(now.Year, now.Month, 1).AddHours(-6), future),
-            "lastmonth" => (new DateTime(now.Year, now.Month, 1).AddMonths(-1).AddHours(-6),
-                            new DateTime(now.Year, now.Month, 1).AddHours(-6)),
-            "last3months" => (today.AddMonths(-3).AddHours(-6), future),
-            "last6months" => (today.AddMonths(-6).AddHours(-6), future),
-            "thisyear" => (new DateTime(now.Year, 1, 1).AddHours(-6), future),
-            "all" => (DateTime.MinValue, future),
-            _ => (today.AddHours(-6), future)
-        };
-    }
+    private (DateTime start, DateTime end) GetDateRange() => GetDateRangeFor(_period);
 
     private (DateTime start, DateTime end) GetDateRangeFor(string p)
     {
@@ -245,7 +194,6 @@ else
                             new DateTime(now.Year, now.Month, 1).AddHours(-6)),
             "last3months" => (today.AddMonths(-3).AddHours(-6), future),
             "last6months" => (today.AddMonths(-6).AddHours(-6), future),
-            "thisyear" => (new DateTime(now.Year, 1, 1).AddHours(-6), future),
             "all" => (DateTime.MinValue, future),
             _ => (today.AddHours(-6), future)
         };
@@ -268,7 +216,6 @@ else
             "lastmonth" => L($"Last month ({startStr} → {endStr})", $"الشهر الماضي ({startStr} → {endStr})"),
             "last3months" => L($"Last 3 months ({startStr} → {endStr})", $"آخر 3 أشهر ({startStr} → {endStr})"),
             "last6months" => L($"Last 6 months ({startStr} → {endStr})", $"آخر 6 أشهر ({startStr} → {endStr})"),
-            "thisyear" => L($"This year ({startStr} → {endStr})", $"هذا العام ({startStr} → {endStr})"),
             _ => ""
         };
     }
@@ -276,8 +223,7 @@ else
     private async Task SetPeriod(string period)
     {
         _period = period;
-        _page = 1;
-        await LoadEventsAsync();
+        await LoadEventsAsync(reset: true);
     }
 
     private async Task LoadLookupsAsync()
@@ -319,66 +265,75 @@ else
         catch (Exception ex) { Console.WriteLine($"[OwnerEvents] LoadLookupsAsync Error: {ex.Message}"); }
     }
 
-    private async Task LoadEventsAsync()
+    // Shared FROM + JOINs for both the count and data queries. The p2 join recovers players
+    // for orphan AccessCards created from 8H10D Wiegand scans (card "3665490" vs registered
+    // "0366549"), matching numerically with the /10 normalisation.
+    private const string FromJoins = @"
+          FROM ""AccessEvents"" e
+          LEFT JOIN ""Doors"" d ON e.""DoorId"" = d.""Id""
+          LEFT JOIN ""AccessCards"" c ON e.""CardId"" = c.""Id""
+          LEFT JOIN ""Players"" p ON c.""EmployeeId"" = p.""Id""
+          LEFT JOIN ""Players"" p2 ON p.""Id"" IS NULL
+               AND c.""CardNumber"" ~ '^[0-9]+$'
+               AND p2.""CardNo"" ~ '^[0-9]+$'
+               AND p2.""CardNo""::bigint = c.""CardNumber""::bigint / 10";
+
+    // While searching we ignore the date filter so the owner sees a person's FULL history
+    // in one go (the old client-side search only looked at the current 20-row page).
+    private bool Searching => !string.IsNullOrWhiteSpace(_search);
+
+    private async Task LoadEventsAsync(bool reset)
     {
         try
         {
-            var (from, to) = GetDateRange();
-            var isAll = _period == "all";
+            if (reset) { _events = new List<EventRow>(); _loaded = 0; _hasMore = false; }
 
             var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
             using var conn = await GymDb.GetGymConnectionAsync(_dbName);
 
-            var dateWhere = isAll ? "" : @" WHERE e.""EventDate"" >= @from AND e.""EventDate"" < @to";
-
-            // Count
-            using (var countCmd = new Npgsql.NpgsqlCommand(
-                $@"SELECT COUNT(*) FROM ""AccessEvents"" e{dateWhere}", conn))
+            var conds = new List<string>();
+            var applyDate = !Searching && _period != "all";
+            DateTime from = DateTime.MinValue, to = DateTime.MaxValue;
+            if (applyDate)
             {
-                if (!isAll)
-                {
-                    countCmd.Parameters.AddWithValue("from", from);
-                    countCmd.Parameters.AddWithValue("to", to);
-                }
+                (from, to) = GetDateRange();
+                conds.Add(@"e.""EventDate"" >= @from AND e.""EventDate"" < @to");
+            }
+            if (Searching)
+            {
+                conds.Add(@"(c.""CardNumber"" LIKE @q
+                          OR p.""FullNameEn"" ILIKE @q OR p.""FullNameAr"" LIKE @q
+                          OR p2.""FullNameEn"" ILIKE @q OR p2.""FullNameAr"" LIKE @q
+                          OR COALESCE(d.""Name"",'') ILIKE @q
+                          OR e.""Details"" LIKE @q)");
+            }
+            var whereClause = conds.Count > 0 ? "WHERE " + string.Join(" AND ", conds) : "";
+
+            // Count (only on reset — it doesn't change while paging the same query)
+            if (reset)
+            {
+                using var countCmd = new Npgsql.NpgsqlCommand(
+                    "SELECT COUNT(*) " + FromJoins + " " + whereClause, conn);
+                if (applyDate) { countCmd.Parameters.AddWithValue("from", from); countCmd.Parameters.AddWithValue("to", to); }
+                if (Searching) countCmd.Parameters.AddWithValue("q", $"%{_search.Trim()}%");
                 _totalCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
             }
 
-            // Data with JOINs for card number and player name.
-            //
-            // The 2nd Players join (p2) catches events whose AccessCard is an orphan: the
-            // device scans a card in 8H10D Wiegand format ("3665490") which doesn't match
-            // the manually-registered player CardNo ("0366549"), so an orphan AccessCard
-            // gets created and the event links to it without an Employee. We recover the
-            // player by matching p2.CardNo numerically against c.CardNumber / 10 — the
-            // same /10 normalisation AccessCardRepository now applies in WPF.
-            // Wrapped in regex guards to avoid casting non-numeric (QR) codes to bigint.
-            var joinDateWhere = isAll ? "" : @"WHERE e.""EventDate"" >= @from AND e.""EventDate"" < @to";
             var dataSql = @"SELECT e.""Id"", e.""DoorId"", e.""CardId"", e.""EventCode"", e.""EventDate"", COALESCE(e.""Details"",''),
                           COALESCE(d.""Name"", ''), COALESCE(c.""CardNumber"", ''),
                           COALESCE(NULLIF(p.""FullNameEn"", ''), p2.""FullNameEn"", ''),
-                          COALESCE(NULLIF(p.""FullNameAr"", ''), p2.""FullNameAr"", '')
-                  FROM ""AccessEvents"" e
-                  LEFT JOIN ""Doors"" d ON e.""DoorId"" = d.""Id""
-                  LEFT JOIN ""AccessCards"" c ON e.""CardId"" = c.""Id""
-                  LEFT JOIN ""Players"" p ON c.""EmployeeId"" = p.""Id""
-                  LEFT JOIN ""Players"" p2 ON p.""Id"" IS NULL
-                       AND c.""CardNumber"" ~ '^[0-9]+$'
-                       AND p2.""CardNo"" ~ '^[0-9]+$'
-                       AND p2.""CardNo""::bigint = c.""CardNumber""::bigint / 10 "
-                  + joinDateWhere +
+                          COALESCE(NULLIF(p.""FullNameAr"", ''), p2.""FullNameAr"", '')"
+                  + FromJoins + " " + whereClause +
                   @" ORDER BY e.""EventDate"" DESC LIMIT @limit OFFSET @offset";
             using (var cmd = new Npgsql.NpgsqlCommand(dataSql, conn))
             {
-                if (!isAll)
-                {
-                    cmd.Parameters.AddWithValue("from", from);
-                    cmd.Parameters.AddWithValue("to", to);
-                }
+                if (applyDate) { cmd.Parameters.AddWithValue("from", from); cmd.Parameters.AddWithValue("to", to); }
+                if (Searching) cmd.Parameters.AddWithValue("q", $"%{_search.Trim()}%");
                 cmd.Parameters.AddWithValue("limit", PageSize);
-                cmd.Parameters.AddWithValue("offset", (_page - 1) * PageSize);
+                cmd.Parameters.AddWithValue("offset", _loaded);
 
                 using var r = await cmd.ExecuteReaderAsync();
-                _events = new List<EventRow>();
+                int batch = 0;
                 while (await r.ReadAsync())
                 {
                     _events.Add(new EventRow(
@@ -386,20 +341,10 @@ else
                         r.IsDBNull(2) ? null : r.GetInt32(2),
                         r.GetInt32(3), r.GetDateTime(4), r.GetString(5),
                         r.GetString(6), r.GetString(7), r.GetString(8), r.GetString(9)));
+                    batch++;
                 }
-            }
-
-            // Apply client-side search filter
-            if (!string.IsNullOrWhiteSpace(_search))
-            {
-                var q = _search.Trim().ToLower();
-                _events = _events.Where(ev =>
-                    GetCardDisplay(ev).ToLower().Contains(q) ||
-                    ev.PlayerNameEn.ToLower().Contains(q) ||
-                    ev.PlayerNameAr.Contains(q) ||
-                    GetPlayerDisplay(ev).ToLower().Contains(q) ||
-                    ev.DoorName.ToLower().Contains(q)
-                ).ToList();
+                _loaded += batch;
+                _hasMore = batch == PageSize;
             }
         }
         catch (Exception ex) { Console.WriteLine($"[OwnerEvents] LoadEventsAsync Error: {ex.Message}"); }
@@ -407,20 +352,16 @@ else
 
     private async Task OnSearch()
     {
-        // Limit search input length to prevent abuse
         if (_search.Length > 100) _search = _search[..100];
-        _page = 1;
-        await LoadEventsAsync();
+        await LoadEventsAsync(reset: true);
     }
 
-    private async Task NextPage()
+    private async Task LoadMore()
     {
-        if (_hasMore) { _page++; await LoadEventsAsync(); }
-    }
-
-    private async Task PrevPage()
-    {
-        if (_page > 1) { _page--; await LoadEventsAsync(); }
+        if (!_hasMore || _loadingMore) return;
+        _loadingMore = true;
+        try { await LoadEventsAsync(reset: false); }
+        finally { _loadingMore = false; }
     }
 
     private string GetDoorName(int doorId)
@@ -437,29 +378,23 @@ else
 
     private string GetPlayerDisplay(EventRow ev)
     {
-        // QR code detection — card numbers starting with 5000 are QR guest passes
         var cardNo = GetCardDisplay(ev);
         if (!string.IsNullOrEmpty(cardNo) && cardNo.StartsWith("5000"))
             return L("QR Guest", "ضيف QR");
 
-        // Prefer JOIN-based player name from query
         if (!string.IsNullOrEmpty(ev.PlayerNameAr) && Session.IsArabic)
             return ev.PlayerNameAr;
         if (!string.IsNullOrEmpty(ev.PlayerNameEn))
             return ev.PlayerNameEn;
-        // Fallback to lookup dictionary
         var fromLookup = GetPlayerName(ev.CardId);
         if (fromLookup != "-") return fromLookup;
-        // Fallback: extract player name from Details string
         return ExtractPlayerNameFromDetails(ev.Details);
     }
 
     private string GetCardDisplay(EventRow ev)
     {
-        // Prefer JOIN-based card number
         if (!string.IsNullOrEmpty(ev.CardNumber))
             return ev.CardNumber;
-        // Fallback: extract from Details string (format: "... | #12345678 | ...")
         return ExtractFieldFromDetails(ev.Details, "#");
     }
 
