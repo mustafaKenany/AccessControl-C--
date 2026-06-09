@@ -76,216 +76,28 @@ else
                 title="@GetFilterTooltip("last6months")">
             @L("Last 6 Months", "آخر 6 أشهر")
         </button>
-        <button class="filter-btn @(_period == "thisyear" ? "active" : "")" @onclick='() => SetPeriod("thisyear")'
-                title="@GetFilterTooltip("thisyear")">
-            @L("This Year", "هذا العام")
-        </button>
     </div>
 
     <div class="content-card">
-        @* Desktop table *@
-        <div class="desktop-only">
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>@L("Photo", "الصورة")</th>
-                            <th>@L("Name", "الاسم")</th>
-                            <th>@L("Card", "البطاقة")</th>
-                            <th>@L("Phone", "الهاتف")</th>
-                            <th>@L("Subscription", "الاشتراك")</th>
-                            <th>@L("Start", "البداية")</th>
-                            <th>@L("End", "النهاية")</th>
-                            <th>@L("Fee", "الرسوم")</th>
-                            <th>@L("Paid", "المدفوع")</th>
-                            <th>@L("Remaining", "المتبقي")</th>
-                            <th>@L("Visits", "الزيارات")</th>
-                            <th>@L("Status", "الحالة")</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var p in _players)
-                        {
-                            var now = DateTime.UtcNow;
-                            var daysLeft = (p.EndDate - now).Days;
-                            var status = p.IsFrozen ? "Frozen" :
-                                         p.EndDate <= now ? "Expired" :
-                                         daysLeft <= 7 ? "Expiring" : "Active";
-                            var statusClass = status == "Active" ? "badge-active" :
-                                              status == "Frozen" ? "badge-frozen" :
-                                              status == "Expiring" ? "badge-expiring" : "badge-expired";
-                            var statusLabel = status switch {
-                                "Active" => L("Active", "نشط"),
-                                "Frozen" => L("Frozen", "مجمد"),
-                                "Expiring" => L("Expiring", "ينتهي قريباً"),
-                                _ => L("Expired", "منتهي")
-                            };
-                            var visitsText = p.MaxVisits > 0 ? $"{p.UsedVisits}/{p.MaxVisits}" : L("Unlimited", "غير محدود");
-                            var remaining = p.Fee - p.Paid;
-                            var name = Session.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn;
-                            var nameSecondary = Session.IsArabic ? p.FullNameEn : p.FullNameAr;
+        @* Player tiles — Arabic name only; tap a player to open the full profile page. *@
+        <div class="players-grid">
+            @foreach (var p in _players)
+            {
+                var now = DateTime.UtcNow;
+                var status = p.IsFrozen ? "Frozen" :
+                             p.EndDate <= now ? "Expired" :
+                             (p.EndDate - now).Days <= 7 ? "Expiring" : "Active";
+                var ring = status == "Active" ? "#2ED47A" :
+                           status == "Frozen" ? "#4CA1A3" :
+                           status == "Expiring" ? "#FFB946" : "#F7685B";
+                var name = !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn;
+                var initial = string.IsNullOrWhiteSpace(name) ? "؟" : name.Trim()[..1];
 
-                            <tr class="player-row @(_expandedId == p.Id ? "expanded" : "")" @onclick="() => ToggleExpand(p.Id)">
-                                <td>
-                                    <div class="player-avatar">
-                                        @(string.IsNullOrEmpty(p.FullNameEn) ? "?" : p.FullNameEn[0].ToString().ToUpper())
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="player-name-cell">
-                                        <a href="/player/@p.Id" style="color: var(--text-primary); text-decoration: none; font-weight: 600;" @onclick:stopPropagation="true">
-                                            @name
-                                        </a>
-                                        @if (!string.IsNullOrEmpty(nameSecondary))
-                                        {
-                                            <span class="name-secondary">@nameSecondary</span>
-                                        }
-                                    </div>
-                                </td>
-                                <td>@p.CardNo</td>
-                                <td>@p.Phone</td>
-                                <td>@p.SubscriptionType</td>
-                                <td>@p.StartDate.ToString("yyyy-MM-dd")</td>
-                                <td>@p.EndDate.ToString("yyyy-MM-dd")</td>
-                                <td>@p.Fee.ToString("N0")</td>
-                                <td>@p.Paid.ToString("N0")</td>
-                                <td class="@(remaining > 0 ? "text-danger" : "text-success")">@remaining.ToString("N0")</td>
-                                <td>@visitsText</td>
-                                <td><span class="badge @statusClass">@statusLabel</span></td>
-                            </tr>
-                            @if (_expandedId == p.Id)
-                            {
-                                <tr class="detail-row">
-                                    <td colspan="12">
-                                        <div class="player-detail">
-                                            <div class="detail-grid">
-                                                <div class="detail-item">
-                                                    <span class="detail-label">@L("Full Name (EN)", "الاسم الكامل (إنجليزي)")</span>
-                                                    <span class="detail-value">@p.FullNameEn</span>
-                                                </div>
-                                                <div class="detail-item">
-                                                    <span class="detail-label">@L("Full Name (AR)", "الاسم الكامل (عربي)")</span>
-                                                    <span class="detail-value" dir="rtl">@p.FullNameAr</span>
-                                                </div>
-                                                <div class="detail-item">
-                                                    <span class="detail-label">@L("Days Remaining", "الأيام المتبقية")</span>
-                                                    <span class="detail-value @(daysLeft <= 7 ? "text-warning" : daysLeft <= 0 ? "text-danger" : "")">
-                                                        @(daysLeft > 0 ? daysLeft.ToString() : L("Expired", "منتهي"))
-                                                    </span>
-                                                </div>
-                                                @if (p.MaxVisits > 0)
-                                                {
-                                                    <div class="detail-item">
-                                                        <span class="detail-label">@L("Visits Progress", "تقدم الزيارات")</span>
-                                                        <div class="progress-bar-container">
-                                                            <div class="progress-bar-fill" style="width: @(p.MaxVisits > 0 ? Math.Min(100, p.UsedVisits * 100 / p.MaxVisits) : 0)%"></div>
-                                                        </div>
-                                                        <span class="detail-value">@p.UsedVisits / @p.MaxVisits</span>
-                                                    </div>
-                                                }
-                                                @if (p.IsFrozen && p.FreezeStartDate.HasValue)
-                                                {
-                                                    <div class="detail-item">
-                                                        <span class="detail-label">@L("Frozen Since", "مجمد منذ")</span>
-                                                        <span class="detail-value text-warning">@p.FreezeStartDate.Value.ToString("yyyy-MM-dd")</span>
-                                                    </div>
-                                                }
-                                            </div>
-                                            <div style="margin-top: 0.75rem; text-align: center; display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
-                                                <a href="/player/@p.Id" class="btn-accent btn-sm" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;" @onclick:stopPropagation="true">
-                                                    <i class="fas fa-user"></i> @L("View Full Profile", "عرض الملف الكامل")
-                                                </a>
-                                                @if (!string.IsNullOrEmpty(p.Phone))
-                                                {
-                                                    <button class="btn-whatsapp btn-sm" @onclick="() => ShareViaWhatsApp(p)" @onclick:stopPropagation="true">
-                                                        <i class="fab fa-whatsapp"></i> @L("Share via WhatsApp", "مشاركة عبر واتساب")
-                                                    </button>
-                                                }
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        @* Mobile cards *@
-        <div class="mobile-only">
-            <div class="mobile-cards">
-                @foreach (var p in _players)
-                {
-                    var now = DateTime.UtcNow;
-                    var daysLeft = (p.EndDate - now).Days;
-                    var status = p.IsFrozen ? "Frozen" :
-                                 p.EndDate <= now ? "Expired" :
-                                 daysLeft <= 7 ? "Expiring" : "Active";
-                    var statusClass = status == "Active" ? "badge-active" :
-                                      status == "Frozen" ? "badge-frozen" :
-                                      status == "Expiring" ? "badge-expiring" : "badge-expired";
-                    var statusLabel = status switch {
-                        "Active" => L("Active", "نشط"),
-                        "Frozen" => L("Frozen", "مجمد"),
-                        "Expiring" => L("Expiring", "ينتهي قريباً"),
-                        _ => L("Expired", "منتهي")
-                    };
-                    var remaining = p.Fee - p.Paid;
-                    var name = Session.IsArabic && !string.IsNullOrEmpty(p.FullNameAr) ? p.FullNameAr : p.FullNameEn;
-                    var nameSecondary = Session.IsArabic ? p.FullNameEn : p.FullNameAr;
-
-                    <div class="mobile-card">
-                        <div class="mobile-card-header">
-                            <div>
-                                <a href="/player/@p.Id" style="color: var(--text-primary); text-decoration: none;">
-                                    <span class="mobile-card-name">@name</span>
-                                </a>
-                                @if (!string.IsNullOrEmpty(nameSecondary))
-                                {
-                                    <div class="mobile-card-sub">@nameSecondary</div>
-                                }
-                            </div>
-                            <span class="badge @statusClass">@statusLabel</span>
-                        </div>
-                        <div class="mobile-card-divider"></div>
-                        <div class="mobile-card-row">
-                            <span class="mobile-card-label">@L("Card", "البطاقة")</span>
-                            <span class="mobile-card-value">@(string.IsNullOrEmpty(p.CardNo) ? "-" : p.CardNo)</span>
-                        </div>
-                        <div class="mobile-card-row">
-                            <span class="mobile-card-label">@L("Subscription", "الاشتراك")</span>
-                            <span class="mobile-card-value">@p.SubscriptionType</span>
-                        </div>
-                        <div class="mobile-card-row">
-                            <span class="mobile-card-label">@L("End", "النهاية")</span>
-                            <span class="mobile-card-value">@p.EndDate.ToString("yyyy-MM-dd")</span>
-                        </div>
-                        <div class="mobile-card-row">
-                            <span class="mobile-card-label">@L("Fee", "الرسوم") / @L("Paid", "المدفوع")</span>
-                            <span class="mobile-card-value">@p.Fee.ToString("N0") / @p.Paid.ToString("N0")</span>
-                        </div>
-                        @if (remaining > 0)
-                        {
-                            <div class="mobile-card-row">
-                                <span class="mobile-card-label">@L("Remaining", "المتبقي")</span>
-                                <span class="mobile-card-value text-danger">@remaining.ToString("N0")</span>
-                            </div>
-                        }
-                        <div class="mobile-card-actions">
-                            <a href="/player/@p.Id" class="btn-accent btn-sm" style="text-decoration: none; text-align: center;">
-                                <i class="fas fa-user"></i> @L("Profile", "الملف")
-                            </a>
-                            @if (!string.IsNullOrEmpty(p.Phone))
-                            {
-                                <button class="btn-whatsapp btn-sm" @onclick="() => ShareViaWhatsApp(p)">
-                                    <i class="fab fa-whatsapp"></i> WhatsApp
-                                </button>
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
+                <a href="/player/@p.Id" class="player-tile" title="@name">
+                    <div class="player-tile-avatar" style="border-color:@ring;">@initial</div>
+                    <div class="player-tile-name" dir="rtl">@name</div>
+                </a>
+            }
         </div>
 
         @if (!_players.Any())
@@ -314,7 +126,6 @@ else
     private string _search = "";
     private string _filter = "All";
     private string _period = "all";
-    private int? _expandedId;
     private List<PlayerRow> _players = new();
     private int _page = 1;
     private const int PageSize = 20;
@@ -352,19 +163,6 @@ else
                 _gymName = result.ToString()!;
         }
         catch (Exception ex) { Console.WriteLine($"[OwnerPlayers] LoadGymNameAsync Error: {ex.Message}"); }
-    }
-
-    private void ShareViaWhatsApp(PlayerRow player)
-    {
-        var last4 = !string.IsNullOrEmpty(player.CardNo) && player.CardNo.Length >= 4
-            ? player.CardNo[^4..] : player.CardNo;
-
-        var msg = Session.IsArabic
-            ? $"مرحباً بك في {_gymName}! 🏋️\nتابع اشتراكك أونلاين:\n\n🌐 https://hmtech.solutions/login\n📱 الهاتف: {player.Phone}\n💳 آخر 4 أرقام: {last4}\n\nاختر \"دخول اللاعب\" وأدخل بياناتك"
-            : $"Welcome to {_gymName}! 🏋️\nTrack your subscription online:\n\n🌐 https://hmtech.solutions/login\n📱 Phone: {player.Phone}\n💳 Last 4 digits: {last4}\n\nChoose \"Player Login\" and enter your info";
-
-        var url = $"https://wa.me/?text={Uri.EscapeDataString(msg)}";
-        Nav.NavigateTo(url, forceLoad: true);
     }
 
     private async Task LoadPlayersAsync()
@@ -463,11 +261,6 @@ else
         catch (Exception ex) { Console.WriteLine($"[OwnerPlayers] LoadPlayersAsync Error: {ex.Message}"); }
     }
 
-    private void ToggleExpand(int id)
-    {
-        _expandedId = _expandedId == id ? null : id;
-    }
-
     private async Task RefreshData()
     {
         _refreshing = true;
@@ -513,7 +306,6 @@ else
                             new DateTime(now.Year, now.Month, 1).AddHours(-6)),
             "last3months" => (today.AddMonths(-3).AddHours(-6), future),
             "last6months" => (today.AddMonths(-6).AddHours(-6), future),
-            "thisyear" => (new DateTime(now.Year, 1, 1).AddHours(-6), future),
             "all" => (DateTime.MinValue, future),
             _ => (today.AddHours(-6), future)
         };
@@ -535,7 +327,6 @@ else
                             new DateTime(now.Year, now.Month, 1).AddHours(-6)),
             "last3months" => (today.AddMonths(-3).AddHours(-6), future),
             "last6months" => (today.AddMonths(-6).AddHours(-6), future),
-            "thisyear" => (new DateTime(now.Year, 1, 1).AddHours(-6), future),
             "all" => (DateTime.MinValue, future),
             _ => (today.AddHours(-6), future)
         };
@@ -558,7 +349,6 @@ else
             "lastmonth" => L($"Expired last month ({startStr} → {endStr})", $"انتهى الشهر الماضي ({startStr} → {endStr})"),
             "last3months" => L($"Expired last 3 months ({startStr} → {endStr})", $"انتهى آخر 3 أشهر ({startStr} → {endStr})"),
             "last6months" => L($"Expired last 6 months ({startStr} → {endStr})", $"انتهى آخر 6 أشهر ({startStr} → {endStr})"),
-            "thisyear" => L($"Expires this year ({startStr} → {endStr})", $"ينتهي هذا العام ({startStr} → {endStr})"),
             _ => ""
         };
     }

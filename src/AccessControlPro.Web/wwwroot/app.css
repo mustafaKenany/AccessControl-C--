@@ -879,6 +879,61 @@ html, body {
     flex-shrink: 0;
 }
 
+/* Players page: simple name tiles (click opens the full profile) */
+.players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.85rem;
+    margin-top: 0.25rem;
+}
+.player-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1.1rem 0.75rem;
+    background: rgba(68, 161, 160, 0.06);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    text-decoration: none;
+    color: var(--text-primary);
+    text-align: center;
+    transition: transform .12s ease, border-color .12s ease, background .12s ease;
+}
+.player-tile:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+    background: rgba(68, 161, 160, 0.12);
+}
+.player-tile-avatar {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #247B7B, #44A1A0);
+    border: 3px solid #44A1A0;
+}
+.player-tile-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+@media (max-width: 768px) {
+    .players-grid { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 0.6rem; }
+    .player-tile { padding: 0.85rem 0.5rem; }
+    .player-tile-avatar { width: 50px; height: 50px; font-size: 1.3rem; }
+    .player-tile-name { font-size: 0.85rem; }
+}
+
 .player-avatar-large {
     width: 80px;
     height: 80px;
