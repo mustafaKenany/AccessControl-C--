@@ -6,6 +6,7 @@
 @inject Microsoft.JSInterop.IJSRuntime JS
 @inject Microsoft.Extensions.Configuration.IConfiguration Config
 @inject AccessControlPro.Web.Services.PushService Push
+@inject IHttpContextAccessor HttpCtx
 @rendermode InteractiveServer
 
 @if (!Session.IsAuthenticated || !Session.IsPlayer)
@@ -442,11 +443,29 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        if (!Session.IsAuthenticated || !Session.IsPlayer)
+        // Hydrate the per-circuit session from the validated cookie the middleware stashed
+        // in HttpContext.Items. Without this, the interactive re-init pass sees an empty
+        // session and the page bounces straight back to /login ("enter then logout").
+        // Matches the owner pages; the unauthenticated redirect is handled by MainLayout.
+        if (!Session.IsAuthenticated)
         {
-            Nav.NavigateTo("/login", forceLoad: true);
-            return;
+            var info = HttpCtx.HttpContext?.Items["SessionInfo"] as AccessControlPro.Web.Services.SessionInfo;
+            if (info != null)
+            {
+                Session.Login(new AuthResult
+                {
+                    IsAuthenticated = true,
+                    Role = info.Role,
+                    DisplayName = info.DisplayName,
+                    UserId = info.UserId,
+                    GymDatabase = info.GymDatabase,
+                    GymId = info.GymId
+                }, info.GymDatabase, info.GymId);
+            }
         }
+
+        if (!Session.IsAuthenticated || !Session.IsPlayer)
+            return; // not a logged-in player — MainLayout redirects unauthenticated users
 
         try
         {
