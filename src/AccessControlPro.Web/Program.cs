@@ -466,12 +466,15 @@ app.MapPost("/api/auth/login", async (HttpContext ctx, WebAuthService auth, Sess
 
     var ip = ctx.Connection.RemoteIpAddress?.ToString();
     var ua = ctx.Request.Headers.UserAgent.ToString();
+    // Players get a long-lived session so the installed PWA doesn't ask for credentials
+    // on every launch; staff/owner keep the shorter default.
+    var lifetime = result.Role == "Player" ? SessionService.PlayerLifetime : SessionService.DefaultLifetime;
     var token = await sessions.CreateAsync(
         result.Role, result.DisplayName, result.UserId,
-        result.GymDatabase ?? "", result.GymId, ip, ua);
+        result.GymDatabase ?? "", result.GymId, ip, ua, lifetime);
 
     ctx.Response.Cookies.Append(SessionService.CookieName, token,
-        BuildSessionCookie(ctx, SessionService.DefaultLifetime));
+        BuildSessionCookie(ctx, lifetime));
 
     var redirect = result.Role == "Player" ? "/my" : "/dashboard";
     return Results.Ok(new { success = true, redirect });

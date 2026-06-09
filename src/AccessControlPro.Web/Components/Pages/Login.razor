@@ -100,9 +100,20 @@
 
     protected override void OnInitialized()
     {
+        // If the visitor already has a valid server session (e.g. the installed PWA was
+        // reopened, or they navigated to /login by habit), skip the form and send them
+        // straight to their dashboard. The middleware already validated the cookie into
+        // HttpContext.Items, so this is a trusted check (only runs server-side where
+        // HttpContext is available).
+        var existing = HttpCtx.HttpContext?.Items["SessionInfo"] as AccessControlPro.Web.Services.SessionInfo;
+        if (existing != null)
+        {
+            Nav.NavigateTo(existing.Role == "Player" ? "/my" : "/dashboard");
+            return;
+        }
+
         // Clear any per-circuit auth state when the login page loads — the HttpOnly
         // cookie is authoritative; the server middleware revalidates on each request.
-        // If the cookie is still valid, the user is auto-redirected by MainLayout.
         Session.Logout();
 
         // Read the gym the middleware resolved from the request subdomain. If non-null

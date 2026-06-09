@@ -16,6 +16,9 @@ public class SessionService
     private readonly DbHelper _db;
     public const string CookieName = "ac_session";
     public static readonly TimeSpan DefaultLifetime = TimeSpan.FromHours(24);
+    // Players use the installed PWA daily and shouldn't re-enter credentials each time —
+    // give their session a long life so the app opens straight to their dashboard.
+    public static readonly TimeSpan PlayerLifetime = TimeSpan.FromDays(90);
 
     public SessionService(DbHelper db)
     {
@@ -32,7 +35,7 @@ public class SessionService
     }
 
     public async Task<string> CreateAsync(string role, string displayName, int userId,
-        string gymDatabase, int gymId, string? ip, string? userAgent)
+        string gymDatabase, int gymId, string? ip, string? userAgent, TimeSpan? lifetime = null)
     {
         var token = NewToken();
         using var conn = await _db.GetConnectionAsync();
@@ -47,7 +50,7 @@ public class SessionService
         cmd.Parameters.AddWithValue("uid", userId);
         cmd.Parameters.AddWithValue("gdb", gymDatabase ?? "");
         cmd.Parameters.AddWithValue("gid", gymId);
-        cmd.Parameters.AddWithValue("exp", DateTime.UtcNow.Add(DefaultLifetime));
+        cmd.Parameters.AddWithValue("exp", DateTime.UtcNow.Add(lifetime ?? DefaultLifetime));
         cmd.Parameters.AddWithValue("ip", (object?)ip ?? "");
         cmd.Parameters.AddWithValue("ua", Truncate(userAgent, 500));
         await cmd.ExecuteNonQueryAsync();

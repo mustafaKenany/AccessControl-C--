@@ -14,7 +14,7 @@
     }
     else if (Session.IsAuthenticated)
     {
-        <nav class="sidebar">
+        <nav class="sidebar @(Session.IsPlayer ? "player-bar" : "")">
             <div class="sidebar-brand">
                 <h3>@_gymName</h3>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">

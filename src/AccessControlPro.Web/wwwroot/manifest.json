@@ -2,7 +2,7 @@
     "name": "HM-Gym",
     "short_name": "HM-Gym",
     "description": "View your gym subscription, visits, entry QR pass and renewal reminders.",
-    "start_url": "/login?source=pwa",
+    "start_url": "/my?source=pwa",
     "scope": "/",
     "display": "standalone",
     "orientation": "portrait",
