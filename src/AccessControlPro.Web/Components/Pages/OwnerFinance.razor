@@ -87,13 +87,18 @@ else
         </button>
     </div>
 
-    <div class="filter-bar" style="margin-top: 0.5rem;">
+    <div class="filter-bar" style="margin-top: 0.5rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <div class="filter-buttons">
+            <button class="filter-btn @(_typeFilter == "all" ? "active" : "")" @onclick='() => SetType("all")'>@L("All", "الكل")</button>
+            <button class="filter-btn @(_typeFilter == "income" ? "active" : "")" @onclick='() => SetType("income")'>@L("Income", "الإيرادات")</button>
+            <button class="filter-btn @(_typeFilter == "expense" ? "active" : "")" @onclick='() => SetType("expense")'>@L("Expenses", "الصرفيات")</button>
+        </div>
         <input type="text" @bind="_search" @bind:event="oninput" @onkeyup="OnSearch"
-               class="form-input" style="max-width: 320px;"
+               class="form-input" style="max-width: 300px;"
                placeholder="@L("Search by player name or card...", "بحث باسم اللاعب أو البطاقة...")" />
         @if (!string.IsNullOrWhiteSpace(_search))
         {
-            <span style="color: var(--text-secondary); font-size: 0.8rem; margin-inline-start: 0.5rem;">
+            <span style="color: var(--text-secondary); font-size: 0.8rem;">
                 <i class="fas fa-search"></i> @L("Searching all dates", "بحث في كل التواريخ")
             </span>
         }
@@ -101,6 +106,13 @@ else
 
     <div class="content-card">
         <h3>@L("Transactions", "المعاملات") (@_totalCount)</h3>
+        @if (_totalCount > 0 && _typeFilter != "all")
+        {
+            <div style="margin-bottom: 0.75rem; color: var(--text-secondary);">
+                @(_typeFilter == "expense" ? L("Total expenses", "إجمالي الصرفيات") : L("Total income", "إجمالي الإيرادات")):
+                <span style="font-weight: 700;" class="@(_typeFilter == "expense" ? "text-danger" : "text-success")">@_filteredTotal.ToString("N2")</span>
+            </div>
+        }
 
         @* Desktop table *@
         <div class="desktop-only">
@@ -202,6 +214,8 @@ else
 @code {
     private string _period = "thismonth";
     private string _search = "";
+    private string _typeFilter = "all"; // all | income | expense
+    private decimal _filteredTotal;
     private decimal _periodIncome, _periodExpense, _periodProfit, _outstanding;
     private List<TransactionRow> _transactions = new();
 
@@ -346,6 +360,8 @@ else
             if (applyDate) conds.Add(@"t.""TransactionDate"" >= @from AND t.""TransactionDate"" < @to");
             if (searching) conds.Add(@"(t.""Description"" LIKE @q OR t.""Category"" ILIKE @q
                                        OR p.""FullNameEn"" ILIKE @q OR p.""FullNameAr"" LIKE @q OR p.""CardNo"" LIKE @q)");
+            if (_typeFilter == "income") conds.Add(@"t.""Type"" = 0");
+            else if (_typeFilter == "expense") conds.Add(@"t.""Type"" = 1");
             var where = conds.Count > 0 ? "WHERE " + string.Join(" AND ", conds) : "";
             const string fromJoin = @"FROM ""Transactions"" t LEFT JOIN ""Players"" p ON t.""RelatedEmployeeId"" = p.""Id""";
 
@@ -355,6 +371,14 @@ else
                 if (applyDate) { countCmd.Parameters.AddWithValue("from", from); countCmd.Parameters.AddWithValue("to", to); }
                 if (searching) countCmd.Parameters.AddWithValue("q", $"%{_search.Trim()}%");
                 _totalCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
+            }
+
+            // Total amount of the currently-filtered set (so "Expenses" shows what was spent).
+            using (var sumCmd = new Npgsql.NpgsqlCommand($@"SELECT COALESCE(SUM(t.""Amount""),0) {fromJoin} {where}", conn))
+            {
+                if (applyDate) { sumCmd.Parameters.AddWithValue("from", from); sumCmd.Parameters.AddWithValue("to", to); }
+                if (searching) sumCmd.Parameters.AddWithValue("q", $"%{_search.Trim()}%");
+                _filteredTotal = Convert.ToDecimal(await sumCmd.ExecuteScalarAsync());
             }
 
             // Transactions (paginated)
@@ -380,6 +404,13 @@ else
             }
         }
         catch (Exception ex) { Console.WriteLine($"[OwnerFinance] LoadDataAsync Error: {ex.Message}"); }
+    }
+
+    private async Task SetType(string type)
+    {
+        _typeFilter = type;
+        _page = 1;
+        await LoadDataAsync();
     }
 
     private async Task OnSearch()
