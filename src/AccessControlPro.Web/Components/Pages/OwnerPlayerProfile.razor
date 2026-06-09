@@ -132,7 +132,7 @@ else
             </button>
             <button class="tab-btn @(_activeTab == "cards" ? "active" : "")" @onclick='() => _activeTab = "cards"'>
                 <i class="fas fa-id-card"></i> @L("Cards", "البطاقات")
-                @if (_cardHistory.Any()) { <span style="margin-inline-start: 0.3rem; opacity: 0.7;">(@_cardHistory.Count)</span> }
+                @if (_cards.Any()) { <span style="margin-inline-start: 0.3rem; opacity: 0.7;">(@_cards.Count)</span> }
             </button>
             <button class="tab-btn @(_activeTab == "visits" ? "active" : "")" @onclick='() => _activeTab = "visits"'>
                 <i class="fas fa-door-open"></i> @L("Visits", "الزيارات")
@@ -338,8 +338,43 @@ else
             @* ============ CARDS TAB ============ *@
             @if (_activeTab == "cards")
             {
+                @if (_cards.Any())
+                {
+                    <h3 style="color: var(--accent); font-size: 1rem; margin-bottom: 0.75rem;">
+                        @L("Current Card(s)", "البطاقة الحالية")
+                    </h3>
+                    <div class="table-responsive" style="margin-bottom: 1.5rem;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>@L("Card Number", "رقم البطاقة")</th>
+                                    <th>@L("Status", "الحالة")</th>
+                                    <th>@L("Assigned On", "تاريخ التعيين")</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var card in _cards)
+                                {
+                                    <tr>
+                                        <td style="font-family: monospace; font-weight: 600;">@card.CardNumber</td>
+                                        <td>
+                                            <span class="badge @(card.IsActive ? "badge-active" : "badge-expired")">
+                                                @(card.IsActive ? L("Active", "نشطة") : L("Inactive", "غير نشطة"))
+                                            </span>
+                                        </td>
+                                        <td>@(card.CreatedAt == DateTime.MinValue ? "-" : card.CreatedAt.ToString("yyyy-MM-dd"))</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
                 @if (_cardHistory.Any())
                 {
+                    <h3 style="color: var(--accent); font-size: 1rem; margin-bottom: 0.75rem;">
+                        @L("Card History", "سجل البطاقات")
+                    </h3>
                     <div class="table-responsive">
                         <table class="data-table">
                             <thead>
@@ -372,9 +407,10 @@ else
                         </table>
                     </div>
                 }
-                else
+
+                @if (!_cards.Any() && !_cardHistory.Any())
                 {
-                    <p class="no-data">@L("No card history found", "لا يوجد سجل بطاقات")</p>
+                    <p class="no-data">@L("No card found", "لا توجد بطاقة")</p>
                 }
             }
 
@@ -434,6 +470,7 @@ else
     private List<AuditRow> _renewals = new();
     private List<AuditRow> _freezes = new();
     private List<AuditRow> _cardHistory = new();
+    private List<CurrentCardRow> _cards = new();
     private List<VisitRow> _visits = new();
     private bool _loading = true;
     private string _activeTab = "subscription";
@@ -470,6 +507,7 @@ else
                 LoadRenewalsAsync(),
                 LoadFreezesAsync(),
                 LoadCardHistoryAsync(),
+                LoadCurrentCardsAsync(),
                 LoadVisitsAsync()
             );
         }
@@ -633,6 +671,34 @@ else
         }
         catch (Exception ex) { Console.WriteLine($"[OwnerPlayerProfile] LoadCardHistoryAsync Error: {ex.Message}"); }
     }
+
+    // Current card(s) straight from the AccessCards table — so migrated players (who own a
+    // card but have no card-assignment audit history) still see their active card here.
+    private async Task LoadCurrentCardsAsync()
+    {
+        try
+        {
+            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"SELECT COALESCE(""CardNumber"",''), COALESCE(""IsActive"", FALSE), ""CreatedAt""
+                  FROM ""AccessCards"" WHERE ""EmployeeId"" = @id
+                  ORDER BY ""IsActive"" DESC, ""CreatedAt"" DESC", conn);
+            cmd.Parameters.AddWithValue("id", PlayerId);
+
+            using var r = await cmd.ExecuteReaderAsync();
+            _cards = new List<CurrentCardRow>();
+            while (await r.ReadAsync())
+            {
+                _cards.Add(new CurrentCardRow(
+                    r.GetString(0), r.GetBoolean(1),
+                    r.IsDBNull(2) ? DateTime.MinValue : r.GetDateTime(2)));
+            }
+        }
+        catch (Exception ex) { Console.WriteLine($"[OwnerPlayerProfile] LoadCurrentCardsAsync Error: {ex.Message}"); }
+    }
+
+    private record CurrentCardRow(string CardNumber, bool IsActive, DateTime CreatedAt);
 
     private async Task LoadVisitsAsync()
     {
