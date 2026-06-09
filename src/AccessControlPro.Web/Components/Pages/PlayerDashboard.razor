@@ -59,6 +59,9 @@ else if (_player != null)
         <button class="filter-btn @(_tab == "overview" ? "active" : "")" @onclick='() => _tab = "overview"'>
             <i class="fas fa-info-circle"></i> @L("Overview", "نظرة عامة")
         </button>
+        <button class="filter-btn @(_tab == "card" ? "active" : "")" @onclick='() => _tab = "card"'>
+            <i class="fas fa-qrcode"></i> @L("My Card", "بطاقتي")
+        </button>
         <button class="filter-btn @(_tab == "payments" ? "active" : "")" @onclick='() => _tab = "payments"'>
             <i class="fas fa-wallet"></i> @L("Payments", "المدفوعات")
         </button>
@@ -154,6 +157,40 @@ else if (_player != null)
                 <p style="color: var(--text-secondary); margin: 0.5rem 0;">@_notes</p>
             </div>
         }
+    }
+
+    @* === MY CARD / QR ENTRY PASS TAB === *@
+    @if (_tab == "card")
+    {
+        <div class="content-card" style="text-align:center;">
+            <h3><i class="fas fa-qrcode"></i> @L("My Entry Card", "بطاقة الدخول")</h3>
+            @if (!string.IsNullOrEmpty(_player.CardNo))
+            {
+                <div style="display:flex;flex-direction:column;align-items:center;gap:0.85rem;margin-top:0.5rem;">
+                    <span class="badge @StatusClass" style="font-size:1rem;padding:0.4rem 1.4rem;">@StatusLabel</span>
+                    @* QR rendered on a white background so it stays scannable on the dark theme.
+                       Encodes the member's card number — the same credential the reader uses. *@
+                    <div style="background:#fff;padding:16px;border-radius:16px;display:inline-block;">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?data=@Uri.EscapeDataString(_player.CardNo)&size=260x260&margin=0"
+                             alt="QR" width="260" height="260" style="display:block;" />
+                    </div>
+                    <div style="font-family:monospace;font-size:1.6rem;letter-spacing:3px;">@_player.CardNo</div>
+                    <p style="color:var(--text-secondary);max-width:340px;margin:0.25rem 0 0;">
+                        @L("Show this code at the gym entrance.", "أظهر هذا الرمز عند مدخل النادي.")
+                    </p>
+                    @if (Status != "Active")
+                    {
+                        <p class="text-danger" style="margin:0;font-weight:600;">
+                            @L("Your subscription is not active — entry may be denied.", "اشتراكك غير نشط — قد يُرفض الدخول.")
+                        </p>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="no-data">@L("No card is linked to your account yet. Ask the reception.", "لا توجد بطاقة مرتبطة بحسابك بعد. يرجى مراجعة الاستقبال.")</p>
+            }
+        </div>
     }
 
     @* === PAYMENTS TAB === *@

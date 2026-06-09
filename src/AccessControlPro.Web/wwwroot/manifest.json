@@ -1,12 +1,28 @@
 {
-    "name": "HM-GymManagement",
-    "short_name": "MyGym",
-    "start_url": "/",
+    "name": "HM-Gym",
+    "short_name": "HM-Gym",
+    "description": "View your gym subscription, visits, entry QR pass and renewal reminders.",
+    "start_url": "/login?source=pwa",
+    "scope": "/",
     "display": "standalone",
+    "orientation": "portrait",
     "background_color": "#081B1D",
-    "theme_color": "#44A1A0",
-    "description": "Gym Management Cloud Portal",
+    "theme_color": "#0F3D3E",
+    "lang": "ar",
+    "dir": "auto",
+    "categories": ["health", "fitness", "lifestyle"],
     "icons": [
-        { "src": "favicon.png", "sizes": "any", "type": "image/png", "purpose": "any maskable" }
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ],
+    "shortcuts": [
+        {
+            "name": "My Subscription",
+            "short_name": "My Sub",
+            "description": "View my subscription and days remaining",
+            "url": "/my",
+            "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+        }
     ]
 }

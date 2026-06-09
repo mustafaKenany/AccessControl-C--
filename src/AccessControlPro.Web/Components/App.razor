@@ -3,15 +3,23 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#44A1A0" />
-    <meta name="description" content="HM-GymManagement Cloud Portal" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0F3D3E" />
+    <meta name="description" content="HM-Gym — view your subscription, visits, entry QR pass and renewal reminders." />
     <base href="/" />
     <link rel="manifest" href="manifest.json" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <link rel="stylesheet" href="app.css?v=@(DateTime.UtcNow.Ticks)" />
     <link rel="icon" type="image/png" href="favicon.png" />
-    <link rel="apple-touch-icon" href="favicon.png" />
+
+    <!-- PWA: installable home-screen app (iOS + Android). iOS ignores the manifest's
+         display/icon, so it needs these apple-* tags explicitly. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="HM-Gym" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
     <HeadOutlet />
 </head>
 

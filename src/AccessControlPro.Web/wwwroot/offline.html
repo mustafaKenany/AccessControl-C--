@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ar" dir="auto">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0F3D3E" />
+    <title>HM-Gym</title>
+    <style>
+        html, body { height: 100%; margin: 0; }
+        body {
+            background: linear-gradient(180deg, #0F3D3E 0%, #081B1D 100%);
+            color: #E0E6ED;
+            font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 24px;
+        }
+        .wrap { max-width: 360px; }
+        .icon {
+            width: 96px; height: 96px; border-radius: 24px; margin: 0 auto 24px;
+            background: #0D2B2E; display: flex; align-items: center; justify-content: center;
+            border: 2px solid #44A1A0;
+        }
+        .icon svg { width: 52px; height: 52px; }
+        h1 { font-size: 1.4rem; margin: 0 0 8px; }
+        p { color: #9FB0B2; line-height: 1.6; margin: 0 0 24px; }
+        button {
+            background: #44A1A0; color: #042022; border: none; border-radius: 12px;
+            padding: 14px 28px; font-size: 1rem; font-weight: 700; cursor: pointer;
+        }
+        button:active { opacity: .85; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#44A1A0" stroke-width="2" stroke-linecap="round">
+                <path d="M6 8v8M18 8v8M4 10v4M20 10v4M6 12h12" />
+            </svg>
+        </div>
+        <h1>لا يوجد اتصال بالإنترنت<br /><span style="font-size:1rem;color:#9FB0B2;">No internet connection</span></h1>
+        <p>تحقق من اتصالك ثم حاول مرة أخرى.<br />Check your connection and try again.</p>
+        <button onclick="location.reload()">إعادة المحاولة / Retry</button>
+    </div>
+</body>
+</html>
