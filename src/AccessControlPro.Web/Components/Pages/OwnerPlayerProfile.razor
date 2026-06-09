@@ -114,7 +114,7 @@ else
 
     <!-- Tab Navigation -->
     <div class="content-card" style="padding: 0;">
-        <div style="display: flex; border-bottom: 2px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch;">
+        <div class="profile-tabs" style="display: flex; border-bottom: 2px solid var(--border); overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;">
             <button class="tab-btn @(_activeTab == "subscription" ? "active" : "")" @onclick='() => _activeTab = "subscription"'>
                 <i class="fas fa-file-alt"></i> @L("Subscription", "الاشتراك")
             </button>
@@ -241,7 +241,7 @@ else
                                         <td>@t.TransactionDate.ToString("yyyy-MM-dd HH:mm")</td>
                                         <td class="@(t.Amount >= 0 ? "text-success" : "text-danger")">@t.Amount.ToString("N0")</td>
                                         <td><span class="badge @(t.Type == 2 ? "badge-expired" : "badge-active")">@typeLabel</span></td>
-                                        <td>@t.Description</td>
+                                        <td>@PaymentLabel(t.Description)</td>
                                         <td>@t.RecordedBy</td>
                                     </tr>
                                 }
@@ -441,6 +441,17 @@ else
 
     private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
+    // Collapse the stored payment description (which can be a long bilingual string with the
+    // player name) down to what the gym owner actually wants: "New Subscription" or "Renewal".
+    private string PaymentLabel(string desc)
+    {
+        var d = desc ?? "";
+        var low = d.ToLowerInvariant();
+        if (low.Contains("renew") || d.Contains("تجديد")) return L("Renewal", "تجديد اشتراك");
+        if (low.Contains("new") || d.Contains("جديد")) return L("New Subscription", "اشتراك جديد");
+        return L("Subscription", "اشتراك");
+    }
+
     protected override async Task OnInitializedAsync()
     {
         if (!Session.IsAuthenticated || !Session.IsOwner)
@@ -558,7 +569,7 @@ else
                 @"SELECT ""Timestamp"", ""Action"", COALESCE(""Details"",''), COALESCE(""DetailsAr"",''), COALESCE(""PerformedBy"",'')
                   FROM ""AuditLogs""
                   WHERE ""EntityType"" = 'Employee' AND ""EntityId"" = @id
-                    AND ""Action"" IN ('Renew','CREATE','UPDATE')
+                    AND UPPER(""Action"") IN ('RENEW','CREATE','UPDATE')
                   ORDER BY ""Timestamp"" DESC", conn);
             cmd.Parameters.AddWithValue("id", PlayerId);
 
@@ -627,20 +638,22 @@ else
     {
         try
         {
-            if (string.IsNullOrEmpty(_player?.CardNo))
-                return;
-
             var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
             using var conn = await GymDb.GetGymConnectionAsync(_dbName);
+            // AccessEvents.CardId is the AccessCards row Id (not the card number), and
+            // AccessCards.EmployeeId is the player. Match relationally by player so leading
+            // zeros / card reassignments don't break the lookup. (The old Details-LIKE-CardNo
+            // match failed because Details stores the card number without its leading zero.)
             using var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT e.""EventDate"", e.""EventCode"",
-                         COALESCE(d.""Name"", 'Door ' || e.""DoorId"") as ""DoorName""
+                         COALESCE(d.""Name"", 'Door ' || e.""DoorId"") AS ""DoorName""
                   FROM ""AccessEvents"" e
+                  JOIN ""AccessCards"" c ON c.""Id"" = e.""CardId""
                   LEFT JOIN ""Doors"" d ON e.""DoorId"" = d.""Id""
-                  WHERE e.""Details"" LIKE '%' || @cardNo || '%'
+                  WHERE c.""EmployeeId"" = @pid
                   ORDER BY e.""EventDate"" DESC
                   LIMIT 100", conn);
-            cmd.Parameters.AddWithValue("cardNo", _player.CardNo);
+            cmd.Parameters.AddWithValue("pid", PlayerId);
 
             using var r = await cmd.ExecuteReaderAsync();
             _visits = new List<VisitRow>();

@@ -704,6 +704,20 @@ html, body {
     color: var(--text-primary);
 }
 
+/* Player-profile tab bar: uniform-width tabs so they look consistent and scroll
+   cleanly on mobile instead of each sizing to its own label/badge. */
+.profile-tabs .tab-btn {
+    flex: 0 0 auto;
+    min-width: 104px;
+    padding: 0.7rem 0.9rem;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+}
+
 .login-btn {
     width: 100%;
     padding: 0.75rem;
