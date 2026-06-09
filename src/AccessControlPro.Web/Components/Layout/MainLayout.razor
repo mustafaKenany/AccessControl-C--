@@ -1,15 +1,17 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject AccessControlPro.Web.Services.SessionState Session
 @inject NavigationManager Nav
 @inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @inject IJSRuntime JS
 @inject IHttpContextAccessor HttpCtx
+@inject Microsoft.AspNetCore.Components.PersistentComponentState AppState
 
 <div class="app-container" dir="@Session.Dir">
     @if (_isLoading)
     {
-        <div style="display:flex; justify-content:center; align-items:center; min-height:100vh; color:var(--accent);">
-            <i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i>
+        <div style="position:fixed; inset:0; width:100vw; height:100vh; display:flex; justify-content:center; align-items:center; color:var(--accent);">
+            <i class="fas fa-spinner fa-spin" style="font-size:2.5rem;"></i>
         </div>
     }
     else if (Session.IsAuthenticated)
@@ -99,21 +101,42 @@
     private string _gymName = "HM-GymManagement";
     private string _expiryInfo = "";
     private bool _isLoading = true;
+    private PersistingComponentStateSubscription _persistSub;
 
     private string L(string en, string ar) => Session.IsArabic ? ar : en;
 
     protected override void OnInitialized()
     {
-        // Hydrate the per-circuit SessionState from the HttpContext.Items that the
-        // session-read middleware populated for this request. No file reads, no JS
-        // cookie parsing — the server has already validated the HttpOnly cookie
-        // against the Sessions table and trusts the result.
+        // Carry the session across the prerender -> interactive-circuit boundary.
+        // HttpContext.Items["SessionInfo"] (set by the request middleware from the
+        // validated HttpOnly cookie) is ONLY available during server prerender; in the
+        // live Blazor circuit HttpContext is null. Without persisting it, every
+        // interactive page re-renders unauthenticated and bounces to /login — which
+        // showed up as a stuck spinner / redirect loop. PersistentComponentState is the
+        // supported way: stash during prerender, restore when the circuit starts.
+        _persistSub = AppState.RegisterOnPersisting(PersistSession);
+
         if (!Session.IsAuthenticated)
         {
             var info = HttpCtx.HttpContext?.Items["SessionInfo"] as AccessControlPro.Web.Services.SessionInfo;
+
+            // Circuit phase: no HttpContext, so restore from the prerender-persisted state.
+            if (info == null &&
+                AppState.TryTakeFromJson<PersistedSession>("acp.session", out var ps) && ps != null)
+            {
+                info = new AccessControlPro.Web.Services.SessionInfo
+                {
+                    Role = ps.Role,
+                    DisplayName = ps.DisplayName,
+                    UserId = ps.UserId,
+                    GymDatabase = ps.GymDatabase,
+                    GymId = ps.GymId
+                };
+            }
+
             if (info != null)
             {
-                var result = new AuthResult
+                Session.Login(new AuthResult
                 {
                     IsAuthenticated = true,
                     Role = info.Role,
@@ -121,12 +144,38 @@
                     UserId = info.UserId,
                     GymDatabase = info.GymDatabase,
                     GymId = info.GymId
-                };
-                Session.Login(result, info.GymDatabase, info.GymId);
+                }, info.GymDatabase, info.GymId);
             }
         }
 
         _isLoading = !Session.IsAuthenticated;
+    }
+
+    private Task PersistSession()
+    {
+        if (Session.IsAuthenticated)
+        {
+            AppState.PersistAsJson("acp.session", new PersistedSession
+            {
+                Role = Session.Role,
+                DisplayName = Session.DisplayName,
+                UserId = Session.UserId,
+                GymDatabase = Session.GymDatabase,
+                GymId = Session.GymId
+            });
+        }
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _persistSub.Dispose();
+
+    private class PersistedSession
+    {
+        public string Role { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public int UserId { get; set; }
+        public string GymDatabase { get; set; } = "";
+        public int GymId { get; set; }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
