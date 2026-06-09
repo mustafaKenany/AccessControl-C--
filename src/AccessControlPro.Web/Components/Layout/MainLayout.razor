@@ -148,6 +148,17 @@
             }
         }
 
+        // Still unauthenticated during server render (e.g. an installed PWA cold-launched
+        // to /my without a session cookie): issue a clean server-side redirect to /login
+        // NOW, rather than rendering a spinner that waits on the interactive circuit —
+        // which is slow/unreliable in standalone PWA mode and left the app stuck loading.
+        // HttpContext is non-null only during prerender, where NavigateTo becomes a 302.
+        if (!Session.IsAuthenticated && HttpCtx.HttpContext != null)
+        {
+            Nav.NavigateTo("/login", forceLoad: false);
+            return;
+        }
+
         _isLoading = !Session.IsAuthenticated;
     }
 
