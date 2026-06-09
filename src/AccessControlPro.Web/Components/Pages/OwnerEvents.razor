@@ -154,7 +154,7 @@ else
     private List<EventRow> _events = new();
     private Dictionary<int, string> _doorNames = new();
     private Dictionary<int, string> _deviceByDoor = new();
-    private Dictionary<int, string> _playerByCard = new();
+    private Dictionary<long, string> _playerByCardNum = new();
 
     private const int PageSize = 100;
     private int _loaded;          // how many rows we've fetched so far (the SQL OFFSET)
@@ -253,11 +253,11 @@ else
                 while (await r.ReadAsync())
                 {
                     var cardNo = r.GetString(0);
-                    if (int.TryParse(cardNo, out var cid))
+                    if (long.TryParse(cardNo, out var cnum))
                     {
                         var nameEn = r.GetString(1);
                         var nameAr = r.GetString(2);
-                        _playerByCard[cid] = Session.IsArabic && !string.IsNullOrEmpty(nameAr) ? nameAr : nameEn;
+                        _playerByCardNum[cnum] = Session.IsArabic && !string.IsNullOrEmpty(nameAr) ? nameAr : nameEn;
                     }
                 }
             }
@@ -370,10 +370,15 @@ else
     private string GetDeviceName(int doorId)
         => _deviceByDoor.TryGetValue(doorId, out var name) && !string.IsNullOrEmpty(name) ? name : "-";
 
-    private string GetPlayerName(int? cardId)
+    // Resolve a player by the card NUMBER (not the AccessCards row id). Used for events
+    // whose CardId is null — e.g. "@NotRegistered" scans where the card wasn't synced to
+    // the device yet: the player exists in our DB but the event isn't linked to a card.
+    private string ResolvePlayerByCardNumber(string cardNo)
     {
-        if (cardId == null) return "-";
-        return _playerByCard.TryGetValue(cardId.Value, out var name) ? name : "-";
+        if (string.IsNullOrEmpty(cardNo) || !long.TryParse(cardNo, out var n)) return "";
+        if (_playerByCardNum.TryGetValue(n, out var name)) return name;
+        if (_playerByCardNum.TryGetValue(n / 10, out var name2)) return name2; // 8H10D Wiegand check digit
+        return "";
     }
 
     private string GetPlayerDisplay(EventRow ev)
@@ -386,8 +391,8 @@ else
             return ev.PlayerNameAr;
         if (!string.IsNullOrEmpty(ev.PlayerNameEn))
             return ev.PlayerNameEn;
-        var fromLookup = GetPlayerName(ev.CardId);
-        if (fromLookup != "-") return fromLookup;
+        var fromLookup = ResolvePlayerByCardNumber(cardNo);
+        if (!string.IsNullOrEmpty(fromLookup)) return fromLookup;
         return ExtractPlayerNameFromDetails(ev.Details);
     }
 
