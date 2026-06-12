@@ -493,8 +493,17 @@ public partial class App : System.Windows.Application
                 catch (Exception ex) { StartupLog($"Update check failed (non-critical): {ex.Message}"); }
             });
 
-            // Prevent auto-shutdown when LoginWindow closes (it's the only window at that point)
-            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            // Prevent auto-shutdown when LoginWindow closes (it's the only window at that point).
+            // Guard: if the app is already shutting down (a near-simultaneous second launch, or a
+            // Windows session-end during the ~10s startup), setting ShutdownMode throws
+            // InvalidOperationException — which was being logged as a crash and triggering a
+            // spurious crash-recovery bundle. Abort startup cleanly instead.
+            try { ShutdownMode = ShutdownMode.OnExplicitShutdown; }
+            catch (InvalidOperationException)
+            {
+                StartupLog("App already shutting down during startup — aborting cleanly.");
+                return;
+            }
 
             // Load saved language preference (from setup wizard or previous session)
             Helpers.LanguageManager.Instance.LoadSavedLanguage();
@@ -612,7 +621,12 @@ public partial class App : System.Windows.Application
 
             var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
             MainWindow = mainWindow;
-            ShutdownMode = ShutdownMode.OnMainWindowClose;
+            try { ShutdownMode = ShutdownMode.OnMainWindowClose; }
+            catch (InvalidOperationException)
+            {
+                StartupLog("App shutting down before main window — aborting cleanly.");
+                return;
+            }
             mainWindow.Show();
 
             // Check for pending device operations (shows notification bar after 3s)
