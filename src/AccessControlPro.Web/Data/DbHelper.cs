@@ -337,6 +337,11 @@ ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""QrPoolEnabled"" BOOLEAN DEFAULT 
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""QrPoolSize"" INT DEFAULT 0;
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""QrRangeStart"" INT DEFAULT 0;
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""QrMonthlyFee"" DECIMAL(18,2) DEFAULT 0;
+-- Remote lock (payment enforcement): when IsLocked = true the desktop app shows a
+-- full-screen block with LockMessage and can't be used until the admin unlocks. The app
+-- also auto-locks if it can't confirm 'unlocked' with the cloud for 7+ days (anti-bypass).
+ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""IsLocked"" BOOLEAN DEFAULT FALSE;
+ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""LockMessage"" TEXT DEFAULT '';
 
 -- Seed default gym if none exists
 INSERT INTO ""Gyms"" (""Name"", ""Subdomain"", ""ApiKey"", ""DatabaseName"", ""IsActive"", ""ExpiresAt"", ""OwnerName"")

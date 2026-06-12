@@ -87,6 +87,46 @@ else
         }
     </div>
 
+    @* Remote Lock (payment enforcement) *@
+    <div class="content-card" style="border-color: @(_isLocked ? "#E91E63" : "#7E57C2"); margin-bottom: 1.5rem;">
+        <h3 style="color: @(_isLocked ? "#E91E63" : "#7E57C2"); border-bottom-color: rgba(126, 87, 194, 0.3);">
+            <i class="fas fa-lock"></i> Remote Lock
+            <span class="badge @(_isLocked ? "badge-expired" : "badge-active")" style="margin-inline-start: 0.5rem;">
+                @(_isLocked ? "LOCKED" : "Active")
+            </span>
+        </h3>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.75rem;">
+            When locked, this gym's desktop app is fully blocked (after up to ~5 min) with the message below, until you unlock it.
+            It also auto-locks if the app can't reach the cloud for 7+ days. Their data is never touched.
+        </p>
+        <div class="form-group">
+            <label>Message shown to the gym</label>
+            <textarea class="form-input" rows="2" @bind="_lockMessage"
+                      placeholder="Please contact HM-Tech to renew your license — 07812573845"></textarea>
+        </div>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem;">
+            @if (!_isLocked)
+            {
+                <button class="btn-danger" @onclick="LockGymAsync" disabled="@_lockBusy">
+                    <i class="fas fa-lock"></i> Lock this gym
+                </button>
+            }
+            else
+            {
+                <button class="btn-accent" @onclick="UnlockGymAsync" disabled="@_lockBusy">
+                    <i class="fas fa-unlock"></i> Unlock
+                </button>
+            }
+            <button class="btn-outline" @onclick="SaveLockMessageAsync" disabled="@_lockBusy">
+                <i class="fas fa-save"></i> Save message
+            </button>
+        </div>
+        @if (!string.IsNullOrEmpty(_lockSavedMsg))
+        {
+            <div style="color: var(--success); margin-top: 0.5rem;">@_lockSavedMsg</div>
+        }
+    </div>
+
     @* QR Pool Stats *@
     @if (_qrPoolEnabled)
     {
@@ -331,6 +371,12 @@ else
     private bool _loading = true;
     private string _errorMsg = "";
 
+    // Remote lock (payment enforcement)
+    private bool _isLocked;
+    private string _lockMessage = "";
+    private bool _lockBusy;
+    private string _lockSavedMsg = "";
+
     // Gym info
     private string _gymName = "";
     private string _gymDbName = "";
@@ -379,7 +425,8 @@ else
             using (var cmd = new Npgsql.NpgsqlCommand(
                 @"SELECT ""Name"", ""DatabaseName"", ""OwnerName"", ""OwnerPhone"", ""OwnerEmail"",
                          ""Subdomain"", ""ExpiresAt"", ""IsActive"",
-                         ""QrPoolEnabled"", ""QrPoolSize"", ""QrRangeStart"", ""QrMonthlyFee"", ""ApiKey""
+                         ""QrPoolEnabled"", ""QrPoolSize"", ""QrRangeStart"", ""QrMonthlyFee"", ""ApiKey"",
+                         COALESCE(""IsLocked"", FALSE), COALESCE(""LockMessage"", '')
                   FROM ""Gyms"" WHERE ""Id"" = @id", masterConn))
             {
                 cmd.Parameters.AddWithValue("id", GymId);
@@ -399,6 +446,8 @@ else
                     _qrRangeStart = reader.IsDBNull(10) ? 0 : reader.GetInt32(10);
                     _qrMonthlyFee = reader.IsDBNull(11) ? 0 : reader.GetDecimal(11);
                     _apiKey = reader.IsDBNull(12) ? "" : reader.GetString(12);
+                    _isLocked = !reader.IsDBNull(13) && reader.GetBoolean(13);
+                    _lockMessage = reader.IsDBNull(14) ? "" : reader.GetString(14);
                 }
                 else
                 {
@@ -582,6 +631,31 @@ else
         {
             _loading = false;
         }
+    }
+
+    private Task LockGymAsync() => SetLockAsync(true);
+    private Task UnlockGymAsync() => SetLockAsync(false);
+    private Task SaveLockMessageAsync() => SetLockAsync(_isLocked);
+
+    private async Task SetLockAsync(bool locked)
+    {
+        _lockBusy = true; _lockSavedMsg = ""; StateHasChanged();
+        try
+        {
+            using var conn = await GymDb.GetMasterConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"UPDATE ""Gyms"" SET ""IsLocked"" = @locked, ""LockMessage"" = @msg WHERE ""Id"" = @id", conn);
+            cmd.Parameters.AddWithValue("locked", locked);
+            cmd.Parameters.AddWithValue("msg", _lockMessage ?? "");
+            cmd.Parameters.AddWithValue("id", GymId);
+            await cmd.ExecuteNonQueryAsync();
+            _isLocked = locked;
+            _lockSavedMsg = locked
+                ? "Gym locked — their app will block within ~5 minutes."
+                : "Saved. Gym is unlocked.";
+        }
+        catch (Exception ex) { _errorMsg = $"Lock update failed: {ex.Message}"; }
+        finally { _lockBusy = false; StateHasChanged(); }
     }
 
     private async Task ImpersonateOwnerAsync()

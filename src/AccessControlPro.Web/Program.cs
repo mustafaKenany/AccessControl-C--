@@ -409,7 +409,19 @@ app.MapGet("/api/sync-control", async (HttpContext context, DbHelper db, GymDbHe
         var result = await cmd.ExecuteScalarAsync();
         var forceFullSync = result != null; // a row was returned = flag was TRUE, now cleared
 
-        return Results.Ok(new { forceFullSync });
+        // Remote lock status (payment enforcement) — read each poll so unlocks apply fast.
+        bool locked = false;
+        string lockMessage = "";
+        using (var lockCmd = new Npgsql.NpgsqlCommand(
+            @"SELECT COALESCE(""IsLocked"", FALSE), COALESCE(""LockMessage"", '')
+              FROM ""Gyms"" WHERE ""ApiKey"" = @key", masterConn))
+        {
+            lockCmd.Parameters.AddWithValue("key", apiKey ?? "");
+            using var r = await lockCmd.ExecuteReaderAsync();
+            if (await r.ReadAsync()) { locked = r.GetBoolean(0); lockMessage = r.GetString(1); }
+        }
+
+        return Results.Ok(new { forceFullSync, locked, lockMessage });
     }
     catch (Exception ex)
     {
