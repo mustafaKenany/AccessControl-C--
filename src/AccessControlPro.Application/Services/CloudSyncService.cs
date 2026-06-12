@@ -232,6 +232,33 @@ public class CloudSyncService : ICloudSyncService
         }
     }
 
+    /// <summary>
+    /// Polls the cloud for this gym's remote-lock status (payment enforcement). Returns
+    /// reachable=false if the cloud couldn't be contacted (caller applies the offline grace).
+    /// Side-effect free (uses /api/lock-status, not /api/sync-control).
+    /// </summary>
+    public static async Task<(bool reachable, bool locked, string message)> CheckRemoteLockAsync()
+    {
+        var cloudUrl = LoadCloudSyncUrl();
+        if (string.IsNullOrEmpty(cloudUrl)) return (false, false, "");
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            client.DefaultRequestHeaders.Add("X-Api-Key", LoadApiKey());
+            var url = cloudUrl.Replace("/api/sync", "/api/lock-status");
+            var resp = await client.GetAsync(url);
+            if (!resp.IsSuccessStatusCode) return (false, false, "");
+
+            var body = await resp.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            bool locked = root.TryGetProperty("locked", out var l) && l.ValueKind == JsonValueKind.True;
+            string msg = root.TryGetProperty("lockMessage", out var m) ? (m.GetString() ?? "") : "";
+            return (true, locked, msg);
+        }
+        catch { return (false, false, ""); }
+    }
+
     private static async Task<bool> CheckForceFullSyncAsync(string cloudUrl)
     {
         using var client = new HttpClient();

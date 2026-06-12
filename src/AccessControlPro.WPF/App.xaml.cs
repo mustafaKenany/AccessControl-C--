@@ -34,6 +34,7 @@ public partial class App : System.Windows.Application
     private DispatcherTimer? _expiryMonitorTimer;
     private DispatcherTimer? _backupTimer;
     private DispatcherTimer? _cloudSyncTimer;
+    private Views.LockWindow? _lockWindow;
     private DispatcherTimer? _cleanupDailyTimer;
     private DispatcherTimer? _qrPoolTimer;
     private DispatcherTimer? _memoryMonitorTimer;
@@ -582,6 +583,22 @@ public partial class App : System.Windows.Application
                 }
             }
 
+            // Remote payment lock — if this gym has been locked from the cloud, block the app
+            // before the main window. EvaluateAsync runs on a worker thread (no UI deadlock) and
+            // applies the 7-day offline grace. The LockWindow re-checks every 60s and closes
+            // itself once unlocked. It only blocks usage — it never touches the customer's data.
+            try
+            {
+                var lockResult = Task.Run(async () => await Helpers.RemoteLockService.EvaluateAsync())
+                                     .GetAwaiter().GetResult();
+                if (lockResult.Locked)
+                {
+                    StartupLog("Remote lock active — showing lock screen.");
+                    new Views.LockWindow(lockResult.Message).ShowDialog();
+                }
+            }
+            catch (Exception exLock) { StartupLog($"Remote lock check failed (non-critical): {exLock.Message}"); }
+
             // Check main app access permission
             if (!currentUser.HasPermission(Domain.Enums.AppPermission.AccessMainApp))
             {
@@ -815,6 +832,15 @@ public partial class App : System.Windows.Application
                         {
                             StartupLog($"CloudSync error: {ex2.Message}");
                         }
+
+                        // Remote payment lock check (rides the 5-min sync timer).
+                        try
+                        {
+                            var lockResult = await Helpers.RemoteLockService.EvaluateAsync();
+                            if (lockResult.Locked)
+                                Dispatcher.Invoke(() => ShowLockWindowIfNeeded(lockResult.Message));
+                        }
+                        catch { /* non-critical */ }
                     };
                     _cloudSyncTimer.Start();
 
@@ -1287,6 +1313,17 @@ public partial class App : System.Windows.Application
     //   3. REBUILD indexes + update statistics
     //   4. BACKUP DATABASE
     // So this single call covers all of "shrink + cleanup + backup" silently before login.
+    // Shows the full-screen lock window over the running app when a lock is detected at
+    // runtime (the window self-closes when the cloud reports unlocked).
+    private void ShowLockWindowIfNeeded(string message)
+    {
+        if (_lockWindow != null) { _lockWindow.UpdateMessage(message); return; }
+        _lockWindow = new Views.LockWindow(message);
+        _lockWindow.Closed += (_, _) => _lockWindow = null;
+        _lockWindow.Show();
+        _lockWindow.Activate();
+    }
+
     private void RunStartupBackupIfStale()
     {
         const double STALE_HOURS = 12.0;
