@@ -541,6 +541,34 @@ public static class DatabaseMigrator
               CREATE INDEX IX_SubscriptionPlans_IsActive ON SubscriptionPlans(IsActive, SortOrder);
             END",
 
+            // Self-heal: some installs created SubscriptionPlans via EF (or an older schema) which
+            // does NOT emit SQL DEFAULT constraints for C# property initializers. On those tables the
+            // auto-seed below failed (it omits MaxVisits/EffectiveTimes/CreatedAt) so the table stayed
+            // empty ("plans don't appear"), and the Admin "Add plan" INSERT failed with
+            // "Cannot insert the value NULL into column 'IsActive'". Add any missing column defaults so
+            // every insert path works regardless of how the table was originally created. Idempotent.
+            @"IF OBJECT_ID('SubscriptionPlans') IS NOT NULL
+            BEGIN
+              IF NOT EXISTS (SELECT 1 FROM sys.default_constraints dc JOIN sys.columns c ON dc.parent_object_id=c.object_id AND dc.parent_column_id=c.column_id WHERE c.object_id=OBJECT_ID('SubscriptionPlans') AND c.name='NameAr')
+                ALTER TABLE SubscriptionPlans ADD CONSTRAINT DF_SubscriptionPlans_NameAr DEFAULT '' FOR NameAr;
+              IF NOT EXISTS (SELECT 1 FROM sys.default_constraints dc JOIN sys.columns c ON dc.parent_object_id=c.object_id AND dc.parent_column_id=c.column_id WHERE c.object_id=OBJECT_ID('SubscriptionPlans') AND c.name='Duration')
+                ALTER TABLE SubscriptionPlans ADD CONSTRAINT DF_SubscriptionPlans_Duration DEFAULT 30 FOR Duration;
+              IF NOT EXISTS (SELECT 1 FROM sys.default_constraints dc JOIN sys.columns c ON dc.parent_object_id=c.object_id AND dc.parent_column_id=c.column_id WHERE c.object_id=OBJECT_ID('SubscriptionPlans') AND c.name='DurationType')
+                ALTER TABLE SubscriptionPlans ADD CONSTRAINT DF_SubscriptionPlans_DurationType DEFAULT 'Days' FOR DurationType;
+              IF NOT EXISTS (SELECT 1 FROM sys.default_constraints dc JOIN sys.columns c ON dc.parent_object_id=c.object_id AND dc.parent_column_id=c.column_id WHERE c.object_id=OBJECT_ID('SubscriptionPlans') AND c.name='Price')
+                ALTER TABLE SubscriptionPlans ADD CONSTRAINT DF_SubscriptionPlans_Price DEFAULT 0 FOR Price;
+              IF NOT EXISTS (SELECT 1 FROM sys.default_constraints dc JOIN sys.columns c ON dc.parent_object_id=c.object_id AND dc.parent_column_id=c.column_id WHERE c.object_id=OBJECT_ID('SubscriptionPlans') AND c.name='MaxVisits')
+                ALTER TABLE SubscriptionPlans ADD CONSTRAINT DF_SubscriptionPlans_MaxVisits DEFAULT 0 FOR MaxVisits;
+              IF NOT EXISTS (SELECT 1 FROM sys.default_constraints dc JOIN sys.columns c ON dc.parent_object_id=c.object_id AND dc.parent_column_id=c.column_id WHERE c.object_id=OBJECT_ID('SubscriptionPlans') AND c.name='EffectiveTimes')
+                ALTER TABLE SubscriptionPlans ADD CONSTRAINT DF_SubscriptionPlans_EffectiveTimes DEFAULT 65535 FOR EffectiveTimes;
+              IF NOT EXISTS (SELECT 1 FROM sys.default_constraints dc JOIN sys.columns c ON dc.parent_object_id=c.object_id AND dc.parent_column_id=c.column_id WHERE c.object_id=OBJECT_ID('SubscriptionPlans') AND c.name='IsActive')
+                ALTER TABLE SubscriptionPlans ADD CONSTRAINT DF_SubscriptionPlans_IsActive DEFAULT 1 FOR IsActive;
+              IF NOT EXISTS (SELECT 1 FROM sys.default_constraints dc JOIN sys.columns c ON dc.parent_object_id=c.object_id AND dc.parent_column_id=c.column_id WHERE c.object_id=OBJECT_ID('SubscriptionPlans') AND c.name='SortOrder')
+                ALTER TABLE SubscriptionPlans ADD CONSTRAINT DF_SubscriptionPlans_SortOrder DEFAULT 0 FOR SortOrder;
+              IF NOT EXISTS (SELECT 1 FROM sys.default_constraints dc JOIN sys.columns c ON dc.parent_object_id=c.object_id AND dc.parent_column_id=c.column_id WHERE c.object_id=OBJECT_ID('SubscriptionPlans') AND c.name='CreatedAt')
+                ALTER TABLE SubscriptionPlans ADD CONSTRAINT DF_SubscriptionPlans_CreatedAt DEFAULT GETUTCDATE() FOR CreatedAt;
+            END",
+
             // Auto-seed default plans if the table is empty. The Basmia 2026-05-09 deep audit
             // found 842 players using SubscriptionType='Fitness' that didn't exist in the
             // admin's plans table — because the table was empty and the renew dialog

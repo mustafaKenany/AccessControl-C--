@@ -150,9 +150,12 @@ public partial class SubscriptionPlansViewModel : ObservableObject
             else
             {
                 var maxOrder = Plans.Count > 0 ? Plans.Max(p => p.SortOrder) : 0;
+                // Set IsActive + CreatedAt explicitly. On installs where the table was created
+                // by EF (which doesn't emit SQL DEFAULT constraints for C# property initializers),
+                // omitting IsActive made the INSERT fail with "Cannot insert NULL into IsActive".
                 using var cmd = new SqlCommand(
-                    @"INSERT INTO SubscriptionPlans (NameEn, NameAr, Duration, DurationType, Price, MaxVisits, EffectiveTimes, SortOrder)
-                      VALUES (@nameEn, @nameAr, @duration, @durationType, @price, @maxVisits, @effectiveTimes, @sortOrder)", conn);
+                    @"INSERT INTO SubscriptionPlans (NameEn, NameAr, Duration, DurationType, Price, MaxVisits, EffectiveTimes, SortOrder, IsActive, CreatedAt)
+                      VALUES (@nameEn, @nameAr, @duration, @durationType, @price, @maxVisits, @effectiveTimes, @sortOrder, 1, @createdAt)", conn);
                 cmd.Parameters.AddWithValue("@nameEn", EditNameEn.Trim());
                 cmd.Parameters.AddWithValue("@nameAr", EditNameAr.Trim());
                 cmd.Parameters.AddWithValue("@duration", duration);
@@ -161,6 +164,7 @@ public partial class SubscriptionPlansViewModel : ObservableObject
                 cmd.Parameters.AddWithValue("@maxVisits", maxVisits);
                 cmd.Parameters.AddWithValue("@effectiveTimes", effectiveTimes);
                 cmd.Parameters.AddWithValue("@sortOrder", maxOrder + 1);
+                cmd.Parameters.AddWithValue("@createdAt", DateTime.UtcNow);
                 await cmd.ExecuteNonQueryAsync();
             }
 
