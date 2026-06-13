@@ -19,6 +19,8 @@ public partial class EmployeesViewModel : ObservableObject
     private readonly ILookupService _lookupService;
     private readonly ITimeGroupService _timeGroupService;
     private readonly CurrentUserService _currentUser;
+    private readonly IQrPassService _qrPassService;
+    private readonly IFinanceService _financeService;
     private const int PageSize = 100;
     private CancellationTokenSource? _searchCts;
 
@@ -100,13 +102,26 @@ public partial class EmployeesViewModel : ObservableObject
 
     public ObservableCollection<EmployeeDto> Employees { get; } = new();
 
-    public EmployeesViewModel(IEmployeeService employeeService, IDeviceService deviceService, ILookupService lookupService, ITimeGroupService timeGroupService, CurrentUserService currentUser)
+    public EmployeesViewModel(IEmployeeService employeeService, IDeviceService deviceService, ILookupService lookupService, ITimeGroupService timeGroupService, CurrentUserService currentUser, IQrPassService qrPassService, IFinanceService financeService)
     {
         _employeeService = employeeService;
         _deviceService = deviceService;
         _lookupService = lookupService;
         _timeGroupService = timeGroupService;
         _currentUser = currentUser;
+        _qrPassService = qrPassService;
+        _financeService = financeService;
+    }
+
+    [RelayCommand]
+    private void CreateDailyPass()
+    {
+        var dialog = new DailyPassDialog(_qrPassService, _lookupService, _financeService)
+        {
+            Owner = System.Windows.Application.Current.MainWindow,
+            WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner
+        };
+        dialog.ShowDialog();
     }
 
     partial void OnSearchTextChanged(string value)
@@ -206,6 +221,20 @@ public partial class EmployeesViewModel : ObservableObject
             await LoadPagedAsync();
             CustomMessageBox.Show(Lang.AddPlayerSuccess, Lang.AddPlayer, MsgType.Success,
                 System.Windows.Application.Current.MainWindow);
+
+            // Optional 80mm registration receipt
+            if (CustomMessageBox.Confirm(
+                    Lang.IsArabic ? "هل تريد طباعة إيصال التسجيل؟" : "Print registration receipt?",
+                    Lang.AddPlayer))
+            {
+                var rname = Lang.IsArabic
+                    ? (string.IsNullOrWhiteSpace(dto.FullNameAr) ? dto.FullNameEn : dto.FullNameAr)
+                    : (string.IsNullOrWhiteSpace(dto.FullNameEn) ? dto.FullNameAr : dto.FullNameEn);
+                ThermalReceipt.PrintSubscription(
+                    Lang.IsArabic ? "إيصال تسجيل" : "Registration Receipt",
+                    rname, dto.CardNo, dto.SubscriptionType,
+                    dto.StartDate, dto.EndDate, dto.SubscriptionFee, dto.AmountPaid);
+            }
         }
         catch (Exception ex)
         {
@@ -967,6 +996,39 @@ public partial class EmployeesViewModel : ObservableObject
         var dialog = new PlayerProfileDialog(_employeeService, employee.Id);
         dialog.Owner = System.Windows.Application.Current.MainWindow;
         dialog.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner;
+        dialog.ShowDialog();
+    }
+
+    [RelayCommand]
+    private void PrintList()
+    {
+        if (Employees.Count == 0)
+        {
+            CustomMessageBox.Show(
+                Lang.IsArabic ? "لا يوجد أعضاء للطباعة" : "No members to print.",
+                Lang.NavPlayers, MsgType.Info, System.Windows.Application.Current.MainWindow);
+            return;
+        }
+        try
+        {
+            MembersListPrinter.Print(new List<EmployeeDto>(Employees));
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(ex.Message, Lang.NavPlayers, MsgType.Error,
+                System.Windows.Application.Current.MainWindow);
+        }
+    }
+
+    [RelayCommand]
+    private void PrintMemberCard(EmployeeDto? employee)
+    {
+        if (employee == null) return;
+        var dialog = new MemberCardDialog(employee)
+        {
+            Owner = System.Windows.Application.Current.MainWindow,
+            WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner
+        };
         dialog.ShowDialog();
     }
 

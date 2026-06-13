@@ -218,6 +218,15 @@ public partial class App : System.Windows.Application
             var authService = loginScope.ServiceProvider.GetRequiredService<IAuthService>();
             var settingsService = loginScope.ServiceProvider.GetRequiredService<IAppSettingsService>();
             var currentUser = _serviceProvider.GetRequiredService<CurrentUserService>();
+
+            // Cache gym identity (name/phone) for printed POS receipts.
+            try
+            {
+                var gymSettings = Task.Run(() => settingsService.GetSettingsAsync()).GetAwaiter().GetResult();
+                AccessControlPro.WPF.Helpers.GymProfile.Update(gymSettings);
+            }
+            catch { /* receipts fall back to a neutral header */ }
+
             var loginWindow = new LoginWindow(
                 authService, currentUser, settingsService,
                 appName: "HM-GymManagement POS",

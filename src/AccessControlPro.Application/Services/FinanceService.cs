@@ -90,6 +90,29 @@ public class FinanceService : IFinanceService
         });
     }
 
+    public async Task<List<TransactionDto>> GetTransactionsAsync(
+        TransactionType? type = null, DateTime? from = null, DateTime? to = null, string? search = null)
+    {
+        // pageSize large enough to return the full filtered set for a printable report
+        var (items, _) = await _transactionRepo.GetPagedAsync(1, 100000, type, from, to, search);
+        return items.Select(ToDto).ToList();
+    }
+
+    public async Task RecordIncomeAsync(string category, decimal amount, string description)
+    {
+        if (amount <= 0) return;
+        await _transactionRepo.AddAsync(new Transaction
+        {
+            Type = TransactionType.Income,
+            Category = category,
+            Amount = amount,
+            Description = description,
+            PaymentMethod = PaymentMethod.Cash,
+            CreatedBy = _currentUser.Username ?? "System",
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
     private static TransactionDto ToDto(Transaction t) => new()
     {
         Id = t.Id,

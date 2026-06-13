@@ -72,14 +72,35 @@ public partial class QrCodeDisplayDialog : Window
             HorizontalAlignment = HorizontalAlignment.Center
         };
 
+        // Gym header (name + phone, from cached AppSettings)
+        printPanel.Children.Add(new TextBlock
+        {
+            Text = Helpers.GymProfile.DisplayName,
+            FontSize = 17,
+            FontWeight = FontWeights.Bold,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 10, 0, 0),
+            Foreground = Brushes.Black
+        });
+        if (!string.IsNullOrWhiteSpace(Helpers.GymProfile.Phone))
+        {
+            printPanel.Children.Add(new TextBlock
+            {
+                Text = Helpers.GymProfile.Phone,
+                FontSize = 10,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Foreground = Brushes.Gray
+            });
+        }
+
         // Title
         printPanel.Children.Add(new TextBlock
         {
             Text = "QR Daily Pass",
-            FontSize = 18,
+            FontSize = 14,
             FontWeight = FontWeights.Bold,
             HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 10, 0, 10),
+            Margin = new Thickness(0, 6, 0, 10),
             Foreground = Brushes.Black
         });
 

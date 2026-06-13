@@ -615,6 +615,13 @@ public class LanguageManager : INotifyPropertyChanged
     // POS Extended Features
     public string PosPrintReceipt => GetString("PosPrintReceipt");
     public string PosSaveReceipt => GetString("PosSaveReceipt");
+
+    // Print features (members list + ID card)
+    public string PrintList => GetString("PrintList");
+    public string MemberCard => GetString("MemberCard");
+    public string PrintIncome => GetString("PrintIncome");
+    public string PrintExpenses => GetString("PrintExpenses");
+    public string DailyPass => GetString("DailyPass");
     public string PosDailySummary => GetString("PosDailySummary");
     public string PosTotalTransactions => GetString("PosTotalTransactions");
     public string PosTotalItemsSold => GetString("PosTotalItemsSold");
@@ -1468,6 +1475,11 @@ public class LanguageManager : INotifyPropertyChanged
         // POS Extended Features
         OnPropertyChanged(nameof(PosPrintReceipt));
         OnPropertyChanged(nameof(PosSaveReceipt));
+        OnPropertyChanged(nameof(PrintList));
+        OnPropertyChanged(nameof(MemberCard));
+        OnPropertyChanged(nameof(PrintIncome));
+        OnPropertyChanged(nameof(PrintExpenses));
+        OnPropertyChanged(nameof(DailyPass));
         OnPropertyChanged(nameof(PosDailySummary));
         OnPropertyChanged(nameof(PosTotalTransactions));
         OnPropertyChanged(nameof(PosTotalItemsSold));

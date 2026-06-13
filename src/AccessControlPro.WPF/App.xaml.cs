@@ -541,6 +541,15 @@ public partial class App : System.Windows.Application
             var settingsService = loginScope.ServiceProvider.GetRequiredService<IAppSettingsService>();
             var currentUser = _serviceProvider.GetRequiredService<CurrentUserService>();
 
+            // Cache the gym identity (name/phone) for printed receipts, renewal slips
+            // and member ID cards. Read by the print dialogs via Helpers.GymProfile.
+            try
+            {
+                var gymSettings = Task.Run(() => settingsService.GetSettingsAsync()).GetAwaiter().GetResult();
+                Helpers.GymProfile.Update(gymSettings);
+            }
+            catch (Exception ex) { StartupLog($"GymProfile load skipped: {ex.Message}"); }
+
             bool autoLoggedIn = false;
 
             // Check for pending operation — auto-login using saved username

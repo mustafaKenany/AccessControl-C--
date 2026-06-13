@@ -49,6 +49,17 @@
                 </Button>
 
                 <Button Style="{StaticResource PrimaryButton}"
+                        Background="#2E7D32"
+                        Command="{Binding CreateDailyPassCommand}" Margin="0,0,10,0"
+                        ToolTip="{Binding Lang.DailyPass}">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Qrcode" Width="13" Height="13"
+                                         Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Lang.DailyPass}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Style="{StaticResource PrimaryButton}"
                         Background="{StaticResource SuccessBrush}"
                         Command="{Binding AddEmployeeCommand}" Margin="0,0,10,0"
                         Visibility="{Binding CanAdd, Converter={StaticResource BoolToVisibility}}">
@@ -66,6 +77,17 @@
                         <fa:ImageAwesome Icon="ListAlt" Width="13" Height="13"
                                          Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
                         <TextBlock Text="{Binding Lang.BulkOperations}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Style="{StaticResource PrimaryButton}"
+                        Background="#247B7B" Margin="10,0,0,0"
+                        Command="{Binding PrintListCommand}"
+                        ToolTip="{Binding Lang.PrintList}">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Print" Width="13" Height="13"
+                                         Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Lang.PrintList}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
@@ -505,6 +527,22 @@
                                                         <ControlTemplate.Triggers>
                                                             <Trigger Property="IsMouseOver" Value="True">
                                                                 <Setter TargetName="bg" Property="Background" Value="#18FFB946"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+                                            <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.MemberCard, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    Command="{Binding DataContext.PrintMemberCardCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="bg" Background="Transparent" CornerRadius="6" Padding="6,5">
+                                                            <fa:ImageAwesome Icon="Print" Width="12" Height="12" Foreground="#7E8CE0"/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="bg" Property="Background" Value="#187E8CE0"/>
                                                             </Trigger>
                                                         </ControlTemplate.Triggers>
                                                     </ControlTemplate>

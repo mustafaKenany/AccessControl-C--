@@ -61,25 +61,46 @@ public partial class RenewalReceiptDialog : Window
 
         var doc = BuildPrintDocument();
         var paginator = ((IDocumentPaginatorSource)doc).DocumentPaginator;
-        paginator.PageSize = new Size(printDialog.PrintableAreaWidth, printDialog.PrintableAreaHeight);
         printDialog.PrintDocument(paginator, "Renewal Receipt");
     }
 
     private FlowDocument BuildPrintDocument()
     {
         var lang = LanguageManager.Instance;
+        // 80mm thermal roll = ~302 DIP wide at 96 DPI.
         var doc = new FlowDocument
         {
-            PagePadding = new Thickness(40),
+            PageWidth = 302,
+            ColumnWidth = 302,
+            PagePadding = new Thickness(10),
             FontFamily = new FontFamily("Segoe UI, Arial"),
-            FontSize = 13,
+            FontSize = 11,
             FlowDirection = lang.IsArabic ? FlowDirection.RightToLeft : FlowDirection.LeftToRight
         };
+
+        // Gym name + phone header (from cached AppSettings)
+        doc.Blocks.Add(new Paragraph(new Run(GymProfile.DisplayName))
+        {
+            FontSize = 16,
+            FontWeight = FontWeights.Bold,
+            TextAlignment = TextAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 2)
+        });
+        if (!string.IsNullOrWhiteSpace(GymProfile.Phone))
+        {
+            doc.Blocks.Add(new Paragraph(new Run(GymProfile.Phone))
+            {
+                FontSize = 9,
+                Foreground = Brushes.Gray,
+                TextAlignment = TextAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 4)
+            });
+        }
 
         // Title
         var title = new Paragraph(new Run(lang.RcpRenewalReceipt))
         {
-            FontSize = 20,
+            FontSize = 13,
             FontWeight = FontWeights.Bold,
             TextAlignment = TextAlignment.Center,
             Margin = new Thickness(0, 0, 0, 4)

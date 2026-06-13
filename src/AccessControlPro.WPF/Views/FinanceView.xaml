@@ -13,15 +13,32 @@
                 <TextBlock Text="{Binding Lang.NavFinance}"
                            FontSize="26" FontWeight="Bold"
                            Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                <Button DockPanel.Dock="Right" HorizontalAlignment="Right"
-                        Style="{StaticResource PrimaryButton}"
-                        Command="{Binding RefreshCommand}">
-                    <StackPanel Orientation="Horizontal">
-                        <fa:ImageAwesome Icon="Refresh" Width="13" Height="13"
-                                         Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding Lang.Refresh}" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right" Orientation="Horizontal">
+                    <Button Style="{StaticResource PrimaryButton}" Background="#1E7E4F" Margin="0,0,10,0"
+                            Command="{Binding PrintIncomeCommand}" ToolTip="{Binding Lang.PrintIncome}">
+                        <StackPanel Orientation="Horizontal">
+                            <fa:ImageAwesome Icon="Print" Width="13" Height="13"
+                                             Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Lang.PrintIncome}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource PrimaryButton}" Background="#B03A2E" Margin="0,0,10,0"
+                            Command="{Binding PrintExpensesCommand}" ToolTip="{Binding Lang.PrintExpenses}">
+                        <StackPanel Orientation="Horizontal">
+                            <fa:ImageAwesome Icon="Print" Width="13" Height="13"
+                                             Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Lang.PrintExpenses}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource PrimaryButton}"
+                            Command="{Binding RefreshCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <fa:ImageAwesome Icon="Refresh" Width="13" Height="13"
+                                             Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Lang.Refresh}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </DockPanel>
 
             <!-- Filter Bar -->

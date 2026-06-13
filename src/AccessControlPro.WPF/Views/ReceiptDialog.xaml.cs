@@ -51,22 +51,33 @@ public partial class ReceiptDialog : Window
         var printDialog = new PrintDialog();
         if (printDialog.ShowDialog() != true) return;
 
+        // 80mm thermal roll = ~302 DIP wide at 96 DPI.
         var doc = new FlowDocument
         {
-            PageWidth = 280,
-            ColumnWidth = 280,
-            PagePadding = new Thickness(10),
+            PageWidth = 302,
+            ColumnWidth = 302,
+            PagePadding = new Thickness(8),
             FontFamily = new FontFamily("Consolas")
         };
 
-        // Header
-        doc.Blocks.Add(new Paragraph(new Run("GYM"))
+        // Header — gym name + phone (from cached AppSettings)
+        doc.Blocks.Add(new Paragraph(new Run(GymProfile.DisplayName))
         {
             TextAlignment = TextAlignment.Center,
             FontSize = 16,
             FontWeight = FontWeights.Bold,
-            Margin = new Thickness(0, 0, 0, 4)
+            Margin = new Thickness(0, 0, 0, 2)
         });
+
+        if (!string.IsNullOrWhiteSpace(GymProfile.Phone))
+        {
+            doc.Blocks.Add(new Paragraph(new Run(GymProfile.Phone))
+            {
+                TextAlignment = TextAlignment.Center,
+                FontSize = 10,
+                Margin = new Thickness(0, 0, 0, 2)
+            });
+        }
 
         doc.Blocks.Add(new Paragraph(new Run(DateTime.Now.ToString("yyyy-MM-dd  HH:mm:ss")))
         {
@@ -152,10 +163,12 @@ public partial class ReceiptDialog : Window
 
         var lines = new List<string>
         {
-            "GYM",
-            DateTime.Now.ToString("yyyy-MM-dd  HH:mm:ss"),
-            new string('-', 32)
+            GymProfile.DisplayName
         };
+        if (!string.IsNullOrWhiteSpace(GymProfile.Phone))
+            lines.Add(GymProfile.Phone);
+        lines.Add(DateTime.Now.ToString("yyyy-MM-dd  HH:mm:ss"));
+        lines.Add(new string('-', 32));
 
         if (!string.IsNullOrEmpty(_playerName))
             lines.Add(_playerName);

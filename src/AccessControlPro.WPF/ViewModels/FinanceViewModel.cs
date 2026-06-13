@@ -88,6 +88,35 @@ public partial class FinanceViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private Task PrintIncomeAsync() => PrintTransactionsAsync(TransactionType.Income);
+
+    [RelayCommand]
+    private Task PrintExpensesAsync() => PrintTransactionsAsync(TransactionType.Expense);
+
+    private async Task PrintTransactionsAsync(TransactionType type)
+    {
+        try
+        {
+            var (from, to) = GetDateRange();
+            var search = string.IsNullOrWhiteSpace(SearchText) ? null : SearchText.Trim();
+            var items = await _financeService.GetTransactionsAsync(type, from, to, search);
+            if (items.Count == 0)
+            {
+                CustomMessageBox.Show(
+                    Lang.IsArabic ? "لا توجد سجلات للطباعة" : "No records to print.",
+                    Lang.NavFinance, MsgType.Info, System.Windows.Application.Current.MainWindow);
+                return;
+            }
+            FinanceReportPrinter.Print(type, items, DateRangeText);
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(ex.Message, Lang.NavFinance, MsgType.Error,
+                System.Windows.Application.Current.MainWindow);
+        }
+    }
+
+    [RelayCommand]
     private async Task PayOutstandingAsync(OutstandingPlayerDto? player)
     {
         if (player == null) return;

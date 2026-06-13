@@ -12,6 +12,9 @@ namespace AccessControlPro.WPF.ViewModels;
 public partial class DashboardViewModel : ObservableObject
 {
     private readonly IDashboardService _dashboardService;
+    private readonly IQrPassService _qrPassService;
+    private readonly ILookupService _lookupService;
+    private readonly IFinanceService _financeService;
 
     public LanguageManager Lang => LanguageManager.Instance;
 
@@ -44,10 +47,25 @@ public partial class DashboardViewModel : ObservableObject
 
     private bool _isInitialized;
 
-    public DashboardViewModel(IDashboardService dashboardService, CurrentUserService currentUser)
+    public DashboardViewModel(IDashboardService dashboardService, CurrentUserService currentUser,
+        IQrPassService qrPassService, ILookupService lookupService, IFinanceService financeService)
     {
         _dashboardService = dashboardService;
+        _qrPassService = qrPassService;
+        _lookupService = lookupService;
+        _financeService = financeService;
         WelcomeMessage = currentUser.DisplayName ?? "";
+    }
+
+    [RelayCommand]
+    private void CreateDailyPass()
+    {
+        var dialog = new DailyPassDialog(_qrPassService, _lookupService, _financeService)
+        {
+            Owner = System.Windows.Application.Current.MainWindow,
+            WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner
+        };
+        dialog.ShowDialog();
     }
 
     public async Task InitializeAsync()

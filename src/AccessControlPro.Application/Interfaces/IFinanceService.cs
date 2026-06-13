@@ -27,4 +27,12 @@ public interface IFinanceService
 {
     Task<FinanceSummaryDto> GetSummaryAsync(DateTime? from = null, DateTime? to = null, string? search = null);
     Task PayOutstandingAsync(int employeeId, decimal amount);
+
+    /// <summary>Full (non-paged) transaction list for a period/type — used for printable reports.</summary>
+    Task<List<TransactionDto>> GetTransactionsAsync(
+        Domain.Enums.TransactionType? type = null,
+        DateTime? from = null, DateTime? to = null, string? search = null);
+
+    /// <summary>Record a one-off income transaction (e.g. a daily-pass temporary card).</summary>
+    Task RecordIncomeAsync(string category, decimal amount, string description);
 }

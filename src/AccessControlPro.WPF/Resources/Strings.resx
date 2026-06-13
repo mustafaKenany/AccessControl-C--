@@ -857,6 +857,11 @@ Card sync errors on some devices:
   <!-- POS Extended Features -->
   <data name="PosPrintReceipt" xml:space="preserve"><value>Print Receipt</value></data>
   <data name="PosSaveReceipt" xml:space="preserve"><value>Save as Text</value></data>
+  <data name="PrintList" xml:space="preserve"><value>Print List</value></data>
+  <data name="MemberCard" xml:space="preserve"><value>ID Card</value></data>
+  <data name="PrintIncome" xml:space="preserve"><value>Print Income</value></data>
+  <data name="PrintExpenses" xml:space="preserve"><value>Print Expenses</value></data>
+  <data name="DailyPass" xml:space="preserve"><value>Daily Pass</value></data>
   <data name="PosDailySummary" xml:space="preserve"><value>Daily Summary</value></data>
   <data name="PosTotalTransactions" xml:space="preserve"><value>Total Transactions</value></data>
   <data name="PosTotalItemsSold" xml:space="preserve"><value>Total Items Sold</value></data>

@@ -863,6 +863,11 @@
   <!-- POS Extended Features -->
   <data name="PosPrintReceipt" xml:space="preserve"><value>طباعة الإيصال</value></data>
   <data name="PosSaveReceipt" xml:space="preserve"><value>حفظ كنص</value></data>
+  <data name="PrintList" xml:space="preserve"><value>طباعة القائمة</value></data>
+  <data name="MemberCard" xml:space="preserve"><value>بطاقة عضوية</value></data>
+  <data name="PrintIncome" xml:space="preserve"><value>طباعة الواردات</value></data>
+  <data name="PrintExpenses" xml:space="preserve"><value>طباعة المصروفات</value></data>
+  <data name="DailyPass" xml:space="preserve"><value>دخول يومي</value></data>
   <data name="PosDailySummary" xml:space="preserve"><value>ملخص يومي</value></data>
   <data name="PosTotalTransactions" xml:space="preserve"><value>إجمالي المعاملات</value></data>
   <data name="PosTotalItemsSold" xml:space="preserve"><value>إجمالي العناصر المباعة</value></data>
