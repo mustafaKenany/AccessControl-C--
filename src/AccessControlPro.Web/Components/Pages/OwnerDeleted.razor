@@ -49,7 +49,7 @@ else
                                 <td dir="rtl">@d.FullNameAr</td>
                                 <td>@d.CardNo</td>
                                 <td>@d.Phone</td>
-                                <td>@d.DeleteReason</td>
+                                <td>@AccessControlPro.Web.Services.DualLanguageText.Single(d.DeleteReason, Session.IsArabic)</td>
                                 <td>@d.DeletedBy</td>
                                 <td>@d.DeletedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                             </tr>
@@ -96,7 +96,7 @@ else
                         {
                             <div class="mobile-card-row">
                                 <span class="mobile-card-label">@L("Reason", "السبب")</span>
-                                <span class="mobile-card-value" style="max-width: 60%; text-align: right;">@d.DeleteReason</span>
+                                <span class="mobile-card-value" style="max-width: 60%; text-align: right;">@AccessControlPro.Web.Services.DualLanguageText.Single(d.DeleteReason, Session.IsArabic)</span>
                             </div>
                         }
                         <div class="mobile-card-row">

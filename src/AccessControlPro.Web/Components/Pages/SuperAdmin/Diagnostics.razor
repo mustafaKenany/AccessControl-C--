@@ -8,15 +8,22 @@
 
 <div class="page-header">
     <h1 style="color: #7E57C2;">Diagnostics Bundles</h1>
-    <button class="btn-accent btn-sm" style="background: #7E57C2;" @onclick="LoadAsync">
-        <i class="fas fa-sync"></i> Refresh
-    </button>
+    <div style="display: flex; gap: 0.5rem;">
+        <button class="btn-sm" style="background: #DC2626; color: #fff; border: none; cursor: pointer;"
+                title="Delete every bundle older than 30 days" @onclick="DeleteOldAsync">
+            <i class="fas fa-broom"></i> Delete &gt; 30 days
+        </button>
+        <button class="btn-accent btn-sm" style="background: #7E57C2;" @onclick="LoadAsync">
+            <i class="fas fa-sync"></i> Refresh
+        </button>
+    </div>
 </div>
 
 <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
     Each gym's WPF main app uploads a small diagnostics bundle (recent logs + system snapshot)
     on demand and once every 15 days. We keep the 12 most recent bundles per gym; older ones are
-    deleted automatically. Click <i class="fas fa-download"></i> to download a bundle as a ZIP.
+    deleted automatically. Use <i class="fas fa-download"></i> to download, <i class="fas fa-trash" style="color:#DC2626;"></i>
+    to delete one, or <b>Delete &gt; 30 days</b> to purge old bundles in bulk.
 </p>
 
 @if (_loading)
@@ -98,6 +105,10 @@ else
                                 <a href="/api/diagnostics/download/@b.Id" class="btn-icon" title="Download bundle" target="_blank">
                                     <i class="fas fa-download"></i>
                                 </a>
+                                <button class="btn-icon" title="Delete bundle" style="color: #DC2626; background: none; border: none; cursor: pointer;"
+                                        @onclick="() => DeleteBundleAsync(b.Id)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </td>
                         </tr>
                     }
@@ -159,6 +170,55 @@ else
             _loading = false;
             StateHasChanged();
         }
+    }
+
+    private async Task DeleteBundleAsync(int id)
+    {
+        var ok = await JS.InvokeAsync<bool>("confirm", "Delete this diagnostics bundle permanently?");
+        if (!ok) return;
+        await DeleteByIdsAsync(new[] { id });
+        await LoadAsync();
+    }
+
+    private async Task DeleteOldAsync()
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-30);
+        var old = _bundles.Where(b => b.UploadedAt < cutoff).Select(b => b.Id).ToList();
+        if (old.Count == 0)
+        {
+            await JS.InvokeVoidAsync("alert", "No bundles older than 30 days.");
+            return;
+        }
+        var ok = await JS.InvokeAsync<bool>("confirm", $"Delete {old.Count} bundle(s) older than 30 days?");
+        if (!ok) return;
+        await DeleteByIdsAsync(old);
+        await LoadAsync();
+    }
+
+    private async Task DeleteByIdsAsync(IEnumerable<int> ids)
+    {
+        try
+        {
+            using var master = await GymDb.GetMasterConnectionAsync();
+            foreach (var id in ids)
+            {
+                string path = "";
+                using (var sel = new Npgsql.NpgsqlCommand(
+                    @"SELECT COALESCE(""FilePath"",'') FROM ""DiagnosticsUploads"" WHERE ""Id"" = @i", master))
+                {
+                    sel.Parameters.AddWithValue("i", id);
+                    path = (await sel.ExecuteScalarAsync())?.ToString() ?? "";
+                }
+                try { if (!string.IsNullOrEmpty(path) && System.IO.File.Exists(path)) System.IO.File.Delete(path); }
+                catch (Exception ex) { Console.WriteLine($"[Diagnostics] file delete failed: {ex.Message}"); }
+
+                using var del = new Npgsql.NpgsqlCommand(
+                    @"DELETE FROM ""DiagnosticsUploads"" WHERE ""Id"" = @i", master);
+                del.Parameters.AddWithValue("i", id);
+                await del.ExecuteNonQueryAsync();
+            }
+        }
+        catch (Exception ex) { Console.WriteLine($"[Diagnostics] delete error: {ex.Message}"); }
     }
 
     private static string FormatSize(long bytes)

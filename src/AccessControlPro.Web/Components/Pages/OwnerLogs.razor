@@ -55,10 +55,6 @@ else
                 title="@GetFilterTooltip("last6months")">
             @L("Last 6 Months", "آخر 6 أشهر")
         </button>
-        <button class="filter-btn @(_period == "thisyear" ? "active" : "")" @onclick='() => SetPeriod("thisyear")'
-                title="@GetFilterTooltip("thisyear")">
-            @L("This Year", "هذا العام")
-        </button>
     </div>
 
     <div class="filter-bar">
@@ -90,7 +86,7 @@ else
                                 <td><span class="badge @GetActionBadge(log.Action)">@log.Action</span></td>
                                 <td>@log.EntityType</td>
                                 <td>@log.EntityId</td>
-                                <td>@(Session.IsArabic && !string.IsNullOrEmpty(log.DetailsAr) ? log.DetailsAr : log.Details)</td>
+                                <td>@OneLang(log.Details, log.DetailsAr)</td>
                                 <td>@log.PerformedBy</td>
                             </tr>
                         }
@@ -116,7 +112,7 @@ else
                         </div>
                         <div class="mobile-card-row">
                             <span class="mobile-card-label">@L("Details", "التفاصيل")</span>
-                            <span class="mobile-card-value" style="max-width: 60%; text-align: right;">@(Session.IsArabic && !string.IsNullOrEmpty(log.DetailsAr) ? log.DetailsAr : log.Details)</span>
+                            <span class="mobile-card-value" style="max-width: 60%; text-align: right;">@OneLang(log.Details, log.DetailsAr)</span>
                         </div>
                         @if (!string.IsNullOrEmpty(log.PerformedBy))
                         {
@@ -164,6 +160,14 @@ else
     private int TotalPages => _totalCount == 0 ? 1 : (int)Math.Ceiling((double)_totalCount / PageSize);
 
     private string L(string en, string ar) => Session.IsArabic ? ar : en;
+
+    // Show details in ONE language. The field is already picked by language; this also strips
+    // any legacy "English / Arabic" merged value down to the active-language half.
+    private string OneLang(string en, string ar)
+    {
+        var text = Session.IsArabic && !string.IsNullOrEmpty(ar) ? ar : en;
+        return AccessControlPro.Web.Services.DualLanguageText.Single(text, Session.IsArabic);
+    }
 
     protected override async Task OnInitializedAsync()
     {
