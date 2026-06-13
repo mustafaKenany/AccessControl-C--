@@ -87,6 +87,37 @@ public class GymDbHelper
         };
     }
 
+    /// <summary>
+    /// Run a paged read against a gym DB and map each row, returning the items plus the
+    /// total row count in a SINGLE round-trip. The caller's <paramref name="sql"/> must
+    /// select its data columns and include <c>COUNT(*) OVER() AS total_count</c> as the
+    /// last column, and end after ORDER BY (LIMIT/OFFSET are appended here). Keeps the
+    /// hand-written SQL out of the Razor components.
+    /// </summary>
+    public async Task<(List<T> Items, int Total)> PagedQueryAsync<T>(
+        string dbName, string sql, int page, int pageSize,
+        Action<NpgsqlParameterCollection> bind,
+        Func<NpgsqlDataReader, T> map)
+    {
+        using var conn = await GetGymConnectionAsync(dbName);
+        using var cmd = new NpgsqlCommand(sql + " LIMIT @__limit OFFSET @__offset", conn);
+        bind(cmd.Parameters);
+        cmd.Parameters.AddWithValue("__limit", pageSize);
+        cmd.Parameters.AddWithValue("__offset", Math.Max(0, (page - 1) * pageSize));
+
+        using var r = await cmd.ExecuteReaderAsync();
+        var items = new List<T>();
+        int total = 0;
+        var totalOrdinal = -1;
+        while (await r.ReadAsync())
+        {
+            if (totalOrdinal < 0) totalOrdinal = r.GetOrdinal("total_count");
+            if (!r.IsDBNull(totalOrdinal)) total = Convert.ToInt32(r.GetValue(totalOrdinal));
+            items.Add(map((NpgsqlDataReader)r));
+        }
+        return (items, total);
+    }
+
     /// <summary>Find which gym database contains a user with this username</summary>
     public async Task<(string? dbName, int gymId)?> FindUserDatabaseAsync(string username)
     {

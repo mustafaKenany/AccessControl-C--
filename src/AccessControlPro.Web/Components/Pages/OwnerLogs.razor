@@ -4,6 +4,7 @@
 @inject AccessControlPro.Web.Data.DbHelper Db
 @inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @rendermode InteractiveServer
+@attribute [StreamRendering]
 
 @* TODO: Currently checks Session.IsOwner only. When granular cloud permissions are added,
    enforce AppPermission checks per page (e.g., LogsView for this page). *@
@@ -259,61 +260,35 @@ else
         {
             var (from, to) = GetDateRange();
             var isAll = _period == "all";
+            var dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+            var hasSearch = !string.IsNullOrWhiteSpace(_search);
+            var q = hasSearch ? $"%{_search.Trim().ToLower()}%" : "";
 
-            var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
-            using var conn = await GymDb.GetGymConnectionAsync(_dbName);
+            // Date + search are BOTH applied in SQL now, so search spans the whole table
+            // (the old client-side filter only searched the current 20-row page) and the
+            // count + page come back in one round-trip via COUNT(*) OVER().
+            var conds = new List<string>();
+            if (!isAll) conds.Add(@"""Timestamp"" >= @from AND ""Timestamp"" < @to");
+            if (hasSearch) conds.Add(@"(LOWER(""Action"") LIKE @q OR LOWER(""EntityType"") LIKE @q OR LOWER(COALESCE(""Details"",'')) LIKE @q OR COALESCE(""DetailsAr"",'') LIKE @q OR LOWER(COALESCE(""PerformedBy"",'')) LIKE @q)");
+            var where = conds.Count > 0 ? " WHERE " + string.Join(" AND ", conds) : "";
 
-            var dateWhere = isAll ? "" : @" WHERE ""Timestamp"" >= @from AND ""Timestamp"" < @to";
+            var sql = $@"SELECT ""Id"", COALESCE(""Action"",''), COALESCE(""EntityType"",''), COALESCE(""EntityId"",0),
+                                COALESCE(""Details"",''), COALESCE(""DetailsAr"",''), COALESCE(""PerformedBy"",''), ""Timestamp"",
+                                COUNT(*) OVER() AS total_count
+                         FROM ""AuditLogs""{where}
+                         ORDER BY ""Timestamp"" DESC";
 
-            // Count
-            using (var countCmd = new Npgsql.NpgsqlCommand(
-                $@"SELECT COUNT(*) FROM ""AuditLogs""{dateWhere}", conn))
-            {
-                if (!isAll)
+            var (items, total) = await GymDb.PagedQueryAsync(dbName, sql, _page, PageSize,
+                p =>
                 {
-                    countCmd.Parameters.AddWithValue("from", from);
-                    countCmd.Parameters.AddWithValue("to", to);
-                }
-                _totalCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
-            }
+                    if (!isAll) { p.AddWithValue("from", from); p.AddWithValue("to", to); }
+                    if (hasSearch) p.AddWithValue("q", q);
+                },
+                r => new AuditLogRow(r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetInt32(3),
+                                     r.GetString(4), r.GetString(5), r.GetString(6), r.GetDateTime(7)));
 
-            // Data
-            using (var cmd = new Npgsql.NpgsqlCommand(
-                $@"SELECT ""Id"", COALESCE(""Action"",''), COALESCE(""EntityType"",''), COALESCE(""EntityId"",0),
-                         COALESCE(""Details"",''), COALESCE(""DetailsAr"",''), COALESCE(""PerformedBy"",''), ""Timestamp""
-                  FROM ""AuditLogs""{dateWhere}
-                  ORDER BY ""Timestamp"" DESC LIMIT @limit OFFSET @offset", conn))
-            {
-                if (!isAll)
-                {
-                    cmd.Parameters.AddWithValue("from", from);
-                    cmd.Parameters.AddWithValue("to", to);
-                }
-                cmd.Parameters.AddWithValue("limit", PageSize);
-                cmd.Parameters.AddWithValue("offset", (_page - 1) * PageSize);
-
-                using var r = await cmd.ExecuteReaderAsync();
-                _logs = new List<AuditLogRow>();
-                while (await r.ReadAsync())
-                {
-                    _logs.Add(new AuditLogRow(
-                        r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetInt32(3),
-                        r.GetString(4), r.GetString(5), r.GetString(6), r.GetDateTime(7)));
-                }
-            }
-
-            // Apply client-side search
-            if (!string.IsNullOrWhiteSpace(_search))
-            {
-                var q = _search.Trim().ToLower();
-                _logs = _logs.Where(l =>
-                    l.Action.ToLower().Contains(q) ||
-                    l.EntityType.ToLower().Contains(q) ||
-                    l.Details.ToLower().Contains(q) ||
-                    l.DetailsAr.Contains(q) ||
-                    l.PerformedBy.ToLower().Contains(q)
-                ).ToList();
-            }
+            _logs = items;
+            _totalCount = total;
         }
         catch (Exception ex) { Console.WriteLine($"[OwnerLogs] LoadLogsAsync Error: {ex.Message}"); }
     }

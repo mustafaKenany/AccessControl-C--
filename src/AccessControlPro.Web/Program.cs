@@ -101,7 +101,17 @@ app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
     {
-        ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=300"); // 5 min — prevents stale CSS
+        var path = ctx.Context.Request.Path.Value ?? "";
+        // Versioned libraries, fonts, and images rarely change → cache 30 days so a
+        // returning owner's phone loads them from cache instead of re-fetching.
+        // The app's own CSS/JS stay short (5 min) so a deploy is never served stale.
+        bool longLived =
+            path.StartsWith("/lib/") || path.StartsWith("/_content/") ||
+            path.EndsWith(".woff2") || path.EndsWith(".woff") || path.EndsWith(".ttf") ||
+            path.EndsWith(".png") || path.EndsWith(".jpg") || path.EndsWith(".jpeg") ||
+            path.EndsWith(".svg") || path.EndsWith(".ico") || path.EndsWith(".webp");
+        ctx.Context.Response.Headers["Cache-Control"] =
+            longLived ? "public,max-age=2592000" : "public,max-age=300";
     }
 });
 app.UseAntiforgery();
@@ -427,6 +437,33 @@ app.MapGet("/api/sync-control", async (HttpContext context, DbHelper db, GymDbHe
     {
         Console.WriteLine($"[api/sync-control] Exception: {ex}");
         return Results.Problem("Sync control error");
+    }
+});
+
+// Read-only remote-lock status (no side effects) — polled by the desktop app to enforce
+// the payment lock independently of the sync flow (which read-and-clears ForceFullSync).
+app.MapGet("/api/lock-status", async (HttpContext context, GymDbHelper gymDb) =>
+{
+    if (!await IsApiKeyValidAsync(context, gymDb))
+        return Results.Unauthorized();
+
+    var apiKey = context.Request.Headers["X-Api-Key"].FirstOrDefault();
+    try
+    {
+        using var conn = await gymDb.GetMasterConnectionAsync();
+        using var cmd = new Npgsql.NpgsqlCommand(
+            @"SELECT COALESCE(""IsLocked"", FALSE), COALESCE(""LockMessage"", '')
+              FROM ""Gyms"" WHERE ""ApiKey"" = @key", conn);
+        cmd.Parameters.AddWithValue("key", apiKey ?? "");
+        using var r = await cmd.ExecuteReaderAsync();
+        bool locked = false; string msg = "";
+        if (await r.ReadAsync()) { locked = r.GetBoolean(0); msg = r.GetString(1); }
+        return Results.Ok(new { locked, lockMessage = msg });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[api/lock-status] {ex}");
+        return Results.Problem("lock-status error");
     }
 });
 

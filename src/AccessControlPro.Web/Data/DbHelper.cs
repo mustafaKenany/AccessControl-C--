@@ -266,6 +266,13 @@ CREATE TABLE IF NOT EXISTS ""TimeGroups"" (
 CREATE INDEX IF NOT EXISTS idx_players_isdeleted ON ""Players"" (""IsDeleted"");
 CREATE INDEX IF NOT EXISTS idx_players_phone ON ""Players"" (""Phone"");
 CREATE INDEX IF NOT EXISTS idx_players_cardno ON ""Players"" (""CardNo"");
+-- Trigram GIN indexes so the owner Players substring search (LIKE '%x%') uses an index
+-- instead of a seq scan as the member count grows. pg_trgm is a trusted extension (PG13+).
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS idx_players_nameen_trgm ON ""Players"" USING gin (LOWER(""FullNameEn"") gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_players_namear_trgm ON ""Players"" USING gin (""FullNameAr"" gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_players_phone_trgm ON ""Players"" USING gin (""Phone"" gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_players_cardno_trgm ON ""Players"" USING gin (""CardNo"" gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_events_eventdate ON ""AccessEvents"" (""EventDate"" DESC);
 CREATE INDEX IF NOT EXISTS idx_events_cardid ON ""AccessEvents"" (""CardId"");
 CREATE INDEX IF NOT EXISTS idx_accesscards_employeeid ON ""AccessCards"" (""EmployeeId"");

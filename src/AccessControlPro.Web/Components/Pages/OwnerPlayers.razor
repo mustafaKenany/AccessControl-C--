@@ -5,6 +5,7 @@
 @inject AccessControlPro.Web.Data.GymDbHelper GymDb
 @inject IConfiguration Config
 @rendermode InteractiveServer
+@attribute [StreamRendering]
 
 @* TODO: Currently checks Session.IsOwner only. When granular cloud permissions are added,
    enforce AppPermission checks per page (e.g., PlayersView for this page). *@
