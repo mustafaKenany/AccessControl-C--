@@ -21,14 +21,17 @@ public partial class DailyPassDialog : Window
     private readonly IQrPassService _qrPassService;
     private readonly ILookupService _lookupService;
     private readonly IFinanceService _financeService;
+    private readonly IEmployeeService _employeeService;
     private readonly bool _ar;
     private decimal _price;
 
-    public DailyPassDialog(IQrPassService qrPassService, ILookupService lookupService, IFinanceService financeService)
+    public DailyPassDialog(IQrPassService qrPassService, ILookupService lookupService,
+        IFinanceService financeService, IEmployeeService employeeService)
     {
         _qrPassService = qrPassService;
         _lookupService = lookupService;
         _financeService = financeService;
+        _employeeService = employeeService;
         InitializeComponent();
 
         _ar = LanguageManager.Instance.IsArabic;
@@ -97,8 +100,14 @@ public partial class DailyPassDialog : Window
                 playerName: _ar ? "دخول يومي" : "Daily Pass",
                 phone: "",
                 fee: _price,
-                maxUses: 2,      // enter + exit
+                maxUses: 65535,  // date governs validity, not a use count
                 validDays: 1);   // today only
+
+            // Bind the code to the gate for today only, so the controller auto-rejects it
+            // tomorrow (date-enforced). Best-effort: the pool code is already on the device,
+            // this just tightens its expiry to tonight.
+            try { await _employeeService.PushTempCardToDevicesAsync(pass.PassCode, pass.ValidTo, "01010000"); }
+            catch { /* falls back to the pre-synced pool code */ }
 
             var qrDialog = new QrCodeDisplayDialog(pass) { Owner = this };
             qrDialog.ShowDialog();
@@ -144,25 +153,48 @@ public partial class DailyPassDialog : Window
                 LanguageManager.Instance.DailyPass, MsgType.Warning, this);
             return;
         }
+        IssueButton.IsEnabled = false;
         try
         {
+            // Program the card on the gate, valid until tonight only → controller auto-rejects
+            // it tomorrow. Card returned today is expired immediately via ReturnCardClick.
+            var validTo = DateTime.Today.AddDays(1).AddSeconds(-1); // today 23:59:59
+            var (ok, fail, total, errors) = await _employeeService.PushTempCardToDevicesAsync(card, validTo, "01010000");
+            if (ok == 0)
+            {
+                CustomMessageBox.Show(
+                    (_ar ? "تعذّر برمجة الكارت على البوابة (غير متصلة؟). لم يتم الإصدار."
+                         : "Could not program the card on the gate (offline?). Not issued.")
+                    + (errors.Count > 0 ? "\n\n" + string.Join("\n", errors) : ""),
+                    LanguageManager.Instance.DailyPass, MsgType.Error, this);
+                return;
+            }
+
             await _financeService.RecordIncomeAsync("Daily Pass", _price, $"Daily Pass - temp card {card}");
             DailyTempCardStore.Issue(card, _price);
             CardNumberBox.Clear();
             CardNumberBox.Focus();
             RefreshOutList();
             await RefreshTodayAsync();
+
+            if (fail > 0)
+                CustomMessageBox.Show(
+                    _ar ? $"تم الإصدار، لكن لم تصل إلى {fail} جهاز." : $"Issued, but {fail} device(s) were not reached.",
+                    LanguageManager.Instance.DailyPass, MsgType.Warning, this);
         }
         catch (Exception ex)
         {
             CustomMessageBox.Show(ex.Message, LanguageManager.Instance.DailyPass, MsgType.Error, this);
         }
+        finally { IssueButton.IsEnabled = true; }
     }
 
-    private void ReturnCardClick(object sender, RoutedEventArgs e)
+    private async void ReturnCardClick(object sender, RoutedEventArgs e)
     {
         if (sender is Button b && b.Tag is string card)
         {
+            try { await _employeeService.ExpireTempCardOnDevicesAsync(card); }
+            catch { /* card also auto-expires tonight regardless */ }
             DailyTempCardStore.Return(card);
             RefreshOutList();
         }

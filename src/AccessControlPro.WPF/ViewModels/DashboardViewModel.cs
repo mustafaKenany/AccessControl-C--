@@ -15,6 +15,7 @@ public partial class DashboardViewModel : ObservableObject
     private readonly IQrPassService _qrPassService;
     private readonly ILookupService _lookupService;
     private readonly IFinanceService _financeService;
+    private readonly IEmployeeService _employeeService;
 
     public LanguageManager Lang => LanguageManager.Instance;
 
@@ -48,19 +49,21 @@ public partial class DashboardViewModel : ObservableObject
     private bool _isInitialized;
 
     public DashboardViewModel(IDashboardService dashboardService, CurrentUserService currentUser,
-        IQrPassService qrPassService, ILookupService lookupService, IFinanceService financeService)
+        IQrPassService qrPassService, ILookupService lookupService, IFinanceService financeService,
+        IEmployeeService employeeService)
     {
         _dashboardService = dashboardService;
         _qrPassService = qrPassService;
         _lookupService = lookupService;
         _financeService = financeService;
+        _employeeService = employeeService;
         WelcomeMessage = currentUser.DisplayName ?? "";
     }
 
     [RelayCommand]
     private void CreateDailyPass()
     {
-        var dialog = new DailyPassDialog(_qrPassService, _lookupService, _financeService)
+        var dialog = new DailyPassDialog(_qrPassService, _lookupService, _financeService, _employeeService)
         {
             Owner = System.Windows.Application.Current.MainWindow,
             WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner

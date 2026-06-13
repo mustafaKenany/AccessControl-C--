@@ -116,7 +116,7 @@ public partial class EmployeesViewModel : ObservableObject
     [RelayCommand]
     private void CreateDailyPass()
     {
-        var dialog = new DailyPassDialog(_qrPassService, _lookupService, _financeService)
+        var dialog = new DailyPassDialog(_qrPassService, _lookupService, _financeService, _employeeService)
         {
             Owner = System.Windows.Application.Current.MainWindow,
             WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner

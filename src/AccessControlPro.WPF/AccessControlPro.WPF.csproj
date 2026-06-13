@@ -12,9 +12,9 @@
     <!-- Version is read at runtime by UpdateCheckService and compared against
          the VPS manifest. Bump this with EVERY release before running
          publish-release.ps1 — otherwise the update prompt loops forever. -->
-    <Version>4.6.5</Version>
-    <AssemblyVersion>4.6.5.0</AssemblyVersion>
-    <FileVersion>4.6.5.0</FileVersion>
+    <Version>4.6.6</Version>
+    <AssemblyVersion>4.6.6.0</AssemblyVersion>
+    <FileVersion>4.6.6.0</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">

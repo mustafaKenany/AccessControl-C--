@@ -1444,6 +1444,61 @@ public class EmployeeService : IEmployeeService
         return (result.SuccessCount, result.FailedCount, devices.Count, errors);
     }
 
+    public async Task<(int ok, int fail, int total, List<string> errors)> PushTempCardToDevicesAsync(
+        string cardNumber, DateTime validTo, string doorPermissions, IEnumerable<int>? deviceIds = null)
+    {
+        cardNumber = (cardNumber ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(cardNumber))
+            return (0, 0, 0, new List<string> { "Empty card number." });
+
+        var devices = await ResolveDevicesAsync(deviceIds);
+        if (devices.Count == 0)
+            return (0, 0, 0, new List<string> { "No devices found." });
+
+        // Date-enforced expiry: the gate rejects the card after permitTime regardless of uses.
+        var permitTime = (validTo > DateTime.Now ? validTo : DateTime.Now.AddHours(1))
+            .ToString("yyyy-MM-dd HH:mm:ss");
+        var doors = string.IsNullOrWhiteSpace(doorPermissions) ? "01010000" : doorPermissions;
+        var deviceTuples = devices.Select(d => (BuildDeviceInfo(d), d.Name, d.IP, d.Id));
+
+        // effectiveTimes high (65535) so the date governs validity, not a use count.
+        var result = await _opHelper.ExecuteOnDevicesSequentialAsync(deviceTuples, deviceInfo =>
+        {
+            _sdk.AddAccessCard(deviceInfo, cardNumber, "", 0, doors, permitTime, 65535, 0, false);
+        });
+
+        await LogAuditAsync("DailyPassPush", "AccessCard", 0,
+            $"Daily-pass card {cardNumber} pushed to {result.SuccessCount}/{devices.Count} devices, valid until {permitTime}",
+            $"بطاقة دخول يومي {cardNumber} أُرسلت إلى {result.SuccessCount}/{devices.Count} جهاز، صالحة حتى {permitTime}");
+
+        var errors = result.Failed.Select(f => $"{f.Name} ({f.IP}): {f.Error}").ToList();
+        return (result.SuccessCount, result.FailedCount, devices.Count, errors);
+    }
+
+    public async Task<(int ok, int fail, int total, List<string> errors)> ExpireTempCardOnDevicesAsync(
+        string cardNumber, IEnumerable<int>? deviceIds = null)
+    {
+        cardNumber = (cardNumber ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(cardNumber))
+            return (0, 0, 0, new List<string>());
+
+        var devices = await ResolveDevicesAsync(deviceIds);
+        if (devices.Count == 0)
+            return (0, 0, 0, new List<string>());
+
+        // Re-add with an immediate expiry → the controller rejects it from now on.
+        var expireDate = DateTime.Now.AddMinutes(1).ToString("yyyy-MM-dd HH:mm:ss");
+        var deviceTuples = devices.Select(d => (BuildDeviceInfo(d), d.Name, d.IP, d.Id));
+
+        var result = await _opHelper.ExecuteOnDevicesSequentialAsync(deviceTuples, deviceInfo =>
+        {
+            _sdk.AddAccessCard(deviceInfo, cardNumber, "", 0, "01010000", expireDate, 1, 0, false);
+        });
+
+        var errors = result.Failed.Select(f => $"{f.Name} ({f.IP}): {f.Error}").ToList();
+        return (result.SuccessCount, result.FailedCount, devices.Count, errors);
+    }
+
     public async Task IncrementVisitAsync(string cardNumber)
     {
         var card = await _cardRepository.GetByCardNumberAsync(cardNumber);

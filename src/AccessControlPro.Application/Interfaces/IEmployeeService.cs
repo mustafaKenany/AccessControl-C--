@@ -20,6 +20,18 @@ public interface IEmployeeService
     Task<(int synced, int failed, int total)> SyncAllCardsToDevicesAsync(IEnumerable<int>? deviceIds = null, IProgress<(int current, int total, string cardNumber)>? progress = null);
     /// <summary>Remove/expire card on selected devices. Pass null for ALL devices.</summary>
     Task<(int synced, int failed, int total, List<string> errors)> RemoveCardFromDevicesAsync(int cardId, IEnumerable<int>? deviceIds = null);
+
+    /// <summary>
+    /// Push a raw card number straight to the gate(s) valid until <paramref name="validTo"/>,
+    /// so the controller itself rejects it afterwards (date-enforced expiry). Used by the
+    /// anonymous Daily Pass — no AccessCard/player record is created. Pass null for ALL devices.
+    /// </summary>
+    Task<(int ok, int fail, int total, List<string> errors)> PushTempCardToDevicesAsync(
+        string cardNumber, DateTime validTo, string doorPermissions, IEnumerable<int>? deviceIds = null);
+
+    /// <summary>Expire a raw daily-pass card number on the gate(s) immediately (card returned). Pass null for ALL devices.</summary>
+    Task<(int ok, int fail, int total, List<string> errors)> ExpireTempCardOnDevicesAsync(
+        string cardNumber, IEnumerable<int>? deviceIds = null);
     Task IncrementVisitAsync(string cardNumber);
     /// <summary>
     /// Real-time card validation on swipe: checks expiry + visits, increments visit count,
