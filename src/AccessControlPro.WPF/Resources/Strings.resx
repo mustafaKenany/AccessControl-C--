@@ -367,6 +367,8 @@ Phone or subscription type is still a placeholder value (MIG-... or "Migrated").
   <data name="PosCart" xml:space="preserve"><value>Cart</value></data>
   <data name="PosPayCash" xml:space="preserve"><value>Pay Cash</value></data>
   <data name="PosPayCard" xml:space="preserve"><value>Pay Card Balance</value></data>
+  <data name="PosPayCredit" xml:space="preserve"><value>On Account (Credit)</value></data>
+  <data name="PosCollectDebt" xml:space="preserve"><value>Collect Debt</value></data>
   <data name="PosTopUp" xml:space="preserve"><value>Top Up</value></data>
   <data name="PosCardBalance" xml:space="preserve"><value>Card Balance</value></data>
   <data name="PosPrice" xml:space="preserve"><value>Price</value></data>

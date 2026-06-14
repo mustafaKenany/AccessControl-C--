@@ -105,6 +105,16 @@
                                        Foreground="{StaticResource TextPrimaryBrush}"/>
                         </StackPanel>
                     </Button>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" Padding="14,8"
+                            Command="{Binding CollectDebtCommand}" Margin="8,0,0,0"
+                            ToolTip="{Binding Lang.PosCollectDebt}">
+                        <StackPanel Orientation="Horizontal">
+                            <fa:ImageAwesome Icon="Money" Width="12" Height="12"
+                                             Foreground="#FFB946" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Lang.PosCollectDebt}" FontSize="12" VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                        </StackPanel>
+                    </Button>
                     <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Padding="14,8"
                             Command="{Binding SearchPlayerCommand}" Margin="8,0,0,0">
                         <fa:ImageAwesome Icon="Search" Width="12" Height="12" Foreground="White"/>
@@ -301,6 +311,17 @@
                             <fa:ImageAwesome Icon="CreditCard" Width="14" Height="14"
                                              Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding Lang.PosPayCard}" FontSize="14"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SecondaryButton}" Padding="0,12" Margin="0,8,0,0"
+                            Command="{Binding CheckoutCreditCommand}"
+                            HorizontalContentAlignment="Center"
+                            ToolTip="{Binding Lang.PosPayCredit}">
+                        <StackPanel Orientation="Horizontal">
+                            <fa:ImageAwesome Icon="Bookmark" Width="14" Height="14"
+                                             Foreground="#FFB946" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Lang.PosPayCredit}" FontSize="14"
                                        Foreground="{StaticResource TextPrimaryBrush}"/>
                         </StackPanel>
                     </Button>

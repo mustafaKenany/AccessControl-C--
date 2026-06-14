@@ -372,6 +372,8 @@
   <data name="PosCart" xml:space="preserve"><value>السلة</value></data>
   <data name="PosPayCash" xml:space="preserve"><value>دفع نقدي</value></data>
   <data name="PosPayCard" xml:space="preserve"><value>دفع رصيد البطاقة</value></data>
+  <data name="PosPayCredit" xml:space="preserve"><value>على الحساب (دين)</value></data>
+  <data name="PosCollectDebt" xml:space="preserve"><value>تحصيل دين</value></data>
   <data name="PosTopUp" xml:space="preserve"><value>شحن رصيد</value></data>
   <data name="PosCardBalance" xml:space="preserve"><value>رصيد البطاقة</value></data>
   <data name="PosPrice" xml:space="preserve"><value>السعر</value></data>

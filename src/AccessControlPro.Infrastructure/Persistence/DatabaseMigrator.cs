@@ -22,6 +22,10 @@ public static class DatabaseMigrator
             @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Employees') AND name = 'CardBalance')
               ALTER TABLE Employees ADD CardBalance decimal(18,2) NOT NULL DEFAULT 0;",
 
+            // v4.6.7: Player POS credit debt ("on account" sales) — separate from CardBalance
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Employees') AND name = 'Debt')
+              ALTER TABLE Employees ADD Debt decimal(18,2) NOT NULL DEFAULT 0;",
+
             // v1.2: Add Permissions to Users
             @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'Permissions')
               ALTER TABLE Users ADD Permissions nvarchar(max) NOT NULL DEFAULT '';",

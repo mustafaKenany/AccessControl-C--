@@ -1754,6 +1754,7 @@ public class EmployeeService : IEmployeeService
         IsFrozen = e.IsFrozen,
         FreezeStartDate = e.FreezeStartDate,
         CardBalance = e.CardBalance,
+        Debt = e.Debt,
         MaxVisits = e.MaxVisits,
         UsedVisits = e.UsedVisits,
         CardCount = e.AccessCards?.Count ?? 0,

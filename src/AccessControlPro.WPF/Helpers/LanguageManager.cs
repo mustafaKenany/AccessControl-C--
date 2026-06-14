@@ -395,6 +395,8 @@ public class LanguageManager : INotifyPropertyChanged
     public string PosCart => GetString("PosCart");
     public string PosPayCash => GetString("PosPayCash");
     public string PosPayCard => GetString("PosPayCard");
+    public string PosPayCredit => GetString("PosPayCredit");
+    public string PosCollectDebt => GetString("PosCollectDebt");
     public string PosTopUp => GetString("PosTopUp");
     public string PosCardBalance => GetString("PosCardBalance");
     public string PosPrice => GetString("PosPrice");
@@ -1321,6 +1323,8 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(PosCart));
         OnPropertyChanged(nameof(PosPayCash));
         OnPropertyChanged(nameof(PosPayCard));
+        OnPropertyChanged(nameof(PosPayCredit));
+        OnPropertyChanged(nameof(PosCollectDebt));
         OnPropertyChanged(nameof(PosTopUp));
         OnPropertyChanged(nameof(PosCardBalance));
         OnPropertyChanged(nameof(PosPrice));

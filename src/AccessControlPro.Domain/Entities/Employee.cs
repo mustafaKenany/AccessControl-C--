@@ -20,6 +20,12 @@ public class Employee
     public DateTime? FreezeStartDate { get; set; }
     public decimal CardBalance { get; set; }
 
+    /// <summary>
+    /// Money the player OWES the gym from POS credit sales ("on account") — separate from
+    /// CardBalance (prepaid credit). Increases on a credit sale, decreases when collected.
+    /// </summary>
+    public decimal Debt { get; set; }
+
     /// <summary>Visit-count subscription: max allowed visits (0 = unlimited/date-based only).</summary>
     public int MaxVisits { get; set; }
     /// <summary>Visit-count subscription: visits used so far.</summary>

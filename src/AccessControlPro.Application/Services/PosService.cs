@@ -132,8 +132,8 @@ public class PosService : IPosService
                 throw new ArgumentException($"Price cannot be negative for '{item.ProductName}'.");
         }
 
-        if (method == PaymentMethod.CardBalance && !employeeId.HasValue)
-            throw new ArgumentException("Employee ID is required for card balance payment.");
+        if ((method == PaymentMethod.CardBalance || method == PaymentMethod.Credit) && !employeeId.HasValue)
+            throw new ArgumentException("A player must be selected for card-balance or credit payment.");
 
         var subtotal = items.Sum(i => i.Price * i.Quantity);
         var itemDiscounts = items.Sum(i => i.DiscountAmount);
@@ -162,6 +162,15 @@ public class PosService : IPosService
                 return false;
 
             employee.CardBalance -= totalAmount;
+            await _employeeRepo.UpdateAsync(employee);
+        }
+
+        // Credit sale ("on account") — add to the player's debt, no block / no limit.
+        if (method == PaymentMethod.Credit && employeeId.HasValue)
+        {
+            var employee = await _employeeRepo.GetByIdWithCardsAsync(employeeId.Value)
+                ?? throw new InvalidOperationException("Selected player not found.");
+            employee.Debt += totalAmount;
             await _employeeRepo.UpdateAsync(employee);
         }
 
@@ -234,6 +243,60 @@ public class PosService : IPosService
         });
 
         Log($"TopUpCard OK: employeeId={employeeId} player={employee.FullNameEn} amount={amount} before={balanceBefore} after={employee.CardBalance}");
+    }
+
+    public async Task<decimal> GetDebtAsync(int employeeId)
+    {
+        var employee = await _employeeRepo.GetByIdWithCardsAsync(employeeId);
+        return employee?.Debt ?? 0;
+    }
+
+    public async Task CollectDebtAsync(int employeeId, decimal amount)
+    {
+        if (amount <= 0)
+            throw new ArgumentException("Collection amount must be greater than zero.");
+
+        var employee = await _employeeRepo.GetByIdWithCardsAsync(employeeId)
+            ?? throw new InvalidOperationException($"Employee with ID {employeeId} not found.");
+
+        if (amount > employee.Debt) amount = employee.Debt; // never collect more than owed
+        if (amount <= 0) return;
+
+        var debtBefore = employee.Debt;
+        employee.Debt -= amount;
+        if (employee.Debt < 0) employee.Debt = 0;
+        await _employeeRepo.UpdateAsync(employee);
+
+        // Record the cash received settling the credit sale.
+        await _transactionRepo.AddAsync(new Transaction
+        {
+            Type = TransactionType.Income,
+            Category = "Debt Collection",
+            Amount = amount,
+            Description = $"Debt payment from {employee.FullNameEn}",
+            RelatedEmployeeId = employeeId,
+            PaymentMethod = PaymentMethod.Cash,
+            CreatedBy = _currentUser.Username ?? "System"
+        });
+
+        Log($"CollectDebt OK: employeeId={employeeId} player={employee.FullNameEn} amount={amount} before={debtBefore} after={employee.Debt}");
+    }
+
+    public async Task<IEnumerable<EmployeeDto>> GetPlayersWithDebtAsync()
+    {
+        var employees = await _employeeRepo.GetAllWithCardsAsync();
+        return employees
+            .Where(e => e.Debt > 0)
+            .OrderByDescending(e => e.Debt)
+            .Select(e => new EmployeeDto
+            {
+                Id = e.Id,
+                FullNameEn = e.FullNameEn,
+                FullNameAr = e.FullNameAr,
+                CardNo = e.CardNo,
+                Phone = e.Phone,
+                Debt = e.Debt
+            });
     }
 
     public async Task<(int Count, decimal Total)> GetTodaySalesAsync()

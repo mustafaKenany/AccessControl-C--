@@ -330,6 +330,19 @@ public partial class PosViewModel : ObservableObject
         await CheckoutAsync(PaymentMethod.CardBalance);
     }
 
+    // Credit / "on account" — adds the total to the selected player's debt (no card balance
+    // needed). They settle it later via Collect Debt.
+    [RelayCommand]
+    private async Task CheckoutCreditAsync()
+    {
+        if (SelectedPlayer == null)
+        {
+            CustomMessageBox.Show(Lang.PosSearchPlayerFirst, Lang.ValidationTitle, MsgType.Warning);
+            return;
+        }
+        await CheckoutAsync(PaymentMethod.Credit);
+    }
+
     private async Task CheckoutAsync(PaymentMethod method)
     {
         if (CartItems.Count == 0) return;
@@ -368,10 +381,7 @@ public partial class PosViewModel : ObservableObject
             await LoadTodaySalesAsync();
 
             if (SelectedPlayer != null)
-            {
-                PlayerCardBalance = await _posService.GetCardBalanceAsync(SelectedPlayer.Id);
-                PlayerInfoText = $"{SelectedPlayer.FullNameEn}  |  {Lang.PosCardBalance}: {PlayerCardBalance:N0}";
-            }
+                await RefreshPlayerInfoAsync();
 
             // Show receipt dialog with print option
             var receiptDialog = new Views.ReceiptDialog(saleItems, saleTotal, method,
@@ -401,13 +411,55 @@ public partial class PosViewModel : ObservableObject
         try
         {
             await _posService.TopUpCardAsync(SelectedPlayer.Id, dialog.Amount);
-            PlayerCardBalance = await _posService.GetCardBalanceAsync(SelectedPlayer.Id);
-            PlayerInfoText = $"{SelectedPlayer.FullNameEn}  |  {Lang.PosCardBalance}: {PlayerCardBalance:N0}";
+            await RefreshPlayerInfoAsync();
         }
         catch (Exception ex)
         {
             CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
         }
+    }
+
+    // Collect a payment against the selected player's POS debt ("settle the account").
+    [RelayCommand]
+    private async Task CollectDebtAsync()
+    {
+        if (SelectedPlayer == null)
+        {
+            CustomMessageBox.Show(Lang.PosSearchPlayerFirst, Lang.ValidationTitle, MsgType.Warning);
+            return;
+        }
+
+        var debt = await _posService.GetDebtAsync(SelectedPlayer.Id);
+        if (debt <= 0)
+        {
+            CustomMessageBox.Show(
+                Lang.IsArabic ? "لا يوجد دين على هذا اللاعب." : "This player has no debt.",
+                Lang.NavPOS, MsgType.Info);
+            return;
+        }
+
+        var dialog = new Views.TopUpDialog { Owner = System.Windows.Application.Current.MainWindow };
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            await _posService.CollectDebtAsync(SelectedPlayer.Id, dialog.Amount);
+            await RefreshPlayerInfoAsync();
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
+        }
+    }
+
+    private async Task RefreshPlayerInfoAsync()
+    {
+        if (SelectedPlayer == null) return;
+        PlayerCardBalance = await _posService.GetCardBalanceAsync(SelectedPlayer.Id);
+        var debt = await _posService.GetDebtAsync(SelectedPlayer.Id);
+        PlayerInfoText = debt > 0
+            ? $"{SelectedPlayer.FullNameEn}  |  {Lang.PosCardBalance}: {PlayerCardBalance:N0}  |  {(Lang.IsArabic ? "دين" : "Debt")}: {debt:N0}"
+            : $"{SelectedPlayer.FullNameEn}  |  {Lang.PosCardBalance}: {PlayerCardBalance:N0}";
     }
 
     private void UpdateCartTotal()

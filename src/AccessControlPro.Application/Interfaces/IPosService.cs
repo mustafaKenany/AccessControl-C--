@@ -23,6 +23,13 @@ public interface IPosService
     Task<decimal> GetCardBalanceAsync(int employeeId);
     Task TopUpCardAsync(int employeeId, decimal amount);
 
+    // Player credit / debt (POS "on account" sales)
+    Task<decimal> GetDebtAsync(int employeeId);
+    /// <summary>Player pays down their POS debt. Records the cash as income and lowers the debt.</summary>
+    Task CollectDebtAsync(int employeeId, decimal amount);
+    /// <summary>Players who currently owe money from credit sales (Debt &gt; 0).</summary>
+    Task<IEnumerable<EmployeeDto>> GetPlayersWithDebtAsync();
+
     // Today's sales summary
     Task<(int Count, decimal Total)> GetTodaySalesAsync();
 
