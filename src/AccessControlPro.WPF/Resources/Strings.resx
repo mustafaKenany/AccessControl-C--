@@ -634,6 +634,9 @@ Phone or subscription type is still a placeholder value (MIG-... or "Migrated").
   <data name="RptPlayers" xml:space="preserve"><value>Players</value></data>
   <data name="RptFinance" xml:space="preserve"><value>Finance</value></data>
   <data name="RptInventory" xml:space="preserve"><value>Inventory</value></data>
+  <data name="RptSales" xml:space="preserve"><value>Sales</value></data>
+  <data name="RptPurchases" xml:space="preserve"><value>Purchases</value></data>
+  <data name="RptMovements" xml:space="preserve"><value>Movements</value></data>
   <data name="RptRun" xml:space="preserve"><value>Run Report</value></data>
   <!-- Monitor Display (Projector) -->
   <data name="DispSuccessPass" xml:space="preserve"><value>Success Pass</value></data>

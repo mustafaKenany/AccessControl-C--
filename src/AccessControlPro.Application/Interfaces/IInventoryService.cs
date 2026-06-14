@@ -18,4 +18,6 @@ public interface IInventoryService
     // Stock Movements
     Task<IEnumerable<StockMovementDto>> GetAllStockMovementsAsync();
     Task<IEnumerable<StockMovementDto>> GetStockMovementsByProductAsync(int productId);
+    /// <summary>Stock movements within a date range — for the movement/sales reports.</summary>
+    Task<IEnumerable<StockMovementDto>> GetStockMovementsAsync(DateTime? from, DateTime? to);
 }

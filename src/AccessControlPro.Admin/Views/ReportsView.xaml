@@ -7,6 +7,62 @@
 
     <UserControl.Resources>
         <helpers:BindingProxy x:Key="Proxy" Data="{Binding}"/>
+
+        <!-- Shared styling for the newer report grids (Sales/Purchases/Movements) -->
+        <Style x:Key="RptColHeader" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#143436"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridColumnHeader">
+                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                              TextBlock.Foreground="{TemplateBinding Foreground}"
+                                              TextBlock.FontFamily="{TemplateBinding FontFamily}"
+                                              TextBlock.FontSize="{TemplateBinding FontSize}"
+                                              TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="RptCell" TargetType="DataGridCell">
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="RptGrid" TargetType="DataGrid">
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="RowBackground" Value="#0E2A2D"/>
+            <Setter Property="AlternatingRowBackground" Value="#112F32"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#15FFFFFF"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="CanUserResizeRows" Value="False"/>
+            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="ColumnHeaderStyle" Value="{StaticResource RptColHeader}"/>
+            <Setter Property="CellStyle" Value="{StaticResource RptCell}"/>
+            <Setter Property="Visibility" Value="Collapsed"/>
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="24,20">
@@ -92,6 +148,63 @@
                     <fa:ImageAwesome Icon="Archive" Width="14" Height="14" Foreground="#FFB946"
                                      VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <TextBlock Text="{Binding Lang.RptInventory}" FontSize="13"
+                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            <!-- Sales by product -->
+            <Border Margin="0,8,4,0" CornerRadius="10" Padding="14,10" Cursor="Hand" MouseLeftButtonUp="SalesTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedReportType}" Value="3">
+                                <Setter Property="Background" Value="#1A2ED47A"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <fa:ImageAwesome Icon="ShoppingCart" Width="14" Height="14" Foreground="#2ED47A"
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding Lang.RptSales}" FontSize="13"
+                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            <!-- Purchases -->
+            <Border Margin="4,8" CornerRadius="10" Padding="14,10" Cursor="Hand" MouseLeftButtonUp="PurchasesTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedReportType}" Value="4">
+                                <Setter Property="Background" Value="#1AF7685B"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <fa:ImageAwesome Icon="ShoppingBasket" Width="14" Height="14" Foreground="#F7685B"
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding Lang.RptPurchases}" FontSize="13"
+                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            <!-- Stock movements -->
+            <Border Margin="4,8,0,0" CornerRadius="10" Padding="14,10" Cursor="Hand" MouseLeftButtonUp="MovementsTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedReportType}" Value="5">
+                                <Setter Property="Background" Value="#1A7E8CE0"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <fa:ImageAwesome Icon="Exchange" Width="14" Height="14" Foreground="#7E8CE0"
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding Lang.RptMovements}" FontSize="13"
                                Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
             </Border>
@@ -352,6 +465,67 @@
                                             Binding="{Binding Category}" Width="120"/>
                         <DataGridTextColumn Header="{Binding Data.Lang.PrdStock, Source={StaticResource Proxy}}"
                                             Binding="{Binding Stock}" Width="80"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Sales by product (Tab 3) -->
+                <DataGrid ItemsSource="{Binding SalesResults}">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid" BasedOn="{StaticResource RptGrid}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedReportType}" Value="3">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdName, Source={StaticResource Proxy}}" Binding="{Binding ProductName}" Width="*"/>
+                        <DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="90"/>
+                        <DataGridTextColumn Header="Revenue" Binding="{Binding Revenue, StringFormat='{}{0:N0}'}" Width="120"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdProfit, Source={StaticResource Proxy}}" Binding="{Binding Profit, StringFormat='{}{0:N0}'}" Width="120"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Purchases (Tab 4) -->
+                <DataGrid ItemsSource="{Binding PurchaseResults}">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid" BasedOn="{StaticResource RptGrid}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedReportType}" Value="4">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{Binding Data.Lang.RptEndDate, Source={StaticResource Proxy}}" Binding="{Binding OrderDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="110"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.NavSuppliers, Source={StaticResource Proxy}}" Binding="{Binding SupplierName}" Width="*"/>
+                        <DataGridTextColumn Header="Total" Binding="{Binding TotalAmount, StringFormat='{}{0:N0}'}" Width="100"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Paid, Source={StaticResource Proxy}}" Binding="{Binding AmountPaid, StringFormat='{}{0:N0}'}" Width="100"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Remaining, Source={StaticResource Proxy}}" Binding="{Binding RemainingAmount, StringFormat='{}{0:N0}'}" Width="100"/>
+                        <DataGridTextColumn Header="Status" Binding="{Binding PaymentStatus}" Width="90"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Stock movements (Tab 5) -->
+                <DataGrid ItemsSource="{Binding MovementResults}">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid" BasedOn="{StaticResource RptGrid}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedReportType}" Value="5">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{Binding Data.Lang.RptEndDate, Source={StaticResource Proxy}}" Binding="{Binding CreatedAt, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Width="140"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdName, Source={StaticResource Proxy}}" Binding="{Binding ProductName}" Width="*"/>
+                        <DataGridTextColumn Header="In/Out" Binding="{Binding Type}" Width="70"/>
+                        <DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="70"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdPrice, Source={StaticResource Proxy}}" Binding="{Binding UnitPrice, StringFormat='{}{0:N0}'}" Width="90"/>
+                        <DataGridTextColumn Header="Ref" Binding="{Binding Reference}" Width="110"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>

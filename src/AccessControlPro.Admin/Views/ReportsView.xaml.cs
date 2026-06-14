@@ -22,4 +22,19 @@ public partial class ReportsView : UserControl
     {
         if (DataContext is ReportsViewModel vm) vm.SelectReportCommand.Execute("inventory");
     }
+
+    private void SalesTab_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is ReportsViewModel vm) vm.SelectReportCommand.Execute("sales");
+    }
+
+    private void PurchasesTab_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is ReportsViewModel vm) vm.SelectReportCommand.Execute("purchases");
+    }
+
+    private void MovementsTab_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is ReportsViewModel vm) vm.SelectReportCommand.Execute("movements");
+    }
 }

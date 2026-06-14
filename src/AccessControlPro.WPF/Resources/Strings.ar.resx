@@ -640,6 +640,10 @@
   <data name="RptPlayers" xml:space="preserve"><value>اللاعبين</value></data>
   <data name="RptFinance" xml:space="preserve"><value>المالية</value></data>
   <data name="RptInventory" xml:space="preserve"><value>المخزون</value></data>
+  <data name="RptSales" xml:space="preserve"><value>المبيعات</value></data>
+  <data name="RptPurchases" xml:space="preserve"><value>المشتريات</value></data>
+  <data name="RptMovements" xml:space="preserve"><value>حركة المواد</value></data>
+
   <data name="RptRun" xml:space="preserve"><value>تشغيل التقرير</value></data>
   <!-- Monitor Display (Projector) -->
   <data name="DispSuccessPass" xml:space="preserve"><value>تم الدخول بنجاح</value></data>

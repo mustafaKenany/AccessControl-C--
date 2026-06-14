@@ -232,6 +232,15 @@ public class InventoryService : IInventoryService
         return movements.Select(MapToDto);
     }
 
+    public async Task<IEnumerable<StockMovementDto>> GetStockMovementsAsync(DateTime? from, DateTime? to)
+    {
+        var movements = await _stockMovementRepo.GetAllAsync();
+        var q = movements.AsEnumerable();
+        if (from.HasValue) q = q.Where(m => m.CreatedAt >= from.Value.Date);
+        if (to.HasValue) q = q.Where(m => m.CreatedAt < to.Value.Date.AddDays(1));
+        return q.OrderByDescending(m => m.CreatedAt).Select(MapToDto);
+    }
+
     private static StockMovementDto MapToDto(StockMovement m) => new()
     {
         Id = m.Id,

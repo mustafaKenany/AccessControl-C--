@@ -19,15 +19,20 @@ public partial class ReportsViewModel : ObservableObject
     public LanguageManager Lang => LanguageManager.Instance;
 
     [ObservableProperty] private bool _isLoading;
-    [ObservableProperty] private int _selectedReportType; // 0=Players, 1=Finance, 2=Inventory
+    [ObservableProperty] private int _selectedReportType; // 0=Players 1=Finance 2=Inventory 3=Sales 4=Purchases 5=Movements
     [ObservableProperty] private DateTime _dateFrom = DateTime.Today.AddMonths(-1);
     [ObservableProperty] private DateTime _dateTo = DateTime.Today;
 
     public ObservableCollection<EmployeeDto> PlayerResults { get; } = new();
     public ObservableCollection<TransactionDto> FinanceResults { get; } = new();
     public ObservableCollection<ProductDto> InventoryResults { get; } = new();
+    public ObservableCollection<SalesReportRow> SalesResults { get; } = new();
+    public ObservableCollection<PurchaseOrderDto> PurchaseResults { get; } = new();
+    public ObservableCollection<StockMovementDto> MovementResults { get; } = new();
 
     [ObservableProperty] private int _resultCount;
+    [ObservableProperty] private decimal _reportTotal;       // sales revenue / purchases total for the period
+    [ObservableProperty] private decimal _reportTotalProfit; // sales profit for the period
 
     public ReportsViewModel(
         IEmployeeService employeeService,
@@ -67,6 +72,47 @@ public partial class ReportsViewModel : ObservableObject
                     foreach (var p in products) InventoryResults.Add(p);
                     ResultCount = InventoryResults.Count;
                     break;
+
+                case 3: // Sales by product (from OUT stock movements in range)
+                    var moves = await _inventoryService.GetStockMovementsAsync(DateFrom, DateTo);
+                    var costMap = (await _inventoryService.GetAllProductsAsync())
+                        .ToDictionary(p => p.Id, p => p.CostPrice);
+                    var sales = moves
+                        .Where(m => m.Type == AccessControlPro.Domain.Enums.MovementType.Out)
+                        .GroupBy(m => new { m.ProductId, m.ProductName })
+                        .Select(g => new SalesReportRow
+                        {
+                            ProductName = g.Key.ProductName,
+                            Quantity = g.Sum(x => x.Quantity),
+                            Revenue = g.Sum(x => x.Quantity * x.UnitPrice),
+                            Profit = g.Sum(x => x.Quantity * (x.UnitPrice - (costMap.TryGetValue(g.Key.ProductId, out var c) ? c : 0)))
+                        })
+                        .OrderByDescending(r => r.Revenue)
+                        .ToList();
+                    SalesResults.Clear();
+                    foreach (var s in sales) SalesResults.Add(s);
+                    ResultCount = SalesResults.Count;
+                    ReportTotal = sales.Sum(s => s.Revenue);
+                    ReportTotalProfit = sales.Sum(s => s.Profit);
+                    break;
+
+                case 4: // Purchases (POs in range)
+                    var orders = (await _inventoryService.GetAllPurchaseOrdersAsync())
+                        .Where(o => o.OrderDate.Date >= DateFrom.Date && o.OrderDate.Date <= DateTo.Date)
+                        .OrderByDescending(o => o.OrderDate)
+                        .ToList();
+                    PurchaseResults.Clear();
+                    foreach (var o in orders) PurchaseResults.Add(o);
+                    ResultCount = PurchaseResults.Count;
+                    ReportTotal = orders.Sum(o => o.TotalAmount - o.Discount);
+                    break;
+
+                case 5: // Stock movements in range
+                    var movements = await _inventoryService.GetStockMovementsAsync(DateFrom, DateTo);
+                    MovementResults.Clear();
+                    foreach (var m in movements) MovementResults.Add(m);
+                    ResultCount = MovementResults.Count;
+                    break;
             }
         }
         catch (Exception ex)
@@ -83,6 +129,9 @@ public partial class ReportsViewModel : ObservableObject
         {
             "finance" => 1,
             "inventory" => 2,
+            "sales" => 3,
+            "purchases" => 4,
+            "movements" => 5,
             _ => 0
         };
     }
@@ -129,9 +178,27 @@ public partial class ReportsViewModel : ObservableObject
                     break;
 
                 case 2:
-                    lines.Add("Name,NameAr,Barcode,Price,Category,Stock");
+                    lines.Add("Name,NameAr,Barcode,Price,Cost,Profit,Category,Stock");
                     foreach (var p in InventoryResults)
-                        lines.Add($"\"{CsvSafe(p.Name)}\",\"{CsvSafe(p.NameAr)}\",\"{CsvSafe(p.Barcode)}\",{p.Price},\"{CsvSafe(p.Category)}\",{p.Stock}");
+                        lines.Add($"\"{CsvSafe(p.Name)}\",\"{CsvSafe(p.NameAr)}\",\"{CsvSafe(p.Barcode)}\",{p.Price},{p.CostPrice},{p.Profit},\"{CsvSafe(p.Category)}\",{p.Stock}");
+                    break;
+
+                case 3:
+                    lines.Add("Product,Quantity,Revenue,Profit");
+                    foreach (var s in SalesResults)
+                        lines.Add($"\"{CsvSafe(s.ProductName)}\",{s.Quantity},{s.Revenue},{s.Profit}");
+                    break;
+
+                case 4:
+                    lines.Add("Date,Supplier,Total,Discount,Paid,Remaining,Status");
+                    foreach (var o in PurchaseResults)
+                        lines.Add($"{o.OrderDate:yyyy-MM-dd},\"{CsvSafe(o.SupplierName)}\",{o.TotalAmount},{o.Discount},{o.AmountPaid},{o.RemainingAmount},\"{CsvSafe(o.PaymentStatus)}\"");
+                    break;
+
+                case 5:
+                    lines.Add("Date,Product,Type,Quantity,UnitPrice,Reference,By");
+                    foreach (var m in MovementResults)
+                        lines.Add($"{m.CreatedAt:yyyy-MM-dd HH:mm},\"{CsvSafe(m.ProductName)}\",{m.Type},{m.Quantity},{m.UnitPrice},\"{CsvSafe(m.Reference)}\",\"{CsvSafe(m.CreatedBy)}\"");
                     break;
             }
 
@@ -145,4 +212,13 @@ public partial class ReportsViewModel : ObservableObject
             CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
         }
     }
+}
+
+/// <summary>One row of the per-product sales report: quantity sold, revenue, and profit.</summary>
+public class SalesReportRow
+{
+    public string ProductName { get; set; } = "";
+    public int Quantity { get; set; }
+    public decimal Revenue { get; set; }
+    public decimal Profit { get; set; }
 }

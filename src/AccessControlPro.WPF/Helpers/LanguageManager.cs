@@ -720,6 +720,9 @@ public class LanguageManager : INotifyPropertyChanged
     public string RptPlayers => GetString("RptPlayers");
     public string RptFinance => GetString("RptFinance");
     public string RptInventory => GetString("RptInventory");
+    public string RptSales => GetString("RptSales");
+    public string RptPurchases => GetString("RptPurchases");
+    public string RptMovements => GetString("RptMovements");
     public string RptRun => GetString("RptRun");
 
     // Monitor Display (Projector)
@@ -1576,6 +1579,9 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(RptPlayers));
         OnPropertyChanged(nameof(RptFinance));
         OnPropertyChanged(nameof(RptInventory));
+        OnPropertyChanged(nameof(RptSales));
+        OnPropertyChanged(nameof(RptPurchases));
+        OnPropertyChanged(nameof(RptMovements));
         OnPropertyChanged(nameof(RptRun));
         // Monitor Display (Projector)
         OnPropertyChanged(nameof(DispSuccessPass));
