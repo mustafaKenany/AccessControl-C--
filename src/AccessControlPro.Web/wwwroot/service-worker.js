@@ -7,7 +7,7 @@
 // fall back to a friendly offline page when the network is unreachable.
 //
 // Bump CACHE_VERSION on each release so old shell assets are evicted.
-const CACHE_VERSION = 'acp-shell-v2';
+const CACHE_VERSION = 'acp-shell-v3';
 const OFFLINE_URL = '/offline.html';
 
 const SHELL_ASSETS = [
@@ -58,15 +58,18 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Static shell assets: cache-first, then network (and cache the result).
+    // Static shell assets: NETWORK-FIRST so a new deploy is picked up immediately
+    // (no manual "clear cache" needed), falling back to the cached copy only when the
+    // network is unreachable (offline). Freshness is then governed by the HTTP cache
+    // headers the server sends (app.css = 5 min, versioned libs/fonts = 30 days).
     event.respondWith(
-        caches.match(req).then(cached => cached || fetch(req).then(resp => {
+        fetch(req).then(resp => {
             if (resp && resp.status === 200 && resp.type === 'basic') {
                 const copy = resp.clone();
                 caches.open(CACHE_VERSION).then(c => c.put(req, copy));
             }
             return resp;
-        }).catch(() => cached))
+        }).catch(() => caches.match(req))
     );
 });
 

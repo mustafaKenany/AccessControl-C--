@@ -1,6 +1,20 @@
 ﻿<Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        @* Global safety net: a render/handler exception in one page shows a friendly
+           reload screen instead of tearing down the whole circuit ("portal stopped"). *@
+        <ErrorBoundary>
+            <ChildContent>
+                <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+                <FocusOnNavigate RouteData="routeData" Selector="h1" />
+            </ChildContent>
+            <ErrorContent>
+                <div style="min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:'Segoe UI',Tahoma,sans-serif;padding:2rem;">
+                    <div style="font-size:3rem;">&#9888;&#65039;</div>
+                    <h2 style="color:#c0392b;margin:.5rem 0;">&#1581;&#1583;&#1579; &#1582;&#1591;&#1571; &#8212; Something went wrong</h2>
+                    <p style="color:#666;">&#1610;&#1585;&#1580;&#1609; &#1573;&#1593;&#1575;&#1583;&#1577; &#1578;&#1581;&#1605;&#1610;&#1604; &#1575;&#1604;&#1589;&#1601;&#1581;&#1577;. &#8212; Please reload the page.</p>
+                    <button onclick="location.reload()" style="margin-top:1rem;padding:.6rem 1.6rem;background:#247B7B;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1rem;">&#1573;&#1593;&#1575;&#1583;&#1577; &#1578;&#1581;&#1605;&#1610;&#1604; / Reload</button>
+                </div>
+            </ErrorContent>
+        </ErrorBoundary>
     </Found>
 </Router>

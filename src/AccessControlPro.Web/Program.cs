@@ -116,6 +116,23 @@ app.UseStaticFiles(new StaticFileOptions
 });
 app.UseAntiforgery();
 
+// Lightweight liveness/readiness probe for uptime monitoring and the reverse proxy.
+// Returns 200 only if the master DB answers; 503 otherwise. No auth, no tenant lookup.
+app.MapGet("/health", async (GymDbHelper gymDb) =>
+{
+    try
+    {
+        using var conn = await gymDb.GetMasterConnectionAsync();
+        using var cmd = new Npgsql.NpgsqlCommand("SELECT 1", conn);
+        await cmd.ExecuteScalarAsync();
+        return Results.Ok(new { status = "ok" });
+    }
+    catch
+    {
+        return Results.StatusCode(503);
+    }
+});
+
 // Resolve which gym (tenant) the request is for, based on the URL subdomain.
 // Must run BEFORE the session reader so login pages can know which gym DB to
 // authenticate against. Reserved subdomains (www, admin, api) are skipped.
