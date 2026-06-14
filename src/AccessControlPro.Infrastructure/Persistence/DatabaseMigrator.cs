@@ -48,11 +48,16 @@ public static class DatabaseMigrator
                   Name nvarchar(200) NOT NULL DEFAULT '',
                   NameAr nvarchar(200) NOT NULL DEFAULT '',
                   Price decimal(18,2) NOT NULL,
+                  CostPrice decimal(18,2) NOT NULL DEFAULT 0,
                   Category nvarchar(100) NOT NULL DEFAULT '',
                   Stock int NOT NULL DEFAULT 0,
                   IsActive bit NOT NULL DEFAULT 1,
                   CreatedAt datetime2 NOT NULL DEFAULT GETUTCDATE()
               );",
+
+            // v4.6.7: CostPrice on existing Products tables (profit/margin tracking)
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'CostPrice')
+              ALTER TABLE Products ADD CostPrice decimal(18,2) NOT NULL DEFAULT 0;",
 
             // v1.5: Indexes for performance (50+ concurrent users)
             // Transactions: filter by type, date range, employee

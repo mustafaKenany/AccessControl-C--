@@ -245,12 +245,14 @@ CREATE TABLE IF NOT EXISTS ""Products"" (
     ""Name"" VARCHAR(200) DEFAULT '',
     ""NameAr"" VARCHAR(200) DEFAULT '',
     ""Price"" DECIMAL(18,2) DEFAULT 0,
+    ""CostPrice"" DECIMAL(18,2) DEFAULT 0,
     ""Stock"" INT DEFAULT 0,
     ""Barcode"" VARCHAR(100) DEFAULT '',
     ""Category"" VARCHAR(200) DEFAULT '',
     ""IsActive"" BOOLEAN DEFAULT TRUE,
     ""CreatedAt"" TIMESTAMP DEFAULT NOW()
 );
+ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""CostPrice"" DECIMAL(18,2) DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS ""TimeGroups"" (
     ""Id"" SERIAL PRIMARY KEY,

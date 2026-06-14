@@ -38,6 +38,7 @@ public class InventoryService : IInventoryService
             NameAr = p.NameAr,
             Barcode = p.Barcode,
             Price = p.Price,
+            CostPrice = p.CostPrice,
             Category = p.Category,
             Stock = p.Stock,
             IsActive = p.IsActive
@@ -60,6 +61,7 @@ public class InventoryService : IInventoryService
             NameAr = dto.NameAr,
             Barcode = dto.Barcode,
             Price = dto.Price,
+            CostPrice = dto.CostPrice,
             Category = dto.Category,
             Stock = dto.Stock,
             IsActive = true
@@ -83,6 +85,7 @@ public class InventoryService : IInventoryService
         product.NameAr = dto.NameAr;
         product.Barcode = dto.Barcode;
         product.Price = dto.Price;
+        product.CostPrice = dto.CostPrice;
         product.Category = dto.Category;
         product.Stock = dto.Stock;
         product.IsActive = dto.IsActive;
@@ -168,6 +171,7 @@ public class InventoryService : IInventoryService
             if (productList.TryGetValue(item.ProductId, out var product))
             {
                 product.Stock += item.Quantity;
+                if (item.UnitCost > 0) product.CostPrice = item.UnitCost; // track latest buy cost
                 await _productRepo.UpdateAsync(product);
 
                 await _stockMovementRepo.AddAsync(new StockMovement

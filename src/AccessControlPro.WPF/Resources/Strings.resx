@@ -528,6 +528,8 @@ Phone or subscription type is still a placeholder value (MIG-... or "Migrated").
   <data name="PrdNameAr" xml:space="preserve"><value>Name (Arabic)</value></data>
   <data name="PrdBarcode" xml:space="preserve"><value>Barcode</value></data>
   <data name="PrdPrice" xml:space="preserve"><value>Price</value></data>
+  <data name="PrdCostPrice" xml:space="preserve"><value>Cost</value></data>
+  <data name="PrdProfit" xml:space="preserve"><value>Profit</value></data>
   <data name="PrdCategory" xml:space="preserve"><value>Category</value></data>
   <data name="PrdStock" xml:space="preserve"><value>Stock</value></data>
   <data name="PrdAddNew" xml:space="preserve"><value>Add Product</value></data>

@@ -104,11 +104,15 @@
                         <DataGridTextColumn Header="{Binding Data.Lang.PrdBarcode, Source={StaticResource Proxy}}"
                                             Binding="{Binding Barcode}" Width="120"/>
                         <DataGridTextColumn Header="{Binding Data.Lang.PrdPrice, Source={StaticResource Proxy}}"
-                                            Binding="{Binding Price, StringFormat={}{0:N0}}" Width="100"/>
+                                            Binding="{Binding Price, StringFormat={}{0:N0}}" Width="90"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdCostPrice, Source={StaticResource Proxy}}"
+                                            Binding="{Binding CostPrice, StringFormat={}{0:N0}}" Width="90"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdProfit, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Profit, StringFormat={}{0:N0}}" Width="90"/>
                         <DataGridTextColumn Header="{Binding Data.Lang.PrdCategory, Source={StaticResource Proxy}}"
-                                            Binding="{Binding Category}" Width="120"/>
+                                            Binding="{Binding Category}" Width="110"/>
                         <DataGridTextColumn Header="{Binding Data.Lang.PrdStock, Source={StaticResource Proxy}}"
-                                            Binding="{Binding Stock}" Width="80"/>
+                                            Binding="{Binding Stock}" Width="70"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>
@@ -164,10 +168,16 @@
                     <TextBox Text="{Binding EditBarcode, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"/>
 
-                    <!-- Price -->
+                    <!-- Price (sell) -->
                     <TextBlock Text="{Binding Lang.PrdPrice}" FontSize="12"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                     <TextBox Text="{Binding EditPrice, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"/>
+
+                    <!-- Cost Price (buy) — usually filled automatically from purchase orders -->
+                    <TextBlock Text="{Binding Lang.PrdCostPrice}" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                    <TextBox Text="{Binding EditCostPrice, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"/>
 
                     <!-- Category -->

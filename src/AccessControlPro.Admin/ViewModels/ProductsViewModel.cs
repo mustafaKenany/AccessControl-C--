@@ -24,6 +24,7 @@ public partial class ProductsViewModel : ObservableObject
     [ObservableProperty] private string _editNameAr = "";
     [ObservableProperty] private string _editBarcode = "";
     [ObservableProperty] private string _editPrice = "";
+    [ObservableProperty] private string _editCostPrice = "";
     [ObservableProperty] private string _editCategory = "";
 
     public ObservableCollection<ProductDto> Products { get; } = new();
@@ -59,6 +60,7 @@ public partial class ProductsViewModel : ObservableObject
             EditNameAr = value.NameAr;
             EditBarcode = value.Barcode;
             EditPrice = value.Price.ToString("0");
+            EditCostPrice = value.CostPrice.ToString("0");
             EditCategory = value.Category;
             IsEditing = true;
         }
@@ -74,6 +76,7 @@ public partial class ProductsViewModel : ObservableObject
         EditNameAr = "";
         EditBarcode = "";
         EditPrice = "";
+        EditCostPrice = "";
         EditCategory = "";
         SelectedProduct = null;
         IsEditing = false;
@@ -94,6 +97,10 @@ public partial class ProductsViewModel : ObservableObject
             return;
         }
 
+        // Cost is optional (0 allowed); it's usually set automatically from purchase orders.
+        decimal.TryParse(EditCostPrice, out var costPrice);
+        if (costPrice < 0) costPrice = 0;
+
         try
         {
             if (IsEditing && SelectedProduct != null)
@@ -102,6 +109,7 @@ public partial class ProductsViewModel : ObservableObject
                 SelectedProduct.NameAr = EditNameAr.Trim();
                 SelectedProduct.Barcode = EditBarcode.Trim();
                 SelectedProduct.Price = price;
+                SelectedProduct.CostPrice = costPrice;
                 SelectedProduct.Category = EditCategory.Trim();
                 await _inventoryService.UpdateProductAsync(SelectedProduct);
             }
@@ -113,6 +121,7 @@ public partial class ProductsViewModel : ObservableObject
                     NameAr = EditNameAr.Trim(),
                     Barcode = EditBarcode.Trim(),
                     Price = price,
+                    CostPrice = costPrice,
                     Category = EditCategory.Trim(),
                     Stock = 0,
                     IsActive = true

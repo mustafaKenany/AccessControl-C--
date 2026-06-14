@@ -533,6 +533,8 @@
   <data name="PrdNameAr" xml:space="preserve"><value>الاسم (عربي)</value></data>
   <data name="PrdBarcode" xml:space="preserve"><value>الباركود</value></data>
   <data name="PrdPrice" xml:space="preserve"><value>السعر</value></data>
+  <data name="PrdCostPrice" xml:space="preserve"><value>الكلفة</value></data>
+  <data name="PrdProfit" xml:space="preserve"><value>الربح</value></data>
   <data name="PrdCategory" xml:space="preserve"><value>الفئة</value></data>
   <data name="PrdStock" xml:space="preserve"><value>المخزون</value></data>
   <data name="PrdAddNew" xml:space="preserve"><value>إضافة منتج</value></data>
