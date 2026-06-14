@@ -45,6 +45,12 @@ public class WebAuthService
         _loginAttempts.TryRemove(identifier, out _);
     }
 
+    // Public throttle hooks so the SuperAdmin login endpoint (Program.cs), which doesn't
+    // go through OwnerLoginAsync, can reuse the same 5-attempts / 15-minute lockout.
+    public bool IsLoginBlocked(string key) => IsBlocked(key);
+    public void RecordLoginFailure(string key) => RecordFailedAttempt(key);
+    public void ClearLoginFailures(string key) => ClearAttempts(key);
+
     /// <summary>
     /// Authenticate a gym owner/admin/user.
     /// <paramref name="requiredGym"/> — when set, restricts the lookup to that one gym's DB

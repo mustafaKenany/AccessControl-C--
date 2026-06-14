@@ -550,8 +550,15 @@ app.MapPost("/api/auth/login", async (HttpContext ctx, WebAuthService auth, Sess
     return Results.Ok(new { success = true, redirect });
 });
 
-app.MapPost("/api/auth/superadmin-login", async (HttpContext ctx, SessionService sessions) =>
+app.MapPost("/api/auth/superadmin-login", async (HttpContext ctx, SessionService sessions, WebAuthService auth) =>
 {
+    // Brute-force protection (same 5-attempt / 15-min lockout as owner login).
+    // Keyed by client IP since the SuperAdmin username is fixed.
+    var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    var throttleKey = $"superadmin:{ip}";
+    if (auth.IsLoginBlocked(throttleKey))
+        return Results.Ok(new { success = false, error = "Too many failed attempts. Please try again in 15 minutes." });
+
     using var doc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
     var root = doc.RootElement;
     var username = root.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
@@ -580,9 +587,12 @@ app.MapPost("/api/auth/superadmin-login", async (HttpContext ctx, SessionService
     }
 
     if (username.Trim() != configUser || !hashOk)
+    {
+        auth.RecordLoginFailure(throttleKey);
         return Results.Ok(new { success = false, error = "Invalid credentials" });
+    }
 
-    var ip = ctx.Connection.RemoteIpAddress?.ToString();
+    auth.ClearLoginFailures(throttleKey);
     var ua = ctx.Request.Headers.UserAgent.ToString();
     var token = await sessions.CreateAsync("SuperAdmin", "Super Admin", 0, "", 0, ip, ua);
 
