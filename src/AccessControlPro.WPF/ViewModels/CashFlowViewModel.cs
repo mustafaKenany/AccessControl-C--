@@ -238,6 +238,15 @@ public partial class CashFlowViewModel : ObservableObject
         {
             await _cashFlowService.AddExpenseAsync(dialog.SelectedCategory, dialog.Amount, dialog.Description);
             await LoadAsync();
+
+            if (CustomMessageBox.Confirm(
+                Lang.IsArabic ? "طباعة وصل صرف؟" : "Print an expense receipt?",
+                Lang.IsArabic ? "وصل صرف" : "Expense Receipt"))
+            {
+                Helpers.ThermalReceipt.PrintCashReceipt(
+                    Lang.IsArabic ? "وصل صرف" : "Expense Receipt",
+                    dialog.SelectedCategory, dialog.Description, dialog.Amount);
+            }
         }
         catch (Exception ex)
         {
@@ -256,6 +265,15 @@ public partial class CashFlowViewModel : ObservableObject
         {
             await _cashFlowService.AddIncomeAsync(dialog.SelectedCategory, dialog.Amount, dialog.Description);
             await LoadAsync();
+
+            if (CustomMessageBox.Confirm(
+                Lang.IsArabic ? "طباعة وصل قبض؟" : "Print an income receipt?",
+                Lang.IsArabic ? "وصل قبض" : "Income Receipt"))
+            {
+                Helpers.ThermalReceipt.PrintCashReceipt(
+                    Lang.IsArabic ? "وصل قبض" : "Income Receipt",
+                    dialog.SelectedCategory, dialog.Description, dialog.Amount);
+            }
         }
         catch (Exception ex)
         {
