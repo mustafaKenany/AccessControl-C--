@@ -448,6 +448,10 @@ public partial class SetupWizardWindow : Window
                 ["WhatsApp"] = "07812573845",
                 ["LogoPath"] = ""
             },
+            // Operator's choice at setup. When false the app runs fully local/offline: no sync,
+            // no update check, no diagnostics upload — so a site with no internet never logs
+            // recurring cloud errors. Defaults to true (online) if the checkbox is missing.
+            ["CloudSyncEnabled"] = CloudEnabledCheck?.IsChecked ?? true,
             ["CloudSyncUrl"] = "https://hmtech.solutions/api/sync",
             // Auto-generate a unique CloudApiKey if the operator left the box blank.
             // The previous fallback ("HMTech-Sync-2026") was a single hardcoded key

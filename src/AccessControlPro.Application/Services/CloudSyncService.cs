@@ -28,8 +28,34 @@ public class CloudSyncService : ICloudSyncService
 
     public bool IsCloudEnabled()
     {
+        // An offline / local-only install (operator unchecked "cloud" at setup) makes no cloud
+        // calls at all — so a site with no internet never logs recurring sync errors.
+        if (!IsCloudSyncEnabledFlag()) return false;
         var url = LoadCloudSyncUrl();
         return !string.IsNullOrEmpty(url);
+    }
+
+    /// <summary>
+    /// Reads the optional "CloudSyncEnabled" flag from appsettings.json. Defaults to TRUE when the
+    /// key is absent, so existing installs keep syncing. The setup wizard writes false for sites
+    /// that opt out of the cloud.
+    /// </summary>
+    public static bool IsCloudSyncEnabledFlag()
+    {
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            if (!File.Exists(path)) return true;
+            var doc = JsonDocument.Parse(File.ReadAllText(path));
+            if (doc.RootElement.TryGetProperty("CloudSyncEnabled", out var flag))
+            {
+                if (flag.ValueKind == JsonValueKind.False) return false;
+                if (flag.ValueKind == JsonValueKind.True) return true;
+                if (flag.ValueKind == JsonValueKind.String && bool.TryParse(flag.GetString(), out var b)) return b;
+            }
+        }
+        catch { }
+        return true;
     }
 
     public async Task<string> SyncToCloudAsync()

@@ -340,6 +340,16 @@
                             <ComboBoxItem Content="Multi Device (date-based only)" Tag="Multi"/>
                         </ComboBox>
 
+                        <!-- Cloud on/off: unchecked = fully local/offline install (no sync, no update
+                             checks, no cloud errors). Checked = online cloud sync + remote support. -->
+                        <CheckBox x:Name="CloudEnabledCheck" IsChecked="True" Margin="0,4,0,8"
+                                  Foreground="White" FontSize="14" FontWeight="SemiBold">
+                            <TextBlock Text="Connect to cloud (online sync, auto-updates &amp; remote support)"
+                                       Foreground="White" TextWrapping="Wrap"/>
+                        </CheckBox>
+                        <TextBlock Text="Leave unchecked for a site with no internet — the app then runs fully offline (local only)."
+                                   FontSize="11" Foreground="#7A8B99" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
                         <!-- Cloud API Key -->
                         <TextBlock Text="Cloud API Key (from Super Admin):" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,4"/>
                         <TextBox x:Name="CloudApiKeyBox" FontSize="14" Background="#1E2D3D" Foreground="White"

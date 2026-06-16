@@ -487,11 +487,15 @@ public partial class App : System.Windows.Application
             // Auto-update check: fire-and-forget HTTP GET to /api/version/latest. If a newer
             // build is available and the customer hasn't snoozed/skipped this version, show
             // a non-blocking prompt after login. Fully non-fatal — login proceeds either way.
-            _ = Task.Run(async () =>
+            // Skipped entirely on offline / local-only installs (no cloud calls).
+            if (CloudSyncService.IsCloudSyncEnabledFlag())
             {
-                try { await CheckForUpdateAndPromptAsync(); }
-                catch (Exception ex) { StartupLog($"Update check failed (non-critical): {ex.Message}"); }
-            });
+                _ = Task.Run(async () =>
+                {
+                    try { await CheckForUpdateAndPromptAsync(); }
+                    catch (Exception ex) { StartupLog($"Update check failed (non-critical): {ex.Message}"); }
+                });
+            }
 
             // Prevent auto-shutdown when LoginWindow closes (it's the only window at that point).
             // Guard: if the app is already shutting down (a near-simultaneous second launch, or a
@@ -890,6 +894,8 @@ public partial class App : System.Windows.Application
             //      gets the bundle before the user does anything that overwrites logs.
             //   2) Auto-due (~2 min in): no-op unless 15+ days have passed since the
             //      last successful upload.
+            // Both upload to the cloud, so they're skipped on offline / local-only installs.
+            if (CloudSyncService.IsCloudSyncEnabledFlag())
             _ = Task.Run(async () =>
             {
                 try
