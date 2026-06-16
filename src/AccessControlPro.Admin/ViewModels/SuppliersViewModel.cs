@@ -17,6 +17,7 @@ public partial class SuppliersViewModel : ObservableObject
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private SupplierDto? _selectedSupplier;
     [ObservableProperty] private bool _isEditing;
+    [ObservableProperty] private string _searchText = "";
 
     // Edit fields
     [ObservableProperty] private string _editName = "";
@@ -24,6 +25,7 @@ public partial class SuppliersViewModel : ObservableObject
     [ObservableProperty] private string _editAddress = "";
     [ObservableProperty] private string _editContactPerson = "";
 
+    private readonly List<SupplierDto> _allSuppliers = new();
     public ObservableCollection<SupplierDto> Suppliers { get; } = new();
 
     public SuppliersViewModel(ISupplierService supplierService)
@@ -37,15 +39,32 @@ public partial class SuppliersViewModel : ObservableObject
         try
         {
             var suppliers = await _supplierService.GetAllAsync();
-            Suppliers.Clear();
-            foreach (var s in suppliers)
-                Suppliers.Add(s);
+            _allSuppliers.Clear();
+            _allSuppliers.AddRange(suppliers);
+            ApplyFilter();
         }
         catch (Exception ex)
         {
             CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
         }
         finally { IsLoading = false; }
+    }
+
+    partial void OnSearchTextChanged(string value) => ApplyFilter();
+
+    private void ApplyFilter()
+    {
+        Suppliers.Clear();
+        var q = _allSuppliers.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(SearchText))
+        {
+            var t = SearchText.Trim();
+            q = q.Where(s =>
+                (s.Name?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (s.Phone?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (s.ContactPerson?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+        foreach (var s in q) Suppliers.Add(s);
     }
 
     partial void OnSelectedSupplierChanged(SupplierDto? value)

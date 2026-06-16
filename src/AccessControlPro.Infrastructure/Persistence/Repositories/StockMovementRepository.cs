@@ -39,4 +39,15 @@ public class StockMovementRepository : IStockMovementRepository
         db.StockMovements.Add(movement);
         await db.SaveChangesAsync();
     }
+
+    public async Task DeleteByPurchaseOrderAsync(int purchaseOrderId)
+    {
+        await using var db = _factory.CreateDbContext();
+        var rows = await db.StockMovements
+            .Where(m => m.PurchaseOrderId == purchaseOrderId)
+            .ToListAsync();
+        if (rows.Count == 0) return;
+        db.StockMovements.RemoveRange(rows);
+        await db.SaveChangesAsync();
+    }
 }

@@ -34,7 +34,26 @@
 
             <!-- Left: Suppliers DataGrid -->
             <Border Grid.Column="0" Style="{StaticResource DashboardCard}" Margin="0,0,8,0">
-                <DataGrid ItemsSource="{Binding Suppliers}"
+              <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Search bar -->
+                <Border Grid.Row="0" Background="{StaticResource BgInputBrush}" CornerRadius="8"
+                        Padding="10,0" Margin="0,0,0,12">
+                    <DockPanel>
+                        <fa:ImageAwesome Icon="Search" Width="13" Height="13" DockPanel.Dock="Left"
+                                         Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextPrimaryBrush}"
+                                 CaretBrush="{StaticResource TextPrimaryBrush}" FontFamily="{StaticResource CairoFont}"
+                                 FontSize="13" Padding="0,9" VerticalContentAlignment="Center"/>
+                    </DockPanel>
+                </Border>
+
+                <DataGrid Grid.Row="1" ItemsSource="{Binding Suppliers}"
                           SelectedItem="{Binding SelectedSupplier}"
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
@@ -107,6 +126,7 @@
                                             Binding="{Binding Address}" Width="*"/>
                     </DataGrid.Columns>
                 </DataGrid>
+              </Grid>
             </Border>
 
             <!-- Right: Add/Edit Panel -->

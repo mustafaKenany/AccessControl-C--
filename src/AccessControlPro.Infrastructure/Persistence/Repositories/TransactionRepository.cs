@@ -51,10 +51,36 @@ public class TransactionRepository : ITransactionRepository
         return await db.Transactions.Include(t => t.RelatedEmployee).FirstOrDefaultAsync(t => t.Id == id);
     }
 
+    public async Task<Transaction?> GetByReferenceAsync(string reference)
+    {
+        if (string.IsNullOrWhiteSpace(reference)) return null;
+        await using var db = _factory.CreateDbContext();
+        return await db.Transactions
+            .Where(t => t.Reference == reference)
+            .OrderByDescending(t => t.CreatedAt)
+            .FirstOrDefaultAsync();
+    }
+
     public async Task AddAsync(Transaction transaction)
     {
         await using var db = _factory.CreateDbContext();
         db.Transactions.Add(transaction);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task UpdateAsync(Transaction transaction)
+    {
+        await using var db = _factory.CreateDbContext();
+        db.Transactions.Update(transaction);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(int id)
+    {
+        await using var db = _factory.CreateDbContext();
+        var existing = await db.Transactions.FirstOrDefaultAsync(t => t.Id == id);
+        if (existing == null) return;
+        db.Transactions.Remove(existing);
         await db.SaveChangesAsync();
     }
 

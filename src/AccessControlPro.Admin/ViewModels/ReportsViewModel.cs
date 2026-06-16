@@ -15,13 +15,19 @@ public partial class ReportsViewModel : ObservableObject
     private readonly IEmployeeService _employeeService;
     private readonly IFinanceService _financeService;
     private readonly IInventoryService _inventoryService;
+    private readonly ISupplierService _supplierService;
 
     public LanguageManager Lang => LanguageManager.Instance;
 
     [ObservableProperty] private bool _isLoading;
-    [ObservableProperty] private int _selectedReportType; // 0=Players 1=Finance 2=Inventory 3=Sales 4=Purchases 5=Movements
+    [ObservableProperty] private int _selectedReportType; // 0=Players 1=Finance 2=Inventory 3=Sales 4=Purchases 5=Movements 6=Supplier
     [ObservableProperty] private DateTime _dateFrom = DateTime.Today.AddMonths(-1);
     [ObservableProperty] private DateTime _dateTo = DateTime.Today;
+
+    // Supplier report
+    [ObservableProperty] private SupplierDto? _selectedSupplierFilter;
+    [ObservableProperty] private decimal _supplierBalance; // overall remaining owed to the selected supplier (all-time)
+    public ObservableCollection<SupplierDto> Suppliers { get; } = new();
 
     public ObservableCollection<EmployeeDto> PlayerResults { get; } = new();
     public ObservableCollection<TransactionDto> FinanceResults { get; } = new();
@@ -29,6 +35,7 @@ public partial class ReportsViewModel : ObservableObject
     public ObservableCollection<SalesReportRow> SalesResults { get; } = new();
     public ObservableCollection<PurchaseOrderDto> PurchaseResults { get; } = new();
     public ObservableCollection<StockMovementDto> MovementResults { get; } = new();
+    public ObservableCollection<SupplierPurchaseRow> SupplierResults { get; } = new();
 
     [ObservableProperty] private int _resultCount;
     [ObservableProperty] private decimal _reportTotal;       // sales revenue / purchases total for the period
@@ -37,11 +44,34 @@ public partial class ReportsViewModel : ObservableObject
     public ReportsViewModel(
         IEmployeeService employeeService,
         IFinanceService financeService,
-        IInventoryService inventoryService)
+        IInventoryService inventoryService,
+        ISupplierService supplierService)
     {
         _employeeService = employeeService;
         _financeService = financeService;
         _inventoryService = inventoryService;
+        _supplierService = supplierService;
+    }
+
+    /// <summary>Populate the supplier picker the first time the Supplier report is opened.</summary>
+    public async Task EnsureSuppliersLoadedAsync()
+    {
+        if (Suppliers.Count > 0) return;
+        try
+        {
+            var suppliers = await _supplierService.GetAllAsync();
+            Suppliers.Clear();
+            foreach (var s in suppliers) Suppliers.Add(s);
+        }
+        catch { /* non-fatal: combo just stays empty */ }
+    }
+
+    public bool IsSupplierReport => SelectedReportType == 6;
+
+    partial void OnSelectedReportTypeChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsSupplierReport));
+        if (value == 6) _ = EnsureSuppliersLoadedAsync();
     }
 
     [RelayCommand]
@@ -113,6 +143,42 @@ public partial class ReportsViewModel : ObservableObject
                     foreach (var m in movements) MovementResults.Add(m);
                     ResultCount = MovementResults.Count;
                     break;
+
+                case 6: // Supplier purchases (itemized) + outstanding balance
+                    await EnsureSuppliersLoadedAsync();
+                    SupplierResults.Clear();
+                    ReportTotal = 0;
+                    SupplierBalance = 0;
+                    if (SelectedSupplierFilter == null)
+                    {
+                        ResultCount = 0;
+                        break;
+                    }
+                    var sid = SelectedSupplierFilter.Id;
+                    var theirOrders = (await _inventoryService.GetAllPurchaseOrdersAsync())
+                        .Where(o => o.SupplierId == sid)
+                        .ToList();
+                    // Overall outstanding balance owed to this supplier (all-time, not just the range).
+                    SupplierBalance = theirOrders.Sum(o => o.RemainingAmount);
+                    // Itemized purchases within the selected date range, aggregated by product.
+                    var inRange = theirOrders
+                        .Where(o => o.OrderDate.Date >= DateFrom.Date && o.OrderDate.Date <= DateTo.Date)
+                        .ToList();
+                    var rows = inRange
+                        .SelectMany(o => o.Items)
+                        .GroupBy(i => i.ProductName)
+                        .Select(g => new SupplierPurchaseRow
+                        {
+                            ProductName = g.Key,
+                            Quantity = g.Sum(x => x.Quantity),
+                            Total = g.Sum(x => x.TotalCost)
+                        })
+                        .OrderByDescending(r => r.Total)
+                        .ToList();
+                    foreach (var r in rows) SupplierResults.Add(r);
+                    ResultCount = rows.Count;
+                    ReportTotal = inRange.Sum(o => o.TotalAmount - o.Discount);
+                    break;
             }
         }
         catch (Exception ex)
@@ -132,8 +198,97 @@ public partial class ReportsViewModel : ObservableObject
             "sales" => 3,
             "purchases" => 4,
             "movements" => 5,
+            "supplier" => 6,
             _ => 0
         };
+    }
+
+    [RelayCommand]
+    private void PrintReport()
+    {
+        bool ar = Lang.IsArabic;
+        var period = $"{DateFrom:yyyy-MM-dd}  →  {DateTo:yyyy-MM-dd}";
+        string title;
+        string[] headers;
+        double[] widths;
+        int[] rightCols;
+        List<IReadOnlyList<string>> rows = new();
+        IReadOnlyList<string>? total = null;
+
+        switch (SelectedReportType)
+        {
+            case 0:
+                title = Lang.RptPlayers;
+                headers = new[] { Lang.PlayerName, Lang.Phone, Lang.Subscription, Lang.RptEndDate, Lang.Fee, Lang.Paid, Lang.Remaining };
+                widths = new[] { 2.2, 1.4, 1.6, 1.2, 1.0, 1.0, 1.0 };
+                rightCols = new[] { 4, 5, 6 };
+                foreach (var p in PlayerResults)
+                    rows.Add(new[] { p.FullNameEn, p.Phone, p.SubscriptionType, p.EndDate.ToString("yyyy-MM-dd"), p.SubscriptionFee.ToString("N0"), p.AmountPaid.ToString("N0"), p.RemainingBalance.ToString("N0") });
+                break;
+            case 1:
+                title = Lang.RptFinance;
+                headers = new[] { Lang.SmDate, Lang.SmType, Lang.PrdCategory, Lang.PrdPrice, Lang.AuditDetails };
+                widths = new[] { 1.4, 1.0, 1.6, 1.2, 3.0 };
+                rightCols = new[] { 3 };
+                foreach (var t in FinanceResults)
+                    rows.Add(new[] { t.CreatedAt.ToString("yyyy-MM-dd"), t.Type.ToString(), t.Category, t.Amount.ToString("N0"), t.Description });
+                break;
+            case 2:
+                title = Lang.RptInventory;
+                headers = new[] { Lang.PrdName, Lang.PrdNameAr, Lang.PrdBarcode, Lang.PrdPrice, Lang.PrdCostPrice, Lang.PrdProfit, Lang.PrdCategory, Lang.PrdStock };
+                widths = new[] { 2.0, 2.0, 1.2, 1.0, 1.0, 1.0, 1.2, 0.8 };
+                rightCols = new[] { 3, 4, 5, 7 };
+                foreach (var p in InventoryResults)
+                    rows.Add(new[] { p.Name, p.NameAr, p.Barcode, p.Price.ToString("N0"), p.CostPrice.ToString("N0"), p.Profit.ToString("N0"), p.Category, p.Stock.ToString() });
+                break;
+            case 3:
+                title = Lang.RptSales;
+                headers = new[] { Lang.PrdName, ar ? "الكمية" : "Qty", ar ? "الإيراد" : "Revenue", Lang.PrdProfit };
+                widths = new[] { 3.0, 1.0, 1.4, 1.4 };
+                rightCols = new[] { 1, 2, 3 };
+                foreach (var s in SalesResults)
+                    rows.Add(new[] { s.ProductName, s.Quantity.ToString(), s.Revenue.ToString("N0"), s.Profit.ToString("N0") });
+                total = new[] { ar ? "الإجمالي" : "TOTAL", "", ReportTotal.ToString("N0"), ReportTotalProfit.ToString("N0") };
+                break;
+            case 4:
+                title = Lang.RptPurchases;
+                headers = new[] { Lang.RptEndDate, Lang.NavSuppliers, ar ? "الإجمالي" : "Total", Lang.Paid, Lang.Remaining, ar ? "الحالة" : "Status" };
+                widths = new[] { 1.2, 2.0, 1.2, 1.2, 1.2, 1.0 };
+                rightCols = new[] { 2, 3, 4 };
+                foreach (var o in PurchaseResults)
+                    rows.Add(new[] { o.OrderDate.ToString("yyyy-MM-dd"), o.SupplierName, o.TotalAmount.ToString("N0"), o.AmountPaid.ToString("N0"), o.RemainingAmount.ToString("N0"), o.PaymentStatus });
+                total = new[] { ar ? "الإجمالي" : "TOTAL", "", ReportTotal.ToString("N0"), "", "", "" };
+                break;
+            case 5:
+                title = Lang.RptMovements;
+                headers = new[] { Lang.RptEndDate, Lang.PrdName, ar ? "وارد/صادر" : "In/Out", ar ? "الكمية" : "Qty", Lang.PrdPrice, ar ? "المرجع" : "Ref" };
+                widths = new[] { 1.6, 2.4, 1.0, 0.8, 1.2, 1.4 };
+                rightCols = new[] { 3, 4 };
+                foreach (var m in MovementResults)
+                    rows.Add(new[] { m.CreatedAt.ToString("yyyy-MM-dd HH:mm"), m.ProductName, m.Type.ToString(), m.Quantity.ToString(), m.UnitPrice.ToString("N0"), m.Reference ?? "" });
+                break;
+            case 6:
+                title = $"{Lang.RptSupplier}: {SelectedSupplierFilter?.Name}";
+                headers = new[] { Lang.PrdName, ar ? "الكمية" : "Qty", ar ? "الإجمالي" : "Total" };
+                widths = new[] { 3.0, 1.2, 1.6 };
+                rightCols = new[] { 1, 2 };
+                foreach (var r in SupplierResults)
+                    rows.Add(new[] { r.ProductName, r.Quantity.ToString(), r.Total.ToString("N0") });
+                total = new[] { ar ? $"المشتريات: {ReportTotal:N0}  —  المستحق: {SupplierBalance:N0}" : $"Purchased: {ReportTotal:N0}  —  Outstanding: {SupplierBalance:N0}", "", "" };
+                break;
+            default:
+                return;
+        }
+
+        if (rows.Count == 0)
+        {
+            CustomMessageBox.Show(
+                ar ? "لا توجد بيانات للطباعة" : "No data to print",
+                Lang.ValidationTitle, MsgType.Warning);
+            return;
+        }
+
+        TableReportPrinter.Print(title, period, headers, widths, rows, rightCols, total, docName: title);
     }
 
     // Sanitize CSV field to prevent formula injection (=, +, -, @, tab, CR)
@@ -200,6 +355,16 @@ public partial class ReportsViewModel : ObservableObject
                     foreach (var m in MovementResults)
                         lines.Add($"{m.CreatedAt:yyyy-MM-dd HH:mm},\"{CsvSafe(m.ProductName)}\",{m.Type},{m.Quantity},{m.UnitPrice},\"{CsvSafe(m.Reference)}\",\"{CsvSafe(m.CreatedBy)}\"");
                     break;
+
+                case 6:
+                    lines.Add($"Supplier,\"{CsvSafe(SelectedSupplierFilter?.Name)}\"");
+                    lines.Add($"Outstanding balance,{SupplierBalance}");
+                    lines.Add($"Purchased in range (net),{ReportTotal}");
+                    lines.Add("");
+                    lines.Add("Product,Quantity,Total");
+                    foreach (var r in SupplierResults)
+                        lines.Add($"\"{CsvSafe(r.ProductName)}\",{r.Quantity},{r.Total}");
+                    break;
             }
 
             await File.WriteAllLinesAsync(dialog.FileName, lines);
@@ -221,4 +386,12 @@ public class SalesReportRow
     public int Quantity { get; set; }
     public decimal Revenue { get; set; }
     public decimal Profit { get; set; }
+}
+
+/// <summary>One row of the supplier report: total quantity and cost of a product bought from that supplier.</summary>
+public class SupplierPurchaseRow
+{
+    public string ProductName { get; set; } = "";
+    public int Quantity { get; set; }
+    public decimal Total { get; set; }
 }

@@ -82,4 +82,74 @@
         </Setter>
     </Style>
 
+    <!-- Editable, type-to-filter ComboBox. Pair with h:ComboBoxSearch.SearchPath="Name,..".
+         Same dark look as DarkComboBox but with a PART_EditableTextBox the user can type in. -->
+    <Style x:Key="SearchableComboBox" TargetType="ComboBox">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="#E0E0E0"/>
+        <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="IsEditable" Value="True"/>
+        <Setter Property="IsTextSearchEnabled" Value="False"/>
+        <Setter Property="StaysOpenOnEdit" Value="True"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBox">
+                    <Grid>
+                        <ToggleButton x:Name="toggleButton"
+                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                      Focusable="False" ClickMode="Press">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border x:Name="border" Background="#2A2A3E"
+                                            BorderBrush="#3A3A50" BorderThickness="1.5">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition/>
+                                                <ColumnDefinition Width="32"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="1" Background="#222238" BorderThickness="1.5,0,0,0" BorderBrush="#3A3A50">
+                                                <Path Fill="#78CDD7" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Data="M 0 0 L 5 5 L 10 0 Z"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="BorderBrush" Value="#44A1A0"/>
+                                        </Trigger>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="border" Property="BorderBrush" Value="#44A1A0"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                        <TextBox x:Name="PART_EditableTextBox"
+                                 Margin="12,0,36,0" VerticalAlignment="Center"
+                                 Background="Transparent" BorderThickness="0" Padding="0"
+                                 Foreground="#E0E0E0" CaretBrush="#E0E0E0"
+                                 FontFamily="{StaticResource CairoFont}" FontWeight="Bold" FontSize="13"
+                                 IsReadOnly="{TemplateBinding IsReadOnly}"
+                                 VerticalContentAlignment="Center"/>
+                        <Popup x:Name="PART_Popup" AllowsTransparency="True"
+                               IsOpen="{TemplateBinding IsDropDownOpen}"
+                               Placement="Bottom" PopupAnimation="Slide">
+                            <Grid MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                  MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                <Border Background="#2A2A3E" BorderBrush="#44A1A0"
+                                        BorderThickness="1.5" Padding="0,4">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <StackPanel IsItemsHost="True"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+                        </Popup>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

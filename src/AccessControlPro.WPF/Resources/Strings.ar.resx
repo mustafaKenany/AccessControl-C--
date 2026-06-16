@@ -566,6 +566,7 @@
   <data name="PoAddItem" xml:space="preserve"><value>إضافة عنصر</value></data>
   <data name="PoNotes" xml:space="preserve"><value>ملاحظات</value></data>
   <data name="PoSubmit" xml:space="preserve"><value>تقديم الطلب</value></data>
+  <data name="PoEdit" xml:space="preserve"><value>تعديل</value></data>
   <!-- PO Payment -->
   <data name="PoDiscount" xml:space="preserve"><value>الخصم</value></data>
   <data name="PoPaid" xml:space="preserve"><value>المدفوع</value></data>
@@ -637,12 +638,16 @@
   <data name="RptTitle" xml:space="preserve"><value>التقارير والتصدير</value></data>
   <data name="RptSubtitle" xml:space="preserve"><value>إنشاء تقارير وتصدير البيانات إلى CSV</value></data>
   <data name="RptExport" xml:space="preserve"><value>تصدير CSV</value></data>
+  <data name="RptPrint" xml:space="preserve"><value>طباعة / PDF</value></data>
   <data name="RptPlayers" xml:space="preserve"><value>اللاعبين</value></data>
   <data name="RptFinance" xml:space="preserve"><value>المالية</value></data>
   <data name="RptInventory" xml:space="preserve"><value>المخزون</value></data>
   <data name="RptSales" xml:space="preserve"><value>المبيعات</value></data>
   <data name="RptPurchases" xml:space="preserve"><value>المشتريات</value></data>
   <data name="RptMovements" xml:space="preserve"><value>حركة المواد</value></data>
+  <data name="RptSupplier" xml:space="preserve"><value>المورد</value></data>
+  <data name="RptPurchasedInRange" xml:space="preserve"><value>المشتريات (الفترة المحددة)</value></data>
+  <data name="RptOutstanding" xml:space="preserve"><value>الرصيد المستحق (الكلي)</value></data>
 
   <data name="RptRun" xml:space="preserve"><value>تشغيل التقرير</value></data>
   <!-- Monitor Display (Projector) -->

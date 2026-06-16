@@ -96,12 +96,10 @@
 
         <!-- Tab Bar -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,16">
-            <Button Style="{StaticResource TabBtn}" Command="{Binding ShowTabCommand}" CommandParameter="orders"
-                    Content="{Binding Lang.PoHistory}">
-                <Button.Triggers>
-                    <EventTrigger RoutedEvent="Loaded"/>
-                </Button.Triggers>
-            </Button>
+            <Button Style="{StaticResource TabBtn}" Command="{Binding ShowTabCommand}" CommandParameter="neworder"
+                    Content="{Binding Lang.PoNewOrder}"/>
+            <Button Style="{StaticResource TabBtn}" Command="{Binding ShowTabCommand}" CommandParameter="history"
+                    Content="{Binding Lang.PoHistory}" Margin="4,0,0,0"/>
             <Button Style="{StaticResource TabBtn}" Command="{Binding ShowTabCommand}" CommandParameter="movements"
                     Content="{Binding Lang.SmTitle}" Margin="4,0,0,0"/>
             <Button Style="{StaticResource TabBtn}" Command="{Binding ShowTabCommand}" CommandParameter="balances"
@@ -109,7 +107,7 @@
             <Border Height="2" Background="#15FFFFFF" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"/>
         </StackPanel>
 
-        <!-- TAB 0: Purchase Orders -->
+        <!-- TABS 0 (New Order) + 1 (History) share this row; each card shows for its tab -->
         <Grid Grid.Row="2">
             <Grid.Style>
                 <Style TargetType="Grid">
@@ -118,17 +116,25 @@
                         <DataTrigger Binding="{Binding SelectedTab}" Value="0">
                             <Setter Property="Visibility" Value="Visible"/>
                         </DataTrigger>
+                        <DataTrigger Binding="{Binding SelectedTab}" Value="1">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
                     </Style.Triggers>
                 </Style>
             </Grid.Style>
 
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="400"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Left: Order History Table -->
-            <Border Grid.Column="0" Style="{StaticResource DashboardCard}" Margin="0,0,8,0">
+            <!-- TAB 1: Order History (full width) -->
+            <Border Margin="0">
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource DashboardCard}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedTab}" Value="1">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -136,13 +142,27 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
-                        <fa:ImageAwesome Icon="History" Width="14" Height="14"
-                                         Foreground="{StaticResource PrimaryLightBrush}" Margin="0,0,8,0"
-                                         VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding Lang.PoHistory}" FontSize="15"
-                                   Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-                    </StackPanel>
+                    <DockPanel Grid.Row="0" Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                            <fa:ImageAwesome Icon="History" Width="14" Height="14"
+                                             Foreground="{StaticResource PrimaryLightBrush}" Margin="0,0,8,0"
+                                             VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Lang.PoHistory}" FontSize="15"
+                                       Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <!-- Search past purchases -->
+                        <Border Background="{StaticResource BgInputBrush}" CornerRadius="8" Padding="10,0"
+                                Margin="16,0,0,0" Width="240" HorizontalAlignment="Right">
+                            <DockPanel>
+                                <fa:ImageAwesome Icon="Search" Width="12" Height="12" DockPanel.Dock="Left"
+                                                 Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBox Text="{Binding OrderSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextPrimaryBrush}"
+                                         CaretBrush="{StaticResource TextPrimaryBrush}" FontFamily="{StaticResource CairoFont}"
+                                         FontSize="12" Padding="0,8" VerticalContentAlignment="Center"/>
+                            </DockPanel>
+                        </Border>
+                    </DockPanel>
 
                     <DataGrid Grid.Row="1"
                               ItemsSource="{Binding Orders}"
@@ -206,14 +226,36 @@
                             Padding="14,10" Margin="0,10,0,0"
                             Visibility="{Binding SelectedOrder, Converter={StaticResource NullToVisibilityConverter}}">
                         <StackPanel>
-                            <TextBlock FontSize="13" FontWeight="Bold" Foreground="{StaticResource PrimaryLightBrush}" Margin="0,0,0,6">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="PO #{0} — {1}">
-                                        <Binding Path="SelectedOrder.Id"/>
-                                        <Binding Path="SelectedOrder.SupplierName"/>
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
+                            <DockPanel Margin="0,0,0,6">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" Padding="10,4"
+                                        Command="{Binding DeleteOrderCommand}" CommandParameter="{Binding SelectedOrder}"
+                                        Cursor="Hand" VerticalAlignment="Center" Margin="6,0,0,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <fa:ImageAwesome Icon="Trash" Width="10" Height="10"
+                                                         Foreground="{StaticResource DangerBrush}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Lang.CatDelete}" FontSize="11"
+                                                   Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" Padding="10,4"
+                                        Command="{Binding EditOrderCommand}" CommandParameter="{Binding SelectedOrder}"
+                                        Cursor="Hand" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <fa:ImageAwesome Icon="Pencil" Width="10" Height="10"
+                                                         Foreground="{StaticResource PrimaryLightBrush}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Lang.PoEdit}" FontSize="11"
+                                                   Foreground="{StaticResource PrimaryLightBrush}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock FontSize="13" FontWeight="Bold" Foreground="{StaticResource PrimaryLightBrush}" VerticalAlignment="Center">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="PO #{0} — {1}">
+                                            <Binding Path="SelectedOrder.Id"/>
+                                            <Binding Path="SelectedOrder.SupplierName"/>
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </DockPanel>
                             <ItemsControl ItemsSource="{Binding SelectedOrder.Items}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -278,8 +320,18 @@
                 </Grid>
             </Border>
 
-            <!-- Right: New Purchase Order Builder -->
-            <Border Grid.Column="1" Style="{StaticResource DashboardCard}" Margin="8,0,0,0">
+            <!-- TAB 0: New Purchase Order Builder -->
+            <Border Margin="0" HorizontalAlignment="Left" Width="460">
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource DashboardCard}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedTab}" Value="0">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <DockPanel>
                     <!-- Title -->
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,16">
@@ -295,7 +347,8 @@
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                     <ComboBox DockPanel.Dock="Top" ItemsSource="{Binding Suppliers}"
                               SelectedItem="{Binding SelectedSupplier}"
-                              Style="{StaticResource DarkComboBox}"
+                              Style="{StaticResource SearchableComboBox}"
+                              h:ComboBoxSearch.SearchPath="Name,Phone"
                               Margin="0,0,0,14">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
@@ -332,7 +385,8 @@
                         </Grid.ColumnDefinitions>
                         <ComboBox Grid.Column="0" ItemsSource="{Binding Products}"
                                   SelectedItem="{Binding SelectedProduct}"
-                                  Style="{StaticResource DarkComboBox}" Margin="0,0,4,0">
+                                  Style="{StaticResource SearchableComboBox}"
+                                  h:ComboBoxSearch.SearchPath="Name,NameAr,Barcode" Margin="0,0,4,0">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Name}" Foreground="#E0E0E0"
@@ -397,8 +451,17 @@
                             <StackPanel Orientation="Horizontal">
                                 <fa:ImageAwesome Icon="Check" Width="14" Height="14"
                                                  Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Lang.PoSubmit}" FontSize="14" Foreground="White"/>
+                                <TextBlock Text="{Binding SubmitButtonText}" FontSize="14" Foreground="White"/>
                             </StackPanel>
+                        </Button>
+
+                        <!-- Cancel edit (only while editing an existing PO) -->
+                        <Button Style="{StaticResource SecondaryButton}" Padding="0,9" Margin="0,8,0,0"
+                                Command="{Binding CancelEditOrderCommand}" Cursor="Hand"
+                                HorizontalContentAlignment="Center"
+                                Visibility="{Binding IsEditingOrder, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding Lang.Cancel}" FontSize="13"
+                                       Foreground="{StaticResource TextSecondaryBrush}"/>
                         </Button>
                     </StackPanel>
 
@@ -439,13 +502,13 @@
             </Border>
         </Grid>
 
-        <!-- TAB 1: Stock Movements -->
+        <!-- TAB 2: Stock Movements -->
         <Grid Grid.Row="2">
             <Grid.Style>
                 <Style TargetType="Grid">
                     <Setter Property="Visibility" Value="Collapsed"/>
                     <Style.Triggers>
-                        <DataTrigger Binding="{Binding SelectedTab}" Value="1">
+                        <DataTrigger Binding="{Binding SelectedTab}" Value="2">
                             <Setter Property="Visibility" Value="Visible"/>
                         </DataTrigger>
                     </Style.Triggers>
@@ -474,7 +537,8 @@
                                    VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <ComboBox Width="180" ItemsSource="{Binding AllProducts}"
                                   SelectedItem="{Binding FilterProduct}"
-                                  Style="{StaticResource DarkComboBox}" Margin="0,0,14,0">
+                                  Style="{StaticResource SearchableComboBox}"
+                                  h:ComboBoxSearch.SearchPath="Name,NameAr,Barcode" Margin="0,0,14,0">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Name}" Foreground="#E0E0E0"
@@ -500,6 +564,15 @@
                             <StackPanel Orientation="Horizontal">
                                 <fa:ImageAwesome Icon="Eraser" Width="12" Height="12" Foreground="White" Margin="0,0,6,0"/>
                                 <TextBlock Text="{Binding Lang.SmClear}" FontSize="12" Foreground="White"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Print / PDF the current movements -->
+                        <Button Style="{StaticResource PrimaryButton}" Padding="8,6" Cursor="Hand" Margin="8,0,0,0"
+                                Command="{Binding PrintMovementsCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="Print" Width="12" Height="12" Foreground="White" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding Lang.RptPrint}" FontSize="12" Foreground="White"/>
                             </StackPanel>
                         </Button>
                     </WrapPanel>
@@ -558,13 +631,13 @@
             </Border>
         </Grid>
 
-        <!-- TAB 2: Supplier Balances -->
+        <!-- TAB 3: Supplier Balances -->
         <Grid Grid.Row="2">
             <Grid.Style>
                 <Style TargetType="Grid">
                     <Setter Property="Visibility" Value="Collapsed"/>
                     <Style.Triggers>
-                        <DataTrigger Binding="{Binding SelectedTab}" Value="2">
+                        <DataTrigger Binding="{Binding SelectedTab}" Value="3">
                             <Setter Property="Visibility" Value="Visible"/>
                         </DataTrigger>
                     </Style.Triggers>

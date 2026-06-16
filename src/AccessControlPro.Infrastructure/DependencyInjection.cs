@@ -24,10 +24,19 @@ public static class DependencyInjection
         // exponential backoff between retries (~2s, ~4s, ~8s) and only retries SQL errors
         // tagged as transient — never retries syntax errors, constraint violations, etc.
         static void ConfigureSql(Microsoft.EntityFrameworkCore.Infrastructure.SqlServerDbContextOptionsBuilder b)
-            => b.EnableRetryOnFailure(
+        {
+            b.EnableRetryOnFailure(
                 maxRetryCount: 3,
                 maxRetryDelay: TimeSpan.FromSeconds(10),
                 errorNumbersToAdd: null);
+
+            // Pin SQL generation to SQL Server 2014 (compat 120). EF Core 8 otherwise
+            // emits OPENJSON(...) WITH (...) for multi-row inserts (e.g. a purchase order
+            // with several items), which requires SQL Server 2016+ at compat level 130 and
+            // fails with "Incorrect syntax near the keyword 'WITH'" on older installs.
+            // Level 120 makes EF use the classic multi-row insert that runs everywhere.
+            b.UseCompatibilityLevel(120);
+        }
 
         // DbContextFactory for WPF desktop — each repo method creates its own context
         services.AddDbContextFactory<AppDbContext>(options =>

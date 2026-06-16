@@ -42,4 +42,45 @@ public class PurchaseOrderRepository : IPurchaseOrderRepository
         db.PurchaseOrders.Update(order);
         await db.SaveChangesAsync();
     }
+
+    public async Task UpdateWithItemsAsync(PurchaseOrder order)
+    {
+        await using var db = _factory.CreateDbContext();
+        var existing = await db.PurchaseOrders
+            .Include(po => po.Items)
+            .FirstOrDefaultAsync(po => po.Id == order.Id)
+            ?? throw new InvalidOperationException($"Purchase order with ID {order.Id} not found.");
+
+        existing.SupplierId = order.SupplierId;
+        existing.OrderDate = order.OrderDate;
+        existing.TotalAmount = order.TotalAmount;
+        existing.Discount = order.Discount;
+        existing.AmountPaid = order.AmountPaid;
+        existing.PaymentStatus = order.PaymentStatus;
+        existing.Notes = order.Notes;
+
+        // Replace line items: clearing the tracked collection deletes the old rows (orphans),
+        // then we add the new set. Done on a tracked entity so EF emits the right delete/insert.
+        existing.Items.Clear();
+        foreach (var it in order.Items)
+            existing.Items.Add(new PurchaseOrderItem
+            {
+                ProductId = it.ProductId,
+                Quantity = it.Quantity,
+                UnitCost = it.UnitCost
+            });
+
+        await db.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(int id)
+    {
+        await using var db = _factory.CreateDbContext();
+        var existing = await db.PurchaseOrders
+            .Include(po => po.Items)
+            .FirstOrDefaultAsync(po => po.Id == id);
+        if (existing == null) return;
+        db.PurchaseOrders.Remove(existing); // line items cascade-delete with the order
+        await db.SaveChangesAsync();
+    }
 }

@@ -18,6 +18,7 @@ public partial class ProductsViewModel : ObservableObject
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private ProductDto? _selectedProduct;
     [ObservableProperty] private bool _isEditing;
+    [ObservableProperty] private string _searchText = "";
 
     // Edit fields
     [ObservableProperty] private string _editName = "";
@@ -27,7 +28,10 @@ public partial class ProductsViewModel : ObservableObject
     [ObservableProperty] private string _editCostPrice = "";
     [ObservableProperty] private string _editCategory = "";
 
+    private readonly List<ProductDto> _allProducts = new();
     public ObservableCollection<ProductDto> Products { get; } = new();
+    /// <summary>Product categories (from the Categories screen) for the Add/Edit dropdown.</summary>
+    public ObservableCollection<string> Categories { get; } = new();
 
     public ProductsViewModel(IInventoryService inventoryService, ILookupService lookupService)
     {
@@ -40,16 +44,46 @@ public partial class ProductsViewModel : ObservableObject
         IsLoading = true;
         try
         {
-            var products = await _inventoryService.GetAllProductsAsync();
-            Products.Clear();
-            foreach (var p in products)
-                Products.Add(p);
+            var products = (await _inventoryService.GetAllProductsAsync()).ToList();
+            _allProducts.Clear();
+            _allProducts.AddRange(products);
+            ApplyFilter();
+
+            // Categories dropdown: managed "ProductCategory" list + any already used by products.
+            var lookups = await _lookupService.GetByCategoryAsync("ProductCategory");
+            var names = lookups
+                .Select(c => Lang.IsArabic && !string.IsNullOrWhiteSpace(c.NameAr) ? c.NameAr : c.Name)
+                .Concat(products.Select(p => p.Category))
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct()
+                .OrderBy(s => s)
+                .ToList();
+            Categories.Clear();
+            foreach (var n in names) Categories.Add(n);
         }
         catch (Exception ex)
         {
             CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
         }
         finally { IsLoading = false; }
+    }
+
+    partial void OnSearchTextChanged(string value) => ApplyFilter();
+
+    private void ApplyFilter()
+    {
+        Products.Clear();
+        var q = _allProducts.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(SearchText))
+        {
+            var t = SearchText.Trim();
+            q = q.Where(p =>
+                (p.Name?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (p.NameAr?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (p.Barcode?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (p.Category?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+        foreach (var p in q) Products.Add(p);
     }
 
     partial void OnSelectedProductChanged(ProductDto? value)

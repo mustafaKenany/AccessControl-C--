@@ -15,6 +15,8 @@ public class Transaction
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public decimal DiscountAmount { get; set; }
     public string DiscountReason { get; set; } = string.Empty;
+    /// <summary>Optional link back to a source document, e.g. "PO-12" for a purchase-order expense. Lets the entry stay in sync when that document is edited.</summary>
+    public string Reference { get; set; } = string.Empty;
 
     public Employee? RelatedEmployee { get; set; }
 }

@@ -37,4 +37,9 @@ public partial class ReportsView : UserControl
     {
         if (DataContext is ReportsViewModel vm) vm.SelectReportCommand.Execute("movements");
     }
+
+    private void SupplierTab_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is ReportsViewModel vm) vm.SelectReportCommand.Execute("supplier");
+    }
 }

@@ -170,8 +170,19 @@ public class InventoryService : IInventoryService
         {
             if (productList.TryGetValue(item.ProductId, out var product))
             {
-                product.Stock += item.Quantity;
-                if (item.UnitCost > 0) product.CostPrice = item.UnitCost; // track latest buy cost
+                // Weighted-average cost: new cost = (existing stock value + this purchase value)
+                // / total units. So buying the same item at different prices over time settles
+                // on a true average cost — which is what the profit/reports rely on. Falls back
+                // to the new unit cost when there's no prior stock or no prior cost recorded.
+                var oldStock = product.Stock;
+                var oldCost = product.CostPrice;
+                if (item.UnitCost > 0)
+                {
+                    product.CostPrice = (oldStock > 0 && oldCost > 0)
+                        ? Math.Round(((oldStock * oldCost) + (item.Quantity * item.UnitCost)) / (oldStock + item.Quantity), 2)
+                        : item.UnitCost;
+                }
+                product.Stock = oldStock + item.Quantity;
                 await _productRepo.UpdateAsync(product);
 
                 await _stockMovementRepo.AddAsync(new StockMovement
@@ -188,7 +199,7 @@ public class InventoryService : IInventoryService
             }
         }
 
-        // Record as expense transaction
+        // Record as expense transaction, tagged with the PO reference so an edit can find and adjust it.
         var description = string.Join(", ", dto.Items.Select(i => $"{i.ProductName} x{i.Quantity}"));
         await _transactionRepo.AddAsync(new Transaction
         {
@@ -196,9 +207,185 @@ public class InventoryService : IInventoryService
             Category = "Purchase Order",
             Amount = order.TotalAmount,
             Description = description,
+            Reference = $"PO-{order.Id}",
             PaymentMethod = PaymentMethod.Cash,
             CreatedBy = _currentUser.Username ?? "System"
         });
+    }
+
+    public async Task UpdatePurchaseOrderAsync(PurchaseOrderDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+        if (dto.Id <= 0)
+            throw new ArgumentException("Invalid purchase order.");
+        if (dto.Items == null || dto.Items.Count == 0)
+            throw new ArgumentException("Purchase order must have at least one item.");
+        if (dto.SupplierId <= 0)
+            throw new ArgumentException("Supplier is required.");
+        if (dto.Discount < 0)
+            throw new ArgumentException("Discount cannot be negative.");
+        if (dto.AmountPaid < 0)
+            throw new ArgumentException("Amount paid cannot be negative.");
+        foreach (var item in dto.Items)
+        {
+            if (item.Quantity <= 0)
+                throw new ArgumentException($"Quantity must be positive for product {item.ProductName}.");
+            if (item.UnitCost < 0)
+                throw new ArgumentException($"Unit cost cannot be negative for product {item.ProductName}.");
+        }
+
+        var original = await _poRepo.GetByIdWithItemsAsync(dto.Id)
+            ?? throw new InvalidOperationException($"Purchase order with ID {dto.Id} not found.");
+
+        // Net stock delta per product = sum(new quantities) - sum(original quantities).
+        // A removed line reverses its full original quantity; an added line adds its full new quantity.
+        var delta = new Dictionary<int, int>();
+        foreach (var it in original.Items)
+            delta[it.ProductId] = delta.GetValueOrDefault(it.ProductId) - it.Quantity;
+        foreach (var it in dto.Items)
+            delta[it.ProductId] = delta.GetValueOrDefault(it.ProductId) + it.Quantity;
+
+        var affected = (await _productRepo.GetByIdsAsync(delta.Keys.ToList())).ToDictionary(p => p.Id);
+
+        // Guard: never let an edit drive stock negative (e.g. units already sold since purchase).
+        foreach (var kv in delta)
+        {
+            if (kv.Value != 0 && affected.TryGetValue(kv.Key, out var p) && p.Stock + kv.Value < 0)
+                throw new InvalidOperationException(
+                    $"Cannot update: stock for '{p.Name}' would become negative ({p.Stock} on hand). " +
+                    "Some units were likely already sold.");
+        }
+
+        // Apply the stock delta. (Weighted-average cost is intentionally NOT recomputed on edit —
+        // editing corrects history rather than re-running the averaging.)
+        foreach (var kv in delta)
+        {
+            if (kv.Value != 0 && affected.TryGetValue(kv.Key, out var p))
+            {
+                p.Stock += kv.Value;
+                await _productRepo.UpdateAsync(p);
+            }
+        }
+
+        var totalAmount = dto.Items.Sum(i => i.TotalCost);
+        var net = totalAmount - dto.Discount;
+        await _poRepo.UpdateWithItemsAsync(new PurchaseOrder
+        {
+            Id = dto.Id,
+            SupplierId = dto.SupplierId,
+            OrderDate = original.OrderDate,
+            TotalAmount = totalAmount,
+            Discount = dto.Discount,
+            AmountPaid = dto.AmountPaid,
+            PaymentStatus = dto.AmountPaid >= net ? "Paid" : dto.AmountPaid > 0 ? "Partial" : "Unpaid",
+            Notes = dto.Notes,
+            Items = dto.Items.Select(i => new PurchaseOrderItem
+            {
+                ProductId = i.ProductId,
+                Quantity = i.Quantity,
+                UnitCost = i.UnitCost
+            }).ToList()
+        });
+
+        // Rebuild this PO's stock movements so the movement log matches the corrected quantities.
+        await _stockMovementRepo.DeleteByPurchaseOrderAsync(dto.Id);
+        foreach (var item in dto.Items)
+        {
+            await _stockMovementRepo.AddAsync(new StockMovement
+            {
+                ProductId = item.ProductId,
+                Type = MovementType.In,
+                Quantity = item.Quantity,
+                UnitPrice = item.UnitCost,
+                Reference = $"PO-{dto.Id}",
+                Description = "Purchase from supplier (edited)",
+                PurchaseOrderId = dto.Id,
+                CreatedBy = _currentUser.Username ?? "System"
+            });
+        }
+
+        // Keep Cash Flow in sync: update this PO's expense entry to the corrected total.
+        var reference = $"PO-{dto.Id}";
+        var description2 = string.Join(", ", dto.Items.Select(i => $"{i.ProductName} x{i.Quantity}"));
+        var expense = await _transactionRepo.GetByReferenceAsync(reference);
+        if (expense != null)
+        {
+            expense.Amount = totalAmount;
+            expense.Description = description2;
+            await _transactionRepo.UpdateAsync(expense);
+        }
+        else
+        {
+            // Legacy PO created before expense entries were tagged: record a difference entry so
+            // finance totals still reconcile (positive = extra expense, negative = refund/income).
+            var diff = totalAmount - original.TotalAmount;
+            if (diff != 0)
+            {
+                await _transactionRepo.AddAsync(new Transaction
+                {
+                    Type = diff > 0 ? TransactionType.Expense : TransactionType.Income,
+                    Category = "Purchase Order",
+                    Amount = Math.Abs(diff),
+                    Description = $"PO-{dto.Id} edit adjustment: {description2}",
+                    Reference = reference,
+                    PaymentMethod = PaymentMethod.Cash,
+                    CreatedBy = _currentUser.Username ?? "System"
+                });
+            }
+        }
+    }
+
+    public async Task DeletePurchaseOrderAsync(int orderId)
+    {
+        var order = await _poRepo.GetByIdWithItemsAsync(orderId)
+            ?? throw new InvalidOperationException($"Purchase order with ID {orderId} not found.");
+
+        // Reverse the stock this PO added. Guard against going negative (units already sold).
+        var byProduct = order.Items
+            .GroupBy(i => i.ProductId)
+            .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+        var affected = (await _productRepo.GetByIdsAsync(byProduct.Keys.ToList())).ToDictionary(p => p.Id);
+        foreach (var kv in byProduct)
+        {
+            if (affected.TryGetValue(kv.Key, out var p) && p.Stock - kv.Value < 0)
+                throw new InvalidOperationException(
+                    $"Cannot delete: stock for '{p.Name}' would become negative ({p.Stock} on hand). " +
+                    "Some units were likely already sold.");
+        }
+        foreach (var kv in byProduct)
+        {
+            if (affected.TryGetValue(kv.Key, out var p))
+            {
+                p.Stock -= kv.Value;
+                await _productRepo.UpdateAsync(p);
+            }
+        }
+
+        // Remove the PO's stock movements.
+        await _stockMovementRepo.DeleteByPurchaseOrderAsync(orderId);
+
+        // Reverse the expense in Cash Flow: delete the tagged entry, or (legacy) record an income reversal.
+        var expense = await _transactionRepo.GetByReferenceAsync($"PO-{orderId}");
+        if (expense != null)
+        {
+            await _transactionRepo.DeleteAsync(expense.Id);
+        }
+        else if (order.TotalAmount > 0)
+        {
+            await _transactionRepo.AddAsync(new Transaction
+            {
+                Type = TransactionType.Income,
+                Category = "Purchase Order",
+                Amount = order.TotalAmount,
+                Description = $"PO-{orderId} deleted (reversal)",
+                Reference = $"PO-{orderId}",
+                PaymentMethod = PaymentMethod.Cash,
+                CreatedBy = _currentUser.Username ?? "System"
+            });
+        }
+
+        // Finally remove the order (line items cascade).
+        await _poRepo.DeleteAsync(orderId);
     }
 
     public async Task PayPurchaseOrderAsync(int orderId, decimal amount)

@@ -39,6 +39,18 @@ public partial class PurchaseOrdersViewModel : ObservableObject
     [ObservableProperty] private PurchaseOrderDto? _selectedOrder;
     [ObservableProperty] private string _payAmount = "";
 
+    // Order history search
+    [ObservableProperty] private string _orderSearchText = "";
+
+    // Edit mode: when editing an existing PO, the builder on the right acts as an editor.
+    [ObservableProperty] private bool _isEditingOrder;
+    private int _editingOrderId;
+    public string SubmitButtonText => IsEditingOrder
+        ? (Lang.IsArabic ? "تحديث الطلب" : "Update Order")
+        : Lang.PoSubmit;
+    partial void OnIsEditingOrderChanged(bool value) => OnPropertyChanged(nameof(SubmitButtonText));
+
+    private readonly List<PurchaseOrderDto> _allOrders = new();
     public ObservableCollection<PurchaseOrderDto> Orders { get; } = new();
     public ObservableCollection<SupplierDto> Suppliers { get; } = new();
     public ObservableCollection<ProductDto> Products { get; } = new();
@@ -60,9 +72,9 @@ public partial class PurchaseOrdersViewModel : ObservableObject
         try
         {
             var orders = await _inventoryService.GetAllPurchaseOrdersAsync();
-            Orders.Clear();
-            foreach (var o in orders.OrderByDescending(o => o.OrderDate))
-                Orders.Add(o);
+            _allOrders.Clear();
+            _allOrders.AddRange(orders.OrderByDescending(o => o.OrderDate));
+            ApplyOrderFilter();
 
             var suppliers = await _supplierService.GetAllAsync();
             Suppliers.Clear();
@@ -96,6 +108,25 @@ public partial class PurchaseOrdersViewModel : ObservableObject
 
     partial void OnFilterProductChanged(ProductDto? value) => ApplyMovementFilter();
     partial void OnFilterTypeIndexChanged(int value) => ApplyMovementFilter();
+    partial void OnOrderSearchTextChanged(string value) => ApplyOrderFilter();
+
+    private void ApplyOrderFilter()
+    {
+        Orders.Clear();
+        var q = _allOrders.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(OrderSearchText))
+        {
+            var t = OrderSearchText.Trim();
+            q = q.Where(o =>
+                (o.SupplierName?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (o.PaymentStatus?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (o.Notes?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                o.Id.ToString().Contains(t) ||
+                o.OrderDate.ToString("yyyy-MM-dd").Contains(t) ||
+                (o.Items?.Any(i => i.ProductName?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ?? false));
+        }
+        foreach (var o in q) Orders.Add(o);
+    }
 
     private void ApplyMovementFilter()
     {
@@ -119,6 +150,36 @@ public partial class PurchaseOrdersViewModel : ObservableObject
     {
         FilterProduct = null;
         FilterTypeIndex = 0;
+    }
+
+    [RelayCommand]
+    private void PrintMovements()
+    {
+        bool ar = Lang.IsArabic;
+        var headers = new[]
+        {
+            Lang.SmDate, Lang.SmType, Lang.SmProduct, Lang.SmQty,
+            Lang.SmPrice, Lang.SmRef, Lang.SmSupplier, Lang.PoBy
+        };
+        var widths = new[] { 1.6, 1.0, 2.4, 0.8, 1.2, 1.4, 1.6, 1.2 };
+        var rows = FilteredMovements.Select(m => (IReadOnlyList<string>)new[]
+        {
+            m.CreatedAt.ToString("yyyy-MM-dd HH:mm"),
+            m.Type == MovementType.In ? (ar ? "وارد" : "In") : (ar ? "صادر" : "Out"),
+            m.ProductName,
+            m.Quantity.ToString(),
+            m.UnitPrice.ToString("N0"),
+            m.Reference ?? "",
+            m.SupplierName ?? "",
+            m.CreatedBy ?? ""
+        }).ToList();
+
+        var period = FilterProduct != null ? FilterProduct.Name : (ar ? "كل المواد" : "All products");
+        TableReportPrinter.Print(
+            ar ? "تقرير حركة المخزون" : "Stock Movements Report",
+            period, headers, widths, rows,
+            rightAlignColumns: new[] { 3, 4 },
+            docName: "Stock Movements");
     }
 
     private void RebuildSupplierBalances()
@@ -146,8 +207,10 @@ public partial class PurchaseOrdersViewModel : ObservableObject
     {
         SelectedTab = tab switch
         {
-            "movements" => 1,
-            "balances" => 2,
+            "neworder" => 0,
+            "history" => 1,
+            "movements" => 2,
+            "balances" => 3,
             _ => 0
         };
     }
@@ -204,6 +267,75 @@ public partial class PurchaseOrdersViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void EditOrder(PurchaseOrderDto? order)
+    {
+        if (order == null) return;
+        SelectedSupplier = Suppliers.FirstOrDefault(s => s.Id == order.SupplierId);
+        PoItems.Clear();
+        foreach (var it in order.Items)
+            PoItems.Add(new PurchaseOrderItemDto
+            {
+                ProductId = it.ProductId,
+                ProductName = it.ProductName,
+                Quantity = it.Quantity,
+                UnitCost = it.UnitCost
+            });
+        EditDiscount = order.Discount > 0 ? order.Discount.ToString("0.##") : "";
+        EditAmountPaid = order.AmountPaid > 0 ? order.AmountPaid.ToString("0.##") : "";
+        EditNotes = order.Notes ?? "";
+        _editingOrderId = order.Id;
+        IsEditingOrder = true;
+        UpdatePoTotal();
+        SelectedTab = 0; // jump to the builder tab, now in edit mode
+    }
+
+    [RelayCommand]
+    private void CancelEditOrder() => ClearBuilder();
+
+    [RelayCommand]
+    private async Task DeleteOrderAsync(PurchaseOrderDto? order)
+    {
+        if (order == null) return;
+
+        if (!CustomMessageBox.Confirm(
+            Lang.IsArabic
+                ? $"حذف طلب الشراء #{order.Id}؟ سيتم إرجاع المخزون وتعديل الأرصدة."
+                : $"Delete purchase order #{order.Id}? Stock will be reversed and balances updated.",
+            Lang.IsArabic ? "تأكيد الحذف" : "Confirm Delete"))
+            return;
+
+        try
+        {
+            await _inventoryService.DeletePurchaseOrderAsync(order.Id);
+            if (_editingOrderId == order.Id) ClearBuilder();
+            SelectedOrder = null;
+            await LoadAsync();
+            CustomMessageBox.Show(
+                Lang.IsArabic ? "تم حذف طلب الشراء وتحديث الأرصدة" : "Purchase order deleted and balances updated",
+                Lang.IsArabic ? "نجاح" : "Success", MsgType.Success);
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
+        }
+    }
+
+    private void ClearBuilder()
+    {
+        PoItems.Clear();
+        EditNotes = "";
+        EditDiscount = "";
+        EditAmountPaid = "";
+        EditQuantity = "";
+        EditUnitCost = "";
+        SelectedSupplier = null;
+        SelectedProduct = null;
+        PoTotal = 0;
+        _editingOrderId = 0;
+        IsEditingOrder = false;
+    }
+
+    [RelayCommand]
     private async Task SubmitOrderAsync()
     {
         if (SelectedSupplier == null)
@@ -225,29 +357,44 @@ public partial class PurchaseOrdersViewModel : ObservableObject
 
         try
         {
-            var dto = new PurchaseOrderDto
+            if (IsEditingOrder)
             {
-                SupplierId = SelectedSupplier.Id,
-                OrderDate = DateTime.UtcNow,
-                Discount = discount,
-                AmountPaid = amountPaid,
-                Notes = EditNotes.Trim(),
-                Items = PoItems.ToList()
-            };
+                await _inventoryService.UpdatePurchaseOrderAsync(new PurchaseOrderDto
+                {
+                    Id = _editingOrderId,
+                    SupplierId = SelectedSupplier.Id,
+                    Discount = discount,
+                    AmountPaid = amountPaid,
+                    Notes = EditNotes.Trim(),
+                    Items = PoItems.ToList()
+                });
 
-            await _inventoryService.CreatePurchaseOrderAsync(dto);
+                ClearBuilder();
+                await LoadAsync();
+                SelectedTab = 1; // show the updated order in history
+                CustomMessageBox.Show(
+                    Lang.IsArabic ? "تم تحديث طلب الشراء والمخزون" : "Purchase order and stock updated",
+                    Lang.IsArabic ? "نجاح" : "Success", MsgType.Success);
+            }
+            else
+            {
+                await _inventoryService.CreatePurchaseOrderAsync(new PurchaseOrderDto
+                {
+                    SupplierId = SelectedSupplier.Id,
+                    OrderDate = DateTime.UtcNow,
+                    Discount = discount,
+                    AmountPaid = amountPaid,
+                    Notes = EditNotes.Trim(),
+                    Items = PoItems.ToList()
+                });
 
-            PoItems.Clear();
-            EditNotes = "";
-            EditDiscount = "";
-            EditAmountPaid = "";
-            SelectedSupplier = null;
-            PoTotal = 0;
-            await LoadAsync();
-
-            CustomMessageBox.Show(
-                Lang.IsArabic ? "تم إنشاء طلب الشراء وتحديث المخزون" : "Purchase order created and stock updated",
-                Lang.IsArabic ? "نجاح" : "Success", MsgType.Success);
+                ClearBuilder();
+                await LoadAsync();
+                SelectedTab = 1; // show the new order in history
+                CustomMessageBox.Show(
+                    Lang.IsArabic ? "تم إنشاء طلب الشراء وتحديث المخزون" : "Purchase order created and stock updated",
+                    Lang.IsArabic ? "نجاح" : "Success", MsgType.Success);
+            }
         }
         catch (Exception ex)
         {
@@ -287,7 +434,7 @@ public partial class PurchaseOrdersViewModel : ObservableObject
     private void ViewSupplierOrders(SupplierBalanceDto? balance)
     {
         if (balance == null) return;
-        SelectedTab = 0;
+        SelectedTab = 1; // jump to the order-history tab
         var firstUnpaid = Orders.FirstOrDefault(o => o.SupplierId == balance.SupplierId && o.RemainingAmount > 0);
         SelectedOrder = firstUnpaid ?? Orders.FirstOrDefault(o => o.SupplierId == balance.SupplierId);
     }

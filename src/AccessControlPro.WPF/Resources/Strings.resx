@@ -561,6 +561,7 @@ Phone or subscription type is still a placeholder value (MIG-... or "Migrated").
   <data name="PoAddItem" xml:space="preserve"><value>Add Item</value></data>
   <data name="PoNotes" xml:space="preserve"><value>Notes</value></data>
   <data name="PoSubmit" xml:space="preserve"><value>Submit Order</value></data>
+  <data name="PoEdit" xml:space="preserve"><value>Edit</value></data>
   <!-- PO Payment -->
   <data name="PoDiscount" xml:space="preserve"><value>Discount</value></data>
   <data name="PoPaid" xml:space="preserve"><value>Paid</value></data>
@@ -631,12 +632,16 @@ Phone or subscription type is still a placeholder value (MIG-... or "Migrated").
   <data name="RptTitle" xml:space="preserve"><value>Reports &amp; Export</value></data>
   <data name="RptSubtitle" xml:space="preserve"><value>Generate reports and export data to CSV</value></data>
   <data name="RptExport" xml:space="preserve"><value>Export CSV</value></data>
+  <data name="RptPrint" xml:space="preserve"><value>Print / PDF</value></data>
   <data name="RptPlayers" xml:space="preserve"><value>Players</value></data>
   <data name="RptFinance" xml:space="preserve"><value>Finance</value></data>
   <data name="RptInventory" xml:space="preserve"><value>Inventory</value></data>
   <data name="RptSales" xml:space="preserve"><value>Sales</value></data>
   <data name="RptPurchases" xml:space="preserve"><value>Purchases</value></data>
   <data name="RptMovements" xml:space="preserve"><value>Movements</value></data>
+  <data name="RptSupplier" xml:space="preserve"><value>Supplier</value></data>
+  <data name="RptPurchasedInRange" xml:space="preserve"><value>Purchased (selected period)</value></data>
+  <data name="RptOutstanding" xml:space="preserve"><value>Outstanding balance (total)</value></data>
   <data name="RptRun" xml:space="preserve"><value>Run Report</value></data>
   <!-- Monitor Display (Projector) -->
   <data name="DispSuccessPass" xml:space="preserve"><value>Success Pass</value></data>

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:fa="http://schemas.fontawesome.io/icons/"
              xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers;assembly=AccessControlPro.WPF"
+             xmlns:h="clr-namespace:AccessControlPro.WPF.Helpers;assembly=AccessControlPro.WPF"
              Background="{StaticResource BgDarkBrush}">
 
     <UserControl.Resources>
@@ -63,6 +64,35 @@
             <Setter Property="CellStyle" Value="{StaticResource RptCell}"/>
             <Setter Property="Visibility" Value="Collapsed"/>
         </Style>
+
+        <!-- Dark date field, matching the rest of the app -->
+        <Style TargetType="DatePickerTextBox">
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DatePickerTextBox">
+                        <Border Background="{TemplateBinding Background}" Padding="8,0">
+                            <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="DarkDatePicker" TargetType="DatePicker">
+            <Setter Property="Background" Value="#2A2A3E"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="BorderBrush" Value="#3A3A50"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="24,20">
@@ -81,15 +111,26 @@
                 <TextBlock Text="{Binding Lang.RptSubtitle}" FontSize="12"
                            Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
             </StackPanel>
-            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}"
-                    HorizontalAlignment="Right" VerticalAlignment="Center"
-                    Padding="16,10" Command="{Binding ExportCsvCommand}" Cursor="Hand">
-                <StackPanel Orientation="Horizontal">
-                    <fa:ImageAwesome Icon="FileTextOutline" Width="14" Height="14"
-                                     Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock Text="{Binding Lang.RptExport}" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
-                </StackPanel>
-            </Button>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                        HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Button Style="{StaticResource PrimaryButton}" Padding="16,10"
+                        Command="{Binding PrintReportCommand}" Cursor="Hand" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="Print" Width="14" Height="14"
+                                         Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding Lang.RptPrint}" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource SecondaryButton}" Padding="16,10"
+                        Command="{Binding ExportCsvCommand}" Cursor="Hand">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="FileTextOutline" Width="14" Height="14"
+                                         Foreground="{StaticResource PrimaryLightBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding Lang.RptExport}" FontSize="13"
+                                   Foreground="{StaticResource PrimaryLightBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
         </DockPanel>
 
         <!-- Report Type Tabs -->
@@ -208,17 +249,56 @@
                                Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
             </Border>
+            <!-- Supplier report -->
+            <Border Margin="0,8,4,0" CornerRadius="10" Padding="14,10" Cursor="Hand" MouseLeftButtonUp="SupplierTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedReportType}" Value="6">
+                                <Setter Property="Background" Value="#1A44A1A0"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <fa:ImageAwesome Icon="Truck" Width="14" Height="14" Foreground="{StaticResource PrimaryLightBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding Lang.RptSupplier}" FontSize="13"
+                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </UniformGrid>
 
         <!-- Date Filter + Run -->
         <Border Grid.Row="2" Style="{StaticResource DashboardCard}" Margin="0,0,0,12" Padding="14,10">
             <StackPanel Orientation="Horizontal">
+                <!-- Supplier picker (only for the Supplier report) -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                            Visibility="{Binding IsSupplierReport, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="{Binding Lang.RptSupplier}" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Width="200" Margin="0,0,16,0"
+                              ItemsSource="{Binding Suppliers}"
+                              SelectedItem="{Binding SelectedSupplierFilter}"
+                              Style="{StaticResource SearchableComboBox}"
+                              h:ComboBoxSearch.SearchPath="Name,Phone">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" Foreground="#E0E0E0"
+                                           FontFamily="{StaticResource CairoFont}" FontWeight="Bold"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
                 <TextBlock Text="{Binding Lang.RptStartDate}" FontSize="12"
                            Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <DatePicker SelectedDate="{Binding DateFrom}" Width="140" Margin="0,0,16,0"/>
+                <DatePicker SelectedDate="{Binding DateFrom}" Width="140" Margin="0,0,16,0"
+                            Style="{StaticResource DarkDatePicker}"/>
                 <TextBlock Text="{Binding Lang.RptEndDate}" FontSize="12"
                            Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <DatePicker SelectedDate="{Binding DateTo}" Width="140" Margin="0,0,16,0"/>
+                <DatePicker SelectedDate="{Binding DateTo}" Width="140" Margin="0,0,16,0"
+                            Style="{StaticResource DarkDatePicker}"/>
                 <Button Style="{StaticResource PrimaryButton}" Padding="16,8"
                         Command="{Binding LoadCommand}" Cursor="Hand">
                     <StackPanel Orientation="Horizontal">
@@ -528,6 +608,42 @@
                         <DataGridTextColumn Header="Ref" Binding="{Binding Reference}" Width="110"/>
                     </DataGrid.Columns>
                 </DataGrid>
+
+                <!-- Supplier report (Tab 6): itemized purchases + balance summary -->
+                <Grid Visibility="{Binding IsSupplierReport, Converter={StaticResource BoolToVisibility}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Summary: purchased-in-range + outstanding balance -->
+                    <Border Grid.Row="0" Background="{StaticResource BgInputBrush}" CornerRadius="10"
+                            Padding="16,12" Margin="0,0,0,12">
+                        <UniformGrid Columns="2">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Lang.RptPurchasedInRange}" FontSize="12"
+                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding ReportTotal, StringFormat='{}{0:N0}'}" FontSize="20" FontWeight="Bold"
+                                           Foreground="{StaticResource PrimaryLightBrush}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Lang.RptOutstanding}" FontSize="12"
+                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding SupplierBalance, StringFormat='{}{0:N0}'}" FontSize="20" FontWeight="Bold"
+                                           Foreground="#F7685B"/>
+                            </StackPanel>
+                        </UniformGrid>
+                    </Border>
+
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding SupplierResults}"
+                              Style="{StaticResource RptGrid}" Visibility="Visible">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{Binding Data.Lang.PrdName, Source={StaticResource Proxy}}" Binding="{Binding ProductName}" Width="*"/>
+                            <DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="120"/>
+                            <DataGridTextColumn Header="Total" Binding="{Binding Total, StringFormat='{}{0:N0}'}" Width="160"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
             </Grid>
         </Border>
     </Grid>

@@ -599,6 +599,7 @@ public class LanguageManager : INotifyPropertyChanged
     public string PoAddItem => GetString("PoAddItem");
     public string PoNotes => GetString("PoNotes");
     public string PoSubmit => GetString("PoSubmit");
+    public string PoEdit => GetString("PoEdit");
 
     // PO Payment
     public string PoDiscount => GetString("PoDiscount");
@@ -717,12 +718,16 @@ public class LanguageManager : INotifyPropertyChanged
     public string RptTitle => GetString("RptTitle");
     public string RptSubtitle => GetString("RptSubtitle");
     public string RptExport => GetString("RptExport");
+    public string RptPrint => GetString("RptPrint");
     public string RptPlayers => GetString("RptPlayers");
     public string RptFinance => GetString("RptFinance");
     public string RptInventory => GetString("RptInventory");
     public string RptSales => GetString("RptSales");
     public string RptPurchases => GetString("RptPurchases");
     public string RptMovements => GetString("RptMovements");
+    public string RptSupplier => GetString("RptSupplier");
+    public string RptPurchasedInRange => GetString("RptPurchasedInRange");
+    public string RptOutstanding => GetString("RptOutstanding");
     public string RptRun => GetString("RptRun");
 
     // Monitor Display (Projector)
@@ -1576,12 +1581,16 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(RptTitle));
         OnPropertyChanged(nameof(RptSubtitle));
         OnPropertyChanged(nameof(RptExport));
+        OnPropertyChanged(nameof(RptPrint));
         OnPropertyChanged(nameof(RptPlayers));
         OnPropertyChanged(nameof(RptFinance));
         OnPropertyChanged(nameof(RptInventory));
         OnPropertyChanged(nameof(RptSales));
         OnPropertyChanged(nameof(RptPurchases));
         OnPropertyChanged(nameof(RptMovements));
+        OnPropertyChanged(nameof(RptSupplier));
+        OnPropertyChanged(nameof(RptPurchasedInRange));
+        OnPropertyChanged(nameof(RptOutstanding));
         OnPropertyChanged(nameof(RptRun));
         // Monitor Display (Projector)
         OnPropertyChanged(nameof(DispSuccessPass));
