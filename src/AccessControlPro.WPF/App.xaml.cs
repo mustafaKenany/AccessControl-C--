@@ -39,6 +39,9 @@ public partial class App : System.Windows.Application
     private DispatcherTimer? _qrPoolTimer;
     private DispatcherTimer? _memoryMonitorTimer;
     private DispatcherTimer? _restartBannerTimer;
+    private DispatcherTimer? _deviceWatchdogTimer;
+    // Tracks last-known reachability per device IP so the watchdog only alerts on a state change.
+    private readonly Dictionary<string, bool> _deviceReachable = new();
     private static readonly DateTime _appStartedAt = DateTime.Now;
     // Latest working-set sample (MB) from the memory monitor. Read by the restart-nudge
     // timer so it can prompt a graceful restart when memory creeps high — before the
@@ -760,6 +763,16 @@ public partial class App : System.Windows.Application
             };
             _expiryMonitorTimer.Start();
 
+            // Device connectivity watchdog — pings each configured device every minute. If a
+            // device drops offline the customer gets a non-blocking corner alert immediately
+            // (so a silent disconnect that stops events/entries is noticed at once, not days
+            // later), and a "back online" note when it recovers. Silent while everything is OK.
+            _deviceWatchdogTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+            _deviceWatchdogTimer.Tick += async (_, _) => await RunDeviceWatchdogAsync();
+            _deviceWatchdogTimer.Start();
+            // First check ~45s after startup so SQL Server + devices are ready.
+            _ = Task.Run(async () => { await Task.Delay(45000); await Dispatcher.InvokeAsync(async () => await RunDeviceWatchdogAsync()); });
+
             // Automated backup timer — checks every 30 minutes, runs at 2:00 AM and 2:00 PM, retries on failure
             _backupTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(30) };
             _backupTimer.Tick += async (_, _) =>
@@ -1188,6 +1201,8 @@ public partial class App : System.Windows.Application
         _cleanupTimer = null;
         _expiryMonitorTimer?.Stop();
         _expiryMonitorTimer = null;
+        _deviceWatchdogTimer?.Stop();
+        _deviceWatchdogTimer = null;
         _backupTimer?.Stop();
         _backupTimer = null;
         _cloudSyncTimer?.Stop();
@@ -1494,6 +1509,76 @@ public partial class App : System.Windows.Application
         catch (Exception ex)
         {
             StartupLog($"Low-disk warning surface failed (non-critical): {ex.Message}");
+        }
+    }
+
+    // Device connectivity watchdog (runs every minute). Pings each configured device and
+    // alerts the customer — via a non-blocking corner toast — only when a device's state
+    // CHANGES (online->offline or back), so it never spams. Silent while all is well.
+    private async Task RunDeviceWatchdogAsync()
+    {
+        try
+        {
+            List<Device> devices;
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var repo = scope.ServiceProvider.GetRequiredService<IDeviceRepository>();
+                devices = (await repo.GetAllAsync()).ToList();
+            }
+
+            foreach (var d in devices)
+            {
+                if (string.IsNullOrWhiteSpace(d.IP)) continue;
+
+                bool reachable = await Helpers.NetworkHelper.PingDeviceAsync(d.IP);
+                bool known = _deviceReachable.TryGetValue(d.IP, out var prev);
+                _deviceReachable[d.IP] = reachable;
+
+                if (!known)
+                {
+                    // First observation this session: alert only if it's already offline.
+                    if (!reachable) NotifyDeviceState(d, online: false);
+                    StartupLog($"DeviceWatchdog: {d.Name} ({d.IP}) initial={(reachable ? "online" : "OFFLINE")}");
+                    continue;
+                }
+
+                if (prev && !reachable)
+                {
+                    StartupLog($"DeviceWatchdog: {d.Name} ({d.IP}) went OFFLINE");
+                    NotifyDeviceState(d, online: false);
+                }
+                else if (!prev && reachable)
+                {
+                    StartupLog($"DeviceWatchdog: {d.Name} ({d.IP}) back ONLINE");
+                    NotifyDeviceState(d, online: true);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            StartupLog($"DeviceWatchdog error: {ex.Message}");
+        }
+    }
+
+    private static void NotifyDeviceState(Device d, bool online)
+    {
+        bool ar = Helpers.LanguageManager.Instance.IsArabic;
+        var name = string.IsNullOrWhiteSpace(d.Name) ? d.IP : d.Name;
+        if (online)
+        {
+            Helpers.ToastNotification.Show(
+                ar ? "عاد الاتصال بالجهاز" : "Device reconnected",
+                ar ? $"الجهاز \"{name}\" يعمل الآن. تم استئناف تسجيل الدخول/الخروج."
+                   : $"Device \"{name}\" is back online. Entries/exits are being recorded again.",
+                isError: false);
+        }
+        else
+        {
+            Helpers.ToastNotification.Show(
+                ar ? "انقطع الاتصال بالجهاز" : "Device offline",
+                ar ? $"تعذّر الوصول إلى الجهاز \"{name}\" ({d.IP}). لن يتم تسجيل الدخول/الخروج حتى يعود الاتصال — تحقّق من الكهرباء والشبكة."
+                   : $"Cannot reach device \"{name}\" ({d.IP}). Entries/exits won't be recorded until it's back — check its power and network.",
+                isError: true);
         }
     }
 
