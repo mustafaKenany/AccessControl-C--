@@ -108,6 +108,9 @@ public partial class App : System.Windows.Application
         services.AddScoped<IAppSettingsService, AppSettingsService>();
         services.AddScoped<ILookupService, LookupService>();
         services.AddScoped<IPosService, PosService>();
+        // EmployeeService depends on DeviceOperationHelper (card-to-device ops) — must be
+        // registered here too, or POS fails to start with a DI "Unable to resolve service" error.
+        services.AddSingleton<Application.Helpers.DeviceOperationHelper>();
         services.AddScoped<IEmployeeService, EmployeeService>();
 
         // Cloud sync
@@ -307,13 +310,10 @@ public partial class App : System.Windows.Application
         }
     }
 
-    private static string GetAppVersion()
-    {
-        var exePath = Environment.ProcessPath;
-        if (exePath != null && File.Exists(exePath))
-            return $"v_{new FileInfo(exePath).Length}";
-        return "v_unknown";
-    }
+    // MUST match SetupWizardWindow.AppVersion in the WPF project. All three apps (WPF/Admin/POS)
+    // live in the SAME folder and share ONE .setup_complete file, so they must agree on its value —
+    // otherwise launching one app makes the others re-run the setup wizard.
+    private static string GetAppVersion() => "v3.4";
 
     private static bool IsPosSetupComplete()
     {

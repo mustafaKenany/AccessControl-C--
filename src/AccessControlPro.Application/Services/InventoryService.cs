@@ -340,10 +340,15 @@ public class InventoryService : IInventoryService
         var order = await _poRepo.GetByIdWithItemsAsync(orderId)
             ?? throw new InvalidOperationException($"Purchase order with ID {orderId} not found.");
 
-        // Reverse the stock this PO added. Guard against going negative (units already sold).
-        var byProduct = order.Items
-            .GroupBy(i => i.ProductId)
-            .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
+        // Reverse exactly what this PO ACTUALLY added — based on its recorded stock movements,
+        // not its line items. A half-saved/"ghost" PO (created before the WITH-error fix) has no
+        // movements, so it deletes cleanly without wrongly trying to remove stock it never added.
+        var inMovements = (await _stockMovementRepo.GetByPurchaseOrderAsync(orderId))
+            .Where(m => m.Type == MovementType.In)
+            .ToList();
+        var byProduct = inMovements
+            .GroupBy(m => m.ProductId)
+            .ToDictionary(g => g.Key, g => g.Sum(m => m.Quantity));
         var affected = (await _productRepo.GetByIdsAsync(byProduct.Keys.ToList())).ToDictionary(p => p.Id);
         foreach (var kv in byProduct)
         {
@@ -370,8 +375,10 @@ public class InventoryService : IInventoryService
         {
             await _transactionRepo.DeleteAsync(expense.Id);
         }
-        else if (order.TotalAmount > 0)
+        else if (inMovements.Count > 0 && order.TotalAmount > 0)
         {
+            // Only reconcile finance for a PO that actually received goods (legacy, untagged expense).
+            // A half-saved/ghost PO never expensed money, so we must NOT invent a reversal income.
             await _transactionRepo.AddAsync(new Transaction
             {
                 Type = TransactionType.Income,

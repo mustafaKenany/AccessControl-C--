@@ -40,6 +40,14 @@ public class StockMovementRepository : IStockMovementRepository
         await db.SaveChangesAsync();
     }
 
+    public async Task<IEnumerable<StockMovement>> GetByPurchaseOrderAsync(int purchaseOrderId)
+    {
+        await using var db = _factory.CreateDbContext();
+        return await db.StockMovements
+            .Where(m => m.PurchaseOrderId == purchaseOrderId)
+            .ToListAsync();
+    }
+
     public async Task DeleteByPurchaseOrderAsync(int purchaseOrderId)
     {
         await using var db = _factory.CreateDbContext();

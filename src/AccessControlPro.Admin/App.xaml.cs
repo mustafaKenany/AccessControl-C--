@@ -94,8 +94,10 @@ public partial class App : System.Windows.Application
             var count = (int)cmd.ExecuteScalar();
             if (count > 0)
             {
-                // Mark setup as complete so wizard never shows again
-                try { File.WriteAllText(Path.Combine(AppContext.BaseDirectory, ".setup_complete"), "admin"); } catch { }
+                // Mark setup complete using the SAME value the WPF wizard writes/expects
+                // (SetupWizardWindow.AppVersion = "v3.4"). All three apps share one .setup_complete
+                // file in the same folder, so writing anything else makes WPF/POS re-run setup.
+                try { File.WriteAllText(Path.Combine(AppContext.BaseDirectory, ".setup_complete"), "v3.4"); } catch { }
                 return true;
             }
         }
