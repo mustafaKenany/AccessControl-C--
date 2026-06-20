@@ -100,13 +100,12 @@ public partial class DailyPassDialog : Window
                 playerName: _ar ? "دخول يومي" : "Daily Pass",
                 phone: "",
                 fee: _price,
-                maxUses: 65535,  // date governs validity, not a use count
+                maxUses: 2,      // one entry + one exit — stops a found/shared ticket being reused
                 validDays: 1);   // today only
 
             // Bind the code to the gate for today only, so the controller auto-rejects it
-            // tomorrow (date-enforced). Best-effort: the pool code is already on the device,
-            // this just tightens its expiry to tonight.
-            try { await _employeeService.PushTempCardToDevicesAsync(pass.PassCode, pass.ValidTo, "01010000"); }
+            // tomorrow (date-enforced) AND after 2 uses (one in, one out).
+            try { await _employeeService.PushTempCardToDevicesAsync(pass.PassCode, pass.ValidTo, "01010000", maxUses: 2); }
             catch { /* falls back to the pre-synced pool code */ }
 
             var qrDialog = new QrCodeDisplayDialog(pass) { Owner = this };
@@ -159,7 +158,7 @@ public partial class DailyPassDialog : Window
             // Program the card on the gate, valid until tonight only → controller auto-rejects
             // it tomorrow. Card returned today is expired immediately via ReturnCardClick.
             var validTo = DateTime.Today.AddDays(1).AddSeconds(-1); // today 23:59:59
-            var (ok, fail, total, errors) = await _employeeService.PushTempCardToDevicesAsync(card, validTo, "01010000");
+            var (ok, fail, total, errors) = await _employeeService.PushTempCardToDevicesAsync(card, validTo, "01010000", maxUses: 2);
             if (ok == 0)
             {
                 CustomMessageBox.Show(

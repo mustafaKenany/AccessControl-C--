@@ -511,6 +511,7 @@ Phone or subscription type is still a placeholder value (MIG-... or "Migrated").
   <data name="SetRemoveLogo" xml:space="preserve"><value>Remove Logo</value></data>
   <data name="SetCompanyName" xml:space="preserve"><value>Company Name</value></data>
   <data name="SetGymName" xml:space="preserve"><value>Gym / Center Name</value></data>
+  <data name="SetOwner" xml:space="preserve"><value>Owner Name</value></data>
   <!-- Categories Management -->
   <data name="NavCategories" xml:space="preserve"><value>Categories</value></data>
   <data name="CatTitle" xml:space="preserve"><value>Categories Management</value></data>

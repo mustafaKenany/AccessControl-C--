@@ -56,66 +56,26 @@ public partial class RenewalReceiptDialog : Window
 
     private void PrintClick(object sender, RoutedEventArgs e)
     {
-        var printDialog = new PrintDialog();
-        if (printDialog.ShowDialog() != true) return;
-
-        var doc = BuildPrintDocument();
-        var paginator = ((IDocumentPaginatorSource)doc).DocumentPaginator;
-        printDialog.PrintDocument(paginator, "Renewal Receipt");
+        // Print straight to the default printer (no picker); warns if none is connected.
+        ThermalReceipt.PrintToDefault(BuildPrintDocument(), "Renewal Receipt");
     }
 
     private FlowDocument BuildPrintDocument()
     {
         var lang = LanguageManager.Instance;
-        // 80mm thermal roll = ~302 DIP wide at 96 DPI.
+        // 80mm thermal roll — content width tuned to the printable area so values aren't clipped.
         var doc = new FlowDocument
         {
-            PageWidth = 302,
-            ColumnWidth = 302,
-            PagePadding = new Thickness(10),
+            PageWidth = 270,
+            ColumnWidth = 270,
+            PagePadding = new Thickness(6, 8, 6, 8),
             FontFamily = new FontFamily("Segoe UI, Arial"),
             FontSize = 11,
             FlowDirection = lang.IsArabic ? FlowDirection.RightToLeft : FlowDirection.LeftToRight
         };
 
-        // Gym name + phone header (from cached AppSettings)
-        doc.Blocks.Add(new Paragraph(new Run(GymProfile.DisplayName))
-        {
-            FontSize = 16,
-            FontWeight = FontWeights.Bold,
-            TextAlignment = TextAlignment.Center,
-            Margin = new Thickness(0, 0, 0, 2)
-        });
-        if (!string.IsNullOrWhiteSpace(GymProfile.Phone))
-        {
-            doc.Blocks.Add(new Paragraph(new Run(GymProfile.Phone))
-            {
-                FontSize = 9,
-                Foreground = Brushes.Gray,
-                TextAlignment = TextAlignment.Center,
-                Margin = new Thickness(0, 0, 0, 4)
-            });
-        }
-
-        // Title
-        var title = new Paragraph(new Run(lang.RcpRenewalReceipt))
-        {
-            FontSize = 13,
-            FontWeight = FontWeights.Bold,
-            TextAlignment = TextAlignment.Center,
-            Margin = new Thickness(0, 0, 0, 4)
-        };
-        doc.Blocks.Add(title);
-
-        // Date
-        var date = new Paragraph(new Run(DateTime.Now.ToString("yyyy-MM-dd  HH:mm:ss")))
-        {
-            FontSize = 11,
-            Foreground = Brushes.Gray,
-            TextAlignment = TextAlignment.Center,
-            Margin = new Thickness(0, 0, 0, 16)
-        };
-        doc.Blocks.Add(date);
+        // Shared header: logo + gym name + owner + phone + title + receipt number / time.
+        ThermalReceipt.BuildHeader(doc, lang.RcpRenewalReceipt);
 
         // Details table
         var table = new Table { CellSpacing = 0 };

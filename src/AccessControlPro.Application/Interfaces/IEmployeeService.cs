@@ -27,7 +27,8 @@ public interface IEmployeeService
     /// anonymous Daily Pass — no AccessCard/player record is created. Pass null for ALL devices.
     /// </summary>
     Task<(int ok, int fail, int total, List<string> errors)> PushTempCardToDevicesAsync(
-        string cardNumber, DateTime validTo, string doorPermissions, IEnumerable<int>? deviceIds = null);
+        string cardNumber, DateTime validTo, string doorPermissions, IEnumerable<int>? deviceIds = null,
+        int maxUses = 65535);
 
     /// <summary>Expire a raw daily-pass card number on the gate(s) immediately (card returned). Pass null for ALL devices.</summary>
     Task<(int ok, int fail, int total, List<string> errors)> ExpireTempCardOnDevicesAsync(

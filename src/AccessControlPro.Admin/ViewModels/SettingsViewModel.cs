@@ -15,6 +15,7 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty] private string _companyName = string.Empty;
     [ObservableProperty] private string _gymName = string.Empty;
+    [ObservableProperty] private string _owner = string.Empty;
     [ObservableProperty] private string _phone = string.Empty;
     [ObservableProperty] private string _address = string.Empty;
     [ObservableProperty] private string _logoPath = string.Empty;
@@ -33,6 +34,7 @@ public partial class SettingsViewModel : ObservableObject
             var settings = await _settingsService.GetSettingsAsync();
             CompanyName = settings.CompanyName;
             GymName = settings.GymName;
+            Owner = settings.Owner;
             Phone = settings.Phone;
             Address = settings.Address;
             LogoPath = settings.LogoPath;
@@ -87,6 +89,7 @@ public partial class SettingsViewModel : ObservableObject
             {
                 CompanyName = CompanyName,
                 GymName = GymName,
+                Owner = Owner,
                 Phone = Phone,
                 Address = Address,
                 LogoPath = LogoPath

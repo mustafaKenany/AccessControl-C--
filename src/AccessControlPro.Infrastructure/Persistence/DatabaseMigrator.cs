@@ -68,6 +68,10 @@ public static class DatabaseMigrator
             @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Transactions') AND name = 'Reference')
               ALTER TABLE Transactions ADD Reference nvarchar(100) NOT NULL DEFAULT '';",
 
+            // v4.6.13: Gym owner name on AppSettings — printed on receipts.
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AppSettings') AND name = 'Owner')
+              ALTER TABLE AppSettings ADD Owner nvarchar(200) NOT NULL DEFAULT '';",
+
             // v1.5: Indexes for performance (50+ concurrent users)
             // Transactions: filter by type, date range, employee
             @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Transactions_CreatedAt' AND object_id = OBJECT_ID('Transactions'))

@@ -545,6 +545,7 @@ public class LanguageManager : INotifyPropertyChanged
     public string SetRemoveLogo => GetString("SetRemoveLogo");
     public string SetCompanyName => GetString("SetCompanyName");
     public string SetGymName => GetString("SetGymName");
+    public string SetOwner => GetString("SetOwner");
 
     // Categories Management
     public string NavCategories => GetString("NavCategories");
@@ -1424,6 +1425,7 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(SetRemoveLogo));
         OnPropertyChanged(nameof(SetCompanyName));
         OnPropertyChanged(nameof(SetGymName));
+        OnPropertyChanged(nameof(SetOwner));
         // Categories
         OnPropertyChanged(nameof(NavCategories));
         OnPropertyChanged(nameof(CatTitle));

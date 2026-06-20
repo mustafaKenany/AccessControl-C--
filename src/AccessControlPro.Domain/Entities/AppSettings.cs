@@ -9,4 +9,6 @@ public class AppSettings
     public string DevLogoPath { get; set; } = "";
     public string Phone { get; set; } = "";
     public string Address { get; set; } = "";
+    /// <summary>Gym owner name — printed on receipts.</summary>
+    public string Owner { get; set; } = "";
 }

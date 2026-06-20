@@ -12,6 +12,8 @@ public static class GymProfile
     public static string Phone { get; set; } = "";
     public static string Address { get; set; } = "";
     public static string CompanyName { get; set; } = "";
+    public static string Owner { get; set; } = "";
+    public static string LogoPath { get; set; } = "";
 
     /// <summary>Gym name to print, falling back to a neutral label when unset.</summary>
     public static string DisplayName =>
@@ -26,5 +28,7 @@ public static class GymProfile
         Phone = s.Phone ?? "";
         Address = s.Address ?? "";
         CompanyName = s.CompanyName ?? "";
+        Owner = s.Owner ?? "";
+        LogoPath = s.LogoPath ?? "";
     }
 }

@@ -1,43 +1,35 @@
 using System;
+using System.IO;
+using System.Printing;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using AccessControlPro.WPF.Views;
 
 namespace AccessControlPro.WPF.Helpers;
 
 /// <summary>
-/// Builds and prints an 80mm thermal subscription receipt (gym header + member/
-/// subscription details + fee/paid/remaining). Used for new-player registration;
-/// the same 80mm layout the POS and renewal receipts use.
+/// Builds and prints an 80mm thermal receipt (gym logo + name + owner header, details,
+/// totals, a running receipt number). Prints DIRECTLY to the default Windows printer —
+/// no printer-picker dialog — and shows a friendly error if no printer is connected.
+/// Used for new-player registration, renewals, and income/expense cash entries.
 /// </summary>
 public static class ThermalReceipt
 {
-    private const double Width80mm = 302; // 80mm roll at 96 DPI
+    // Content width tuned to the printable area of an 80mm roll (~72mm) so right-aligned
+    // values (dates, amounts) don't get clipped at the paper edge.
+    private const double Width80mm = 270;
 
     public static void PrintSubscription(
         string title, string playerName, string cardNo, string subscriptionType,
         DateTime startDate, DateTime endDate, decimal fee, decimal paid)
     {
-        var printDialog = new PrintDialog();
-        if (printDialog.ShowDialog() != true) return;
-
         var lang = LanguageManager.Instance;
-        var doc = new FlowDocument
-        {
-            PageWidth = Width80mm,
-            ColumnWidth = Width80mm,
-            PagePadding = new Thickness(10),
-            FontFamily = new FontFamily("Segoe UI, Arial"),
-            FontSize = 11,
-            FlowDirection = lang.IsArabic ? FlowDirection.RightToLeft : FlowDirection.LeftToRight
-        };
+        var doc = NewDoc(lang);
 
-        Centered(doc, GymProfile.DisplayName, 16, FontWeights.Bold, 2);
-        if (!string.IsNullOrWhiteSpace(GymProfile.Phone))
-            Centered(doc, GymProfile.Phone, 9, FontWeights.Normal, 4, Brushes.Gray);
-        Centered(doc, title, 13, FontWeights.Bold, 4);
-        Centered(doc, DateTime.Now.ToString("yyyy-MM-dd  HH:mm:ss"), 9, FontWeights.Normal, 8, Brushes.Gray);
+        BuildHeader(doc, title);
 
         var table = TwoColTable();
         var rg = new TableRowGroup();
@@ -49,12 +41,7 @@ public static class ThermalReceipt
         table.RowGroups.Add(rg);
         doc.Blocks.Add(table);
 
-        doc.Blocks.Add(new Paragraph(new Run(new string('-', 34)))
-        {
-            TextAlignment = TextAlignment.Center,
-            Foreground = Brushes.LightGray,
-            Margin = new Thickness(0, 6, 0, 6)
-        });
+        Divider(doc);
 
         var finTable = TwoColTable();
         var finRg = new TableRowGroup();
@@ -64,35 +51,19 @@ public static class ThermalReceipt
         finTable.RowGroups.Add(finRg);
         doc.Blocks.Add(finTable);
 
-        var paginator = ((IDocumentPaginatorSource)doc).DocumentPaginator;
-        printDialog.PrintDocument(paginator, title);
+        PrintToDefault(doc, title);
     }
 
     /// <summary>
-    /// 80mm receipt for a one-off cash entry (income "وارد" or expense): gym header,
-    /// title, category, description, and amount. Used by the Cash Flow add-income/expense flow.
+    /// 80mm receipt for a one-off cash entry (income "وارد" or expense): header, title,
+    /// category, description, and amount. Used by the Cash Flow add-income/expense flow.
     /// </summary>
     public static void PrintCashReceipt(string title, string category, string description, decimal amount)
     {
-        var printDialog = new PrintDialog();
-        if (printDialog.ShowDialog() != true) return;
-
         var lang = LanguageManager.Instance;
-        var doc = new FlowDocument
-        {
-            PageWidth = Width80mm,
-            ColumnWidth = Width80mm,
-            PagePadding = new Thickness(10),
-            FontFamily = new FontFamily("Segoe UI, Arial"),
-            FontSize = 11,
-            FlowDirection = lang.IsArabic ? FlowDirection.RightToLeft : FlowDirection.LeftToRight
-        };
+        var doc = NewDoc(lang);
 
-        Centered(doc, GymProfile.DisplayName, 16, FontWeights.Bold, 2);
-        if (!string.IsNullOrWhiteSpace(GymProfile.Phone))
-            Centered(doc, GymProfile.Phone, 9, FontWeights.Normal, 4, Brushes.Gray);
-        Centered(doc, title, 13, FontWeights.Bold, 4);
-        Centered(doc, DateTime.Now.ToString("yyyy-MM-dd  HH:mm:ss"), 9, FontWeights.Normal, 8, Brushes.Gray);
+        BuildHeader(doc, title);
 
         var table = TwoColTable();
         var rg = new TableRowGroup();
@@ -103,12 +74,7 @@ public static class ThermalReceipt
         table.RowGroups.Add(rg);
         doc.Blocks.Add(table);
 
-        doc.Blocks.Add(new Paragraph(new Run(new string('-', 34)))
-        {
-            TextAlignment = TextAlignment.Center,
-            Foreground = Brushes.LightGray,
-            Margin = new Thickness(0, 6, 0, 6)
-        });
+        Divider(doc);
 
         var amtTable = TwoColTable();
         var amtRg = new TableRowGroup();
@@ -118,8 +84,117 @@ public static class ThermalReceipt
 
         Centered(doc, lang.IsArabic ? "شكراً" : "Thank you", 11, FontWeights.Bold, 0);
 
+        PrintToDefault(doc, title);
+    }
+
+    // ---- shared building blocks ----
+
+    private static FlowDocument NewDoc(LanguageManager lang) => new()
+    {
+        PageWidth = Width80mm,
+        ColumnWidth = Width80mm,
+        PagePadding = new Thickness(6, 8, 6, 8),
+        FontFamily = new FontFamily("Segoe UI, Arial"),
+        FontSize = 11,
+        FlowDirection = lang.IsArabic ? FlowDirection.RightToLeft : FlowDirection.LeftToRight
+    };
+
+    /// <summary>Gym logo (if set) + name + owner + phone + title + receipt number / time.
+    /// Public so the renewal dialog reuses the exact same header.</summary>
+    public static void BuildHeader(FlowDocument doc, string title)
+    {
+        var lang = LanguageManager.Instance;
+
+        if (!string.IsNullOrWhiteSpace(GymProfile.LogoPath) && File.Exists(GymProfile.LogoPath))
+        {
+            try
+            {
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.UriSource = new Uri(GymProfile.LogoPath, UriKind.Absolute);
+                bmp.EndInit();
+                var img = new Image
+                {
+                    Source = bmp,
+                    Width = 72,
+                    Height = 72,
+                    Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Center
+                };
+                doc.Blocks.Add(new BlockUIContainer(img) { Margin = new Thickness(0, 0, 0, 4) });
+            }
+            catch { /* a bad logo path must never block the receipt */ }
+        }
+
+        Centered(doc, GymProfile.DisplayName, 16, FontWeights.Bold, 2);
+        if (!string.IsNullOrWhiteSpace(GymProfile.Owner))
+            Centered(doc, GymProfile.Owner, 10, FontWeights.Normal, 2, Brushes.DimGray);
+        if (!string.IsNullOrWhiteSpace(GymProfile.Phone))
+            Centered(doc, GymProfile.Phone, 9, FontWeights.Normal, 4, Brushes.Gray);
+        Centered(doc, title, 13, FontWeights.Bold, 2);
+
+        var serialLabel = lang.IsArabic ? "رقم الوصل" : "Receipt #";
+        Centered(doc, $"{serialLabel}: {NextSerial()}    {DateTime.Now:yyyy-MM-dd  HH:mm}",
+            9, FontWeights.Normal, 8, Brushes.Gray);
+    }
+
+    /// <summary>Persistent, incrementing receipt number stored per PC (5-digit, e.g. 00042).</summary>
+    private static string NextSerial()
+    {
+        try
+        {
+            var dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AccessControlPro");
+            Directory.CreateDirectory(dir);
+            var file = Path.Combine(dir, "receipt_counter.txt");
+            long n = 0;
+            if (File.Exists(file) && long.TryParse(File.ReadAllText(file).Trim(), out var cur)) n = cur;
+            n++;
+            File.WriteAllText(file, n.ToString());
+            return n.ToString("D5");
+        }
+        catch { return DateTime.Now.ToString("HHmmss"); }
+    }
+
+    /// <summary>Prints a document to the default printer with no dialog; warns if none is connected.
+    /// Public so the renewal dialog (which builds its own document) reuses it.</summary>
+    public static void PrintToDefault(FlowDocument doc, string jobName)
+    {
+        var pd = DefaultPrinterOrWarn();
+        if (pd == null) return;
         var paginator = ((IDocumentPaginatorSource)doc).DocumentPaginator;
-        printDialog.PrintDocument(paginator, title);
+        pd.PrintDocument(paginator, jobName);
+    }
+
+    /// <summary>Returns a PrintDialog pointed at the default printer, or null (after showing a
+    /// friendly "no printer" message) if none is connected. Used for direct, no-dialog printing.</summary>
+    public static PrintDialog? DefaultPrinterOrWarn()
+    {
+        PrintQueue? dq = null;
+        try { dq = new LocalPrintServer().DefaultPrintQueue; }
+        catch { /* no print server / no printers */ }
+
+        if (dq == null)
+        {
+            var ar = LanguageManager.Instance.IsArabic;
+            CustomMessageBox.Show(
+                ar ? "لا توجد طابعة متصلة. الرجاء توصيل طابعة الوصولات وتعيينها كطابعة افتراضية."
+                   : "No printer found. Please connect the receipt printer and set it as the default printer.",
+                ar ? "طباعة" : "Print", MsgType.Warning);
+            return null;
+        }
+        return new PrintDialog { PrintQueue = dq };
+    }
+
+    private static void Divider(FlowDocument doc)
+    {
+        doc.Blocks.Add(new Paragraph(new Run(new string('-', 32)))
+        {
+            TextAlignment = TextAlignment.Center,
+            Foreground = Brushes.LightGray,
+            Margin = new Thickness(0, 6, 0, 6)
+        });
     }
 
     private static void Centered(FlowDocument doc, string text, double size, FontWeight weight,
@@ -150,13 +225,15 @@ public static class ThermalReceipt
         {
             FontWeight = weight ?? FontWeights.Normal,
             Margin = new Thickness(0, 2, 0, 2)
-        }));
+        })
+        { Padding = new Thickness(2, 0, 2, 0) });
         row.Cells.Add(new TableCell(new Paragraph(new Run(value))
         {
             TextAlignment = TextAlignment.Right,
             FontWeight = weight ?? FontWeights.Normal,
             Margin = new Thickness(0, 2, 0, 2)
-        }));
+        })
+        { Padding = new Thickness(2, 0, 2, 0) });
         rg.Rows.Add(row);
     }
 }

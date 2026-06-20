@@ -516,6 +516,7 @@
   <data name="SetRemoveLogo" xml:space="preserve"><value>إزالة الشعار</value></data>
   <data name="SetCompanyName" xml:space="preserve"><value>اسم الشركة</value></data>
   <data name="SetGymName" xml:space="preserve"><value>اسم النادي / المركز</value></data>
+  <data name="SetOwner" xml:space="preserve"><value>اسم صاحب النادي</value></data>
   <!-- Categories Management -->
   <data name="NavCategories" xml:space="preserve"><value>الفئات</value></data>
   <data name="CatTitle" xml:space="preserve"><value>إدارة الفئات</value></data>

@@ -61,8 +61,9 @@ public partial class QrCodeDisplayDialog : Window
 
     private void PrintClick(object sender, RoutedEventArgs e)
     {
-        var printDialog = new PrintDialog();
-        if (printDialog.ShowDialog() != true) return;
+        // Print straight to the default printer (no picker); warns if none is connected.
+        var printDialog = Helpers.ThermalReceipt.DefaultPrinterOrWarn();
+        if (printDialog == null) return;
 
         // Build print visual
         var printPanel = new StackPanel

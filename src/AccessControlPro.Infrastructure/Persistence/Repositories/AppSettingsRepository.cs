@@ -31,6 +31,7 @@ public class AppSettingsRepository : IAppSettingsRepository
             existing.LogoPath = settings.LogoPath;
             existing.Phone = settings.Phone;
             existing.Address = settings.Address;
+            existing.Owner = settings.Owner;
         }
         await db.SaveChangesAsync();
     }

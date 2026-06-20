@@ -63,6 +63,11 @@
                         <TextBox Text="{Binding GymName, UpdateSourceTrigger=PropertyChanged}"
                                  Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"/>
 
+                        <TextBlock Text="{Binding Lang.SetOwner}" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                        <TextBox Text="{Binding Owner, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"/>
+
                         <TextBlock Text="{Binding Lang.Phone}" FontSize="12"
                                    Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                         <TextBox Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}"

@@ -1445,7 +1445,8 @@ public class EmployeeService : IEmployeeService
     }
 
     public async Task<(int ok, int fail, int total, List<string> errors)> PushTempCardToDevicesAsync(
-        string cardNumber, DateTime validTo, string doorPermissions, IEnumerable<int>? deviceIds = null)
+        string cardNumber, DateTime validTo, string doorPermissions, IEnumerable<int>? deviceIds = null,
+        int maxUses = 65535)
     {
         cardNumber = (cardNumber ?? "").Trim();
         if (string.IsNullOrWhiteSpace(cardNumber))
@@ -1461,10 +1462,12 @@ public class EmployeeService : IEmployeeService
         var doors = string.IsNullOrWhiteSpace(doorPermissions) ? "01010000" : doorPermissions;
         var deviceTuples = devices.Select(d => (BuildDeviceInfo(d), d.Name, d.IP, d.Id));
 
-        // effectiveTimes high (65535) so the date governs validity, not a use count.
+        // effectiveTimes = use count the gate enforces. Daily Pass passes 2 (one in + one out)
+        // so a found/shared ticket can't be reused all day; default stays high (date-governed).
+        var effectiveTimes = maxUses <= 0 ? 65535 : maxUses;
         var result = await _opHelper.ExecuteOnDevicesSequentialAsync(deviceTuples, deviceInfo =>
         {
-            _sdk.AddAccessCard(deviceInfo, cardNumber, "", 0, doors, permitTime, 65535, 0, false);
+            _sdk.AddAccessCard(deviceInfo, cardNumber, "", 0, doors, permitTime, effectiveTimes, 0, false);
         });
 
         await LogAuditAsync("DailyPassPush", "AccessCard", 0,
