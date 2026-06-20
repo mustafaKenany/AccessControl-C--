@@ -42,10 +42,17 @@
                     body: bodyJson,
                     credentials: 'same-origin'
                 });
-                if (!resp.ok) return { success: false, error: 'Network error' };
-                return await resp.json();
+                // The login endpoint returns 200 with {success,error} even on a rejected
+                // login, so pass that through — it carries the REAL reason (e.g. invalid
+                // credentials, gym not synced yet). Only fall back to a status message when
+                // the server genuinely errored (5xx) with no usable body.
+                let data = null;
+                try { data = await resp.json(); } catch (_) { }
+                if (data && typeof data.success !== 'undefined') return data;
+                if (!resp.ok) return { success: false, error: 'Server error (HTTP ' + resp.status + '). Please try again or contact support.' };
+                return data || { success: false, error: 'Unexpected server response.' };
             } catch (e) {
-                return { success: false, error: 'Network error' };
+                return { success: false, error: 'Cannot reach the server: ' + ((e && e.message) ? e.message : 'connection failed') };
             }
         };
     </script>
