@@ -336,6 +336,8 @@ public partial class SetupWizardWindow : Window
         var createDesktopShortcut = CreateDesktopShortcutCheck.IsChecked == true;
         var createStartMenuShortcut = CreateStartMenuCheck.IsChecked == true;
         var selectedLang = (LanguageCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag?.ToString() ?? "en";
+        var cloudEnabled = CloudEnabledCheck?.IsChecked == true;
+        var provisionPassword = ProvisionPasswordBox?.Password ?? "";
 
         try
         {
@@ -392,6 +394,27 @@ public partial class SetupWizardWindow : Window
             InstallStatusText.Text = "Creating admin account and gym settings...";
             await Task.Run(() => SeedData(adminUsername, adminPassword, adminDisplayName,
                 devCompanyName, gymNameEn, gymPhone, gymAddress, gymLogoPath, devLogoPath));
+
+            // Step 4.5: Auto-register the gym in the cloud (optional). Only when cloud is
+            // enabled AND a provisioning password was entered. Fully non-blocking — if it
+            // fails (offline, wrong password), setup still completes and the gym can be
+            // created manually in Super Admin later.
+            if (cloudEnabled && !string.IsNullOrWhiteSpace(provisionPassword))
+            {
+                InstallStatusText.Text = "Registering gym in the cloud...";
+                try
+                {
+                    var (ok, msg) = await ProvisionGymInCloudAsync(gymNameEn, gymPhone, adminDisplayName, provisionPassword);
+                    InstallStatusText.Text = ok
+                        ? "Gym registered in the cloud."
+                        : "Cloud registration skipped: " + msg + " (you can create it manually in Super Admin).";
+                }
+                catch
+                {
+                    InstallStatusText.Text = "Cloud registration skipped (no internet?). You can create the gym manually in Super Admin.";
+                }
+                await Task.Delay(800);
+            }
 
             // Step 5: Copy appsettings.json to Admin & POS apps
             InstallStatusText.Text = "Configuring all applications...";
@@ -487,6 +510,56 @@ public partial class SetupWizardWindow : Window
         System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
         var hex = Convert.ToHexString(bytes);  // 16 hex chars, upper-case
         return $"HMT-{hex.Substring(0, 8)}-{hex.Substring(8, 8)}";
+    }
+
+    /// <summary>
+    /// Calls the cloud /api/provision-gym endpoint to auto-create this gym (master row +
+    /// tenant DB + schema) using the API key we just wrote to appsettings.json. Idempotent
+    /// on the server, so re-running setup is safe. Returns (ok, message); never throws past
+    /// the caller's catch — a cloud failure must not abort the local install.
+    /// </summary>
+    private static async Task<(bool ok, string message)> ProvisionGymInCloudAsync(
+        string gymName, string ownerPhone, string ownerName, string provisionSecret)
+    {
+        var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+        using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(settingsPath));
+        var root = doc.RootElement;
+        string Get(string k) => root.TryGetProperty(k, out var v) ? v.GetString() ?? "" : "";
+
+        var apiKey = Get("CloudApiKey");
+        var syncUrl = Get("CloudSyncUrl");
+        if (string.IsNullOrWhiteSpace(syncUrl) || string.IsNullOrWhiteSpace(apiKey))
+            return (false, "cloud not configured");
+
+        // Derive the provision URL from the configured sync URL (…/api/sync → …/api/provision-gym).
+        var provisionUrl = syncUrl.Replace("/api/sync", "/api/provision-gym");
+
+        var payload = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            provisionSecret,
+            gymName,
+            ownerName,
+            ownerPhone,
+            apiKey
+        });
+
+        using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+        var resp = await http.PostAsync(provisionUrl,
+            new System.Net.Http.StringContent(payload, System.Text.Encoding.UTF8, "application/json"));
+        var body = await resp.Content.ReadAsStringAsync();
+
+        // The endpoint returns the real reason in {success,error} even on 4xx/5xx.
+        try
+        {
+            using var rd = System.Text.Json.JsonDocument.Parse(body);
+            if (rd.RootElement.TryGetProperty("success", out var s) && s.GetBoolean())
+                return (true, "ok");
+            if (rd.RootElement.TryGetProperty("error", out var e))
+                return (false, e.GetString() ?? "failed");
+        }
+        catch { /* non-JSON body */ }
+
+        return (false, $"HTTP {(int)resp.StatusCode}");
     }
 
     private static void UpdateAppSettingsLogoPaths(string? devLogoPath, string? gymLogoPath)

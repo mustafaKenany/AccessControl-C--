@@ -351,10 +351,17 @@
                                    FontSize="11" Foreground="#7A8B99" TextWrapping="Wrap" Margin="0,0,0,10"/>
 
                         <!-- Cloud API Key -->
-                        <TextBlock Text="Cloud API Key (from Super Admin):" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,4"/>
+                        <TextBlock Text="Cloud API Key (leave blank to auto-generate a unique key):" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,4"/>
                         <TextBox x:Name="CloudApiKeyBox" FontSize="14" Background="#1E2D3D" Foreground="White"
                                  BorderBrush="#2A3A4A" BorderThickness="1" Padding="10,8" Margin="0,0,0,12"
-                                 Text="HMTech-Sync-2026"/>
+                                 Text=""/>
+
+                        <!-- Auto-provision: register this gym in the cloud automatically.
+                             Enter the provisioning password to create the gym + its cloud database
+                             without touching Super Admin. Leave blank to skip (create it manually). -->
+                        <TextBlock Text="Provisioning password (optional — auto-creates the gym in the cloud):" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,4"/>
+                        <PasswordBox x:Name="ProvisionPasswordBox" FontSize="14" Background="#1E2D3D" Foreground="White"
+                                     BorderBrush="#2A3A4A" BorderThickness="1" Padding="10,8" Margin="0,0,0,12"/>
 
                         <!-- Backup Folder -->
                         <TextBlock Text="Backup Folder:" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,4"/>
