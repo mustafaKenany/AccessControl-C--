@@ -504,6 +504,96 @@ static CookieOptions BuildSessionCookie(HttpContext ctx, TimeSpan lifetime)
     };
 }
 
+// Auto-provision a gym from the desktop setup wizard: creates the tenant DB (with full
+// schema via CreateGymDatabaseAsync) AND the master Gyms row in one call, gated by a
+// provisioning password. Idempotent by API key so re-running setup is safe. Existing gyms
+// and manual SuperAdmin creation are untouched. Offline installs simply skip this call.
+app.MapPost("/api/provision-gym", async (HttpContext ctx, DbHelper db, GymDbHelper gymDb, IConfiguration config) =>
+{
+    using var doc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
+    var root = doc.RootElement;
+    string S(string n) => root.TryGetProperty(n, out var v) ? (v.GetString() ?? "").Trim() : "";
+
+    // 1) Gate behind the provisioning password (configured server-side; never hardcoded).
+    var expected = config["ProvisioningSecret"] ?? "";
+    if (string.IsNullOrWhiteSpace(expected) || S("provisionSecret") != expected)
+        return Results.Json(new { success = false, error = "Invalid provisioning password." }, statusCode: 401);
+
+    var gymName = S("gymName");
+    var apiKey = S("apiKey");
+    if (gymName.Length == 0 || apiKey.Length == 0)
+        return Results.Json(new { success = false, error = "gymName and apiKey are required." }, statusCode: 400);
+
+    using var master = await gymDb.GetMasterConnectionAsync();
+
+    // 2) Idempotent: a gym with this API key already exists -> return it unchanged.
+    using (var chk = new Npgsql.NpgsqlCommand(@"SELECT ""Subdomain"" FROM ""Gyms"" WHERE ""ApiKey"" = @k LIMIT 1", master))
+    {
+        chk.Parameters.AddWithValue("k", apiKey);
+        var ex = await chk.ExecuteScalarAsync();
+        if (ex != null)
+            return Results.Json(new { success = true, subdomain = ex.ToString(), alreadyExisted = true });
+    }
+
+    // 3) Build a DNS-safe, unique subdomain from the requested one (or the gym name).
+    string Slug(string s) => System.Text.RegularExpressions.Regex.Replace((s ?? "").ToLower(), "[^a-z0-9]", "");
+    var baseSlug = Slug(S("subdomain").Length > 0 ? S("subdomain") : gymName);
+    if (baseSlug.Length == 0) baseSlug = "gym";
+    var reserved = new HashSet<string> { "www", "admin", "api" };
+    string sub = baseSlug; int n = 1;
+    while (true)
+    {
+        bool taken = reserved.Contains(sub);
+        if (!taken)
+        {
+            using var u = new Npgsql.NpgsqlCommand(@"SELECT 1 FROM ""Gyms"" WHERE LOWER(""Subdomain"") = @s LIMIT 1", master);
+            u.Parameters.AddWithValue("s", sub);
+            taken = await u.ExecuteScalarAsync() != null;
+        }
+        if (!taken) break;
+        sub = baseSlug + (++n);
+    }
+
+    var dbName = $"gymcloud_{sub}";
+
+    // 4) Create the tenant DB + full schema (reuses the same path SuperAdmin uses).
+    try { await gymDb.CreateGymDatabaseAsync(dbName); }
+    catch (Npgsql.PostgresException pg) when (pg.SqlState == "42P04") { /* DB already exists - reuse it */ }
+    catch (Exception ex)
+    {
+        return Results.Json(new { success = false, error = "Could not create gym database: " + ex.Message }, statusCode: 500);
+    }
+
+    // 5) Write the master row LAST; if it fails, drop the just-created DB so a retry is clean.
+    try
+    {
+        using var ins = new Npgsql.NpgsqlCommand(
+            @"INSERT INTO ""Gyms"" (""Name"",""Subdomain"",""ApiKey"",""DatabaseName"",""OwnerName"",""OwnerPhone"",""OwnerEmail"",
+              ""IsActive"",""ExpiresAt"",""CreatedAt"",""QrPoolEnabled"",""QrPoolSize"",""QrRangeStart"",""QrMonthlyFee"")
+              VALUES (@n,@s,@k,@d,@on,@op,@oe,TRUE, NOW() + INTERVAL '1 year', NOW(), TRUE, 3000, 0, 0)", master);
+        ins.Parameters.AddWithValue("n", gymName);
+        ins.Parameters.AddWithValue("s", sub);
+        ins.Parameters.AddWithValue("k", apiKey);
+        ins.Parameters.AddWithValue("d", dbName);
+        ins.Parameters.AddWithValue("on", S("ownerName"));
+        ins.Parameters.AddWithValue("op", S("ownerPhone"));
+        ins.Parameters.AddWithValue("oe", S("ownerEmail"));
+        await ins.ExecuteNonQueryAsync();
+    }
+    catch (Exception ex)
+    {
+        try
+        {
+            using var drop = new Npgsql.NpgsqlCommand($@"DROP DATABASE IF EXISTS ""{dbName}""", master);
+            await drop.ExecuteNonQueryAsync();
+        }
+        catch { /* best-effort cleanup */ }
+        return Results.Json(new { success = false, error = "Could not register gym: " + ex.Message }, statusCode: 500);
+    }
+
+    return Results.Json(new { success = true, subdomain = sub, alreadyExisted = false });
+});
+
 app.MapPost("/api/auth/login", async (HttpContext ctx, WebAuthService auth, SessionService sessions) =>
 {
     // Read JSON body manually — minimal API model binding would require a DTO class
