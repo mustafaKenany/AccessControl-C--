@@ -544,6 +544,16 @@
   <data name="PrdEdit" xml:space="preserve"><value>تعديل المنتج</value></data>
   <!-- Suppliers -->
   <data name="NavSuppliers" xml:space="preserve"><value>الموردين</value></data>
+  <data name="NavReminders" xml:space="preserve"><value>التذكيرات</value></data>
+  <data name="RemindersSubtitle" xml:space="preserve"><value>إرسال تذكير تجديد عبر واتساب للأعضاء المقبلين على الانتهاء</value></data>
+  <data name="RemindersWithin" xml:space="preserve"><value>المنتهية خلال</value></data>
+  <data name="RemindersDays" xml:space="preserve"><value>يوم</value></data>
+  <data name="RemindersIncludeExpired" xml:space="preserve"><value>تضمين المنتهية فعلاً</value></data>
+  <data name="RemindersTemplate" xml:space="preserve"><value>قالب الرسالة</value></data>
+  <data name="RemindersHint" xml:space="preserve"><value>المتغيرات: ‎{name} {gym} {date} {days}</value></data>
+  <data name="RemindersStatus" xml:space="preserve"><value>الحالة</value></data>
+  <data name="RemindersNone" xml:space="preserve"><value>لا يوجد أعضاء بحاجة لتذكير حالياً.</value></data>
+  <data name="RemindersRefresh" xml:space="preserve"><value>تحديث</value></data>
   <data name="SupTitle" xml:space="preserve"><value>إدارة الموردين</value></data>
   <data name="SupSubtitle" xml:space="preserve"><value>إدارة موردي المنتجات</value></data>
   <data name="SupName" xml:space="preserve"><value>اسم المورد</value></data>

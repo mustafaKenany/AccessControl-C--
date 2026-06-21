@@ -576,6 +576,16 @@ public class LanguageManager : INotifyPropertyChanged
 
     // Suppliers Management (Admin)
     public string NavSuppliers => GetString("NavSuppliers");
+    public string NavReminders => GetString("NavReminders");
+    public string RemindersSubtitle => GetString("RemindersSubtitle");
+    public string RemindersWithin => GetString("RemindersWithin");
+    public string RemindersDays => GetString("RemindersDays");
+    public string RemindersIncludeExpired => GetString("RemindersIncludeExpired");
+    public string RemindersTemplate => GetString("RemindersTemplate");
+    public string RemindersHint => GetString("RemindersHint");
+    public string RemindersStatus => GetString("RemindersStatus");
+    public string RemindersNone => GetString("RemindersNone");
+    public string RemindersRefresh => GetString("RemindersRefresh");
     public string SupTitle => GetString("SupTitle");
     public string SupSubtitle => GetString("SupSubtitle");
     public string SupName => GetString("SupName");

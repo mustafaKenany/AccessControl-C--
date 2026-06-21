@@ -297,6 +297,17 @@
                                 </StackPanel>
                             </Button>
 
+                            <Button Style="{StaticResource SidebarButton}"
+                                    Command="{Binding NavigateToCommand}" CommandParameter="Reminders"
+                                    Visibility="{Binding CanViewPlayers, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <fa:ImageAwesome Icon="Whatsapp" Width="16" Height="16"
+                                                     Foreground="{StaticResource TextMutedBrush}"
+                                                     VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                    <TextBlock Text="{Binding Lang.NavReminders}" FontSize="14" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
                             <Border Height="1" Background="#10FFFFFF" Margin="12,8"/>
 
                             <Button Style="{StaticResource SidebarButton}"
@@ -422,6 +433,9 @@
                     </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:QrPassViewModel}">
                         <views:QrPassView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:RemindersViewModel}">
+                        <views:RemindersView/>
                     </DataTemplate>
                 </ContentControl.Resources>
             </ContentControl>

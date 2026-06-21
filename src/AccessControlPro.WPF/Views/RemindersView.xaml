@@ -1,0 +1,103 @@
+<UserControl x:Class="AccessControlPro.WPF.Views.RemindersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="http://schemas.fontawesome.io/icons/"
+             xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers"
+             FlowDirection="{Binding Lang.FlowDirection}">
+    <UserControl.Resources>
+        <helpers:BindingProxy x:Key="Proxy" Data="{Binding}"/>
+    </UserControl.Resources>
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="{Binding Lang.NavReminders}" FontSize="24" FontWeight="Bold"
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="{Binding Lang.RemindersSubtitle}" FontSize="13"
+                       Foreground="{StaticResource TextSecondaryBrush}"/>
+        </StackPanel>
+
+        <!-- Controls + message template -->
+        <Border Grid.Row="1" Style="{StaticResource DashboardCard}" Margin="0,0,0,16">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                    <TextBlock Text="{Binding Lang.RemindersWithin}" VerticalAlignment="Center"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,8,0"/>
+                    <TextBox Text="{Binding DaysAhead, UpdateSourceTrigger=PropertyChanged}" Width="56"
+                             Style="{StaticResource DarkTextBox}"/>
+                    <TextBlock Text="{Binding Lang.RemindersDays}" VerticalAlignment="Center"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="8,0,18,0"/>
+                    <CheckBox IsChecked="{Binding IncludeExpired}" Content="{Binding Lang.RemindersIncludeExpired}"
+                              Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                    <Button Command="{Binding RefreshCommand}" Style="{StaticResource SecondaryButton}"
+                            Margin="18,0,0,0" Padding="14,6" Cursor="Hand"
+                            Content="{Binding Lang.RemindersRefresh}"/>
+                </StackPanel>
+                <TextBlock Text="{Binding Lang.RemindersTemplate}" FontSize="12"
+                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                <TextBox Text="{Binding Template, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource DarkTextBox}" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="56"/>
+                <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"
+                           Text="{Binding Lang.RemindersHint}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Members list -->
+        <Border Grid.Row="2" Style="{StaticResource DashboardCard}">
+            <Grid>
+                <DataGrid ItemsSource="{Binding Members}" AutoGenerateColumns="False" IsReadOnly="True"
+                          Background="Transparent" BorderThickness="0" RowBackground="Transparent"
+                          GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                          Foreground="{StaticResource TextPrimaryBrush}" FontSize="13"
+                          CanUserAddRows="False" HorizontalScrollBarVisibility="Disabled">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PlayerName, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Name}" Width="*"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Phone, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Phone}" Width="130"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Subscription, Source={StaticResource Proxy}}"
+                                            Binding="{Binding SubscriptionType}" Width="140"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.EndDate, Source={StaticResource Proxy}}"
+                                            Binding="{Binding EndDate, StringFormat=yyyy-MM-dd}" Width="110"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.RemindersStatus, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Status}" Width="120"/>
+                        <DataGridTemplateColumn Width="130">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Cursor="Hand" Padding="10,5" Margin="2"
+                                            Background="#25D366" BorderThickness="0" Foreground="White"
+                                            Command="{Binding DataContext.SendWhatsAppCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <fa:ImageAwesome Icon="Whatsapp" Width="13" Height="13" Foreground="White" Margin="0,0,6,0"/>
+                                            <TextBlock Text="WhatsApp" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <TextBlock Text="{Binding Lang.RemindersNone}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{StaticResource TextMutedBrush}" FontSize="14">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Members.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

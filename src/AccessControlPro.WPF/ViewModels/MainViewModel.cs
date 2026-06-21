@@ -27,6 +27,7 @@ public partial class MainViewModel : ObservableObject
     private readonly FinanceViewModel _financeViewModel;
     private readonly CashFlowViewModel _cashFlowViewModel;
     private readonly QrPassViewModel _qrPassViewModel;
+    private readonly RemindersViewModel _remindersViewModel;
     private readonly MonitorViewModel _monitorViewModel;
     private readonly CurrentUserService _currentUser;
     private readonly IServiceProvider _serviceProvider;
@@ -82,6 +83,7 @@ public partial class MainViewModel : ObservableObject
         FinanceViewModel financeViewModel,
         CashFlowViewModel cashFlowViewModel,
         QrPassViewModel qrPassViewModel,
+        RemindersViewModel remindersViewModel,
         MonitorViewModel monitorViewModel,
         CurrentUserService currentUser,
         IServiceProvider serviceProvider)
@@ -96,6 +98,7 @@ public partial class MainViewModel : ObservableObject
         _financeViewModel = financeViewModel;
         _cashFlowViewModel = cashFlowViewModel;
         _qrPassViewModel = qrPassViewModel;
+        _remindersViewModel = remindersViewModel;
         _monitorViewModel = monitorViewModel;
         _currentUser = currentUser;
         _serviceProvider = serviceProvider;
@@ -125,6 +128,7 @@ public partial class MainViewModel : ObservableObject
             "Logs" => CanViewLogs,
             "DeletedRecords" => CanViewDeleted,
             "QrPass" => CanViewQrPass,
+            "Reminders" => CanViewPlayers,
             _ => true
         };
 
@@ -149,6 +153,7 @@ public partial class MainViewModel : ObservableObject
             "Finance" => _financeViewModel,
             "CashFlow" => _cashFlowViewModel,
             "QrPass" => _qrPassViewModel,
+            "Reminders" => _remindersViewModel,
             _ => CurrentView
         };
 
@@ -175,6 +180,9 @@ public partial class MainViewModel : ObservableObject
                 break;
             case "QrPass":
                 await _qrPassViewModel.InitializeAsync();
+                break;
+            case "Reminders":
+                await _remindersViewModel.LoadAsync();
                 break;
         }
     }

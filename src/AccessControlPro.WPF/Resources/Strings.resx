@@ -539,6 +539,16 @@ Phone or subscription type is still a placeholder value (MIG-... or "Migrated").
   <data name="PrdEdit" xml:space="preserve"><value>Edit Product</value></data>
   <!-- Suppliers -->
   <data name="NavSuppliers" xml:space="preserve"><value>Suppliers</value></data>
+  <data name="NavReminders" xml:space="preserve"><value>Reminders</value></data>
+  <data name="RemindersSubtitle" xml:space="preserve"><value>Send WhatsApp renewal reminders to members about to expire</value></data>
+  <data name="RemindersWithin" xml:space="preserve"><value>Expiring within</value></data>
+  <data name="RemindersDays" xml:space="preserve"><value>days</value></data>
+  <data name="RemindersIncludeExpired" xml:space="preserve"><value>Include already expired</value></data>
+  <data name="RemindersTemplate" xml:space="preserve"><value>Message template</value></data>
+  <data name="RemindersHint" xml:space="preserve"><value>Placeholders: {name} {gym} {date} {days}</value></data>
+  <data name="RemindersStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="RemindersNone" xml:space="preserve"><value>No members to remind right now.</value></data>
+  <data name="RemindersRefresh" xml:space="preserve"><value>Refresh</value></data>
   <data name="SupTitle" xml:space="preserve"><value>Suppliers Management</value></data>
   <data name="SupSubtitle" xml:space="preserve"><value>Manage your product suppliers</value></data>
   <data name="SupName" xml:space="preserve"><value>Supplier Name</value></data>

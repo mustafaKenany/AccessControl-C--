@@ -286,6 +286,7 @@ public partial class App : System.Windows.Application
         // ViewModels
         services.AddTransient<MainViewModel>();
         services.AddTransient<QrPassViewModel>();
+        services.AddTransient<RemindersViewModel>();
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<DevicesViewModel>();
         services.AddTransient<DoorsViewModel>();
