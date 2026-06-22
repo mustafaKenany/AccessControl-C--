@@ -40,6 +40,7 @@ public partial class DailyPassDialog : Window
         PriceLabel.Text = _ar ? "سعر اليوم" : "Today's price";
         QrButtonText.Text = _ar ? "تذكرة QR" : "QR Ticket";
         TempButtonText.Text = _ar ? "كارت مؤقت" : "Temp Card";
+        ManualButtonText.Text = _ar ? "دخول يدوي (تحصيل فقط)" : "Manual Entry (collect only)";
         ScanHint.Text = _ar
             ? "امسح الكارت على القارئ أو اكتب رقمه ثم اضغط إصدار"
             : "Scan the card on the reader (or type its number) then press Issue";
@@ -117,6 +118,33 @@ public partial class DailyPassDialog : Window
             CustomMessageBox.Show(ex.Message, LanguageManager.Instance.DailyPass, MsgType.Error, this);
         }
         finally { QrButton.IsEnabled = true; }
+    }
+
+    private async void ManualEntryClick(object sender, RoutedEventArgs e)
+    {
+        if (!EnsurePrice()) return;
+        if (!CustomMessageBox.Confirm(
+            _ar ? $"تحصيل دخول يومي بمبلغ {_price:N0}؟ (الكابتن يُدخل الزائر يدوياً)"
+                : $"Collect a daily pass of {_price:N0}? (the captain admits the guest manually)",
+            LanguageManager.Instance.DailyPass))
+            return;
+
+        ManualButton.IsEnabled = false;
+        try
+        {
+            // No QR / card issued — the captain admits the guest (joker card / push button).
+            // We only record the fee so it shows in today's takings and Finance.
+            await _financeService.RecordIncomeAsync("Daily Pass", _price, "Daily Pass - manual entry");
+            await RefreshTodayAsync();
+            CustomMessageBox.Show(
+                _ar ? "تم تسجيل الدخول اليومي." : "Daily pass recorded.",
+                LanguageManager.Instance.DailyPass, MsgType.Success, this);
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(ex.Message, LanguageManager.Instance.DailyPass, MsgType.Error, this);
+        }
+        finally { ManualButton.IsEnabled = true; }
     }
 
     private void TempCardToggle(object sender, RoutedEventArgs e)
