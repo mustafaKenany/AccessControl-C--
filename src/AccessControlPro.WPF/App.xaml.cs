@@ -555,6 +555,31 @@ public partial class App : System.Windows.Application
             {
                 var gymSettings = Task.Run(() => settingsService.GetSettingsAsync()).GetAwaiter().GetResult();
                 Helpers.GymProfile.Update(gymSettings);
+
+                // Back-fill the cloud key into the DB (once) so a future reinstall — which keeps
+                // the database — recovers the SAME key instead of generating a new one the cloud
+                // rejects. Only writes when the DB has no key yet.
+                if (gymSettings != null && string.IsNullOrWhiteSpace(gymSettings.CloudApiKey))
+                {
+                    var fileKey = "";
+                    try
+                    {
+                        var p = System.IO.Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+                        if (System.IO.File.Exists(p))
+                        {
+                            using var d = System.Text.Json.JsonDocument.Parse(System.IO.File.ReadAllText(p));
+                            if (d.RootElement.TryGetProperty("CloudApiKey", out var k)) fileKey = k.GetString() ?? "";
+                        }
+                    }
+                    catch { }
+
+                    if (!string.IsNullOrWhiteSpace(fileKey))
+                    {
+                        gymSettings.CloudApiKey = fileKey;
+                        Task.Run(() => settingsService.SaveSettingsAsync(gymSettings)).GetAwaiter().GetResult();
+                        StartupLog("Backfilled CloudApiKey into AppSettings (reinstall recovery).");
+                    }
+                }
             }
             catch (Exception ex) { StartupLog($"GymProfile load skipped: {ex.Message}"); }
 

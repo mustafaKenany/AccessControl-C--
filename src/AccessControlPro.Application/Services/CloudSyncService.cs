@@ -244,6 +244,16 @@ public class CloudSyncService : ICloudSyncService
                 LogResponseSnippet(responseBody);
                 return $"Synced: {summary}";
             }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                // 401 = the cloud doesn't recognise this gym's API key. Almost always a key
+                // mismatch after a reinstall (a fresh key was generated instead of the gym's
+                // real one). Spell it out so support isn't left guessing at a bare "Unauthorized".
+                Log("Cloud sync API error: Unauthorized — the cloud did not recognise this gym's " +
+                    "CloudApiKey. Check that CloudApiKey in appsettings.json matches the gym's key " +
+                    "in Super Admin (this usually breaks after a reinstall generated a new key).", "error");
+                return "Cloud rejected the key (Unauthorized). The CloudApiKey doesn't match this gym in Super Admin — fix it in appsettings.json.";
+            }
             else
             {
                 var truncated = responseBody.Length > 500 ? responseBody.Substring(0, 500) + "...(truncated)" : responseBody;

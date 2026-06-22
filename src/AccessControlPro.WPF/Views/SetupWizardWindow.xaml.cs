@@ -482,9 +482,7 @@ public partial class SetupWizardWindow : Window
             // sending the right header. The new format HMT-XXXXXXXX-XXXXXXXX is a
             // 16-char cryptographically random hex string per install, easy for support
             // to identify by prefix, impossible to guess.
-            ["CloudApiKey"] = string.IsNullOrWhiteSpace(CloudApiKeyBox.Text)
-                ? GenerateUniqueApiKey()
-                : CloudApiKeyBox.Text.Trim(),
+            ["CloudApiKey"] = ResolveCloudApiKey(),
             ["QrRangeStart"] = 50001001,
             ["QrPoolSize"] = 3500,
             ["DeviceMode"] = (DeviceModeCombo?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag?.ToString() ?? "Single",
@@ -504,6 +502,39 @@ public partial class SetupWizardWindow : Window
     /// which would have let any installed app impersonate any other.
     /// 16 hex chars = 64 bits of entropy, comfortably unguessable.
     /// </summary>
+    /// <summary>
+    /// Decides the cloud key to write: (1) what the operator typed, else (2) the existing key
+    /// recovered from the database (reinstall over a kept DB — keeps the gym's identity so the
+    /// cloud still recognizes it), else (3) a fresh unique key (genuinely new install).
+    /// This stops a reinstall from silently orphaning a gym with a brand-new key.
+    /// </summary>
+    private string ResolveCloudApiKey()
+    {
+        var typed = CloudApiKeyBox.Text.Trim();
+        if (!string.IsNullOrWhiteSpace(typed)) return typed;
+
+        var recovered = TryRecoverCloudKeyFromDb();
+        if (!string.IsNullOrWhiteSpace(recovered)) return recovered!;
+
+        return GenerateUniqueApiKey();
+    }
+
+    /// <summary>Reads the cloud key previously stored in the DB (if the AppSettings table/column
+    /// + a non-empty value exist). Returns null on any miss so the caller falls back cleanly.</summary>
+    private string? TryRecoverCloudKeyFromDb()
+    {
+        try
+        {
+            using var conn = new Microsoft.Data.SqlClient.SqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = new Microsoft.Data.SqlClient.SqlCommand(
+                @"IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AppSettings') AND name = 'CloudApiKey')
+                  SELECT TOP 1 CloudApiKey FROM AppSettings WHERE CloudApiKey <> '';", conn);
+            return cmd.ExecuteScalar() as string;
+        }
+        catch { return null; }
+    }
+
     private static string GenerateUniqueApiKey()
     {
         var bytes = new byte[8];

@@ -32,6 +32,10 @@ public class AppSettingsRepository : IAppSettingsRepository
             existing.Phone = settings.Phone;
             existing.Address = settings.Address;
             existing.Owner = settings.Owner;
+            // Only overwrite the stored key when a non-empty one is provided, so a settings
+            // save that doesn't carry the key can't accidentally wipe the recovery value.
+            if (!string.IsNullOrWhiteSpace(settings.CloudApiKey))
+                existing.CloudApiKey = settings.CloudApiKey;
         }
         await db.SaveChangesAsync();
     }
