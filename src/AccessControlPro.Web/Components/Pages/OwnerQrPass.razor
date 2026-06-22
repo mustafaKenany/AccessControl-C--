@@ -29,14 +29,8 @@ else
                 <input class="form-input" @bind="_guestPhone" placeholder="07XX XXX XXXX" />
             </div>
             <div class="form-group">
-                <label>@L("Duration (days)", "المدة (أيام)")</label>
-                <select class="form-select" @bind="_durationDays">
-                    <option value="1">1</option>
-                    <option value="3">3</option>
-                    <option value="7">7</option>
-                    <option value="15">15</option>
-                    <option value="30">30</option>
-                </select>
+                <label>@L("Validity", "الصلاحية")</label>
+                <input class="form-input" value="@L("2 uses · 24 hours", "مرتان · 24 ساعة")" disabled readonly />
             </div>
             <div class="form-group" style="display:flex;align-items:flex-end;">
                 <button class="btn-accent" @onclick="CreatePassAsync" disabled="@_isCreating">
@@ -144,8 +138,7 @@ else
     private string _guestName = "";
     private string _guestPhone = "";
     private int _maxUses = 2;          // one entry + one exit (the gate enforces 2)
-    private int _durationDays = 7;
-    private DateTime _validTo = DateTime.Today;   // computed from _durationDays at create time
+    private DateTime _validTo = DateTime.UtcNow.AddHours(24);   // 24h window, set at create time
     private bool _isCreating;
     private string? _errorMsg;
 
@@ -204,8 +197,9 @@ else
                 return;
             }
 
-            // Validity = today + chosen number of days (end of that day).
-            var validTo = DateTime.UtcNow.Date.AddDays(_durationDays).AddHours(23).AddMinutes(59).AddSeconds(59);
+            // Visitor pass = 2 uses (one in + one out), valid for 24 hours from now.
+            // After it's used or expires, the owner issues a fresh pass for the next visit.
+            var validTo = DateTime.UtcNow.AddHours(24);
             _validTo = validTo;
 
             // Assign the code from pool
