@@ -679,6 +679,18 @@ public partial class App : System.Windows.Application
                         StartupLog($"QR pool low ({available} available)");
                     }
 
+                    // Visitor (cloud) segment: a separate block of codes the OWNER PORTAL hands
+                    // out to named guests. Generated once at a high, non-overlapping offset and
+                    // uploaded to the gate alongside the local pool, so a cloud-issued visitor QR
+                    // opens the door. The pool sync carries these up to the cloud (Source='Cloud').
+                    var cloudAvailable = await qrPool.GetAvailableCountAsync("Cloud");
+                    if (cloudAvailable == 0)
+                    {
+                        StartupLog("Generating visitor (cloud) QR segment (1000 codes)...");
+                        var cloudGen = await qrPool.GeneratePoolAsync(1000, 50001001 + 10000, "Cloud");
+                        StartupLog($"Visitor (cloud) QR segment generated: {cloudGen} codes");
+                    }
+
                     // Always check for un-uploaded QR codes and upload them
                     // This covers: first run, missed 1st/15th, newly generated codes
                     var pendingCount = await qrPool.GetPendingUploadCountAsync();

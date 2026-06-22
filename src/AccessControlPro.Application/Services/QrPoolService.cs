@@ -277,9 +277,11 @@ public class QrPoolService : IQrPoolService
             generated = await GeneratePoolAsync(localPoolSize - available, maxCode, "Local");
         }
 
-        // Step 3: Upload un-uploaded codes to all devices
+        // Step 3: Upload un-uploaded codes to all devices. Includes BOTH the local (Daily Pass)
+        // segment AND the cloud (Visitor) segment, so a cloud-issued visitor QR — assigned from
+        // the pre-loaded Cloud codes via the owner portal — actually opens the gate.
         using (var cmd = new SqlCommand(
-            "SELECT Code, DoorPermissions, ValidTo FROM QrPool WHERE IsUploadedToDevice = 0 AND Status IN (0, 1) AND Source = 'Local'", conn))
+            "SELECT Code, DoorPermissions, ValidTo FROM QrPool WHERE IsUploadedToDevice = 0 AND Status IN (0, 1) AND Source IN ('Local', 'Cloud')", conn))
         {
             using var reader = await cmd.ExecuteReaderAsync();
             var codesToUpload = new List<(string code, string doors, DateTime validTo)>();

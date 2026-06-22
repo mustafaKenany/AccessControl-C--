@@ -25,18 +25,18 @@ else
                 <input class="form-input" @bind="_guestName" placeholder="@L("Enter guest name", "أدخل اسم الضيف")" />
             </div>
             <div class="form-group">
-                <label>@L("Max Uses", "الحد الأقصى للاستخدام")</label>
-                <select class="form-select" @bind="_maxUses">
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="5">5</option>
-                    <option value="10">10</option>
-                </select>
+                <label>@L("Phone", "رقم الهاتف")</label>
+                <input class="form-input" @bind="_guestPhone" placeholder="07XX XXX XXXX" />
             </div>
             <div class="form-group">
-                <label>@L("Valid Until", "صالح حتى")</label>
-                <input type="date" class="form-input" @bind="_validTo" />
+                <label>@L("Duration (days)", "المدة (أيام)")</label>
+                <select class="form-select" @bind="_durationDays">
+                    <option value="1">1</option>
+                    <option value="3">3</option>
+                    <option value="7">7</option>
+                    <option value="15">15</option>
+                    <option value="30">30</option>
+                </select>
             </div>
             <div class="form-group" style="display:flex;align-items:flex-end;">
                 <button class="btn-accent" @onclick="CreatePassAsync" disabled="@_isCreating">
@@ -142,8 +142,10 @@ else
 
 @code {
     private string _guestName = "";
-    private int _maxUses = 1;
-    private DateTime _validTo = DateTime.Today;
+    private string _guestPhone = "";
+    private int _maxUses = 2;          // one entry + one exit (the gate enforces 2)
+    private int _durationDays = 7;
+    private DateTime _validTo = DateTime.Today;   // computed from _durationDays at create time
     private bool _isCreating;
     private string? _errorMsg;
 
@@ -202,15 +204,18 @@ else
                 return;
             }
 
-            var validTo = new DateTime(_validTo.Year, _validTo.Month, _validTo.Day, 23, 59, 59, DateTimeKind.Utc);
+            // Validity = today + chosen number of days (end of that day).
+            var validTo = DateTime.UtcNow.Date.AddDays(_durationDays).AddHours(23).AddMinutes(59).AddSeconds(59);
+            _validTo = validTo;
 
             // Assign the code from pool
             using (var updateCmd = new Npgsql.NpgsqlCommand(
-                @"UPDATE ""QrPool"" SET ""Status"" = 1, ""GuestName"" = @name, ""GuestPhone"" = '',
+                @"UPDATE ""QrPool"" SET ""Status"" = 1, ""GuestName"" = @name, ""GuestPhone"" = @phone,
                   ""Reason"" = 'Guest Pass', ""MaxUses"" = @max, ""AssignedAt"" = NOW(),
                   ""ValidTo"" = @to WHERE ""Code"" = @code", conn))
             {
                 updateCmd.Parameters.AddWithValue("name", _guestName.Trim());
+                updateCmd.Parameters.AddWithValue("phone", (object?)(_guestPhone?.Trim() ?? "") ?? "");
                 updateCmd.Parameters.AddWithValue("max", _maxUses);
                 updateCmd.Parameters.AddWithValue("to", validTo);
                 updateCmd.Parameters.AddWithValue("code", code);
@@ -352,8 +357,24 @@ else
             ? $"\U0001F3CB\uFE0F \u062A\u0635\u0631\u064A\u062D \u062F\u062E\u0648\u0644 - {_gymName}\n\n\U0001F464 \u0627\u0644\u0627\u0633\u0645: {_guestName}\n\U0001F522 \u0627\u0644\u0631\u0645\u0632: {_createdCode}\n\U0001F4C5 \u0635\u0627\u0644\u062D \u062D\u062A\u0649: {_validTo:yyyy-MM-dd}\n\U0001F504 \u0639\u062F\u062F \u0627\u0644\u0645\u0631\u0627\u062A: {_maxUses}\n\n\U0001F4F1 \u0635\u0648\u0631\u0629 QR:\n{qrImageUrl}\n\n\u0623\u0638\u0647\u0631 \u0647\u0630\u0627 \u0627\u0644\u0631\u0645\u0632 \u0639\u0646\u062F \u0627\u0644\u0627\u0633\u062A\u0642\u0628\u0627\u0644"
             : $"\U0001F3CB\uFE0F Guest Pass - {_gymName}\n\n\U0001F464 Name: {_guestName}\n\U0001F522 Code: {_createdCode}\n\U0001F4C5 Valid until: {_validTo:yyyy-MM-dd}\n\U0001F504 Uses: {_maxUses}\n\n\U0001F4F1 QR Image:\n{qrImageUrl}\n\nShow this code at reception";
 
-        var url = $"https://wa.me/?text={Uri.EscapeDataString(msg)}";
+        // If we captured the guest's number, open the chat straight to them; else just share.
+        var intl = ToIntlPhone(_guestPhone);
+        var url = string.IsNullOrEmpty(intl)
+            ? $"https://wa.me/?text={Uri.EscapeDataString(msg)}"
+            : $"https://wa.me/{intl}?text={Uri.EscapeDataString(msg)}";
         Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    // Iraqi local number → WhatsApp international (07XX… → 9647XX…). "" if too short.
+    private static string ToIntlPhone(string? phone)
+    {
+        var d = new string((phone ?? "").Where(char.IsDigit).ToArray());
+        if (d.Length < 7) return "";
+        if (d.StartsWith("00964")) d = d.Substring(2);
+        else if (d.StartsWith("964")) { }
+        else if (d.StartsWith("0")) d = "964" + d.Substring(1);
+        else d = "964" + d;
+        return d;
     }
 
     private void ShareQrViaWhatsAppBuild()

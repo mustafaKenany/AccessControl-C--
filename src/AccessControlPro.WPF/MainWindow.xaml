@@ -286,9 +286,12 @@
                                 </StackPanel>
                             </Button>
 
+                            <!-- Visitor passes are now CLOUD-ONLY (issued from the owner portal),
+                                 so the local QR/visitor screen is hidden. Daily Pass (paid, same-day)
+                                 stays available from the Dashboard / Players screens. -->
                             <Button Style="{StaticResource SidebarButton}"
                                     Command="{Binding NavigateToCommand}" CommandParameter="QrPass"
-                                    Visibility="{Binding CanViewQrPass, Converter={StaticResource BoolToVisibility}}">
+                                    Visibility="Collapsed">
                                 <StackPanel Orientation="Horizontal">
                                     <fa:ImageAwesome Icon="Qrcode" Width="16" Height="16"
                                                      Foreground="{StaticResource TextMutedBrush}"
