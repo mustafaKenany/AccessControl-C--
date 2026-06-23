@@ -78,6 +78,7 @@ else
                         <th title="Last successful cloud sync">Last sync</th>
                         <th title="Latest diagnostics bundle">Last diag</th>
                         <th title="Latest bundle's app version">Version</th>
+                        <th title="Subscription expiry">Expires</th>
                         <th title="Crash-recovery uploads in the last 14 days">Recent crashes</th>
                         <th>Health</th>
                     </tr>
@@ -127,6 +128,35 @@ else
                                 @if (!string.IsNullOrEmpty(r.AppVersion))
                                 {
                                     <code style="font-size: 0.85rem;">@r.AppVersion</code>
+                                    @if (r.IsOutdated)
+                                    {
+                                        <span class="status-pill expiring" style="margin-inline-start:6px;"
+                                              title="Behind the current @CurrentVersion — update this gym">
+                                            <i class="fas fa-arrow-up"></i> outdated
+                                        </span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary);">—</span>
+                                }
+                            </td>
+                            <td>
+                                @if (r.ExpiresAt.HasValue)
+                                {
+                                    var days = (r.ExpiresAt.Value.Date - DateTime.UtcNow.Date).TotalDays;
+                                    @if (days < 0)
+                                    {
+                                        <span class="status-pill expired" title="@r.ExpiresAt.Value:yyyy-MM-dd">expired</span>
+                                    }
+                                    else if (days <= 14)
+                                    {
+                                        <span class="status-pill expiring">@($"{(int)days}d") </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="status-pill active">@r.ExpiresAt.Value.ToString("yyyy-MM-dd")</span>
+                                    }
                                 }
                                 else
                                 {
@@ -214,7 +244,8 @@ else
                        ORDER BY ""UploadedAt"" DESC LIMIT 1)                                          AS last_version,
                     (SELECT COUNT(*) FROM ""DiagnosticsUploads"" d
                        WHERE d.""GymId"" = g.""Id"" AND d.""Trigger"" = 'crash-recovery'
-                       AND d.""UploadedAt"" > NOW() - INTERVAL '14 days')                            AS recent_crashes
+                       AND d.""UploadedAt"" > NOW() - INTERVAL '14 days')                            AS recent_crashes,
+                    g.""ExpiresAt""                                                                  AS expires_at
                 FROM ""Gyms"" g
                 WHERE g.""IsActive"" = TRUE
                 ORDER BY g.""Name""", master);
@@ -232,8 +263,10 @@ else
                     LastSyncAt        = r.IsDBNull(4) ? null : DateTime.SpecifyKind(r.GetDateTime(4), DateTimeKind.Utc),
                     LastDiagnosticsAt = r.IsDBNull(5) ? null : DateTime.SpecifyKind(r.GetDateTime(5), DateTimeKind.Utc),
                     AppVersion        = r.IsDBNull(6) ? "" : r.GetString(6),
-                    RecentCrashes     = r.IsDBNull(7) ? 0 : (int)r.GetInt64(7)
+                    RecentCrashes     = r.IsDBNull(7) ? 0 : (int)r.GetInt64(7),
+                    ExpiresAt         = r.IsDBNull(8) ? null : DateTime.SpecifyKind(r.GetDateTime(8), DateTimeKind.Utc)
                 };
+                row.IsOutdated = IsBehind(row.AppVersion);
                 ScoreHealth(row);
                 rows.Add(row);
             }
@@ -255,29 +288,34 @@ else
     {
         var reasons = new List<string>();
 
-        // Red: sync > 24h ago, or 2+ crashes recent
+        // Red: sync > 24h ago, or 2+ crashes recent, or subscription expired
         var hoursSinceSync = r.LastSyncAt.HasValue ? (DateTime.UtcNow - r.LastSyncAt.Value).TotalHours : double.MaxValue;
         var manyCrashes = r.RecentCrashes >= 2;
+        var expired = r.ExpiresAt.HasValue && r.ExpiresAt.Value < DateTime.UtcNow;
 
-        if (hoursSinceSync > 24 || manyCrashes)
+        if (hoursSinceSync > 24 || manyCrashes || expired)
         {
             r.HealthScore = "Red";
+            if (expired) reasons.Add("subscription expired");
             if (hoursSinceSync > 24) reasons.Add($"sync {hoursSinceSync:F1} h ago");
             if (manyCrashes) reasons.Add($"{r.RecentCrashes} crash uploads in last 14d");
             r.HealthReason = string.Join("; ", reasons);
             return;
         }
 
-        // Yellow: 30 min < sync < 24h, OR 1 crash, OR no diagnostics ever
+        // Yellow: 30 min < sync < 24h, OR 1 crash, OR no diagnostics, OR expiring soon, OR outdated build
         var someCrashes = r.RecentCrashes == 1;
         var noDiagnostics = !r.LastDiagnosticsAt.HasValue;
+        var expiringSoon = r.ExpiresAt.HasValue && (r.ExpiresAt.Value - DateTime.UtcNow).TotalDays <= 14;
 
-        if (hoursSinceSync > 0.5 || someCrashes || noDiagnostics)
+        if (hoursSinceSync > 0.5 || someCrashes || noDiagnostics || expiringSoon || r.IsOutdated)
         {
             r.HealthScore = "Yellow";
             if (hoursSinceSync > 0.5) reasons.Add($"sync {hoursSinceSync:F1} h ago");
             if (someCrashes) reasons.Add("1 crash upload in last 14d");
             if (noDiagnostics) reasons.Add("no diagnostics bundle yet");
+            if (expiringSoon) reasons.Add("subscription expiring soon");
+            if (r.IsOutdated) reasons.Add($"on old build (current is {CurrentVersion})");
             r.HealthReason = string.Join("; ", reasons);
             return;
         }
@@ -305,7 +343,19 @@ else
         public DateTime? LastDiagnosticsAt { get; set; }
         public string AppVersion { get; set; } = "";
         public int RecentCrashes { get; set; }
+        public DateTime? ExpiresAt { get; set; }
+        public bool IsOutdated { get; set; }
         public string HealthScore { get; set; } = "Green";
         public string HealthReason { get; set; } = "";
+    }
+
+    // Bump this with each release so the board flags gyms running an older build.
+    private const string CurrentVersion = "4.6.18";
+
+    private static bool IsBehind(string? appVersion)
+    {
+        if (string.IsNullOrWhiteSpace(appVersion)) return false; // unknown — don't flag
+        return Version.TryParse(appVersion, out var v) && Version.TryParse(CurrentVersion + ".0", out var cur)
+               && v < cur;
     }
 }
