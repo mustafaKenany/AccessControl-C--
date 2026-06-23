@@ -402,18 +402,39 @@ public partial class SetupWizardWindow : Window
             if (cloudEnabled && !string.IsNullOrWhiteSpace(provisionPassword))
             {
                 InstallStatusText.Text = "Registering gym in the cloud...";
+                _cloudProvisionAttempted = true;
                 try
                 {
-                    var (ok, msg) = await ProvisionGymInCloudAsync(gymNameEn, gymPhone, adminDisplayName, provisionPassword);
-                    InstallStatusText.Text = ok
-                        ? "Gym registered in the cloud."
-                        : "Cloud registration skipped: " + msg + " (you can create it manually in Super Admin).";
+                    var (ok, msg, subdomain) = await ProvisionGymInCloudAsync(gymNameEn, gymPhone, adminDisplayName, provisionPassword);
+                    _cloudProvisionOk = ok;
+                    _cloudProvisionMsg = msg;
+                    _cloudSubdomain = subdomain;
+                    InstallStatusText.Text = ok ? "Gym registered in the cloud." : "Cloud registration failed: " + msg;
+
+                    // A wrong provisioning password must NOT pass silently — otherwise the install
+                    // finishes with a key the cloud doesn't recognize and sync/diagnostics fail later
+                    // (exactly the "Server returned Unauthorized" trap). Make it impossible to miss.
+                    if (!ok)
+                    {
+                        var badPassword = msg.IndexOf("password", StringComparison.OrdinalIgnoreCase) >= 0;
+                        var warn = badPassword
+                            ? "The provisioning password is WRONG, so the gym was NOT created in the cloud.\n\n" +
+                              "Cloud sync and diagnostics will fail until it is registered.\n\n" +
+                              "Fix: click Back, enter the correct HM-Tech provisioning password, then Next again — " +
+                              "or finish now and register the gym manually in Super Admin."
+                            : "The gym was NOT registered in the cloud:\n" + msg + "\n\n" +
+                              "You can finish and register it manually in Super Admin.";
+                        System.Windows.MessageBox.Show(warn, "Cloud registration failed",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
                 }
                 catch
                 {
+                    _cloudProvisionOk = false;
+                    _cloudProvisionMsg = "no internet connection";
                     InstallStatusText.Text = "Cloud registration skipped (no internet?). You can create the gym manually in Super Admin.";
                 }
-                await Task.Delay(800);
+                await Task.Delay(700);
             }
 
             // Step 5: Copy appsettings.json to Admin & POS apps
@@ -439,6 +460,7 @@ public partial class SetupWizardWindow : Window
             InstallStatusText.Visibility = Visibility.Collapsed;
             NextButton.IsEnabled = true;
             _currentStep = 6;
+            PopulateCloudResult();
             UpdateStepUI();
         }
         catch (Exception ex)
@@ -549,7 +571,7 @@ public partial class SetupWizardWindow : Window
     /// on the server, so re-running setup is safe. Returns (ok, message); never throws past
     /// the caller's catch — a cloud failure must not abort the local install.
     /// </summary>
-    private static async Task<(bool ok, string message)> ProvisionGymInCloudAsync(
+    private static async Task<(bool ok, string message, string subdomain)> ProvisionGymInCloudAsync(
         string gymName, string ownerPhone, string ownerName, string provisionSecret)
     {
         var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
@@ -560,7 +582,7 @@ public partial class SetupWizardWindow : Window
         var apiKey = Get("CloudApiKey");
         var syncUrl = Get("CloudSyncUrl");
         if (string.IsNullOrWhiteSpace(syncUrl) || string.IsNullOrWhiteSpace(apiKey))
-            return (false, "cloud not configured");
+            return (false, "cloud not configured", "");
 
         // Derive the provision URL from the configured sync URL (…/api/sync → …/api/provision-gym).
         var provisionUrl = syncUrl.Replace("/api/sync", "/api/provision-gym");
@@ -584,13 +606,50 @@ public partial class SetupWizardWindow : Window
         {
             using var rd = System.Text.Json.JsonDocument.Parse(body);
             if (rd.RootElement.TryGetProperty("success", out var s) && s.GetBoolean())
-                return (true, "ok");
+            {
+                var sub = rd.RootElement.TryGetProperty("subdomain", out var sd) ? sd.GetString() ?? "" : "";
+                return (true, "ok", sub);
+            }
             if (rd.RootElement.TryGetProperty("error", out var e))
-                return (false, e.GetString() ?? "failed");
+                return (false, e.GetString() ?? "failed", "");
         }
         catch { /* non-JSON body */ }
 
-        return (false, $"HTTP {(int)resp.StatusCode}");
+        return (false, $"HTTP {(int)resp.StatusCode}", "");
+    }
+
+    // ── Cloud provisioning result, surfaced on the completion screen ──
+    private bool _cloudProvisionAttempted;
+    private bool _cloudProvisionOk;
+    private string _cloudProvisionMsg = "";
+    private string _cloudSubdomain = "";
+
+    /// <summary>Fills the completion-screen box: the customer's portal link on success, or a clear
+    /// "not in the cloud" warning on failure (so a wrong provisioning password is never invisible).</summary>
+    private void PopulateCloudResult()
+    {
+        if (CloudResultBox == null) return;
+        if (!_cloudProvisionAttempted) { CloudResultBox.Visibility = Visibility.Collapsed; return; }
+
+        CloudResultBox.Visibility = Visibility.Visible;
+        if (_cloudProvisionOk && !string.IsNullOrWhiteSpace(_cloudSubdomain))
+        {
+            CloudResultBox.Background = new SolidColorBrush(Color.FromRgb(0x12, 0x2A, 0x1E));
+            CloudResultTitle.Foreground = new SolidColorBrush(Color.FromRgb(0x2E, 0xD4, 0x7A));
+            CloudResultTitle.Text = "✓  Cloud portal is ready";
+            CloudResultDetail.Foreground = new SolidColorBrush(Color.FromRgb(0xD7, 0xE0, 0xE8));
+            CloudResultDetail.Text = "Give this link to the customer:\n" + _cloudSubdomain + ".hmtech.solutions";
+        }
+        else
+        {
+            CloudResultBox.Background = new SolidColorBrush(Color.FromRgb(0x3A, 0x1E, 0x1E));
+            CloudResultTitle.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x6B, 0x6B));
+            CloudResultTitle.Text = "⚠  Gym is NOT in the cloud";
+            CloudResultDetail.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xC2, 0xC2));
+            CloudResultDetail.Text = _cloudProvisionMsg.IndexOf("password", StringComparison.OrdinalIgnoreCase) >= 0
+                ? "Wrong provisioning password. Cloud sync will fail until the gym is registered — reinstall with the correct password, or create it in Super Admin."
+                : "Reason: " + _cloudProvisionMsg + ". Register the gym in Super Admin, then sync will work.";
+        }
     }
 
     private static void UpdateAppSettingsLogoPaths(string? devLogoPath, string? gymLogoPath)

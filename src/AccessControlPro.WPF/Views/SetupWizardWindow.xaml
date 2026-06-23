@@ -359,7 +359,7 @@
                         <!-- Auto-provision: register this gym in the cloud automatically.
                              Enter the provisioning password to create the gym + its cloud database
                              without touching Super Admin. Leave blank to skip (create it manually). -->
-                        <TextBlock Text="Provisioning password (optional — auto-creates the gym in the cloud):" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,4"/>
+                        <TextBlock Text="HM-Tech provisioning password (auto-creates the gym in the cloud — NOT the admin password; leave blank to register manually later):" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,4" TextWrapping="Wrap"/>
                         <PasswordBox x:Name="ProvisionPasswordBox" FontSize="14" Background="#1E2D3D" Foreground="White"
                                      BorderBrush="#2A3A4A" BorderThickness="1" Padding="10,8" Margin="0,0,0,12"/>
 
@@ -491,6 +491,20 @@
                                Foreground="#7A8A9A" HorizontalAlignment="Center" Margin="0,0,0,4"/>
                     <TextBlock Text="Click Finish to launch the application." FontSize="13"
                                Foreground="#7A8A9A" HorizontalAlignment="Center"/>
+
+                    <!-- Cloud provisioning result: on success shows the customer's portal link;
+                         on failure (e.g. wrong provisioning password) shows a clear warning so the
+                         operator never unknowingly ships an install the cloud doesn't recognize. -->
+                    <Border x:Name="CloudResultBox" Visibility="Collapsed" CornerRadius="10"
+                            Padding="16,12" Margin="0,18,0,0" MaxWidth="480">
+                        <StackPanel>
+                            <TextBlock x:Name="CloudResultTitle" FontSize="15" FontWeight="SemiBold"
+                                       TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"/>
+                            <TextBlock x:Name="CloudResultDetail" FontSize="13.5" Foreground="#D7E0E8"
+                                       TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"
+                                       Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </Grid>
             </ScrollViewer>
