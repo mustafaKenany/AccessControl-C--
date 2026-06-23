@@ -134,6 +134,9 @@ public partial class RenewSubscriptionDialog : Window
                 {
                     Type = p.NameEn,
                     MonthlyRate = NormalizeToMonthlyRate(p.Price, p.Duration, p.DurationType),
+                    Duration = p.Duration,
+                    DurationType = p.DurationType ?? "Days",
+                    Price = p.Price,
                     DisplayName = lang.IsArabic && !string.IsNullOrWhiteSpace(p.NameAr) ? p.NameAr : p.NameEn
                 }).ToList();
                 PopulateSubscriptionTypes();
@@ -314,8 +317,15 @@ public partial class RenewSubscriptionDialog : Window
         else
         {
             var months = GetSelectedMonths();
-            if (plan != null && months > 0 && plan.MonthlyRate > 0)
-                FeeTextBox.Text = (plan.MonthlyRate * months).ToString();
+            if (plan != null && months > 0)
+            {
+                // Day/Month plans with a real price bill the flat plan price × periods (exact);
+                // legacy/duration-less plans keep the per-month rate.
+                if (plan.Duration > 0 && plan.Price > 0)
+                    FeeTextBox.Text = (plan.Price * months).ToString();
+                else if (plan.MonthlyRate > 0)
+                    FeeTextBox.Text = (plan.MonthlyRate * months).ToString();
+            }
         }
 
         UpdateRemaining();
@@ -412,8 +422,21 @@ public partial class RenewSubscriptionDialog : Window
         }
         else
         {
-            SelectedMonths = GetSelectedMonths();
-            SelectedCustomDays = 0;
+            var months = GetSelectedMonths();
+            // A day-based plan (e.g. a 20-day "month") renews by an exact day count × the chosen
+            // multiplier, routed through the service's customDays branch (AddDays). Month/legacy
+            // plans keep extending by whole calendar months.
+            if (plan != null && plan.Duration > 0 &&
+                string.Equals(plan.DurationType, "Days", StringComparison.OrdinalIgnoreCase))
+            {
+                SelectedMonths = 0;
+                SelectedCustomDays = plan.Duration * months;
+            }
+            else
+            {
+                SelectedMonths = months;
+                SelectedCustomDays = 0;
+            }
         }
 
         DialogResult = true;

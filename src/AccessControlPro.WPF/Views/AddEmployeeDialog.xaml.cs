@@ -223,6 +223,9 @@ public partial class AddEmployeeDialog : Window
                 {
                     Type = p.NameEn,
                     MonthlyRate = NormalizeToMonthlyRate(p.Price, p.Duration, p.DurationType),
+                    Duration = p.Duration,
+                    DurationType = p.DurationType ?? "Days",
+                    Price = p.Price,
                     DisplayName = lang.IsArabic && !string.IsNullOrWhiteSpace(p.NameAr) ? p.NameAr : p.NameEn
                 }).ToList();
                 PopulateSubscriptionTypes();
@@ -316,6 +319,14 @@ public partial class AddEmployeeDialog : Window
 
     private void SubscriptionTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        // Each plan can have its own length, so re-derive the end date (for preset periods)
+        // as well as the fee when the selected plan changes.
+        var months = GetSelectedMonths();
+        if (months > 0 && EndDatePicker != null && !EndDatePicker.IsEnabled)
+        {
+            var start = StartDatePicker?.SelectedDate ?? DateTime.Today;
+            EndDatePicker.SelectedDate = ComputeEndDate(GetSelectedPlan(), start, months);
+        }
         RecalcFee();
     }
 
@@ -335,11 +346,28 @@ public partial class AddEmployeeDialog : Window
         {
             // Preset: auto-calc dates, fee read-only
             EndDatePicker.IsEnabled = false;
-            StartDatePicker.SelectedDate = DateTime.Today;
-            EndDatePicker.SelectedDate = DateTime.Today.AddMonths(months);
+            var start = DateTime.Today;
+            StartDatePicker.SelectedDate = start;
+            EndDatePicker.SelectedDate = ComputeEndDate(GetSelectedPlan(), start, months);
             FeeTextBox.IsReadOnly = true;
             RecalcFee();
         }
+    }
+
+    /// <summary>End date for a preset period. Honors the selected plan's real Duration/DurationType
+    /// so a "20 Days" plan gives exactly 20 days × the chosen multiplier (a pool whose month is
+    /// 20 days). Legacy/duration-less plans fall back to whole calendar months, as before.</summary>
+    private static DateTime ComputeEndDate(SubscriptionPlan? plan, DateTime start, int periods)
+    {
+        if (plan != null && plan.Duration > 0)
+        {
+            if (string.Equals(plan.DurationType, "Days", StringComparison.OrdinalIgnoreCase))
+                return start.AddDays(plan.Duration * periods);
+            if (string.Equals(plan.DurationType, "Months", StringComparison.OrdinalIgnoreCase))
+                return start.AddMonths(plan.Duration * periods);
+            // Unlimited / unknown: fall through to calendar months.
+        }
+        return start.AddMonths(periods);
     }
 
     private void FeeTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -362,8 +390,13 @@ public partial class AddEmployeeDialog : Window
 
         var plan = GetSelectedPlan();
         var months = GetSelectedMonths();
+        if (plan == null || months <= 0) return;
 
-        if (plan != null && months > 0 && plan.MonthlyRate > 0)
+        // Day/Month plans with a real price bill the flat plan price × periods (exact —
+        // no proration surprises); legacy/duration-less plans keep the per-month rate.
+        if (plan.Duration > 0 && plan.Price > 0)
+            FeeTextBox.Text = (plan.Price * months).ToString();
+        else if (plan.MonthlyRate > 0)
             FeeTextBox.Text = (plan.MonthlyRate * months).ToString();
     }
 
@@ -771,4 +804,14 @@ public class SubscriptionPlan
     public string? DisplayName { get; set; }
     [System.Text.Json.Serialization.JsonIgnore]
     public string Label => DisplayName ?? Type;
+
+    // The admin-defined plan's real length + flat price, carried from the DB so registration
+    // can honor an exact duration (e.g. a pool whose "month" is 20 days) instead of always
+    // assuming a calendar month. Zero/empty => fall back to the legacy calendar-month behavior.
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int Duration { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string DurationType { get; set; } = "";
+    [System.Text.Json.Serialization.JsonIgnore]
+    public decimal Price { get; set; }
 }
