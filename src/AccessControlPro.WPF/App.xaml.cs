@@ -1677,10 +1677,21 @@ public partial class App : System.Windows.Application
             ? $"الإصدار الحالي: {check.CurrentVersion}\nالإصدار الجديد: {manifest.Version}\nالحجم: {sizeMb}\n\nما الجديد:\n{notes}\n\nهل تريد التحديث الآن؟"
             : $"Current version: {check.CurrentVersion}\nNew version: {manifest.Version}\nSize: {sizeMb}\n\nWhat's new:\n{notes}\n\nUpdate now?";
 
-        // For mandatory updates we hide the Cancel branch — only Yes/No.
-        // For optional updates: Yes=update, No=snooze 24h, Cancel=skip this version forever.
-        var buttons = check.IsMandatory ? MessageBoxButton.YesNo : MessageBoxButton.YesNoCancel;
-        var choice = MessageBox.Show(msg, title, buttons, MessageBoxImage.Information);
+        // Mandatory update: a single "OK" button — no decline, no snooze, no skip. The customer
+        // is forced to update; any dismissal (incl. the X) still proceeds to the download.
+        if (check.IsMandatory)
+        {
+            var forcedMsg = isAr
+                ? $"الإصدار الحالي: {check.CurrentVersion}\nالإصدار الجديد: {manifest.Version}\nالحجم: {sizeMb}\n\nما الجديد:\n{notes}\n\nهذا التحديث إلزامي — اضغط (موافق) ليبدأ التحديث الآن."
+                : $"Current version: {check.CurrentVersion}\nNew version: {manifest.Version}\nSize: {sizeMb}\n\nWhat's new:\n{notes}\n\nThis update is required — click OK to update now.";
+            MessageBox.Show(forcedMsg, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+            StartupLog($"Mandatory update v{manifest.Version} — forcing download (no decline offered)");
+            _ = Task.Run(() => DownloadStageAndInstallAsync(manifest));
+            return;
+        }
+
+        // Optional update: Yes=update, No=snooze 24h, Cancel=skip this version forever.
+        var choice = MessageBox.Show(msg, title, MessageBoxButton.YesNoCancel, MessageBoxImage.Information);
 
         if (choice == MessageBoxResult.Yes)
         {
@@ -1694,20 +1705,8 @@ public partial class App : System.Windows.Application
         }
         else // Cancel
         {
-            if (check.IsMandatory)
-            {
-                // Mandatory updates re-prompt next launch — but warn the customer first.
-                MessageBox.Show(
-                    isAr
-                        ? "هذا التحديث إلزامي. سيتم سؤالك مرة أخرى في كل مرة تفتح فيها التطبيق."
-                        : "This update is mandatory. You will be asked again every time you launch the app.",
-                    title, MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-            else
-            {
-                checker.SkipVersion(manifest.Version);
-                StartupLog($"Update v{manifest.Version} skipped (won't prompt again)");
-            }
+            checker.SkipVersion(manifest.Version);
+            StartupLog($"Update v{manifest.Version} skipped (won't prompt again)");
         }
     }
 
