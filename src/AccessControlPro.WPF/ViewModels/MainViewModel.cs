@@ -57,6 +57,17 @@ public partial class MainViewModel : ObservableObject
 
     public string CurrentUserDisplayName => _currentUser.DisplayName ?? _currentUser.Username ?? "";
 
+    /// <summary>Running build version shown under the logo (e.g. "v4.6.20"), read from the entry
+    /// assembly so it always matches the actual build — lets support read the version at a glance.</summary>
+    public string AppVersion
+    {
+        get
+        {
+            var v = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version;
+            return v == null ? "" : $"v{v.Major}.{v.Minor}.{v.Build}";
+        }
+    }
+
     // Permission-based visibility for sidebar navigation
     public bool CanViewDashboard => _currentUser.HasPermission(AppPermission.DashboardView);
     public bool CanViewDevices => _currentUser.HasPermission(AppPermission.DevicesView);
