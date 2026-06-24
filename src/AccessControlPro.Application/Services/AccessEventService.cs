@@ -46,7 +46,7 @@ public class AccessEventService : IAccessEventService
                 ? $"{e.Card.Employee.FullNameEn} | {e.Card.Employee.FullNameAr}"
                 : ExtractPlayerName(e.Details),
             EventType = e.EventType.ToString(),
-            EventDescription = GetEventDescription(e.EventCode),
+            EventDescription = GetEventDescription(e.EventType, e.EventCode),
             Direction = e.Details.Contains("Entry") ? "Entry" : e.Details.Contains("Exit") ? "Exit" : "",
             CardStatus = ExtractCardStatus(e.Details),
             CardStatusKey = ExtractCardStatus(e.Details),
@@ -232,29 +232,53 @@ public class AccessEventService : IAccessEventService
         return parts.Length >= 2 ? parts[1] : "";
     }
 
-    private static string GetEventDescription(EventCode code) => code switch
+    // The controller's status field only carries card-access outcomes for CARD records. For every
+    // other record type (button, door sensor, remote, alarm, system) that field means something
+    // else, so rendering those as "Card Open" is misleading — describe them by record type instead.
+    private static string GetEventDescription(RecordType type, EventCode code)
     {
-        EventCode.CardOpen => "Card Open",
-        EventCode.PasswordOpen => "Password Open",
-        EventCode.CardAndPasswordOpen => "Card + Password",
-        EventCode.CardRepeat => "Card Repeat",
-        EventCode.CardExpired => "Card Expired",
-        EventCode.CardInvalid => "Invalid Card",
-        EventCode.ButtonOpen => "Button Open",
-        EventCode.RemoteOpen => "Remote Open",
-        EventCode.RemoteClose => "Remote Close",
-        EventCode.DoorSensorOpen => "Door Opened",
-        EventCode.DoorSensorClose => "Door Closed",
-        EventCode.AlarmFire => "Fire Alarm",
-        EventCode.AlarmPolice => "Police Alarm",
-        EventCode.AlarmGas => "Gas Alarm",
-        EventCode.AlarmMagnetic => "Magnetic Alarm",
-        EventCode.AlarmTheft => "Theft Alarm",
-        EventCode.AlarmAntiPassback => "Anti-Passback",
-        EventCode.SystemStartup => "System Startup",
-        EventCode.SystemRestart => "System Restart",
-        EventCode.SystemHighTemp => "High Temperature",
-        EventCode.SystemUPS => "UPS Power",
-        _ => code.ToString()
-    };
+        if (type == RecordType.Card)
+        {
+            return code switch
+            {
+                EventCode.CardOpen => "Card Open",
+                EventCode.PasswordOpen => "Password Open",
+                EventCode.CardAndPasswordOpen => "Card + Password",
+                EventCode.CardRepeat => "Card Repeat",
+                EventCode.CardExpired => "Card Expired",
+                EventCode.CardInvalid => "Invalid Card",
+                _ => "Card Event"
+            };
+        }
+
+        return code switch
+        {
+            // Use the specific label only when the code genuinely belongs to this family.
+            EventCode.ButtonOpen => "Button Open",
+            EventCode.RemoteOpen => "Remote Open",
+            EventCode.RemoteClose => "Remote Close",
+            EventCode.DoorSensorOpen => "Door Opened",
+            EventCode.DoorSensorClose => "Door Closed",
+            EventCode.AlarmFire => "Fire Alarm",
+            EventCode.AlarmPolice => "Police Alarm",
+            EventCode.AlarmGas => "Gas Alarm",
+            EventCode.AlarmMagnetic => "Magnetic Alarm",
+            EventCode.AlarmTheft => "Theft Alarm",
+            EventCode.AlarmAntiPassback => "Anti-Passback",
+            EventCode.SystemStartup => "System Startup",
+            EventCode.SystemRestart => "System Restart",
+            EventCode.SystemHighTemp => "High Temperature",
+            EventCode.SystemUPS => "UPS Power",
+            // Placeholder/duplicate status code (e.g. the controller's generic "1"): describe by type.
+            _ => type switch
+            {
+                RecordType.Button => "Button Press",
+                RecordType.DoorSensor => "Door Sensor",
+                RecordType.Software => "Remote",
+                RecordType.Alarm => "Alarm",
+                RecordType.System => "System Event",
+                _ => "Event"
+            }
+        };
+    }
 }

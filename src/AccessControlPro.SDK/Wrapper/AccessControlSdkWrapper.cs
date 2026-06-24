@@ -1260,15 +1260,20 @@ public class AccessControlSdkWrapper : IAccessControlSdk
     }
 
     /// <summary>
-    /// Map SDK getRecord type index to Domain RecordType enum.
-    /// SDK uses: Card=1, Button=0  but Domain enum uses: Card=0, Button=1
-    /// Types 2-5 are the same in both.
+    /// Map SDK getRecord type index to Domain RecordType enum. They disagree on TWO pairs:
+    ///   SDK:    Button=0, Card=1, DoorSensor=2, Software=3, System=4, Alarm=5
+    ///   Domain: Card=0,   Button=1, DoorSensor=2, Software=3, Alarm=4,  System=5
+    /// so Card/Button (0↔1) and System/Alarm (4↔5) must both be swapped; 2 and 3 match.
+    /// The missing 4↔5 swap is why System events (heartbeats/startup) were stored as
+    /// Domain.Alarm and showed up as "Alarm" in the event log.
     /// </summary>
     private static int SdkRecordTypeToDomain(int sdkType) => sdkType switch
     {
-        1 => 0,  // SDK Card(1) → Domain Card(0)
+        1 => 0,  // SDK Card(1)   → Domain Card(0)
         0 => 1,  // SDK Button(0) → Domain Button(1)
-        _ => sdkType  // 2=DoorSensor, 3=Software, 4=Alarm, 5=System — same
+        4 => 5,  // SDK System(4) → Domain System(5)
+        5 => 4,  // SDK Alarm(5)  → Domain Alarm(4)
+        _ => sdkType  // 2=DoorSensor, 3=Software — identical in both
     };
 
     private static ConnectInfo.e_EquptType GetEquipmentType(string sn)
