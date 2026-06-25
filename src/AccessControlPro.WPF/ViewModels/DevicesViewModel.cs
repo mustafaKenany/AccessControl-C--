@@ -136,6 +136,15 @@ public partial class DevicesViewModel : ObservableObject
                 }
 
                 await LoadDevicesAsync();
+
+                // A brand-new serial means an empty controller (e.g. a replaced/broken device) — offer
+                // to repopulate it with the existing active members + QR pool so it works immediately.
+                if (existing == null)
+                {
+                    var newDevice = _allDevices.FirstOrDefault(d => d.SerialNumber == found.SerialNumber);
+                    if (newDevice != null)
+                        await LoadDataOntoDeviceAsync(newDevice, askConfirm: true);
+                }
             }
             else
             {
@@ -520,42 +529,52 @@ public partial class DevicesViewModel : ObservableObject
     private async Task SyncAllPlayersAsync(DeviceDto? device)
     {
         if (!await ValidateDeviceReadyAsync(device, Lang.DevSyncAllPlayers)) return;
+        await LoadDataOntoDeviceAsync(device!, askConfirm: true);
+    }
 
-        var confirmed = CustomMessageBox.Confirm(
-            Lang.DevSyncAllConfirm,
-            Lang.DevSyncAllPlayers,
-            MsgType.Warning,
-            System.Windows.Application.Current.MainWindow);
+    /// <summary>
+    /// Repopulates a device with active-subscription members FIRST (gym usable within seconds),
+    /// then the full QR pool (Daily Pass + Visitor) in the background, with phased progress.
+    /// Used by the manual "sync all" button AND by the new-device auto-prompt.
+    /// </summary>
+    private async Task LoadDataOntoDeviceAsync(DeviceDto device, bool askConfirm)
+    {
+        var (members, pool) = await _employeeService.GetDeviceSyncCountsAsync();
 
-        if (!confirmed) return;
+        if (askConfirm)
+        {
+            var prompt = Lang.IsArabic
+                ? $"تحميل البيانات على الجهاز \"{device.Name}\"؟\n\n• الأعضاء الفعّالون: {members}\n• رموز QR (دخول يومي + زوار): {pool}\n\nيبدأ بالأعضاء (ثوانٍ) ثم رموز QR بالخلفية."
+                : $"Load data onto \"{device.Name}\"?\n\n• Active members: {members}\n• QR passes (daily + visitor): {pool}\n\nMembers load first (seconds), then the QR pool in the background.";
+            if (!CustomMessageBox.Confirm(prompt, Lang.DevSyncAllPlayers, MsgType.Warning,
+                    System.Windows.Application.Current.MainWindow))
+                return;
+        }
 
         try
         {
             IsLoading = true;
-            StatusMessage = Lang.DevSyncAllProgress;
-
-            var progress = new Progress<(int current, int total, string cardNumber)>(p =>
+            var progress = new Progress<DeviceSyncProgress>(p =>
             {
-                StatusMessage = $"{Lang.DevSyncAllProgress} ({p.current}/{p.total}) - {p.cardNumber}";
+                var phase = p.Phase == "Members"
+                    ? (Lang.IsArabic ? "تحميل الأعضاء" : "Loading members")
+                    : (Lang.IsArabic ? "تحميل رموز QR" : "Loading QR passes");
+                StatusMessage = $"{phase}: {p.Done}/{p.Total}";
             });
 
-            var (synced, failed, total) = await Task.Run(() =>
-                _employeeService.SyncAllCardsToDeviceAsync(device!.Id, progress));
+            var (mSynced, mFailed, pPushed, pFailed) = await Task.Run(() =>
+                _employeeService.SyncAllDataToDeviceAsync(device.Id, progress));
 
-            if (total == 0)
-            {
-                StatusMessage = Lang.DevSyncAllNoCards;
-                CustomMessageBox.Show(Lang.DevSyncAllNoCards, Lang.DevSyncAllPlayers,
-                    MsgType.Info, System.Windows.Application.Current.MainWindow);
-            }
-            else
-            {
-                var msg = $"{Lang.DevSyncAllDone}\n\n{Lang.Total}: {total}\n{Lang.DevSynced}: {synced}\n{Lang.DevFailed}: {failed}";
-                StatusMessage = $"Synced {synced}/{total} cards";
-                CustomMessageBox.Show(msg, Lang.DevSyncAllPlayers,
-                    failed > 0 ? MsgType.Warning : MsgType.Success,
-                    System.Windows.Application.Current.MainWindow);
-            }
+            StatusMessage = Lang.IsArabic
+                ? $"اكتمل: أعضاء {mSynced}، رموز {pPushed}"
+                : $"Done: {mSynced} members, {pPushed} passes";
+
+            var result = Lang.IsArabic
+                ? $"اكتمل التحميل على {device.Name}.\n\nالأعضاء: {mSynced}{(mFailed > 0 ? $" (فشل {mFailed})" : "")}\nرموز QR: {pPushed}{(pFailed > 0 ? $" (فشل {pFailed})" : "")}"
+                : $"Load complete on {device.Name}.\n\nMembers: {mSynced}{(mFailed > 0 ? $" ({mFailed} failed)" : "")}\nQR passes: {pPushed}{(pFailed > 0 ? $" ({pFailed} failed)" : "")}";
+            CustomMessageBox.Show(result, Lang.DevSyncAllPlayers,
+                (mFailed + pFailed) > 0 ? MsgType.Warning : MsgType.Success,
+                System.Windows.Application.Current.MainWindow);
         }
         catch (Exception ex)
         {

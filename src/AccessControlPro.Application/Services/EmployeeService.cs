@@ -24,6 +24,7 @@ public class EmployeeService : IEmployeeService
     private readonly CurrentUserService _currentUser;
     private readonly ISessionLogger _sessionLogger;
     private readonly DeviceOperationHelper _opHelper;
+    private readonly IQrPoolService _qrPool;
 
     public EmployeeService(
         IEmployeeRepository employeeRepository,
@@ -38,8 +39,10 @@ public class EmployeeService : IEmployeeService
         IAccessEventRepository accessEventRepository,
         CurrentUserService currentUser,
         ISessionLogger sessionLogger,
-        DeviceOperationHelper opHelper)
+        DeviceOperationHelper opHelper,
+        IQrPoolService qrPool)
     {
+        _qrPool = qrPool;
         _employeeRepository = employeeRepository;
         _cardRepository = cardRepository;
         _deviceRepository = deviceRepository;
@@ -999,8 +1002,39 @@ public class EmployeeService : IEmployeeService
         return true;
     }
 
+    public async Task<(int activeMembers, int poolCodes)> GetDeviceSyncCountsAsync()
+    {
+        var cards = (await _cardRepository.GetAllActiveForSyncAsync()).ToList();
+        var today = DateTime.Today;
+        int members = cards.Count(c => c.ValidTo.Date >= today);
+        int pool = await _qrPool.GetActivePoolCountAsync();
+        return (members, pool);
+    }
+
+    public async Task<(int membersSynced, int membersFailed, int poolPushed, int poolFailed)> SyncAllDataToDeviceAsync(
+        int deviceId, IProgress<DeviceSyncProgress>? progress = null, System.Threading.CancellationToken ct = default)
+    {
+        // Phase 1 — active-subscription members FIRST, so the gym is usable within seconds.
+        var memberProgress = progress == null ? null : new Progress<(int current, int total, string cardNumber)>(
+            p => progress.Report(new DeviceSyncProgress("Members", p.current, p.total)));
+        var (mSynced, mFailed, _) = await SyncAllCardsToDeviceAsync(deviceId, memberProgress, activeSubscriptionsOnly: true);
+
+        ct.ThrowIfCancellationRequested();
+
+        // Phase 2 — the full QR pool (daily-pass + visitor); heavier, runs after members.
+        var device = await _deviceRepository.GetByIdAsync(deviceId);
+        if (device == null) return (mSynced, mFailed, 0, 0);
+        var deviceInfo = BuildDeviceInfo(device);
+        var poolProgress = progress == null ? null : new Progress<(int done, int total)>(
+            p => progress.Report(new DeviceSyncProgress("QrPool", p.done, p.total)));
+        var (pPushed, pFailed) = await _qrPool.ForcePushPoolToDeviceAsync(_sdk, deviceInfo, poolProgress, ct);
+
+        return (mSynced, mFailed, pPushed, pFailed);
+    }
+
     public async Task<(int synced, int failed, int total)> SyncAllCardsToDeviceAsync(
-        int deviceId, IProgress<(int current, int total, string cardNumber)>? progress = null)
+        int deviceId, IProgress<(int current, int total, string cardNumber)>? progress = null,
+        bool activeSubscriptionsOnly = false)
     {
         var device = await _deviceRepository.GetByIdAsync(deviceId);
         if (device == null) return (0, 0, 0);
@@ -1041,6 +1075,14 @@ public class EmployeeService : IEmployeeService
 
         // Step 2: Get all active cards for sync (no Employee navigation = no photos loaded)
         var allCards = (await _cardRepository.GetAllActiveForSyncAsync()).ToList();
+
+        // When repopulating a new/replacement device we only push members whose subscription is still
+        // valid — far fewer than the full roster, and the gate rejects expired cards anyway.
+        if (activeSubscriptionsOnly)
+        {
+            var today = DateTime.Today;
+            allCards = allCards.Where(c => c.ValidTo.Date >= today).ToList();
+        }
 
         if (allCards.Count == 0) return (0, 0, 0);
 

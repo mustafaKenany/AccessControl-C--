@@ -18,6 +18,12 @@ public interface IQrPoolService
     Task DeactivateAsync(string code);
     Task<(int uploaded, int deleted, int generated)> SyncQrPoolToDeviceAsync(IAccessControlSdk sdk, List<DeviceInfo> devices);
     Task<int> GetPendingUploadCountAsync();
+    /// <summary>Pushes EVERY active pool code (daily-pass + visitor) to ONE device, ignoring the
+    /// IsUploadedToDevice flag — used to repopulate a new/replacement controller. Reports progress.</summary>
+    Task<(int pushed, int failed)> ForcePushPoolToDeviceAsync(IAccessControlSdk sdk, DeviceInfo device,
+        IProgress<(int done, int total)>? progress = null, System.Threading.CancellationToken ct = default);
+    /// <summary>Count of active pool codes (Local + Cloud) — for the "load to device?" prompt.</summary>
+    Task<int> GetActivePoolCountAsync();
 }
 
 public class QrPoolService : IQrPoolService
@@ -327,6 +333,59 @@ public class QrPoolService : IQrPoolService
 
         Log($"SyncQrPoolToDevice DONE: uploaded={uploaded} deleted={deleted} generated={generated}");
         return (uploaded, deleted, generated);
+    }
+
+    public async Task<int> GetActivePoolCountAsync()
+    {
+        using var conn = new SqlConnection(_connectionString);
+        await conn.OpenAsync();
+        using var cmd = new SqlCommand(
+            "SELECT COUNT(*) FROM QrPool WHERE Status IN (0, 1) AND Source IN ('Local', 'Cloud')", conn);
+        return (int)(await cmd.ExecuteScalarAsync() ?? 0);
+    }
+
+    public async Task<(int pushed, int failed)> ForcePushPoolToDeviceAsync(IAccessControlSdk sdk, DeviceInfo device,
+        IProgress<(int done, int total)>? progress = null, System.Threading.CancellationToken ct = default)
+    {
+        using var conn = new SqlConnection(_connectionString);
+        await conn.OpenAsync(ct);
+
+        var codes = new List<(string code, string doors, DateTime validTo)>();
+        using (var cmd = new SqlCommand(
+            "SELECT Code, DoorPermissions, ValidTo FROM QrPool WHERE Status IN (0, 1) AND Source IN ('Local', 'Cloud')", conn))
+        using (var reader = await cmd.ExecuteReaderAsync(ct))
+        {
+            while (await reader.ReadAsync(ct))
+                codes.Add((reader.GetString(0),
+                          reader.IsDBNull(1) ? "01010000" : reader.GetString(1),
+                          reader.GetDateTime(2)));
+        }
+
+        int pushed = 0, failed = 0, total = codes.Count, done = 0;
+        foreach (var (code, doors, validTo) in codes)
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                sdk.AddAccessCard(device, code, "", 0, doors, validTo.ToString("yyyy-MM-dd HH:mm:ss"), 2, 0, false);
+                using var up = new SqlCommand("UPDATE QrPool SET IsUploadedToDevice = 1 WHERE Code = @c", conn);
+                up.Parameters.AddWithValue("@c", code);
+                await up.ExecuteNonQueryAsync(ct);
+                pushed++;
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                Log($"ForcePushPoolToDevice code={code} failed: {ex.Message}", "error");
+                // If nothing is landing, the device is unreachable — abort rather than grind through thousands.
+                if (pushed == 0 && failed >= 15)
+                    throw new InvalidOperationException("Device is not responding — QR pool upload aborted.");
+            }
+            done++;
+            if (done % 10 == 0 || done == total) progress?.Report((done, total));
+        }
+        Log($"ForcePushPoolToDevice DONE: pushed={pushed} failed={failed} total={total}");
+        return (pushed, failed);
     }
 
     public async Task<int> GetPendingUploadCountAsync()

@@ -2,6 +2,9 @@ using AccessControlPro.Application.DTOs;
 
 namespace AccessControlPro.Application.Interfaces;
 
+/// <summary>Phased progress for repopulating a device: Phase is "Members" then "QrPool".</summary>
+public record DeviceSyncProgress(string Phase, int Done, int Total);
+
 public interface IEmployeeService
 {
     Task<IEnumerable<EmployeeDto>> GetAllEmployeesAsync();
@@ -15,7 +18,15 @@ public interface IEmployeeService
     Task<bool> SyncCardToDeviceAsync(int cardId, int deviceId);
     /// <summary>Sync card to selected devices. Pass null for ALL devices.</summary>
     Task<(int synced, int failed, int total, List<string> errors)> SyncCardToDevicesAsync(int cardId, IEnumerable<int>? deviceIds = null);
-    Task<(int synced, int failed, int total)> SyncAllCardsToDeviceAsync(int deviceId, IProgress<(int current, int total, string cardNumber)>? progress = null);
+    Task<(int synced, int failed, int total)> SyncAllCardsToDeviceAsync(int deviceId, IProgress<(int current, int total, string cardNumber)>? progress = null, bool activeSubscriptionsOnly = false);
+
+    /// <summary>Counts for the "load data onto this device?" prompt: active-subscription members + pool codes.</summary>
+    Task<(int activeMembers, int poolCodes)> GetDeviceSyncCountsAsync();
+
+    /// <summary>Repopulate a device: push active-subscription members FIRST (gym usable within seconds),
+    /// then the full QR pool (daily-pass + visitor) in the background. Reports phased progress.</summary>
+    Task<(int membersSynced, int membersFailed, int poolPushed, int poolFailed)> SyncAllDataToDeviceAsync(
+        int deviceId, IProgress<DeviceSyncProgress>? progress = null, System.Threading.CancellationToken ct = default);
     /// <summary>Sync all cards to selected devices. Pass null for ALL devices.</summary>
     Task<(int synced, int failed, int total)> SyncAllCardsToDevicesAsync(IEnumerable<int>? deviceIds = null, IProgress<(int current, int total, string cardNumber)>? progress = null);
     /// <summary>Remove/expire card on selected devices. Pass null for ALL devices.</summary>
