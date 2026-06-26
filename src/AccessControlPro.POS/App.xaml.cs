@@ -242,6 +242,18 @@ public partial class App : System.Windows.Application
                 return;
             }
 
+            // SuperAdmin gate: the cashier/POS module must be activated for this gym (via the cloud
+            // flag, or the SuperAdmin step-up in the main app). New installs ship with it OFF.
+            if (!AccessControlPro.Application.Services.FeatureFlags.IsPosEnabled())
+            {
+                CustomMessageBox.Show(
+                    "نظام الكاشير غير مُفعّل لهذه القاعة. يرجى التواصل مع المزود لتفعيله.\n\n" +
+                    "The cashier / POS module is not activated for this gym. Please contact your provider to enable it.",
+                    "POS not activated", MsgType.Warning);
+                Shutdown();
+                return;
+            }
+
             // Check POS access permission
             if (!currentUser.HasPermission(AccessControlPro.Domain.Enums.AppPermission.AccessPOS))
             {

@@ -273,26 +273,29 @@ public class CloudSyncService : ICloudSyncService
     /// reachable=false if the cloud couldn't be contacted (caller applies the offline grace).
     /// Side-effect free (uses /api/lock-status, not /api/sync-control).
     /// </summary>
-    public static async Task<(bool reachable, bool locked, string message)> CheckRemoteLockAsync()
+    public static async Task<(bool reachable, bool locked, string message, bool onlineEnabled, bool posEnabled)> CheckRemoteLockAsync()
     {
         var cloudUrl = LoadCloudSyncUrl();
-        if (string.IsNullOrEmpty(cloudUrl)) return (false, false, "");
+        if (string.IsNullOrEmpty(cloudUrl)) return (false, false, "", true, false);
         try
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
             client.DefaultRequestHeaders.Add("X-Api-Key", LoadApiKey());
             var url = cloudUrl.Replace("/api/sync", "/api/lock-status");
             var resp = await client.GetAsync(url);
-            if (!resp.IsSuccessStatusCode) return (false, false, "");
+            if (!resp.IsSuccessStatusCode) return (false, false, "", true, false);
 
             var body = await resp.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(body);
             var root = doc.RootElement;
             bool locked = root.TryGetProperty("locked", out var l) && l.ValueKind == JsonValueKind.True;
             string msg = root.TryGetProperty("lockMessage", out var m) ? (m.GetString() ?? "") : "";
-            return (true, locked, msg);
+            // SuperAdmin feature flags (default online=on, pos=off if the server omits them).
+            bool onlineEnabled = !root.TryGetProperty("onlineEnabled", out var oe) || oe.ValueKind != JsonValueKind.False;
+            bool posEnabled = root.TryGetProperty("posEnabled", out var pe) && pe.ValueKind == JsonValueKind.True;
+            return (true, locked, msg, onlineEnabled, posEnabled);
         }
-        catch { return (false, false, ""); }
+        catch { return (false, false, "", true, false); }
     }
 
     private static async Task<bool> CheckForceFullSyncAsync(string cloudUrl)

@@ -35,6 +35,7 @@ public partial class App : System.Windows.Application
     private DispatcherTimer? _backupTimer;
     private DispatcherTimer? _cloudSyncTimer;
     private Views.LockWindow? _lockWindow;
+    private string? _pendingLockWarning;
     private DispatcherTimer? _cleanupDailyTimer;
     private DispatcherTimer? _qrPoolTimer;
     private DispatcherTimer? _memoryMonitorTimer;
@@ -521,6 +522,17 @@ public partial class App : System.Windows.Application
             var licenseStatus = licenseService.CheckLicense();
             if (!licenseStatus.IsValid)
             {
+                // Make an EXPIRED license explicit (contact + renewal) before the key-entry window.
+                if (licenseStatus.Message == "EXPIRED")
+                {
+                    var dev = ILicenseService.LoadDeveloperInfo();
+                    var who = !string.IsNullOrWhiteSpace(dev.Phone)
+                        ? $"{dev.CompanyName} — {dev.Phone}" : "your software provider";
+                    CustomMessageBox.Show(
+                        $"انتهت صلاحية ترخيص البرنامج. يرجى التواصل مع {who} للحصول على رمز تجديد.\n\n" +
+                        $"Your license has expired. Please contact {who} for a renewal code.",
+                        "License expired", MsgType.Warning);
+                }
                 var activationWindow = new ActivationWindow(licenseService, licenseStatus);
                 if (activationWindow.ShowDialog() != true || !activationWindow.IsActivated)
                 {
@@ -652,6 +664,12 @@ public partial class App : System.Windows.Application
                         StartupLog("Remote lock active — showing lock screen.");
                         new Views.LockWindow(lockResult.Message).ShowDialog();
                     }
+                    else if (!string.IsNullOrWhiteSpace(lockResult.Warning))
+                    {
+                        // Non-blocking: nudge them to reconnect before the 30-day grace runs out.
+                        StartupLog("Subscription not verified online — showing reconnect warning.");
+                        _pendingLockWarning = lockResult.Warning;
+                    }
                 }
                 catch (Exception exLock) { StartupLog($"Remote lock check failed (non-critical): {exLock.Message}"); }
             }
@@ -680,6 +698,16 @@ public partial class App : System.Windows.Application
                 return;
             }
             mainWindow.Show();
+
+            // Non-blocking subscription-outage warning (online gym that hasn't reached the cloud in a while).
+            if (!string.IsNullOrWhiteSpace(_pendingLockWarning))
+            {
+                var arWarn = Helpers.LanguageManager.Instance.IsArabic;
+                Helpers.ToastNotification.Show(
+                    arWarn ? "تنبيه الاشتراك" : "Subscription notice",
+                    _pendingLockWarning!, isError: false);
+                _pendingLockWarning = null;
+            }
 
             // Check for pending device operations (shows notification bar after 3s)
             _ = Task.Run(async () =>

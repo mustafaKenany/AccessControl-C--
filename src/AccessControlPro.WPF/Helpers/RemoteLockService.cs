@@ -20,6 +20,7 @@ public static class RemoteLockService
     {
         public bool Locked { get; init; }
         public string Message { get; init; }
+        public string Warning { get; init; } // non-blocking "reconnect before <date>" notice during the grace
     }
 
     private class LockState
@@ -35,7 +36,11 @@ public static class RemoteLockService
     public static async Task<LockResult> EvaluateAsync()
     {
         var state = LoadState();
-        var (reachable, locked, message) = await CloudSyncService.CheckRemoteLockAsync();
+        var (reachable, locked, message, onlineEnabled, posEnabled) = await CloudSyncService.CheckRemoteLockAsync();
+
+        // Cache the SuperAdmin feature flags whenever the cloud answers (authoritative for online gyms).
+        if (reachable)
+            FeatureFlags.UpdateFromCloud(posEnabled, onlineEnabled);
 
         if (reachable)
         {
@@ -58,10 +63,19 @@ public static class RemoteLockService
         if (state.Locked)
             return new LockResult { Locked = true, Message = Coalesce(state.Message, DefaultLockMsg()) };
 
-        if (DateTime.UtcNow - state.LastConfirmedActiveUtc > OfflineGrace)
+        var offline = DateTime.UtcNow - state.LastConfirmedActiveUtc;
+        if (offline > OfflineGrace)
             return new LockResult { Locked = true, Message = OfflineLockMsg() };
 
-        return new LockResult { Locked = false, Message = "" };
+        // Non-blocking nag once the outage passes ~1 week, so they reconnect before the hard lock.
+        string warn = "";
+        if (offline.TotalDays >= 7)
+        {
+            var lockDate = state.LastConfirmedActiveUtc.Add(OfflineGrace).ToLocalTime();
+            warn = $"تعذّر التحقق من اشتراكك عبر الإنترنت منذ {(int)offline.TotalDays} يوم — يرجى توصيل الإنترنت قبل {lockDate:yyyy-MM-dd}.\n"
+                 + $"Couldn't verify your subscription online for {(int)offline.TotalDays} days — please connect before {lockDate:yyyy-MM-dd}.";
+        }
+        return new LockResult { Locked = false, Message = "", Warning = warn };
     }
 
     /// <summary>
