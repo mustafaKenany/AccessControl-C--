@@ -183,17 +183,21 @@ else
             var _dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
             using var conn = await GymDb.GetGymConnectionAsync(_dbName);
 
-            // Pick available code from cloud pool (50003501-50006000)
+            // Pick an available code that the desktop has CONFIRMED uploaded to the gate
+            // (IsUploadedToDevice = TRUE). Never hand out a code that isn't on the device — it
+            // would produce a QR that doesn't open the door.
             string? code;
             using (var pickCmd = new Npgsql.NpgsqlCommand(
-                @"SELECT ""Code"" FROM ""QrPool"" WHERE ""Status"" = 0 AND ""Source"" = 'Cloud' ORDER BY RANDOM() LIMIT 1", conn))
+                @"SELECT ""Code"" FROM ""QrPool"" WHERE ""Status"" = 0 AND ""Source"" = 'Cloud'
+                  AND ""IsUploadedToDevice"" = TRUE ORDER BY RANDOM() LIMIT 1", conn))
             {
                 code = (await pickCmd.ExecuteScalarAsync())?.ToString();
             }
 
             if (string.IsNullOrEmpty(code))
             {
-                _errorMsg = L("No QR codes available. Pool needs regeneration.", "لا توجد رموز QR متاحة. يجب إعادة إنشاء المجموعة.");
+                _errorMsg = L("No visitor QR codes are loaded on the gate yet. Open the gym's desktop app online so it uploads the codes, then try again.",
+                              "لا توجد رموز QR للزوار محمّلة على البوابة بعد. افتح برنامج القاعة متصلاً بالإنترنت حتى يرفع الرموز ثم حاول مجدداً.");
                 return;
             }
 

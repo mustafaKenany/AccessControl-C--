@@ -104,10 +104,22 @@ public partial class DailyPassDialog : Window
                 maxUses: 2,      // one entry + one exit — stops a found/shared ticket being reused
                 validDays: 1);   // today only
 
-            // Bind the code to the gate for today only, so the controller auto-rejects it
-            // tomorrow (date-enforced) AND after 2 uses (one in, one out).
-            try { await _employeeService.PushTempCardToDevicesAsync(pass.PassCode, pass.ValidTo, "01010000", maxUses: 2); }
-            catch { /* falls back to the pre-synced pool code */ }
+            // Bind the code to the gate for today only (date-enforced + 2 uses). Check the result:
+            // if it reached NO device, warn the cashier — the QR may not open the door.
+            try
+            {
+                var (okCnt, failCnt, totalCnt, pushErrors) = await _employeeService.PushTempCardToDevicesAsync(
+                    pass.PassCode, pass.ValidTo, "01010000", maxUses: 2);
+                if (totalCnt > 0 && okCnt == 0)
+                {
+                    CustomMessageBox.Show(
+                        (_ar ? "تنبيه: لم يصل رمز الدخول إلى البوابة (تحقّق من اتصال الجهاز). قد لا يفتح الـQR الباب — أعد المزامنة أو جرّب مجدداً."
+                             : "Warning: the pass code didn't reach the gate (check the device connection). The QR may not open the door — re-sync or try again.")
+                        + (pushErrors.Count > 0 ? "\n\n" + string.Join("\n", pushErrors) : ""),
+                        LanguageManager.Instance.DailyPass, MsgType.Warning, this);
+                }
+            }
+            catch { /* no devices configured or a transient error — the pre-synced pool code still applies */ }
 
             var qrDialog = new QrCodeDisplayDialog(pass) { Owner = this };
             qrDialog.ShowDialog();
