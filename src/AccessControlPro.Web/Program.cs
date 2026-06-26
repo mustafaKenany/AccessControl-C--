@@ -514,8 +514,14 @@ static CookieOptions BuildSessionCookie(HttpContext ctx, TimeSpan lifetime)
 // schema via CreateGymDatabaseAsync) AND the master Gyms row in one call, gated by a
 // provisioning password. Idempotent by API key so re-running setup is safe. Existing gyms
 // and manual SuperAdmin creation are untouched. Offline installs simply skip this call.
-app.MapPost("/api/provision-gym", async (HttpContext ctx, DbHelper db, GymDbHelper gymDb, IConfiguration config) =>
+app.MapPost("/api/provision-gym", async (HttpContext ctx, DbHelper db, GymDbHelper gymDb, IConfiguration config, WebAuthService auth) =>
 {
+    // Brute-force protection on the provisioning secret (5 attempts / 15 min per IP, like login).
+    var pip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    var pKey = $"provision:{pip}";
+    if (auth.IsLoginBlocked(pKey))
+        return Results.Json(new { success = false, error = "Too many attempts. Try again in 15 minutes." }, statusCode: 429);
+
     using var doc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
     var root = doc.RootElement;
     string S(string n) => root.TryGetProperty(n, out var v) ? (v.GetString() ?? "").Trim() : "";
@@ -523,7 +529,11 @@ app.MapPost("/api/provision-gym", async (HttpContext ctx, DbHelper db, GymDbHelp
     // 1) Gate behind the provisioning password (configured server-side; never hardcoded).
     var expected = config["ProvisioningSecret"] ?? "";
     if (string.IsNullOrWhiteSpace(expected) || S("provisionSecret") != expected)
+    {
+        auth.RecordLoginFailure(pKey);
         return Results.Json(new { success = false, error = "Invalid provisioning password." }, statusCode: 401);
+    }
+    auth.ClearLoginFailures(pKey);
 
     var gymName = S("gymName");
     var apiKey = S("apiKey");
