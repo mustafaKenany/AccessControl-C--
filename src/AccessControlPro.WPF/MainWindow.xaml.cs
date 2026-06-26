@@ -47,8 +47,26 @@ public partial class MainWindow : Window
         Close();
     }
 
+    // Discreet SuperAdmin entry: click the version label → step-up password → local POS/online overrides.
+    private void VersionClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!Helpers.SuperAdminGate.RequireSuperAdmin(
+                "إعدادات المزوّد (تفعيل الكاشير / الاشتراك أونلاين).\nProvider settings (enable POS / online).",
+                this))
+            return;
+        var dlg = new SuperAdminSettingsDialog { Owner = this };
+        dlg.ShowDialog();
+    }
+
     private void MigrationClick(object sender, RoutedEventArgs e)
     {
+        // SuperAdmin-reserved: bulk data import/export can move/overwrite data, so it needs the
+        // provider's step-up password (online gyms are controlled centrally; this is the offline path).
+        if (!Helpers.SuperAdminGate.RequireSuperAdmin(
+                "ترحيل البيانات (استيراد/تصدير) محجوز للمزوّد.\nData migration (import/export) is reserved for the provider.",
+                this))
+            return;
+
         using var scope = _serviceProvider.CreateScope();
         var migrationService = scope.ServiceProvider.GetRequiredService<IMigrationService>();
         var dialog = new MigrationDialog(migrationService);

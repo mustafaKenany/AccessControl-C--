@@ -941,8 +941,14 @@ public partial class App : System.Windows.Application
                     {
                         try
                         {
-                            var result = await Task.Run(() => cloudSync.SyncToCloudAsync());
-                            StartupLog($"CloudSync: {result}");
+                            // SuperAdmin can switch a gym's online subscription off — then we stop pushing
+                            // data, but the lock poll below keeps running so it can be switched back on.
+                            if (AccessControlPro.Application.Services.FeatureFlags.IsOnlineEnabled())
+                            {
+                                var result = await Task.Run(() => cloudSync.SyncToCloudAsync());
+                                StartupLog($"CloudSync: {result}");
+                            }
+                            else StartupLog("CloudSync skipped — online subscription disabled by SuperAdmin.");
                         }
                         catch (Exception ex2)
                         {
@@ -966,8 +972,11 @@ public partial class App : System.Windows.Application
                         await Task.Delay(30000);
                         try
                         {
-                            var result = await cloudSync.SyncToCloudAsync();
-                            StartupLog($"CloudSync (initial): {result}");
+                            if (AccessControlPro.Application.Services.FeatureFlags.IsOnlineEnabled())
+                            {
+                                var result = await cloudSync.SyncToCloudAsync();
+                                StartupLog($"CloudSync (initial): {result}");
+                            }
                         }
                         catch (Exception ex2)
                         {
