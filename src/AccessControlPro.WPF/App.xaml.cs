@@ -638,17 +638,27 @@ public partial class App : System.Windows.Application
             // before the main window. EvaluateAsync runs on a worker thread (no UI deadlock) and
             // applies the 7-day offline grace. The LockWindow re-checks every 60s and closes
             // itself once unlocked. It only blocks usage — it never touches the customer's data.
-            try
+            // CRITICAL: only applies to ONLINE installs. An offline-mode install (cloud disabled at
+            // setup) intentionally never reaches the cloud, so the online-verification grace must NOT
+            // catch it — otherwise it self-locks after 7 days with no way to verify (the Demo trap).
+            if (AccessControlPro.Application.Services.CloudSyncService.IsCloudSyncEnabledFlag())
             {
-                var lockResult = Task.Run(async () => await Helpers.RemoteLockService.EvaluateAsync())
-                                     .GetAwaiter().GetResult();
-                if (lockResult.Locked)
+                try
                 {
-                    StartupLog("Remote lock active — showing lock screen.");
-                    new Views.LockWindow(lockResult.Message).ShowDialog();
+                    var lockResult = Task.Run(async () => await Helpers.RemoteLockService.EvaluateAsync())
+                                         .GetAwaiter().GetResult();
+                    if (lockResult.Locked)
+                    {
+                        StartupLog("Remote lock active — showing lock screen.");
+                        new Views.LockWindow(lockResult.Message).ShowDialog();
+                    }
                 }
+                catch (Exception exLock) { StartupLog($"Remote lock check failed (non-critical): {exLock.Message}"); }
             }
-            catch (Exception exLock) { StartupLog($"Remote lock check failed (non-critical): {exLock.Message}"); }
+            else
+            {
+                StartupLog("Offline install — remote lock check skipped.");
+            }
 
             // Check main app access permission
             if (!currentUser.HasPermission(Domain.Enums.AppPermission.AccessMainApp))
