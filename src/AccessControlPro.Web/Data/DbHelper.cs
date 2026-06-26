@@ -352,6 +352,12 @@ ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""QrMonthlyFee"" DECIMAL(18,2) DEF
 -- also auto-locks if it can't confirm 'unlocked' with the cloud for 7+ days (anti-bypass).
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""IsLocked"" BOOLEAN DEFAULT FALSE;
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""LockMessage"" TEXT DEFAULT '';
+-- SuperAdmin-reserved feature flags (read by the desktop via /api/lock-status). OnlineEnabled
+-- defaults TRUE (existing gyms stay online); PosEnabled defaults FALSE (new gyms need SuperAdmin
+-- to turn the cashier/POS module on). Existing gyms are grandfathered to PosEnabled=TRUE by a
+-- one-time UPDATE run separately.
+ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""OnlineEnabled"" BOOLEAN DEFAULT TRUE;
+ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""PosEnabled"" BOOLEAN DEFAULT FALSE;
 
 -- Seed default gym if none exists
 INSERT INTO ""Gyms"" (""Name"", ""Subdomain"", ""ApiKey"", ""DatabaseName"", ""IsActive"", ""ExpiresAt"", ""OwnerName"")

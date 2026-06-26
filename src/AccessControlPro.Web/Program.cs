@@ -469,13 +469,19 @@ app.MapGet("/api/lock-status", async (HttpContext context, GymDbHelper gymDb) =>
     {
         using var conn = await gymDb.GetMasterConnectionAsync();
         using var cmd = new Npgsql.NpgsqlCommand(
-            @"SELECT COALESCE(""IsLocked"", FALSE), COALESCE(""LockMessage"", '')
+            @"SELECT COALESCE(""IsLocked"", FALSE), COALESCE(""LockMessage"", ''),
+                     COALESCE(""OnlineEnabled"", TRUE), COALESCE(""PosEnabled"", FALSE)
               FROM ""Gyms"" WHERE ""ApiKey"" = @key", conn);
         cmd.Parameters.AddWithValue("key", apiKey ?? "");
         using var r = await cmd.ExecuteReaderAsync();
-        bool locked = false; string msg = "";
-        if (await r.ReadAsync()) { locked = r.GetBoolean(0); msg = r.GetString(1); }
-        return Results.Ok(new { locked, lockMessage = msg });
+        bool locked = false; string msg = ""; bool onlineEnabled = true; bool posEnabled = false;
+        if (await r.ReadAsync())
+        {
+            locked = r.GetBoolean(0); msg = r.GetString(1);
+            onlineEnabled = r.GetBoolean(2); posEnabled = r.GetBoolean(3);
+        }
+        // SuperAdmin-reserved feature flags ride the same status poll the desktop already makes.
+        return Results.Ok(new { locked, lockMessage = msg, onlineEnabled, posEnabled });
     }
     catch (Exception ex)
     {

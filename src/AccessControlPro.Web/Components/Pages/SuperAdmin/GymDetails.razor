@@ -127,6 +127,42 @@ else
         }
     </div>
 
+    @* SuperAdmin feature controls — the desktop reads these via /api/lock-status and obeys *@
+    <div class="content-card" style="border-color: #7E57C2; margin-bottom: 1.5rem;">
+        <h3 style="color: #7E57C2; border-bottom-color: rgba(126, 87, 194, 0.3);">
+            <i class="fas fa-sliders-h"></i> SuperAdmin Controls
+        </h3>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.75rem;">
+            These are reserved for us. The gym owner can't change them — the desktop applies them within ~5 minutes.
+        </p>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <div>
+                <label style="display:block; margin-bottom:0.35rem;">
+                    Online subscription
+                    <span class="badge @(_onlineEnabled ? "badge-active" : "badge-expired")" style="margin-inline-start:0.4rem;">
+                        @(_onlineEnabled ? "ON" : "OFF")</span>
+                </label>
+                <button class="@(_onlineEnabled ? "btn-danger" : "btn-accent")" @onclick="ToggleOnlineAsync" disabled="@_featBusy">
+                    @(_onlineEnabled ? "Turn online OFF" : "Turn online ON")
+                </button>
+            </div>
+            <div>
+                <label style="display:block; margin-bottom:0.35rem;">
+                    Cashier / POS module
+                    <span class="badge @(_posEnabled ? "badge-active" : "badge-expired")" style="margin-inline-start:0.4rem;">
+                        @(_posEnabled ? "ON" : "OFF")</span>
+                </label>
+                <button class="@(_posEnabled ? "btn-danger" : "btn-accent")" @onclick="TogglePosAsync" disabled="@_featBusy">
+                    @(_posEnabled ? "Turn POS OFF" : "Turn POS ON")
+                </button>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(_featSavedMsg))
+        {
+            <div style="color: var(--success); margin-top: 0.6rem;">@_featSavedMsg</div>
+        }
+    </div>
+
     @* QR Pool Stats *@
     @if (_qrPoolEnabled)
     {
@@ -426,7 +462,8 @@ else
                 @"SELECT ""Name"", ""DatabaseName"", ""OwnerName"", ""OwnerPhone"", ""OwnerEmail"",
                          ""Subdomain"", ""ExpiresAt"", ""IsActive"",
                          ""QrPoolEnabled"", ""QrPoolSize"", ""QrRangeStart"", ""QrMonthlyFee"", ""ApiKey"",
-                         COALESCE(""IsLocked"", FALSE), COALESCE(""LockMessage"", '')
+                         COALESCE(""IsLocked"", FALSE), COALESCE(""LockMessage"", ''),
+                         COALESCE(""OnlineEnabled"", TRUE), COALESCE(""PosEnabled"", FALSE)
                   FROM ""Gyms"" WHERE ""Id"" = @id", masterConn))
             {
                 cmd.Parameters.AddWithValue("id", GymId);
@@ -448,6 +485,8 @@ else
                     _apiKey = reader.IsDBNull(12) ? "" : reader.GetString(12);
                     _isLocked = !reader.IsDBNull(13) && reader.GetBoolean(13);
                     _lockMessage = reader.IsDBNull(14) ? "" : reader.GetString(14);
+                    _onlineEnabled = reader.IsDBNull(15) || reader.GetBoolean(15);
+                    _posEnabled = !reader.IsDBNull(16) && reader.GetBoolean(16);
                 }
                 else
                 {
@@ -631,6 +670,34 @@ else
         {
             _loading = false;
         }
+    }
+
+    private bool _onlineEnabled = true;
+    private bool _posEnabled;
+    private bool _featBusy;
+    private string _featSavedMsg = "";
+
+    private Task ToggleOnlineAsync() => SetFeatureAsync("OnlineEnabled", !_onlineEnabled);
+    private Task TogglePosAsync() => SetFeatureAsync("PosEnabled", !_posEnabled);
+
+    private async Task SetFeatureAsync(string column, bool value)
+    {
+        // column is a fixed literal from the two buttons — never user input — so it's safe to interpolate.
+        _featBusy = true; _featSavedMsg = ""; StateHasChanged();
+        try
+        {
+            using var conn = await GymDb.GetMasterConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                $@"UPDATE ""Gyms"" SET ""{column}"" = @v WHERE ""Id"" = @id", conn);
+            cmd.Parameters.AddWithValue("v", value);
+            cmd.Parameters.AddWithValue("id", GymId);
+            await cmd.ExecuteNonQueryAsync();
+            if (column == "OnlineEnabled") _onlineEnabled = value;
+            else if (column == "PosEnabled") _posEnabled = value;
+            _featSavedMsg = "Saved — the gym's app will apply this within ~5 minutes.";
+        }
+        catch (Exception ex) { _errorMsg = $"Update failed: {ex.Message}"; }
+        finally { _featBusy = false; StateHasChanged(); }
     }
 
     private Task LockGymAsync() => SetLockAsync(true);
