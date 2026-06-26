@@ -203,6 +203,36 @@ public class LicenseService : ILicenseService
         return $"{hex[..4]}-{hex[4..8]}-{hex[8..12]}-{hex[12..16]}-{hex[16..20]}";
     }
 
+    /// <summary>
+    /// Generates the short emergency offline-unlock code for a machine + month (vendor KeyGen uses
+    /// the identical formula). Month-scoped so a code can't be reused indefinitely.
+    /// </summary>
+    internal static string GenerateOfflineUnlockCode(string machineId, string period)
+    {
+        var message = Encoding.UTF8.GetBytes($"UNLOCK|{machineId.ToUpperInvariant()}|{period}");
+        var hmac = HMACSHA256.HashData(SecretKey, message);
+        var hex = Convert.ToHexString(hmac, 0, 4).ToUpperInvariant(); // 8 hex chars
+        return $"{hex[..4]}-{hex[4..8]}";
+    }
+
+    /// <summary>
+    /// Verifies a vendor-issued emergency unlock code against THIS machine for the current month
+    /// (also accepts last month, for codes issued near a month boundary).
+    /// </summary>
+    public bool VerifyOfflineUnlockCode(string code)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return false;
+        var clean = code.Replace("-", "").Replace(" ", "").ToUpperInvariant();
+        var machineId = GetMachineId();
+        var today = DateTime.Today;
+        foreach (var period in new[] { today.ToString("yyyyMM"), today.AddMonths(-1).ToString("yyyyMM") })
+        {
+            var expected = GenerateOfflineUnlockCode(machineId, period).Replace("-", "");
+            if (string.Equals(expected, clean, StringComparison.OrdinalIgnoreCase)) return true;
+        }
+        return false;
+    }
+
     #region Private Helpers
 
     private static bool VerifyKey(string machineId, DateTime expiryDate, string cleanKey)

@@ -22,6 +22,8 @@ public partial class LockWindow : Window
             ? "تم إيقاف البرنامج. يرجى التواصل مع المزود.\nThe software has been disabled. Please contact your provider."
             : message;
         ContactText.Text = LoadContact();
+        try { MachineIdText.Text = new AccessControlPro.Application.Services.LicenseService().GetMachineId(); }
+        catch { MachineIdText.Text = "—"; }
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
         _timer.Tick += async (_, _) => await RecheckAsync(false);
@@ -37,6 +39,24 @@ public partial class LockWindow : Window
     }
 
     private async void Recheck_Click(object sender, RoutedEventArgs e) => await RecheckAsync(true);
+
+    private async void Unlock_Click(object sender, RoutedEventArgs e)
+    {
+        var code = UnlockCodeBox.Text?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(code)) return;
+
+        UnlockButton.IsEnabled = false;
+        if (Helpers.RemoteLockService.TryOfflineUnlock(code))
+        {
+            StatusText.Text = "تم الفتح / Unlocked";
+            await RecheckAsync(false); // re-evaluate — grace was reset, so it closes
+        }
+        else
+        {
+            StatusText.Text = "رمز غير صحيح / Invalid code";
+        }
+        UnlockButton.IsEnabled = true;
+    }
 
     private async Task RecheckAsync(bool manual)
     {

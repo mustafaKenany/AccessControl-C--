@@ -12,7 +12,9 @@ namespace AccessControlPro.WPF.Helpers;
 public static class RemoteLockService
 {
     private static readonly string StatePath = Path.Combine(AppContext.BaseDirectory, ".remote_lock_state");
-    private static readonly TimeSpan OfflineGrace = TimeSpan.FromDays(7);
+    // 30-day offline grace: a paying customer with a long internet outage isn't locked out over a
+    // temporary problem. An offline-unlock code (vendor-issued, machine-bound) can reset it sooner.
+    private static readonly TimeSpan OfflineGrace = TimeSpan.FromDays(30);
 
     public readonly struct LockResult
     {
@@ -60,6 +62,28 @@ public static class RemoteLockService
             return new LockResult { Locked = true, Message = OfflineLockMsg() };
 
         return new LockResult { Locked = false, Message = "" };
+    }
+
+    /// <summary>
+    /// Emergency offline unlock: re-seeds the grace (LastConfirmedActiveUtc = now) so a stranded
+    /// customer who entered a valid vendor unlock code gets another full offline grace window.
+    /// Does nothing to a cloud-confirmed lock — that still requires the admin to unlock from the cloud.
+    /// </summary>
+    public static bool TryOfflineUnlock(string code)
+    {
+        try
+        {
+            var license = new AccessControlPro.Application.Services.LicenseService();
+            if (!license.VerifyOfflineUnlockCode(code)) return false;
+
+            var state = LoadState();
+            // Only clears the OFFLINE-grace lock; a deliberate cloud lock stays until cleared online.
+            if (state.Locked) return false;
+            state.LastConfirmedActiveUtc = DateTime.UtcNow;
+            SaveState(state);
+            return true;
+        }
+        catch { return false; }
     }
 
     private static LockState LoadState()

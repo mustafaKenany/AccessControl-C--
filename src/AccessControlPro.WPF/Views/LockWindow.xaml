@@ -18,6 +18,26 @@
                     Background="#44A1A0" Foreground="White" BorderThickness="0" Cursor="Hand"
                     HorizontalAlignment="Center" Content="&#x625;&#x639;&#x627;&#x62F;&#x629; &#x627;&#x644;&#x645;&#x62D;&#x627;&#x648;&#x644;&#x629; / Re-check"/>
             <TextBlock x:Name="StatusText" Foreground="#6B7B7D" FontSize="13" TextAlignment="Center" Margin="0,18,0,0"/>
+
+            <!-- Emergency offline unlock: the customer reads the Machine ID to the provider, who
+                 generates a code; entering it re-seeds the offline grace so they aren't stranded. -->
+            <Border Margin="0,30,0,0" Padding="18,14" CornerRadius="10"
+                    Background="#11201F" BorderBrush="#1E2D2C" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Text="رمز فتح طارئ من المزود / Emergency unlock code from provider"
+                               Foreground="#9FB0B2" FontSize="13" TextAlignment="Center" Margin="0,0,0,10"/>
+                    <TextBlock Text="Machine ID" Foreground="#6B7B7D" FontSize="12" TextAlignment="Center"/>
+                    <TextBlock x:Name="MachineIdText" Foreground="#44A1A0" FontSize="17" FontWeight="Bold"
+                               TextAlignment="Center" Margin="0,2,0,12"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBox x:Name="UnlockCodeBox" Width="170" FontSize="16" Padding="8,6"
+                                 HorizontalContentAlignment="Center" CharacterCasing="Upper"/>
+                        <Button x:Name="UnlockButton" Click="Unlock_Click" Padding="18,8" FontSize="14"
+                                Margin="8,0,0,0" Background="#2A3A4A" Foreground="White" BorderThickness="0"
+                                Cursor="Hand" Content="فتح / Unlock"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </Grid>
 </Window>

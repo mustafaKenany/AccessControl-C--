@@ -19,6 +19,8 @@ public interface ILicenseService
     string GetMachineId();
     LicenseStatus CheckLicense();
     bool ActivateLicense(string licenseKey);
+    /// <summary>Verifies a vendor-issued emergency offline-unlock code for this machine + month.</summary>
+    bool VerifyOfflineUnlockCode(string code);
     static DeveloperInfo LoadDeveloperInfo()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "appsettings.json");

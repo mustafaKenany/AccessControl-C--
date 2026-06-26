@@ -50,6 +50,9 @@ try
             Console.WriteLine($"  License Key: {key}");
             Console.WriteLine($"  Expires:     {expiryDate:yyyy-MM-dd}");
             Console.WriteLine($"  Duration:    {months} months");
+            Console.WriteLine("--------------------------------------------------------");
+            var unlockCode = GenerateUnlockCode(machineId, DateTime.Today.ToString("yyyyMM"));
+            Console.WriteLine($"  Unlock Code: {unlockCode}   <- emergency offline unlock (this month)");
             Console.WriteLine("========================================================");
             Console.ResetColor();
         }
@@ -100,4 +103,15 @@ static string GenerateKey(string machineId, int months)
 
     var hex = Convert.ToHexString(payload).ToUpperInvariant();
     return $"{hex[..4]}-{hex[4..8]}-{hex[8..12]}-{hex[12..16]}-{hex[16..20]}";
+}
+
+// Emergency offline-unlock code — MUST match LicenseService.GenerateOfflineUnlockCode exactly.
+static string GenerateUnlockCode(string machineId, string period)
+{
+    var secretKey = SHA256.HashData(
+        Encoding.UTF8.GetBytes("ACP-2024-GymAccess-LicenseKey-X9K2M"));
+    var message = Encoding.UTF8.GetBytes($"UNLOCK|{machineId.ToUpperInvariant()}|{period}");
+    var hmac = HMACSHA256.HashData(secretKey, message);
+    var hex = Convert.ToHexString(hmac, 0, 4).ToUpperInvariant();
+    return $"{hex[..4]}-{hex[4..8]}";
 }
