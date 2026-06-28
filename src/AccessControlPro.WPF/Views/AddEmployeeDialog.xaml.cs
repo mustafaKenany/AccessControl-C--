@@ -39,7 +39,11 @@ public partial class AddEmployeeDialog : Window
     public DateTime StartDate => StartDatePicker.SelectedDate ?? DateTime.Today;
     public DateTime EndDate => EndDatePicker.SelectedDate ?? DateTime.Today.AddMonths(1);
     public string Notes => NotesTextBox.Text.Trim();
-    public int MaxVisits => int.TryParse(MaxVisitsTextBox.Text.Trim(), out var v) ? v : 0;
+    // The member's visit limit. If not explicitly set, fall back to the selected plan's Max Visits,
+    // so a new subscription carries the plan's allowance (e.g. 50) into the Assign-Card dialog's
+    // Effective Times — where it stays editable.
+    public int MaxVisits => (int.TryParse(MaxVisitsTextBox.Text.Trim(), out var v) && v > 0)
+        ? v : (GetSelectedPlan()?.MaxVisits ?? 0);
 
     public AddEmployeeDialog(ILookupService? lookupService = null)
     {
@@ -226,6 +230,7 @@ public partial class AddEmployeeDialog : Window
                     Duration = p.Duration,
                     DurationType = p.DurationType ?? "Days",
                     Price = p.Price,
+                    MaxVisits = p.MaxVisits,
                     DisplayName = lang.IsArabic && !string.IsNullOrWhiteSpace(p.NameAr) ? p.NameAr : p.NameEn
                 }).ToList();
                 PopulateSubscriptionTypes();
@@ -814,4 +819,6 @@ public class SubscriptionPlan
     public string DurationType { get; set; } = "";
     [System.Text.Json.Serialization.JsonIgnore]
     public decimal Price { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int MaxVisits { get; set; }  // plan's visit allowance → defaults the card's Effective Times
 }
