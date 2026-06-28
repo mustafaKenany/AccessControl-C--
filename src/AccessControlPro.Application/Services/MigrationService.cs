@@ -138,6 +138,28 @@ public class MigrationService : IMigrationService
                     CreatedAt = DateTime.UtcNow
                 };
 
+                // Auto-create the AccessCard record so migrated players immediately show "has card"
+                // (instead of only after a device sync). It's marked not-yet-on-device, so the later
+                // "Sync all players to device" still pushes it to the gate. EF cascade-inserts it.
+                if (!string.IsNullOrEmpty(cardNo))
+                {
+                    employee.AccessCards.Add(new AccessCard
+                    {
+                        CardNumber = cardNo,
+                        CardPassword = "",
+                        OpenMode = 0,
+                        DoorPermissions = "01010101",   // all doors
+                        EffectiveTimes = 65535,         // unlimited (migrated; no visit cap)
+                        TimePeriodIndex = 1,
+                        HolidayEnabled = false,
+                        IsActive = true,
+                        ValidFrom = employee.StartDate,
+                        ValidTo = employee.EndDate,
+                        IsSyncedToDevice = false,       // exists in the app; device sync still pushes it
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
                 await _employeeRepository.AddAsync(employee);
                 result.Imported++;
             }
