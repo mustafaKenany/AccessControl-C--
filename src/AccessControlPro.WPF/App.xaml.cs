@@ -773,8 +773,37 @@ public partial class App : System.Windows.Application
                                     TCPPort = d.TCPPort, Password = d.Password,
                                     Gateway = d.Gateway, SubnetMask = d.SubnetMask
                                 }).ToList();
-                                var (uploaded, cleaned, regen) = await qrPool.SyncQrPoolToDeviceAsync(sdk, deviceInfos);
+
+                                // Visible feedback for the (otherwise silent) background upload: a start
+                                // toast, quarter-progress toasts, and a completion toast — so the operator
+                                // can see the gate is being loaded and know when it's done.
+                                bool arQr = Helpers.LanguageManager.Instance.IsArabic;
+                                Helpers.ToastNotification.Show(
+                                    arQr ? "تحميل رموز الدخول" : "Loading access codes",
+                                    arQr ? $"يجري تحميل {pendingCount} رمز إلى البوابة بالخلفية…"
+                                         : $"Uploading {pendingCount} codes to the gate in the background…",
+                                    isError: false, seconds: 8);
+                                int lastPct = 0;
+                                var qrProgress = new Progress<(int done, int total)>(p =>
+                                {
+                                    if (p.total <= 0) return;
+                                    int pct = (int)(p.done * 100L / p.total);
+                                    if (pct >= lastPct + 25 && p.done < p.total)
+                                    {
+                                        lastPct = pct;
+                                        Helpers.ToastNotification.Show(
+                                            arQr ? "تحميل رموز الدخول" : "Loading access codes",
+                                            $"{p.done} / {p.total}", isError: false, seconds: 5);
+                                    }
+                                });
+
+                                var (uploaded, cleaned, regen) = await qrPool.SyncQrPoolToDeviceAsync(sdk, deviceInfos, qrProgress);
                                 StartupLog($"QR Pool upload: {uploaded} uploaded, {cleaned} cleaned, {regen} regenerated to {allDevices.Count} device(s)");
+                                Helpers.ToastNotification.Show(
+                                    arQr ? "اكتمل تحميل رموز الدخول ✓" : "Access codes loaded ✓",
+                                    arQr ? $"تم تحميل {uploaded} رمز إلى البوابة."
+                                         : $"{uploaded} access codes loaded to the gate.",
+                                    isError: false, seconds: 8);
                             }
                             else
                             {

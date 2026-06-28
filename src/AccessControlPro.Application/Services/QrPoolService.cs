@@ -16,7 +16,7 @@ public interface IQrPoolService
     Task<int> CleanupExpiredAsync();
     Task<List<QrPoolEntry>> GetAssignedAsync();
     Task DeactivateAsync(string code);
-    Task<(int uploaded, int deleted, int generated)> SyncQrPoolToDeviceAsync(IAccessControlSdk sdk, List<DeviceInfo> devices);
+    Task<(int uploaded, int deleted, int generated)> SyncQrPoolToDeviceAsync(IAccessControlSdk sdk, List<DeviceInfo> devices, IProgress<(int done, int total)>? progress = null);
     Task<int> GetPendingUploadCountAsync();
     /// <summary>Pushes EVERY active pool code (daily-pass + visitor) to ONE device, ignoring the
     /// IsUploadedToDevice flag — used to repopulate a new/replacement controller. Reports progress.</summary>
@@ -229,7 +229,7 @@ public class QrPoolService : IQrPoolService
     }
 
     public async Task<(int uploaded, int deleted, int generated)> SyncQrPoolToDeviceAsync(
-        IAccessControlSdk sdk, List<DeviceInfo> devices)
+        IAccessControlSdk sdk, List<DeviceInfo> devices, IProgress<(int done, int total)>? progress = null)
     {
         Log($"SyncQrPoolToDevice: starting (devices={devices.Count})");
         int uploaded = 0, deleted = 0, generated = 0;
@@ -301,6 +301,7 @@ public class QrPoolService : IQrPoolService
             }
             await reader.CloseAsync();
 
+            int total = codesToUpload.Count, done = 0;
             foreach (var (code, doors, validTo) in codesToUpload)
             {
                 bool success = false;
@@ -328,6 +329,8 @@ public class QrPoolService : IQrPoolService
                 {
                     Log($"  upload-to-device FAILED for code={code}: {lastErr.Message}", "error");
                 }
+                done++;
+                progress?.Report((done, total));
             }
         }
 
