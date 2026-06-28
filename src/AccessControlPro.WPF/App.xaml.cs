@@ -1920,12 +1920,21 @@ public partial class App : System.Windows.Application
         if (!staged.Success)
         {
             StartupLog($"Update download failed: {staged.ErrorMessage}");
+            // Most failures here are a dropped connection mid-download (EOF / 0 bytes / timeout).
+            // Show a clear, reassuring message for those instead of the raw .NET exception.
+            var errLower = (staged.ErrorMessage ?? "").ToLowerInvariant();
+            bool netErr = errLower.Contains("eof") || errLower.Contains("transport") || errLower.Contains("0 bytes")
+                || errLower.Contains("timed out") || errLower.Contains("timeout") || errLower.Contains("connection")
+                || errLower.Contains("ssl") || errLower.Contains("remote name") || errLower.Contains("unreachable")
+                || errLower.Contains("network") || errLower.Contains("socket") || errLower.Contains("httprequest");
             Dispatcher.Invoke(() =>
             {
-                MessageBox.Show(
-                    isAr ? $"فشل تنزيل التحديث:\n{staged.ErrorMessage}" : $"Update download failed:\n{staged.ErrorMessage}",
-                    isAr ? "خطأ في التحديث" : "Update error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                var msg = netErr
+                    ? (isAr ? "انقطع الاتصال بالإنترنت أثناء تنزيل التحديث.\n\nتأكد من اتصال الإنترنت — وسيُعاد التنزيل تلقائياً عند فتح البرنامج من جديد (يبدأ من البداية، ولا يُركَّب تحديث ناقص أبداً)."
+                            : "The internet connection dropped while downloading the update.\n\nCheck your connection — it will re-download automatically next time you open the app (it restarts from scratch; a partial update is never installed).")
+                    : (isAr ? $"فشل تنزيل التحديث:\n{staged.ErrorMessage}" : $"Update download failed:\n{staged.ErrorMessage}");
+                MessageBox.Show(msg, isAr ? "خطأ في التحديث" : "Update error",
+                    MessageBoxButton.OK, netErr ? MessageBoxImage.Warning : MessageBoxImage.Error);
             });
             return;
         }
