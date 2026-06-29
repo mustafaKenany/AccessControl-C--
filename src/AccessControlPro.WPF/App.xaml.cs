@@ -733,8 +733,8 @@ public partial class App : System.Windows.Application
                     int generated = 0;
                     if (available == 0)
                     {
-                        StartupLog("Generating initial QR pool (3500 local codes)...");
-                        generated = await qrPool.GeneratePoolAsync(3500, 50001001, "Local");
+                        StartupLog($"Generating initial QR pool ({qrPool.ConfigPoolSize} local codes from {qrPool.ConfigRangeStart})...");
+                        generated = await qrPool.GeneratePoolAsync(qrPool.ConfigPoolSize, qrPool.ConfigRangeStart, "Local");
                         StartupLog($"QR pool generated: {generated} codes");
                     }
                     else if (available < 500)
@@ -750,7 +750,7 @@ public partial class App : System.Windows.Application
                     if (cloudAvailable == 0)
                     {
                         StartupLog("Generating visitor (cloud) QR segment (1000 codes)...");
-                        var cloudGen = await qrPool.GeneratePoolAsync(1000, 50001001 + 10000, "Cloud");
+                        var cloudGen = await qrPool.GeneratePoolAsync(1000, qrPool.ConfigRangeStart + 10000, "Cloud");
                         StartupLog($"Visitor (cloud) QR segment generated: {cloudGen} codes");
                     }
 

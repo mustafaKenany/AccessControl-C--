@@ -24,6 +24,9 @@ public interface IQrPoolService
         IProgress<(int done, int total)>? progress = null, System.Threading.CancellationToken ct = default);
     /// <summary>Count of active pool codes (Local + Cloud) — for the "load to device?" prompt.</summary>
     Task<int> GetActivePoolCountAsync();
+    /// <summary>Configured pool size + range start (from appsettings / Super Admin).</summary>
+    int ConfigPoolSize { get; }
+    int ConfigRangeStart { get; }
 }
 
 public class QrPoolService : IQrPoolService

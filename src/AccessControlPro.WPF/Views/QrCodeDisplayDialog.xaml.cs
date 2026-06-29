@@ -35,7 +35,9 @@ public partial class QrCodeDisplayDialog : Window
     /// </summary>
     private void GenerateQrCode()
     {
-        var qrPayload = _pass.PassCode;
+        // Encode the reader-adjusted value: when QrReaderDivisor > 1 the gate stores PassCode and the
+        // QR carries PassCode × divisor, so the reader's division lands back on the stored code.
+        var qrPayload = Helpers.QrReaderConfig.QrValueFor(_pass.PassCode);
 
         using var qrGenerator = new QRCodeGenerator();
         using var qrData = qrGenerator.CreateQrCode(qrPayload, QRCodeGenerator.ECCLevel.M);
