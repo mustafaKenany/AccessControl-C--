@@ -853,6 +853,15 @@ public class EmployeeService : IEmployeeService
             throw new InvalidOperationException($"Card number '{cardDto.CardNumber}' is already assigned to another player.");
         }
 
+        // Card priority over the QR pool: a physical card number is fixed in hardware, a pool code is
+        // regenerable — so if they collide, release the pool code and let the card take the number.
+        var poolRelease = await _qrPool.ReleasePoolCodeAsync(cardDto.CardNumber);
+        if (poolRelease.removed)
+            await _sessionLogger.LogOperationAsync("CARD_POOL_COLLISION", "Player", employee.Id,
+                $"Card {cardDto.CardNumber} matched a QR pool code — pool code released (card priority){(poolRelease.wasAssigned ? "; it was an ACTIVE guest pass" : "")}.",
+                $"رقم البطاقة {cardDto.CardNumber} طابق رمز بوول — تم تحرير رمز البوول (أولوية البطاقة){(poolRelease.wasAssigned ? " (كان تذكرة زائر فعّالة)" : "")}.",
+                _currentUser.Username);
+
         // EffectiveTimes comes directly from Assign Card dialog
         // Update employee.MaxVisits = EffectiveTimes (stored as-is from dialog)
         var hwEffectiveTimes = cardDto.EffectiveTimes;

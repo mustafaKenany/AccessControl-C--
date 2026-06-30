@@ -27,6 +27,9 @@ public interface IQrPoolService
     /// <summary>Configured pool size + range start (from appsettings / Super Admin).</summary>
     int ConfigPoolSize { get; }
     int ConfigRangeStart { get; }
+    /// <summary>Card-priority collision guard: removes a pool code that equals a (fixed) member card
+    /// number. Returns whether one was removed and whether it had been assigned to an active guest.</summary>
+    Task<(bool removed, bool wasAssigned)> ReleasePoolCodeAsync(string code);
 }
 
 public class QrPoolService : IQrPoolService
@@ -78,8 +81,11 @@ public class QrPoolService : IQrPoolService
             var code = (startFrom + i).ToString();
             try
             {
+                // Never generate a pool code that's already a member's card number (collision guard).
                 using var cmd = new SqlCommand(
                     @"IF NOT EXISTS (SELECT 1 FROM QrPool WHERE Code = @code)
+                      AND NOT EXISTS (SELECT 1 FROM AccessCards WHERE CardNumber = @code)
+                      AND NOT EXISTS (SELECT 1 FROM Employees WHERE CardNo = @code)
                       INSERT INTO QrPool (Code, Status, Source, ValidFrom, ValidTo, CreatedAt)
                       VALUES (@code, 0, @source, GETUTCDATE(), @validTo, GETUTCDATE())", conn);
                 cmd.Parameters.AddWithValue("@code", code);
@@ -339,6 +345,26 @@ public class QrPoolService : IQrPoolService
 
         Log($"SyncQrPoolToDevice DONE: uploaded={uploaded} deleted={deleted} generated={generated}");
         return (uploaded, deleted, generated);
+    }
+
+    public async Task<(bool removed, bool wasAssigned)> ReleasePoolCodeAsync(string code)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return (false, false);
+        using var conn = new SqlConnection(_connectionString);
+        await conn.OpenAsync();
+
+        bool wasAssigned;
+        using (var chk = new SqlCommand("SELECT COUNT(*) FROM QrPool WHERE Code = @c AND Status IN (1, 2)", conn))
+        {
+            chk.Parameters.AddWithValue("@c", code);
+            wasAssigned = (int)(await chk.ExecuteScalarAsync() ?? 0) > 0;
+        }
+
+        using var del = new SqlCommand("DELETE FROM QrPool WHERE Code = @c", conn);
+        del.Parameters.AddWithValue("@c", code);
+        int n = await del.ExecuteNonQueryAsync();
+        if (n > 0) Log($"ReleasePoolCode: removed pool code={code} (card priority), wasAssigned={wasAssigned}");
+        return (n > 0, wasAssigned);
     }
 
     public async Task<int> GetActivePoolCountAsync()
