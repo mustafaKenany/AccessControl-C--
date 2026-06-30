@@ -909,6 +909,17 @@ public class EmployeeService : IEmployeeService
             $"Assigned card {cardDto.CardNumber} to {employee.FullNameEn}",
             $"تم تعيين بطاقة {cardDto.CardNumber} إلى {employee.FullNameAr}");
 
+        // Re-assignment to a DIFFERENT number: retire the previous card so the player keeps
+        // exactly ONE active card and the old physical card stops opening the gate. (When the
+        // number is unchanged, the update-in-place path above runs and we never reach here.)
+        if (oldActiveCard != null && oldActiveCard.Id != card.Id)
+        {
+            try { await RemoveCardFromDevicesAsync(oldActiveCard.Id); } // expire old number on the gate
+            catch (Exception ex) { Console.WriteLine($"Retire old card {oldCardNo} on device failed (best-effort): {ex.Message}"); }
+            oldActiveCard.IsActive = false;
+            await _cardRepository.UpdateAsync(oldActiveCard);
+        }
+
         // Log to session file
         if (isReassignment)
         {

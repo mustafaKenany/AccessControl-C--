@@ -413,17 +413,29 @@ public partial class EmployeesViewModel : ObservableObject
 
             // Show warning dialog with current card info
             var activeCard = employee.Cards!.First(c => c.IsActive);
+            bool numberChanged = !string.IsNullOrWhiteSpace(employee.CardNo)
+                                 && !string.Equals(employee.CardNo.Trim(), activeCard.CardNumber, StringComparison.OrdinalIgnoreCase);
+            var newLineAr = numberChanged ? $"الرقم الجديد الذي سيُعتمد: {employee.CardNo}\n" : "";
+            var newLineEn = numberChanged ? $"New number to be assigned: {employee.CardNo}\n" : "";
+            var tailAr = numberChanged
+                ? "سيتم مسح البطاقة القديمة من البوابة واعتماد الرقم الجديد. هل أنت متأكد؟"
+                : "هل أنت متأكد من إعادة التعيين؟ سيتم إعادة تعيين البطاقة بإعدادات جديدة.";
+            var tailEn = numberChanged
+                ? "The old card will be removed from the gate and the new number assigned. Are you sure?"
+                : "Are you sure you want to re-assign? This will reset the card with new settings.";
             var warningMsg = Lang.IsArabic
                 ? $"هذا اللاعب لديه بالفعل بطاقة نشطة:\n" +
-                  $"رقم البطاقة: {activeCard.CardNumber}\n" +
+                  $"الرقم الحالي: {activeCard.CardNumber}\n" +
+                  newLineAr +
                   $"المرات الفعالة: {activeCard.EffectiveTimes}\n" +
                   $"المستخدم: {employee.UsedVisits}/{employee.MaxVisits}\n\n" +
-                  $"هل أنت متأكد من إعادة التعيين؟ سيتم إعادة تعيين البطاقة بإعدادات جديدة."
+                  tailAr
                 : $"This player already has an active card:\n" +
-                  $"Card Number: {activeCard.CardNumber}\n" +
+                  $"Current number: {activeCard.CardNumber}\n" +
+                  newLineEn +
                   $"Effective Times: {activeCard.EffectiveTimes}\n" +
                   $"Used: {employee.UsedVisits}/{employee.MaxVisits}\n\n" +
-                  $"Are you sure you want to re-assign? This will reset the card with new settings.";
+                  tailEn;
 
             var title = Lang.IsArabic ? "تحذير إعادة تعيين البطاقة" : "Card Re-assignment Warning";
             var confirmed = CustomMessageBox.Confirm(warningMsg, title, MsgType.Warning,
