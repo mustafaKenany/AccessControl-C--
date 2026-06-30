@@ -81,6 +81,17 @@
                 </Button>
 
                 <Button Style="{StaticResource PrimaryButton}"
+                        Background="#0D5C63" Margin="10,0,0,0"
+                        Command="{Binding CreateMissingCardsCommand}"
+                        ToolTip="{Binding Lang.CreateMissingCards}">
+                    <StackPanel Orientation="Horizontal">
+                        <fa:ImageAwesome Icon="IdCard" Width="13" Height="13"
+                                         Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Lang.CreateMissingCards}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Style="{StaticResource PrimaryButton}"
                         Background="#247B7B" Margin="10,0,0,0"
                         Command="{Binding PrintListCommand}"
                         ToolTip="{Binding Lang.PrintList}">

@@ -74,7 +74,10 @@ else
                 <thead>
                     <tr>
                         <th>Gym</th>
-                        <th title="Players synced from local DB">Players</th>
+                        <th title="Total players in the gym DB">Players</th>
+                        <th title="Members with an active subscription">Active</th>
+                        <th title="Active members with NO active access card — they can't badge in">No card</th>
+                        <th title="Newest gate event reaching the cloud — stale = event sync not flowing">Last event</th>
                         <th title="Last successful cloud sync">Last sync</th>
                         <th title="Latest diagnostics bundle">Last diag</th>
                         <th title="Latest bundle's app version">Version</th>
@@ -92,6 +95,35 @@ else
                                 <span style="color: var(--text-secondary); font-size: 0.78rem; display: block;">@r.Subdomain</span>
                             </td>
                             <td>@(r.PlayerCount?.ToString() ?? "—")</td>
+                            <td>@(r.ActivePlayerCount?.ToString() ?? "—")</td>
+                            <td>
+                                @if (r.MembersWithoutCard > 0)
+                                {
+                                    <span class="status-pill expiring" title="@r.MembersWithoutCard active members have no active card — they can't badge in">@r.MembersWithoutCard</span>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-secondary);">0</span>
+                                }
+                            </td>
+                            <td>
+                                @if (r.LastEventAt.HasValue)
+                                {
+                                    var eago = DateTime.UtcNow - r.LastEventAt.Value;
+                                    @if (eago.TotalHours < 48)
+                                    {
+                                        <span class="status-pill active">@FormatAgo(eago)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="status-pill expired" title="No gate events reaching the cloud since @r.LastEventAt.Value:yyyy-MM-dd HH:mm — event sync may be stalled">@FormatAgo(eago)</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="status-pill expired" title="No gate events ever reached the cloud">none</span>
+                                }
+                            </td>
                             <td>
                                 @if (r.LastSyncAt.HasValue)
                                 {
@@ -204,7 +236,7 @@ else
         <h3 style="color: var(--text-primary);">How health is scored</h3>
         <ul style="line-height: 1.8; color: var(--text-secondary); font-size: 0.9rem;">
             <li><span class="status-pill expired" style="font-size: 0.78rem;">Critical</span> &nbsp; Last sync more than 24h ago, OR 2+ crashes in last 14 days. Customer needs help.</li>
-            <li><span class="status-pill expiring" style="font-size: 0.78rem;">Watch</span> &nbsp; Last sync 30 min – 24h ago, OR 1 crash in last 14 days, OR no diagnostics ever uploaded. Healthy but worth checking.</li>
+            <li><span class="status-pill expiring" style="font-size: 0.78rem;">Watch</span> &nbsp; Last sync 30 min – 24h ago, OR 1 crash in last 14 days, OR no diagnostics ever uploaded, OR active members without a card, OR no gate events reaching the cloud in 48h+. Healthy but worth checking.</li>
             <li><span class="status-pill active" style="font-size: 0.78rem;">Healthy</span> &nbsp; Last sync within 30 min, no recent crashes, diagnostics bundle exists. Quiet customer.</li>
         </ul>
     </div>
@@ -245,7 +277,8 @@ else
                     (SELECT COUNT(*) FROM ""DiagnosticsUploads"" d
                        WHERE d.""GymId"" = g.""Id"" AND d.""Trigger"" = 'crash-recovery'
                        AND d.""UploadedAt"" > NOW() - INTERVAL '14 days')                            AS recent_crashes,
-                    g.""ExpiresAt""                                                                  AS expires_at
+                    g.""ExpiresAt""                                                                  AS expires_at,
+                    g.""ActivePlayerCount"", g.""MembersWithoutCard"", g.""LastEventAt""
                 FROM ""Gyms"" g
                 WHERE g.""IsActive"" = TRUE
                 ORDER BY g.""Name""", master);
@@ -264,7 +297,10 @@ else
                     LastDiagnosticsAt = r.IsDBNull(5) ? null : DateTime.SpecifyKind(r.GetDateTime(5), DateTimeKind.Utc),
                     AppVersion        = r.IsDBNull(6) ? "" : r.GetString(6),
                     RecentCrashes     = r.IsDBNull(7) ? 0 : (int)r.GetInt64(7),
-                    ExpiresAt         = r.IsDBNull(8) ? null : DateTime.SpecifyKind(r.GetDateTime(8), DateTimeKind.Utc)
+                    ExpiresAt         = r.IsDBNull(8) ? null : DateTime.SpecifyKind(r.GetDateTime(8), DateTimeKind.Utc),
+                    ActivePlayerCount = r.IsDBNull(9) ? null : r.GetInt32(9),
+                    MembersWithoutCard = r.IsDBNull(10) ? 0 : r.GetInt32(10),
+                    LastEventAt       = r.IsDBNull(11) ? null : DateTime.SpecifyKind(r.GetDateTime(11), DateTimeKind.Utc)
                 };
                 row.IsOutdated = IsBehind(row.AppVersion);
                 ScoreHealth(row);
@@ -307,8 +343,10 @@ else
         var someCrashes = r.RecentCrashes == 1;
         var noDiagnostics = !r.LastDiagnosticsAt.HasValue;
         var expiringSoon = r.ExpiresAt.HasValue && (r.ExpiresAt.Value - DateTime.UtcNow).TotalDays <= 14;
+        var membersNoCard = r.MembersWithoutCard > 0;
+        var staleEvents = !r.LastEventAt.HasValue || (DateTime.UtcNow - r.LastEventAt.Value).TotalHours > 48;
 
-        if (hoursSinceSync > 0.5 || someCrashes || noDiagnostics || expiringSoon || r.IsOutdated)
+        if (hoursSinceSync > 0.5 || someCrashes || noDiagnostics || expiringSoon || r.IsOutdated || membersNoCard || staleEvents)
         {
             r.HealthScore = "Yellow";
             if (hoursSinceSync > 0.5) reasons.Add($"sync {hoursSinceSync:F1} h ago");
@@ -316,6 +354,8 @@ else
             if (noDiagnostics) reasons.Add("no diagnostics bundle yet");
             if (expiringSoon) reasons.Add("subscription expiring soon");
             if (r.IsOutdated) reasons.Add($"on old build (current is {CurrentVersion})");
+            if (membersNoCard) reasons.Add($"{r.MembersWithoutCard} active members without a card");
+            if (staleEvents) reasons.Add(r.LastEventAt.HasValue ? "no gate events in 48h+" : "no gate events ever");
             r.HealthReason = string.Join("; ", reasons);
             return;
         }
@@ -339,6 +379,9 @@ else
         public string GymName { get; set; } = "";
         public string Subdomain { get; set; } = "";
         public int? PlayerCount { get; set; }
+        public int? ActivePlayerCount { get; set; }
+        public int MembersWithoutCard { get; set; }
+        public DateTime? LastEventAt { get; set; }
         public DateTime? LastSyncAt { get; set; }
         public DateTime? LastDiagnosticsAt { get; set; }
         public string AppVersion { get; set; } = "";
@@ -350,7 +393,7 @@ else
     }
 
     // Bump this with each release so the board flags gyms running an older build.
-    private const string CurrentVersion = "4.6.20";
+    private const string CurrentVersion = "4.6.37";
 
     private static bool IsBehind(string? appVersion)
     {

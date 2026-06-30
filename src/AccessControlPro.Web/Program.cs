@@ -292,16 +292,44 @@ app.MapPost("/api/sync", async (HttpContext context, DbHelper db, GymDbHelper gy
         }
         catch (Exception ex) { Console.WriteLine($"[Program] SyncLogInsert Error: {ex.Message}"); }
 
-        // Update gym's LastSyncAt and PlayerCount in master database
+        // Update gym's LastSyncAt + fleet-health metrics in the master database.
+        // IMPORTANT: counts come from the gym DB itself (not syncData.Players.Count) —
+        // a delta sync only carries the few CHANGED players, so using the payload count
+        // wiped PlayerCount to ~0 on every delta sync (the SuperAdmin board showed garbage).
         try
         {
-            var playerCount = syncData.Players?.Count ?? 0;
+            int totalPlayers = 0, activePlayers = 0, membersNoCard = 0;
+            DateTime? lastEventAt = null;
+            try
+            {
+                using var statCmd = new Npgsql.NpgsqlCommand(
+                    @"SELECT
+                        (SELECT count(*) FROM ""Players"" WHERE COALESCE(""IsDeleted"", FALSE) = FALSE),
+                        (SELECT count(*) FROM ""Players"" WHERE COALESCE(""IsDeleted"", FALSE) = FALSE AND ""EndDate"" >= now()),
+                        (SELECT count(*) FROM ""Players"" p WHERE COALESCE(p.""IsDeleted"", FALSE) = FALSE AND p.""EndDate"" >= now()
+                            AND NOT EXISTS (SELECT 1 FROM ""AccessCards"" c WHERE c.""EmployeeId"" = p.""Id"" AND c.""IsActive"" = TRUE)),
+                        (SELECT max(""EventDate"") FROM ""AccessEvents"")", conn);
+                using var r = await statCmd.ExecuteReaderAsync();
+                if (await r.ReadAsync())
+                {
+                    totalPlayers = r.IsDBNull(0) ? 0 : Convert.ToInt32(r.GetInt64(0));
+                    activePlayers = r.IsDBNull(1) ? 0 : Convert.ToInt32(r.GetInt64(1));
+                    membersNoCard = r.IsDBNull(2) ? 0 : Convert.ToInt32(r.GetInt64(2));
+                    lastEventAt = r.IsDBNull(3) ? (DateTime?)null : r.GetDateTime(3);
+                }
+            }
+            catch (Exception ex) { Console.WriteLine($"[Program] GymStats query error: {ex.Message}"); }
+
             using var masterConn = await gymDb.GetMasterConnectionAsync();
             using var updateCmd = new Npgsql.NpgsqlCommand(
-                @"UPDATE ""Gyms"" SET ""LastSyncAt"" = @ts, ""PlayerCount"" = @pc
+                @"UPDATE ""Gyms"" SET ""LastSyncAt"" = @ts, ""PlayerCount"" = @pc,
+                    ""ActivePlayerCount"" = @ap, ""MembersWithoutCard"" = @nc, ""LastEventAt"" = @le
                   WHERE ""ApiKey"" = @key", masterConn);
             updateCmd.Parameters.AddWithValue("ts", DateTime.UtcNow);
-            updateCmd.Parameters.AddWithValue("pc", playerCount);
+            updateCmd.Parameters.AddWithValue("pc", totalPlayers);
+            updateCmd.Parameters.AddWithValue("ap", activePlayers);
+            updateCmd.Parameters.AddWithValue("nc", membersNoCard);
+            updateCmd.Parameters.AddWithValue("le", (object?)lastEventAt ?? DBNull.Value);
             updateCmd.Parameters.AddWithValue("key", apiKey);
             await updateCmd.ExecuteNonQueryAsync();
         }

@@ -634,6 +634,7 @@ public class LanguageManager : INotifyPropertyChanged
 
     // Print features (members list + ID card)
     public string PrintList => GetString("PrintList");
+    public string CreateMissingCards => GetString("CreateMissingCards");
     public string MemberCard => GetString("MemberCard");
     public string PrintIncome => GetString("PrintIncome");
     public string PrintExpenses => GetString("PrintExpenses");

@@ -23,6 +23,14 @@ public interface IEmployeeService
     /// <summary>Counts for the "load data onto this device?" prompt: active-subscription members + pool codes.</summary>
     Task<(int activeMembers, int poolCodes)> GetDeviceSyncCountsAsync();
 
+    /// <summary>How many active-subscription members currently have NO active access card (can't badge in).</summary>
+    Task<int> CountActiveMembersMissingCardAsync();
+
+    /// <summary>Create an AccessCard record (from the member's stored CardNo) for every active member that
+    /// lacks one. Members with no card number are skipped and reported. Cards are marked not-yet-on-device,
+    /// so a device sync still pushes them to the gate. Returns (created, skippedNoNumber, totalMissing).</summary>
+    Task<(int created, int skippedNoNumber, int totalMissing)> CreateCardsForActiveMembersMissingCardAsync();
+
     /// <summary>Repopulate a device: push active-subscription members FIRST (gym usable within seconds),
     /// then the full QR pool (daily-pass + visitor) in the background. Reports phased progress.</summary>
     Task<(int membersSynced, int membersFailed, int poolPushed, int poolFailed)> SyncAllDataToDeviceAsync(

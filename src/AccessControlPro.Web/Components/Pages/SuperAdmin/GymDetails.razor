@@ -198,6 +198,21 @@ else
                     <div style="color: var(--success); font-weight: 600;">$@_qrMonthlyFee.ToString("N2")</div>
                 </div>
             </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>QR-Reader Divisor</label>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <input type="number" min="1" max="256" @bind="_qrReaderDivisor" style="width:90px;" />
+                        <button class="btn-outline" @onclick="SaveDivisorAsync" disabled="@_divisorBusy">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+                    </div>
+                    <small style="color: var(--text-secondary);">
+                        Must match the desktop's <code>QrReaderDivisor</code>. 1 = standard reader.
+                        Visitor QRs encode <code>code × divisor</code> so a bit-shifting reader opens the gate.
+                    </small>
+                </div>
+            </div>
             @if (_qrAvailableCount >= 0)
             {
                 <div class="form-row">
@@ -463,7 +478,8 @@ else
                          ""Subdomain"", ""ExpiresAt"", ""IsActive"",
                          ""QrPoolEnabled"", ""QrPoolSize"", ""QrRangeStart"", ""QrMonthlyFee"", ""ApiKey"",
                          COALESCE(""IsLocked"", FALSE), COALESCE(""LockMessage"", ''),
-                         COALESCE(""OnlineEnabled"", TRUE), COALESCE(""PosEnabled"", FALSE)
+                         COALESCE(""OnlineEnabled"", TRUE), COALESCE(""PosEnabled"", FALSE),
+                         COALESCE(""QrReaderDivisor"", 1)
                   FROM ""Gyms"" WHERE ""Id"" = @id", masterConn))
             {
                 cmd.Parameters.AddWithValue("id", GymId);
@@ -487,6 +503,7 @@ else
                     _lockMessage = reader.IsDBNull(14) ? "" : reader.GetString(14);
                     _onlineEnabled = reader.IsDBNull(15) || reader.GetBoolean(15);
                     _posEnabled = !reader.IsDBNull(16) && reader.GetBoolean(16);
+                    _qrReaderDivisor = reader.IsDBNull(17) ? 1 : reader.GetInt32(17);
                 }
                 else
                 {
@@ -676,6 +693,27 @@ else
     private bool _posEnabled;
     private bool _featBusy;
     private string _featSavedMsg = "";
+
+    private int _qrReaderDivisor = 1;
+    private bool _divisorBusy;
+
+    private async Task SaveDivisorAsync()
+    {
+        _divisorBusy = true; StateHasChanged();
+        try
+        {
+            if (_qrReaderDivisor < 1) _qrReaderDivisor = 1;
+            using var conn = await GymDb.GetMasterConnectionAsync();
+            using var cmd = new Npgsql.NpgsqlCommand(
+                @"UPDATE ""Gyms"" SET ""QrReaderDivisor"" = @v WHERE ""Id"" = @id", conn);
+            cmd.Parameters.AddWithValue("v", _qrReaderDivisor);
+            cmd.Parameters.AddWithValue("id", GymId);
+            await cmd.ExecuteNonQueryAsync();
+            _featSavedMsg = $"QR-reader divisor saved ({_qrReaderDivisor}).";
+        }
+        catch (Exception ex) { _errorMsg = $"Divisor update failed: {ex.Message}"; }
+        finally { _divisorBusy = false; StateHasChanged(); }
+    }
 
     private Task ToggleOnlineAsync() => SetFeatureAsync("OnlineEnabled", !_onlineEnabled);
     private Task TogglePosAsync() => SetFeatureAsync("PosEnabled", !_posEnabled);

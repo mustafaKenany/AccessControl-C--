@@ -881,6 +881,7 @@ Card sync errors on some devices:
   <data name="PosPrintReceipt" xml:space="preserve"><value>Print Receipt</value></data>
   <data name="PosSaveReceipt" xml:space="preserve"><value>Save as Text</value></data>
   <data name="PrintList" xml:space="preserve"><value>Print List</value></data>
+  <data name="CreateMissingCards" xml:space="preserve"><value>Create missing cards</value></data>
   <data name="MemberCard" xml:space="preserve"><value>ID Card</value></data>
   <data name="PrintIncome" xml:space="preserve"><value>Print Income</value></data>
   <data name="PrintExpenses" xml:space="preserve"><value>Print Expenses</value></data>

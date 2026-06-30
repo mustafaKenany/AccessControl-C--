@@ -358,6 +358,14 @@ ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""LockMessage"" TEXT DEFAULT '';
 -- one-time UPDATE run separately.
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""OnlineEnabled"" BOOLEAN DEFAULT TRUE;
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""PosEnabled"" BOOLEAN DEFAULT FALSE;
+-- Fleet-health metrics, refreshed on every sync (see /api/sync)
+ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""ActivePlayerCount"" INT DEFAULT 0;
+ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""MembersWithoutCard"" INT DEFAULT 0;
+ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""LastEventAt"" TIMESTAMP NULL;
+-- Per-gym QR-reader divisor: must match the desktop appsettings QrReaderDivisor. Visitor QRs
+-- encode (deviceCode x divisor) so a reader that bit-shifts (delivers value/divisor) lands on
+-- the stored code. 1 = standard reader (no shift).
+ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""QrReaderDivisor"" INT DEFAULT 1;
 
 -- Seed default gym if none exists
 INSERT INTO ""Gyms"" (""Name"", ""Subdomain"", ""ApiKey"", ""DatabaseName"", ""IsActive"", ""ExpiresAt"", ""OwnerName"")

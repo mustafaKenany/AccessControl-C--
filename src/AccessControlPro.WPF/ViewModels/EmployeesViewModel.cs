@@ -1061,6 +1061,47 @@ public partial class EmployeesViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task CreateMissingCardsAsync()
+    {
+        try
+        {
+            int missing = await _employeeService.CountActiveMembersMissingCardAsync();
+            if (missing == 0)
+            {
+                CustomMessageBox.Show(
+                    Lang.IsArabic ? "كل الأعضاء النشطين لديهم بطاقة فعّالة." : "All active members already have an active card.",
+                    Lang.NavPlayers, MsgType.Info, System.Windows.Application.Current.MainWindow);
+                return;
+            }
+
+            var title = Lang.IsArabic ? "إنشاء بطاقات للأعضاء النشطين" : "Create cards for active members";
+            var confirmMsg = Lang.IsArabic
+                ? $"يوجد {missing} عضو نشط بدون بطاقة فعّالة.\n\nسيتم إنشاء بطاقة لكل عضو لديه رقم بطاقة مخزّن (تُعلَّم \"غير مرفوعة للجهاز\").\nبعدها استخدم \"مزامنة كل اللاعبين للجهاز\" لدفعها للبوابة.\n\nهل تريد المتابعة؟"
+                : $"{missing} active members have no active card.\n\nA card will be created for each one that has a stored card number (marked \"not on device\").\nThen use \"Sync all players to device\" to push them to the gate.\n\nProceed?";
+            if (!CustomMessageBox.Confirm(confirmMsg, title, MsgType.Warning, System.Windows.Application.Current.MainWindow))
+                return;
+
+            IsLoading = true;
+            var (created, skipped, total) = await _employeeService.CreateCardsForActiveMembersMissingCardAsync();
+            IsLoading = false;
+
+            await LoadPagedAsync();
+
+            var resultMsg = Lang.IsArabic
+                ? $"تم إنشاء {created} بطاقة." + (skipped > 0 ? $"\nتم تخطّي {skipped} عضو (بدون رقم بطاقة — عيّن لهم رقماً يدوياً)." : "")
+                  + "\n\nالخطوة التالية: \"مزامنة كل اللاعبين للجهاز\" لدفعها للبوابة."
+                : $"Created {created} cards." + (skipped > 0 ? $"\nSkipped {skipped} members (no card number — assign one manually)." : "")
+                  + "\n\nNext step: \"Sync all players to device\" to push them to the gate.";
+            CustomMessageBox.Show(resultMsg, title, MsgType.Info, System.Windows.Application.Current.MainWindow);
+        }
+        catch (Exception ex)
+        {
+            IsLoading = false;
+            CustomMessageBox.Show(ex.Message, Lang.NavPlayers, MsgType.Error, System.Windows.Application.Current.MainWindow);
+        }
+    }
+
+    [RelayCommand]
     private async Task SetFilterAsync(string indexStr)
     {
         if (!int.TryParse(indexStr, out var index)) return;

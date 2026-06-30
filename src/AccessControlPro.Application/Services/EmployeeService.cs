@@ -1031,6 +1031,59 @@ public class EmployeeService : IEmployeeService
         return (members, pool);
     }
 
+    public async Task<int> CountActiveMembersMissingCardAsync()
+    {
+        var today = DateTime.Today;
+        var all = await _employeeRepository.GetAllWithCardsAsync();
+        return all.Count(e => e.EndDate.Date >= today
+                              && (e.AccessCards == null || !e.AccessCards.Any(c => c.IsActive)));
+    }
+
+    public async Task<(int created, int skippedNoNumber, int totalMissing)> CreateCardsForActiveMembersMissingCardAsync()
+    {
+        var today = DateTime.Today;
+        var all = await _employeeRepository.GetAllWithCardsAsync();
+        var missing = all.Where(e => e.EndDate.Date >= today
+                                     && (e.AccessCards == null || !e.AccessCards.Any(c => c.IsActive))).ToList();
+
+        int created = 0, skipped = 0;
+        foreach (var emp in missing)
+        {
+            if (string.IsNullOrWhiteSpace(emp.CardNo)) { skipped++; continue; }
+            var cardNo = emp.CardNo.Trim();
+
+            // Card priority over the QR pool (same guard as AssignCardAsync): a fixed card number wins.
+            try { await _qrPool.ReleasePoolCodeAsync(cardNo); } catch { }
+
+            var card = new AccessCard
+            {
+                EmployeeId = emp.Id,
+                CardNumber = cardNo,
+                CardPassword = "",
+                OpenMode = 0,
+                DoorPermissions = "01010101",   // all doors
+                EffectiveTimes = (emp.MaxVisits > 0 && emp.MaxVisits < 65535) ? emp.MaxVisits : 65535,
+                TimePeriodIndex = 1,
+                HolidayEnabled = false,
+                IsActive = true,
+                ValidFrom = emp.StartDate,
+                ValidTo = emp.EndDate,
+                IsSyncedToDevice = false,       // exists in the app; a device sync still pushes it to the gate
+                CreatedAt = DateTime.UtcNow
+            };
+            try { await _cardRepository.AddAsync(card); created++; }
+            catch (Exception ex) { Console.WriteLine($"CreateCardsForActiveMembers: card {cardNo} failed: {ex.Message}"); }
+        }
+
+        if (created > 0 || skipped > 0)
+            await _sessionLogger.LogOperationAsync("BULK_CREATE_CARDS", "AccessCard", 0,
+                $"Created {created} card records for active members missing a card; {skipped} skipped (no card number); {missing.Count} total missing",
+                $"تم إنشاء {created} بطاقة للأعضاء النشطين بدون بطاقة؛ تم تخطّي {skipped} (بدون رقم بطاقة)؛ {missing.Count} إجمالي الناقص",
+                _currentUser.Username);
+
+        return (created, skipped, missing.Count);
+    }
+
     public async Task<(int membersSynced, int membersFailed, int poolPushed, int poolFailed)> SyncAllDataToDeviceAsync(
         int deviceId, IProgress<DeviceSyncProgress>? progress = null, System.Threading.CancellationToken ct = default)
     {

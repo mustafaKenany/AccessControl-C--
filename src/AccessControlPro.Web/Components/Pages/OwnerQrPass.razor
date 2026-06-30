@@ -233,9 +233,19 @@ else
                 await legacyCmd.ExecuteNonQueryAsync();
             }
 
-            // Build QR content - just the numeric code
+            // Build QR content. _createdCode is the DEVICE value (stored on the gate, shown to
+            // reception). _qrContent is what the QR image actually encodes: for a bit-shifting
+            // reader (QrReaderDivisor > 1) the QR must carry code x divisor so the reader's
+            // division lands back on the stored device value. Standard readers use divisor = 1.
             _createdCode = code;
             _qrContent = code;
+            try
+            {
+                int divisor = await GetQrReaderDivisorAsync();
+                if (divisor > 1 && long.TryParse(code, out var numeric))
+                    _qrContent = (numeric * divisor).ToString();
+            }
+            catch (Exception ex) { Console.WriteLine($"[qr-pass] divisor lookup failed (using raw code): {ex.Message}"); }
 
             // Build WhatsApp share URL
             _gymName = "MyGym";
@@ -330,6 +340,18 @@ else
         catch (Exception ex) { Console.WriteLine($"[OwnerQrPass] LoadPassesAsync Error: {ex.Message}"); }
     }
 
+    // Per-gym QR-reader divisor from the master Gyms row (defaults to 1 = standard reader).
+    private async Task<int> GetQrReaderDivisorAsync()
+    {
+        var dbName = !string.IsNullOrEmpty(Session.GymDatabase) ? Session.GymDatabase : "gymcloud";
+        using var master = await GymDb.GetMasterConnectionAsync();
+        using var cmd = new Npgsql.NpgsqlCommand(
+            @"SELECT COALESCE(""QrReaderDivisor"", 1) FROM ""Gyms"" WHERE ""DatabaseName"" = @db LIMIT 1", master);
+        cmd.Parameters.AddWithValue("db", dbName);
+        var result = await cmd.ExecuteScalarAsync();
+        return (result == null || result == DBNull.Value) ? 1 : Convert.ToInt32(result);
+    }
+
     private string GenerateSecureCode()
     {
         // Combine timestamp + random for uniqueness
@@ -349,7 +371,7 @@ else
 
     private void ShareQrViaWhatsApp()
     {
-        var qrImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?data={_createdCode}&size=300x300";
+        var qrImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?data={_qrContent}&size=300x300";
 
         var msg = Session.IsArabic
             ? $"\U0001F3CB\uFE0F \u062A\u0635\u0631\u064A\u062D \u062F\u062E\u0648\u0644 - {_gymName}\n\n\U0001F464 \u0627\u0644\u0627\u0633\u0645: {_guestName}\n\U0001F522 \u0627\u0644\u0631\u0645\u0632: {_createdCode}\n\U0001F4C5 \u0635\u0627\u0644\u062D \u062D\u062A\u0649: {_validTo:yyyy-MM-dd}\n\U0001F504 \u0639\u062F\u062F \u0627\u0644\u0645\u0631\u0627\u062A: {_maxUses}\n\n\U0001F4F1 \u0635\u0648\u0631\u0629 QR:\n{qrImageUrl}\n\n\u0623\u0638\u0647\u0631 \u0647\u0630\u0627 \u0627\u0644\u0631\u0645\u0632 \u0639\u0646\u062F \u0627\u0644\u0627\u0633\u062A\u0642\u0628\u0627\u0644"
@@ -377,7 +399,7 @@ else
 
     private void ShareQrViaWhatsAppBuild()
     {
-        var qrImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?data={_createdCode}&size=300x300";
+        var qrImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?data={_qrContent}&size=300x300";
 
         var msg = Session.IsArabic
             ? $"\U0001F3CB\uFE0F \u062A\u0635\u0631\u064A\u062D \u062F\u062E\u0648\u0644 - {_gymName}\n\n\U0001F464 \u0627\u0644\u0627\u0633\u0645: {_guestName}\n\U0001F522 \u0627\u0644\u0631\u0645\u0632: {_createdCode}\n\U0001F4C5 \u0635\u0627\u0644\u062D \u062D\u062A\u0649: {_validTo:yyyy-MM-dd}\n\U0001F504 \u0639\u062F\u062F \u0627\u0644\u0645\u0631\u0627\u062A: {_maxUses}\n\n\U0001F4F1 \u0635\u0648\u0631\u0629 QR:\n{qrImageUrl}\n\n\u0623\u0638\u0647\u0631 \u0647\u0630\u0627 \u0627\u0644\u0631\u0645\u0632 \u0639\u0646\u062F \u0627\u0644\u0627\u0633\u062A\u0642\u0628\u0627\u0644"
