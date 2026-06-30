@@ -133,6 +133,8 @@ public class CloudSyncService : ICloudSyncService
                 "SubscriptionFee, AmountPaid, MaxVisits, UsedVisits, IsFrozen, FreezeStartDate, " +
                 "CAST(0 AS BIT) AS IsDeleted, CreatedAt, '' AS PhotoPath, Height, Weight, Notes FROM Employees" +
                 DeltaWhere("UpdatedAt"), sinceFilter);
+            // NOTE: Discount is intentionally NOT synced to the cloud yet — the per-gym Players tables
+            // would need the column first (UpsertRows blindly inserts all keys). Local-only for now.
 
             // AccessEvents: append-only, use existing Timestamp (keep TOP 2000 cap as safety limit)
             payload["accessEvents"] = await ReadTableAsync(local,
@@ -273,29 +275,30 @@ public class CloudSyncService : ICloudSyncService
     /// reachable=false if the cloud couldn't be contacted (caller applies the offline grace).
     /// Side-effect free (uses /api/lock-status, not /api/sync-control).
     /// </summary>
-    public static async Task<(bool reachable, bool locked, string message, bool onlineEnabled, bool posEnabled)> CheckRemoteLockAsync()
+    public static async Task<(bool reachable, bool locked, string message, bool onlineEnabled, bool posEnabled, bool qrPoolEnabled)> CheckRemoteLockAsync()
     {
         var cloudUrl = LoadCloudSyncUrl();
-        if (string.IsNullOrEmpty(cloudUrl)) return (false, false, "", true, false);
+        if (string.IsNullOrEmpty(cloudUrl)) return (false, false, "", true, false, false);
         try
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
             client.DefaultRequestHeaders.Add("X-Api-Key", LoadApiKey());
             var url = cloudUrl.Replace("/api/sync", "/api/lock-status");
             var resp = await client.GetAsync(url);
-            if (!resp.IsSuccessStatusCode) return (false, false, "", true, false);
+            if (!resp.IsSuccessStatusCode) return (false, false, "", true, false, false);
 
             var body = await resp.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(body);
             var root = doc.RootElement;
             bool locked = root.TryGetProperty("locked", out var l) && l.ValueKind == JsonValueKind.True;
             string msg = root.TryGetProperty("lockMessage", out var m) ? (m.GetString() ?? "") : "";
-            // SuperAdmin feature flags (default online=on, pos=off if the server omits them).
+            // SuperAdmin feature flags (default online=on, pos=off, qr-pool=off if the server omits them).
             bool onlineEnabled = !root.TryGetProperty("onlineEnabled", out var oe) || oe.ValueKind != JsonValueKind.False;
             bool posEnabled = root.TryGetProperty("posEnabled", out var pe) && pe.ValueKind == JsonValueKind.True;
-            return (true, locked, msg, onlineEnabled, posEnabled);
+            bool qrPoolEnabled = root.TryGetProperty("qrPoolEnabled", out var qe) && qe.ValueKind == JsonValueKind.True;
+            return (true, locked, msg, onlineEnabled, posEnabled, qrPoolEnabled);
         }
-        catch { return (false, false, "", true, false); }
+        catch { return (false, false, "", true, false, false); }
     }
 
     private static async Task<bool> CheckForceFullSyncAsync(string cloudUrl)

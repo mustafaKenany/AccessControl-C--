@@ -283,6 +283,10 @@ public static class DatabaseMigrator
             @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('PurchaseOrders') AND name = 'PaymentStatus')
               ALTER TABLE PurchaseOrders ADD PaymentStatus nvarchar(50) NOT NULL DEFAULT 'Unpaid';",
 
+            // Member subscription discount (offers/promos): net owed = SubscriptionFee - Discount - AmountPaid
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Employees') AND name = 'Discount')
+              ALTER TABLE Employees ADD Discount decimal(18,2) NOT NULL DEFAULT 0;",
+
             // v2.2: Additional indexes for search/filter performance
             // AccessEvents: EventType for filtered queries
             @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_AccessEvents_EventType' AND object_id = OBJECT_ID('AccessEvents'))

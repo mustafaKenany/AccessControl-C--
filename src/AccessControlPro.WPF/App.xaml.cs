@@ -725,6 +725,14 @@ public partial class App : System.Windows.Application
             _ = Task.Run(async () =>
             {
                 await Task.Delay(5000); // Wait 5 seconds for app to fully initialize
+
+                // QR pool is opt-in (Setup wizard or SuperAdmin). Skip all generation/upload when off,
+                // so installs that don't use guest/daily QR never load codes onto the gate.
+                if (!AccessControlPro.Application.Services.FeatureFlags.IsQrPoolEnabled())
+                {
+                    StartupLog("QR pool disabled for this gym — skipping generation/upload (enable via Setup or SuperAdmin).");
+                    return;
+                }
                 try
                 {
                     using var qrScope = _serviceProvider.CreateScope();
@@ -1166,6 +1174,7 @@ public partial class App : System.Windows.Application
             _qrPoolTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(12) };
             _qrPoolTimer.Tick += async (_, _) =>
             {
+                if (!AccessControlPro.Application.Services.FeatureFlags.IsQrPoolEnabled()) return; // opt-in only
                 var day = DateTime.Now.Day;
                 if (day == 1 || day == 15)
                 {

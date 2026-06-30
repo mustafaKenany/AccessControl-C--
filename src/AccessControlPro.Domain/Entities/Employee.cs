@@ -12,6 +12,7 @@ public class Employee
     public double Height { get; set; }
     public double Weight { get; set; }
     public decimal SubscriptionFee { get; set; }
+    public decimal Discount { get; set; }       // offer/promo discount off the fee (net owed = Fee - Discount - Paid)
     public decimal AmountPaid { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }

@@ -123,6 +123,7 @@
   <data name="Fee" xml:space="preserve"><value>الرسوم</value></data>
   <data name="Paid" xml:space="preserve"><value>المدفوع</value></data>
   <data name="Remaining" xml:space="preserve"><value>المتبقي</value></data>
+  <data name="MemberDiscount" xml:space="preserve"><value>الخصم</value></data>
   <data name="WithCard" xml:space="preserve"><value>لديه بطاقة</value></data>
   <data name="WithoutCard" xml:space="preserve"><value>بدون بطاقة</value></data>
   <data name="AssignCard" xml:space="preserve"><value>تعيين بطاقة</value></data>

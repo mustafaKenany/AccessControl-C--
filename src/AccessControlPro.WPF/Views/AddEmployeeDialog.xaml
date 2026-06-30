@@ -274,10 +274,19 @@
                                VerticalAlignment="Center" Margin="8,0,0,0" FontSize="12"/>
                 </StackPanel>
 
-                <!-- Remaining Row -->
-                <TextBlock Grid.Row="10" Grid.Column="0" Text="{Binding Lang.Remaining}"
+                <!-- Discount / Remaining Row -->
+                <TextBlock Grid.Row="10" Grid.Column="0" Text="{Binding Lang.MemberDiscount}"
                            Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
                 <StackPanel Grid.Row="10" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBox x:Name="DiscountTextBox" Width="120"
+                             Style="{StaticResource DarkTextBox}"
+                             TextChanged="DiscountTextBox_TextChanged"
+                             PreviewTextInput="NumberOnly_PreviewTextInput"
+                             DataObject.Pasting="NumberOnly_Pasting"/>
+                    <TextBlock Text="{Binding Lang.IQD}" Foreground="#78CDD7"
+                               VerticalAlignment="Center" Margin="8,0,20,0" FontSize="12"/>
+                    <TextBlock Text="{Binding Lang.Remaining}" Foreground="#9EC5C8"
+                               VerticalAlignment="Center" Margin="0,0,10,0" FontSize="13"/>
                     <TextBox x:Name="RemainingTextBox" Width="120" IsReadOnly="True"
                              FontSize="14" Padding="10,7" FontWeight="Bold"
                              Background="#1A2A2E" Foreground="#F7685B"

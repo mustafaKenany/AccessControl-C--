@@ -45,6 +45,26 @@ public class EmployeeRepository : IEmployeeRepository
         return (items, totalCount);
     }
 
+    public async Task<int> GetWithCardCountAsync(string? search = null)
+    {
+        await using var db = _factory.CreateDbContext();
+        var query = db.Employees.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim();
+            var sNoLeadingZeros = s.TrimStart('0');
+            query = query.Where(e =>
+                EF.Functions.Like(e.FullNameEn, $"%{s}%") ||
+                EF.Functions.Like(e.FullNameAr ?? "", $"%{s}%") ||
+                EF.Functions.Like(e.CardNo ?? "", $"%{s}%") ||
+                (sNoLeadingZeros.Length > 0 && EF.Functions.Like(e.CardNo ?? "", $"%{sNoLeadingZeros}%")) ||
+                EF.Functions.Like(e.Phone ?? "", $"%{s}%"));
+        }
+
+        return await query.CountAsync(e => e.AccessCards.Any());
+    }
+
     public async Task<Employee?> GetByIdWithCardsAsync(int id)
     {
         await using var db = _factory.CreateDbContext();

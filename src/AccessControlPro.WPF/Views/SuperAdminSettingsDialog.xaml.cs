@@ -15,11 +15,13 @@ public partial class SuperAdminSettingsDialog : Window
         InitializeComponent();
         PosCheck.IsChecked = FeatureFlags.IsPosEnabled();
         OnlineCheck.IsChecked = FeatureFlags.IsOnlineEnabled();
+        QrPoolCheck.IsChecked = FeatureFlags.IsQrPoolEnabled();
     }
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
-        FeatureFlags.SetLocal(posEnabled: PosCheck.IsChecked == true, onlineEnabled: OnlineCheck.IsChecked == true);
+        FeatureFlags.SetLocal(posEnabled: PosCheck.IsChecked == true, onlineEnabled: OnlineCheck.IsChecked == true,
+                              qrPoolEnabled: QrPoolCheck.IsChecked == true);
         StatusText.Text = "تم الحفظ / Saved";
         StatusText.Visibility = Visibility.Visible;
     }

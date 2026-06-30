@@ -36,11 +36,11 @@ public static class RemoteLockService
     public static async Task<LockResult> EvaluateAsync()
     {
         var state = LoadState();
-        var (reachable, locked, message, onlineEnabled, posEnabled) = await CloudSyncService.CheckRemoteLockAsync();
+        var (reachable, locked, message, onlineEnabled, posEnabled, qrPoolEnabled) = await CloudSyncService.CheckRemoteLockAsync();
 
         // Cache the SuperAdmin feature flags whenever the cloud answers (authoritative for online gyms).
         if (reachable)
-            FeatureFlags.UpdateFromCloud(posEnabled, onlineEnabled);
+            FeatureFlags.UpdateFromCloud(posEnabled, onlineEnabled, qrPoolEnabled);
 
         if (reachable)
         {

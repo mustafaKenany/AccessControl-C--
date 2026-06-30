@@ -26,6 +26,10 @@ public interface IEmployeeService
     /// <summary>How many active-subscription members currently have NO active access card (can't badge in).</summary>
     Task<int> CountActiveMembersMissingCardAsync();
 
+    /// <summary>Full-dataset count of members (matching the optional search) that have at least one card —
+    /// powers the "has card / no card" header badges so they don't reflect just the current page.</summary>
+    Task<int> GetWithCardCountAsync(string? search = null);
+
     /// <summary>Create an AccessCard record (from the member's stored CardNo) for every active member that
     /// lacks one. Members with no card number are skipped and reported. Cards are marked not-yet-on-device,
     /// so a device sync still pushes them to the gate. Returns (created, skippedNoNumber, totalMissing).</summary>
@@ -72,7 +76,8 @@ public interface IEmployeeService
 
     // Renew subscription — pass deviceIds=null for ALL devices
     Task<bool> RenewSubscriptionAsync(int id, string subscriptionType, int months, int customDays,
-        decimal fee, decimal amountPaid, string doorPermissions, int effectiveTimes, IEnumerable<int>? deviceIds = null);
+        decimal fee, decimal amountPaid, string doorPermissions, int effectiveTimes, IEnumerable<int>? deviceIds = null,
+        decimal discount = 0);
 
     // Player profile
     Task<PlayerProfileDto> GetPlayerProfileAsync(int id);

@@ -338,6 +338,10 @@ public partial class SetupWizardWindow : Window
         var selectedLang = (LanguageCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag?.ToString() ?? "en";
         var cloudEnabled = CloudEnabledCheck?.IsChecked == true;
         var provisionPassword = ProvisionPasswordBox?.Password ?? "";
+        var qrPoolEnabled = QrPoolEnabledCheck?.IsChecked == true;
+        // Persist the QR-pool choice locally so the gate-load gate honours it from first launch
+        // (offline installs that skip cloud provisioning still get the right behaviour).
+        AccessControlPro.Application.Services.FeatureFlags.SetLocal(qrPoolEnabled: qrPoolEnabled);
 
         try
         {
@@ -405,7 +409,7 @@ public partial class SetupWizardWindow : Window
                 _cloudProvisionAttempted = true;
                 try
                 {
-                    var (ok, msg, subdomain) = await ProvisionGymInCloudAsync(gymNameEn, gymPhone, adminDisplayName, provisionPassword);
+                    var (ok, msg, subdomain) = await ProvisionGymInCloudAsync(gymNameEn, gymPhone, adminDisplayName, provisionPassword, qrPoolEnabled);
                     _cloudProvisionOk = ok;
                     _cloudProvisionMsg = msg;
                     _cloudSubdomain = subdomain;
@@ -572,7 +576,7 @@ public partial class SetupWizardWindow : Window
     /// the caller's catch — a cloud failure must not abort the local install.
     /// </summary>
     private static async Task<(bool ok, string message, string subdomain)> ProvisionGymInCloudAsync(
-        string gymName, string ownerPhone, string ownerName, string provisionSecret)
+        string gymName, string ownerPhone, string ownerName, string provisionSecret, bool qrPoolEnabled)
     {
         var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
         using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(settingsPath));
@@ -593,7 +597,8 @@ public partial class SetupWizardWindow : Window
             gymName,
             ownerName,
             ownerPhone,
-            apiKey
+            apiKey,
+            qrPoolEnabled
         });
 
         using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(20) };

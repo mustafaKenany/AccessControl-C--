@@ -363,6 +363,15 @@
                         <PasswordBox x:Name="ProvisionPasswordBox" FontSize="14" Background="#1E2D3D" Foreground="White"
                                      BorderBrush="#2A3A4A" BorderThickness="1" Padding="10,8" Margin="0,0,0,12"/>
 
+                        <!-- QR pool opt-in: only load guest/daily-pass codes onto the gate if this gym uses them -->
+                        <CheckBox x:Name="QrPoolEnabledCheck" IsChecked="False" Margin="0,4,0,4"
+                                  Foreground="White" FontSize="14" FontWeight="SemiBold">
+                            <TextBlock Text="Enable QR pool (guest &amp; daily-pass codes loaded to the gate)"
+                                       Foreground="White" TextWrapping="Wrap"/>
+                        </CheckBox>
+                        <TextBlock Text="Leave off unless this gym issues guest/daily QR passes — can be turned on later from Super Admin."
+                                   FontSize="11" Foreground="#7A8B99" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
                         <!-- Backup Folder -->
                         <TextBlock Text="Backup Folder:" FontSize="13" Foreground="#AAB8C2" Margin="0,0,0,4"/>
                         <TextBox x:Name="BackupFolderBox" FontSize="14" Background="#1E2D3D" Foreground="White"

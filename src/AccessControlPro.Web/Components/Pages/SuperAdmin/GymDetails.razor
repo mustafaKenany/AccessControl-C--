@@ -156,6 +156,16 @@ else
                     @(_posEnabled ? "Turn POS OFF" : "Turn POS ON")
                 </button>
             </div>
+            <div>
+                <label style="display:block; margin-bottom:0.35rem;">
+                    QR pool (guest / daily passes)
+                    <span class="badge @(_qrPoolEnabled ? "badge-active" : "badge-expired")" style="margin-inline-start:0.4rem;">
+                        @(_qrPoolEnabled ? "ON" : "OFF")</span>
+                </label>
+                <button class="@(_qrPoolEnabled ? "btn-danger" : "btn-accent")" @onclick="ToggleQrPoolAsync" disabled="@_featBusy">
+                    @(_qrPoolEnabled ? "Turn QR pool OFF" : "Turn QR pool ON")
+                </button>
+            </div>
         </div>
         @if (!string.IsNullOrEmpty(_featSavedMsg))
         {
@@ -717,6 +727,7 @@ else
 
     private Task ToggleOnlineAsync() => SetFeatureAsync("OnlineEnabled", !_onlineEnabled);
     private Task TogglePosAsync() => SetFeatureAsync("PosEnabled", !_posEnabled);
+    private Task ToggleQrPoolAsync() => SetFeatureAsync("QrPoolEnabled", !_qrPoolEnabled);
 
     private async Task SetFeatureAsync(string column, bool value)
     {
@@ -732,6 +743,7 @@ else
             await cmd.ExecuteNonQueryAsync();
             if (column == "OnlineEnabled") _onlineEnabled = value;
             else if (column == "PosEnabled") _posEnabled = value;
+            else if (column == "QrPoolEnabled") _qrPoolEnabled = value;
             _featSavedMsg = "Saved — the gym's app will apply this within ~5 minutes.";
         }
         catch (Exception ex) { _errorMsg = $"Update failed: {ex.Message}"; }

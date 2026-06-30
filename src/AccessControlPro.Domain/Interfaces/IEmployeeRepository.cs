@@ -6,6 +6,9 @@ public interface IEmployeeRepository
 {
     Task<IEnumerable<Employee>> GetAllWithCardsAsync();
     Task<(IEnumerable<Employee> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? search = null);
+    /// <summary>Count of members (matching the optional search) that have at least one card record —
+    /// for the full-dataset "has card / no card" badges, independent of the current page.</summary>
+    Task<int> GetWithCardCountAsync(string? search = null);
     Task<Employee?> GetByIdWithCardsAsync(int id);
     Task<Employee?> GetByEmployeeCodeAsync(string cardNo);
     Task<Employee?> GetByPhoneAsync(string phone);

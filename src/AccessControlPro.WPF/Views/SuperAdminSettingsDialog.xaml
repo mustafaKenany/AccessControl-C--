@@ -14,8 +14,11 @@
             <CheckBox x:Name="PosCheck" Foreground="White" FontSize="14" Margin="0,0,0,12">
                 <TextBlock Text="Cashier / POS module enabled" Foreground="White"/>
             </CheckBox>
-            <CheckBox x:Name="OnlineCheck" Foreground="White" FontSize="14" Margin="0,0,0,4">
+            <CheckBox x:Name="OnlineCheck" Foreground="White" FontSize="14" Margin="0,0,0,12">
                 <TextBlock Text="Online subscription enabled (cloud sync)" Foreground="White"/>
+            </CheckBox>
+            <CheckBox x:Name="QrPoolCheck" Foreground="White" FontSize="14" Margin="0,0,0,4">
+                <TextBlock Text="QR pool enabled (guest / daily passes loaded to gate)" Foreground="White"/>
             </CheckBox>
             <TextBlock x:Name="StatusText" Foreground="#2ED47A" FontSize="12" Margin="0,10,0,0" Visibility="Collapsed"/>
 

@@ -18,6 +18,7 @@ public static class FeatureFlags
     {
         public bool PosEnabled { get; set; }              // default OFF — a new install needs SuperAdmin to enable POS
         public bool OnlineEnabled { get; set; } = true;   // default ON
+        public bool QrPoolEnabled { get; set; }           // default OFF — opt-in (Setup wizard or SuperAdmin)
         public string Source { get; set; } = "";          // "cloud" or "local"
     }
 
@@ -39,18 +40,20 @@ public static class FeatureFlags
 
     public static bool IsPosEnabled() => Load().PosEnabled;
     public static bool IsOnlineEnabled() => Load().OnlineEnabled;
+    public static bool IsQrPoolEnabled() => Load().QrPoolEnabled;
     public static bool HasState() => System.IO.File.Exists(FilePath);
 
     /// <summary>Authoritative update from a successful cloud poll (online gyms).</summary>
-    public static void UpdateFromCloud(bool posEnabled, bool onlineEnabled)
-        => Save(new Flags { PosEnabled = posEnabled, OnlineEnabled = onlineEnabled, Source = "cloud" });
+    public static void UpdateFromCloud(bool posEnabled, bool onlineEnabled, bool qrPoolEnabled)
+        => Save(new Flags { PosEnabled = posEnabled, OnlineEnabled = onlineEnabled, QrPoolEnabled = qrPoolEnabled, Source = "cloud" });
 
     /// <summary>SuperAdmin step-up override (offline gyms). Null leaves a flag unchanged.</summary>
-    public static void SetLocal(bool? posEnabled = null, bool? onlineEnabled = null)
+    public static void SetLocal(bool? posEnabled = null, bool? onlineEnabled = null, bool? qrPoolEnabled = null)
     {
         var f = Load();
         if (posEnabled.HasValue) f.PosEnabled = posEnabled.Value;
         if (onlineEnabled.HasValue) f.OnlineEnabled = onlineEnabled.Value;
+        if (qrPoolEnabled.HasValue) f.QrPoolEnabled = qrPoolEnabled.Value;
         f.Source = "local";
         Save(f);
     }

@@ -141,6 +141,7 @@ public class LanguageManager : INotifyPropertyChanged
     public string Fee => GetString("Fee");
     public string Paid => GetString("Paid");
     public string Remaining => GetString("Remaining");
+    public string MemberDiscount => GetString("MemberDiscount");
     public string WithCard => GetString("WithCard");
     public string WithoutCard => GetString("WithoutCard");
     public string AssignCard => GetString("AssignCard");

@@ -35,6 +35,7 @@ public partial class AddEmployeeDialog : Window
     public double PlayerHeight => double.TryParse(HeightTextBox.Text.Trim(), out var h) ? h : 0;
     public double PlayerWeight => double.TryParse(WeightTextBox.Text.Trim(), out var w) ? w : 0;
     public decimal SubscriptionFee => decimal.TryParse(FeeTextBox.Text.Trim(), out var f) ? f : 0;
+    public decimal Discount => decimal.TryParse(DiscountTextBox.Text.Trim(), out var d) ? d : 0;
     public decimal AmountPaid => decimal.TryParse(PaidTextBox.Text.Trim(), out var p) ? p : 0;
     public DateTime StartDate => StartDatePicker.SelectedDate ?? DateTime.Today;
     public DateTime EndDate => EndDatePicker.SelectedDate ?? DateTime.Today.AddMonths(1);
@@ -75,6 +76,7 @@ public partial class AddEmployeeDialog : Window
         HeightTextBox.Text = existing.Height > 0 ? existing.Height.ToString() : "";
         WeightTextBox.Text = existing.Weight > 0 ? existing.Weight.ToString() : "";
         FeeTextBox.Text = existing.SubscriptionFee > 0 ? existing.SubscriptionFee.ToString() : "";
+        DiscountTextBox.Text = existing.Discount > 0 ? existing.Discount.ToString() : "";
         PaidTextBox.Text = existing.AmountPaid > 0 ? existing.AmountPaid.ToString() : "";
         NotesTextBox.Text = existing.Notes;
 
@@ -385,6 +387,11 @@ public partial class AddEmployeeDialog : Window
         UpdateRemaining();
     }
 
+    private void DiscountTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        UpdateRemaining();
+    }
+
     #endregion
 
     #region Calculations
@@ -411,7 +418,8 @@ public partial class AddEmployeeDialog : Window
 
         var fee = decimal.TryParse(FeeTextBox.Text.Trim(), out var f) ? f : 0;
         var paid = decimal.TryParse(PaidTextBox.Text.Trim(), out var p) ? p : 0;
-        var remaining = fee - paid;
+        var discount = decimal.TryParse(DiscountTextBox.Text.Trim(), out var d) ? d : 0;
+        var remaining = fee - discount - paid;
 
         RemainingTextBox.Text = remaining.ToString();
 

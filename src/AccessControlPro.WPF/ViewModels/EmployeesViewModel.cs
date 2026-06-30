@@ -208,6 +208,7 @@ public partial class EmployeesViewModel : ObservableObject
                 Height = dialog.PlayerHeight,
                 Weight = dialog.PlayerWeight,
                 SubscriptionFee = dialog.SubscriptionFee,
+                Discount = dialog.Discount,
                 AmountPaid = dialog.AmountPaid,
                 StartDate = dialog.StartDate,
                 EndDate = dialog.EndDate,
@@ -290,6 +291,7 @@ public partial class EmployeesViewModel : ObservableObject
                 Height = dialog.PlayerHeight,
                 Weight = dialog.PlayerWeight,
                 SubscriptionFee = dialog.SubscriptionFee,
+                Discount = dialog.Discount,
                 AmountPaid = dialog.AmountPaid,
                 StartDate = dialog.StartDate,
                 EndDate = dialog.EndDate,
@@ -813,6 +815,7 @@ public partial class EmployeesViewModel : ObservableObject
                 Height = editDialog.PlayerHeight,
                 Weight = editDialog.PlayerWeight,
                 SubscriptionFee = editDialog.SubscriptionFee,
+                Discount = editDialog.Discount,
                 AmountPaid = editDialog.AmountPaid,
                 StartDate = editDialog.StartDate,
                 EndDate = editDialog.EndDate,
@@ -948,7 +951,8 @@ public partial class EmployeesViewModel : ObservableObject
                 dialog.NewAmountPaid,
                 dialog.DoorPermissions,
                 dialog.EffectiveTimes,
-                selectedDeviceIds.Count > 0 ? selectedDeviceIds : null);
+                selectedDeviceIds.Count > 0 ? selectedDeviceIds : null,
+                dialog.NewDiscount);
 
             if (success)
             {
@@ -1286,8 +1290,10 @@ public partial class EmployeesViewModel : ObservableObject
 
                 TotalCount = totalCount;
                 TotalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PageSize));
-                WithCardCount = list.Count(e => e.CardCount > 0);
-                WithoutCardCount = list.Count(e => e.CardCount == 0);
+                // Card badges count the WHOLE dataset (not just this page) — otherwise "has card"
+                // maxes out at the page size and "no card" reads 0 even when members lack cards.
+                WithCardCount = await _employeeService.GetWithCardCountAsync(search);
+                WithoutCardCount = totalCount - WithCardCount;
 
                 Employees.Clear();
                 foreach (var emp in list)

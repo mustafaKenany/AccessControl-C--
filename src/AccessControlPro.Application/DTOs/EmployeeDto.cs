@@ -12,8 +12,9 @@ public class EmployeeDto
     public double Height { get; set; }
     public double Weight { get; set; }
     public decimal SubscriptionFee { get; set; }
+    public decimal Discount { get; set; }
     public decimal AmountPaid { get; set; }
-    public decimal RemainingBalance => SubscriptionFee - AmountPaid;
+    public decimal RemainingBalance => SubscriptionFee - Discount - AmountPaid;
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public string Notes { get; set; } = string.Empty;

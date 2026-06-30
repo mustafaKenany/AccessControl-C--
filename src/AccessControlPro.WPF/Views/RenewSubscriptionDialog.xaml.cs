@@ -26,6 +26,7 @@ public partial class RenewSubscriptionDialog : Window
     public DateTime? CustomStartDateResult { get; private set; }
     public DateTime? CustomEndDateResult { get; private set; }
     public decimal NewFee => decimal.TryParse(FeeTextBox.Text.Trim(), out var f) ? f : 0;
+    public decimal NewDiscount => decimal.TryParse(DiscountTextBox.Text.Trim(), out var d) ? d : 0;
     public decimal NewAmountPaid => decimal.TryParse(PaidTextBox.Text.Trim(), out var p) ? p : 0;
 
     public string DoorPermissions
@@ -341,12 +342,18 @@ public partial class RenewSubscriptionDialog : Window
         UpdateRemaining();
     }
 
+    private void DiscountTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        UpdateRemaining();
+    }
+
     private void UpdateRemaining()
     {
         if (RemainingTextBox == null) return;
         var fee = decimal.TryParse(FeeTextBox.Text.Trim(), out var f) ? f : 0;
         var paid = decimal.TryParse(PaidTextBox.Text.Trim(), out var p) ? p : 0;
-        var remaining = fee - paid;
+        var discount = DiscountTextBox != null && decimal.TryParse(DiscountTextBox.Text.Trim(), out var d) ? d : 0;
+        var remaining = fee - discount - paid;
         RemainingTextBox.Text = remaining.ToString();
         RemainingTextBox.Foreground = remaining <= 0
             ? new SolidColorBrush(Color.FromRgb(0x2E, 0xD4, 0x7A))

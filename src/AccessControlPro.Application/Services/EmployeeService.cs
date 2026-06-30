@@ -112,6 +112,7 @@ public class EmployeeService : IEmployeeService
             Height = dto.Height,
             Weight = dto.Weight,
             SubscriptionFee = dto.SubscriptionFee,
+            Discount = dto.Discount,
             AmountPaid = dto.AmountPaid,
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
@@ -258,6 +259,7 @@ public class EmployeeService : IEmployeeService
         employee.Height = dto.Height;
         employee.Weight = dto.Weight;
         employee.SubscriptionFee = dto.SubscriptionFee;
+        employee.Discount = dto.Discount;
         employee.AmountPaid = dto.AmountPaid;
         employee.StartDate = dto.StartDate;
         employee.EndDate = dto.EndDate;
@@ -548,7 +550,8 @@ public class EmployeeService : IEmployeeService
     }
 
     public async Task<bool> RenewSubscriptionAsync(int id, string subscriptionType, int months, int customDays,
-        decimal fee, decimal amountPaid, string doorPermissions, int effectiveTimes, IEnumerable<int>? deviceIds = null)
+        decimal fee, decimal amountPaid, string doorPermissions, int effectiveTimes, IEnumerable<int>? deviceIds = null,
+        decimal discount = 0)
     {
         var employee = await _employeeRepository.GetByIdWithCardsAsync(id);
         if (employee == null) return false;
@@ -630,6 +633,7 @@ public class EmployeeService : IEmployeeService
         employee.StartDate = newStartDate;
         employee.EndDate = newEndDate;
         employee.SubscriptionFee = fee;
+        employee.Discount = discount;
         employee.AmountPaid = amountPaid;
         employee.IsFrozen = false;
         employee.FreezeStartDate = null;
@@ -1030,6 +1034,9 @@ public class EmployeeService : IEmployeeService
         int pool = await _qrPool.GetActivePoolCountAsync();
         return (members, pool);
     }
+
+    public Task<int> GetWithCardCountAsync(string? search = null)
+        => _employeeRepository.GetWithCardCountAsync(search);
 
     public async Task<int> CountActiveMembersMissingCardAsync()
     {
@@ -1865,6 +1872,7 @@ public class EmployeeService : IEmployeeService
         Height = e.Height,
         Weight = e.Weight,
         SubscriptionFee = e.SubscriptionFee,
+        Discount = e.Discount,
         AmountPaid = e.AmountPaid,
         StartDate = e.StartDate,
         EndDate = e.EndDate,

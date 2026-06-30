@@ -237,11 +237,20 @@
             <TextBlock Grid.Row="6" Grid.Column="0"
                        Text="{Binding Paid, Source={x:Static helpers:LanguageManager.Instance}}"
                        Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
-            <TextBox x:Name="PaidTextBox" Grid.Row="6" Grid.Column="1"
-                     Style="{StaticResource DarkTextBox}" Margin="0,0,0,10"
-                     TextChanged="PaidTextBox_TextChanged"
-                     PreviewTextInput="NumberOnly_PreviewTextInput"
-                     DataObject.Pasting="NumberOnly_Pasting"/>
+            <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBox x:Name="PaidTextBox" Width="130"
+                         Style="{StaticResource DarkTextBox}"
+                         TextChanged="PaidTextBox_TextChanged"
+                         PreviewTextInput="NumberOnly_PreviewTextInput"
+                         DataObject.Pasting="NumberOnly_Pasting"/>
+                <TextBlock Text="{Binding MemberDiscount, Source={x:Static helpers:LanguageManager.Instance}}"
+                           Foreground="#9EC5C8" VerticalAlignment="Center" Margin="16,0,10,0" FontSize="13"/>
+                <TextBox x:Name="DiscountTextBox" Width="130"
+                         Style="{StaticResource DarkTextBox}"
+                         TextChanged="DiscountTextBox_TextChanged"
+                         PreviewTextInput="NumberOnly_PreviewTextInput"
+                         DataObject.Pasting="NumberOnly_Pasting"/>
+            </StackPanel>
 
             <!-- Remaining -->
             <TextBlock Grid.Row="7" Grid.Column="0"

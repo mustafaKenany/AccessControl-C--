@@ -123,6 +123,7 @@
   <data name="Fee" xml:space="preserve"><value>Fee</value></data>
   <data name="Paid" xml:space="preserve"><value>Paid</value></data>
   <data name="Remaining" xml:space="preserve"><value>Remaining</value></data>
+  <data name="MemberDiscount" xml:space="preserve"><value>Discount</value></data>
   <data name="WithCard" xml:space="preserve"><value>With Card</value></data>
   <data name="WithoutCard" xml:space="preserve"><value>Without Card</value></data>
   <data name="AssignCard" xml:space="preserve"><value>Assign Card</value></data>

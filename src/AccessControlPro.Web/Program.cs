@@ -498,18 +498,20 @@ app.MapGet("/api/lock-status", async (HttpContext context, GymDbHelper gymDb) =>
         using var conn = await gymDb.GetMasterConnectionAsync();
         using var cmd = new Npgsql.NpgsqlCommand(
             @"SELECT COALESCE(""IsLocked"", FALSE), COALESCE(""LockMessage"", ''),
-                     COALESCE(""OnlineEnabled"", TRUE), COALESCE(""PosEnabled"", FALSE)
+                     COALESCE(""OnlineEnabled"", TRUE), COALESCE(""PosEnabled"", FALSE),
+                     COALESCE(""QrPoolEnabled"", FALSE)
               FROM ""Gyms"" WHERE ""ApiKey"" = @key", conn);
         cmd.Parameters.AddWithValue("key", apiKey ?? "");
         using var r = await cmd.ExecuteReaderAsync();
-        bool locked = false; string msg = ""; bool onlineEnabled = true; bool posEnabled = false;
+        bool locked = false; string msg = ""; bool onlineEnabled = true; bool posEnabled = false; bool qrPoolEnabled = false;
         if (await r.ReadAsync())
         {
             locked = r.GetBoolean(0); msg = r.GetString(1);
             onlineEnabled = r.GetBoolean(2); posEnabled = r.GetBoolean(3);
+            qrPoolEnabled = r.GetBoolean(4);
         }
         // SuperAdmin-reserved feature flags ride the same status poll the desktop already makes.
-        return Results.Ok(new { locked, lockMessage = msg, onlineEnabled, posEnabled });
+        return Results.Ok(new { locked, lockMessage = msg, onlineEnabled, posEnabled, qrPoolEnabled });
     }
     catch (Exception ex)
     {
@@ -553,6 +555,9 @@ app.MapPost("/api/provision-gym", async (HttpContext ctx, DbHelper db, GymDbHelp
     using var doc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
     var root = doc.RootElement;
     string S(string n) => root.TryGetProperty(n, out var v) ? (v.GetString() ?? "").Trim() : "";
+    bool B(string n) => root.TryGetProperty(n, out var v) &&
+        (v.ValueKind == System.Text.Json.JsonValueKind.True ||
+         (v.ValueKind == System.Text.Json.JsonValueKind.String && bool.TryParse(v.GetString(), out var b) && b));
 
     // 1) Gate behind the provisioning password (configured server-side; never hardcoded).
     var expected = config["ProvisioningSecret"] ?? "";
@@ -614,7 +619,7 @@ app.MapPost("/api/provision-gym", async (HttpContext ctx, DbHelper db, GymDbHelp
         using var ins = new Npgsql.NpgsqlCommand(
             @"INSERT INTO ""Gyms"" (""Name"",""Subdomain"",""ApiKey"",""DatabaseName"",""OwnerName"",""OwnerPhone"",""OwnerEmail"",
               ""IsActive"",""ExpiresAt"",""CreatedAt"",""QrPoolEnabled"",""QrPoolSize"",""QrRangeStart"",""QrMonthlyFee"")
-              VALUES (@n,@s,@k,@d,@on,@op,@oe,TRUE, NOW() + INTERVAL '1 year', NOW(), TRUE, 3000, 0, 0)", master);
+              VALUES (@n,@s,@k,@d,@on,@op,@oe,TRUE, NOW() + INTERVAL '1 year', NOW(), @qr, 3000, 0, 0)", master);
         ins.Parameters.AddWithValue("n", gymName);
         ins.Parameters.AddWithValue("s", sub);
         ins.Parameters.AddWithValue("k", apiKey);
@@ -622,6 +627,7 @@ app.MapPost("/api/provision-gym", async (HttpContext ctx, DbHelper db, GymDbHelp
         ins.Parameters.AddWithValue("on", S("ownerName"));
         ins.Parameters.AddWithValue("op", S("ownerPhone"));
         ins.Parameters.AddWithValue("oe", S("ownerEmail"));
+        ins.Parameters.AddWithValue("qr", B("qrPoolEnabled")); // opt-in: default OFF unless the wizard requested it
         await ins.ExecuteNonQueryAsync();
     }
     catch (Exception ex)
