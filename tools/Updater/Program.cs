@@ -51,9 +51,15 @@ public class Program
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool MoveFileEx(string src, string? dst, int flags);
+
     private const uint MB_ICONERROR = 0x10;
+    private const uint MB_ICONINFORMATION = 0x40;
     private const uint MB_OK = 0x0;
     private const int SW_SHOW = 5;
+    private const int MOVEFILE_REPLACE_EXISTING = 0x1;
+    private const int MOVEFILE_DELAY_UNTIL_REBOOT = 0x4;
 
     public static int Main(string[] args)
     {
@@ -124,10 +130,16 @@ public class Program
 
         try
         {
-            // -------- Step 1: Wait for the main app to exit --------
+            // -------- Step 1: Wait for the main app to exit, then close ALL sibling apps --------
+            // The main WPF app hands us its PID, but Admin and POS are separate processes that
+            // ALSO load the shared WPF framework DLLs (e.g. WindowsBase.dll). If either is still
+            // running, those DLLs stay locked and the extract fails ("being used by another
+            // process") — aborting the whole update. So after the main app exits, close every
+            // AccessControlPro.* process by name before touching any file.
             SetStatus("Waiting for AccessControlPro to close...");
             Log(logPath, "Waiting for main app to exit...");
             WaitForProcessExit(mainPid, TimeSpan.FromSeconds(30), logPath);
+            KillRelatedProcesses(logPath);
 
             // -------- Step 2: Read the pending-update sentinel --------
             if (!File.Exists(sentinelPath))
@@ -165,7 +177,7 @@ public class Program
 
             // -------- Step 4: Extract the ZIP, skipping preserved files --------
             SetStatus("Installing new version...");
-            int extracted = 0, skipped = 0;
+            int extracted = 0, skipped = 0, deferred = 0;
             using (var archive = ZipFile.OpenRead(zipPath))
             {
                 int entryIndex = 0;
@@ -195,23 +207,42 @@ public class Program
                     var destPath = Path.Combine(installFolder, relativePath);
                     Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
 
-                    // Files might be briefly locked (antivirus scan, etc.) — retry once
-                    for (int attempt = 1; attempt <= 3; attempt++)
+                    // Files might be briefly locked (antivirus scan, a slow-closing sibling app,
+                    // etc.) — retry a few times with a growing pause.
+                    bool written = false;
+                    for (int attempt = 1; attempt <= 5; attempt++)
                     {
                         try
                         {
                             entry.ExtractToFile(destPath, overwrite: true);
                             extracted++;
+                            written = true;
                             break;
                         }
-                        catch (IOException) when (attempt < 3) { Thread.Sleep(500); }
+                        catch (IOException) when (attempt < 5) { Thread.Sleep(700); }
+                    }
+
+                    // Still locked after all retries — DON'T abort the whole update. Extract to a
+                    // temp name and schedule the swap for the next reboot (MoveFileEx). The update
+                    // then completes on restart instead of failing + rolling everything back.
+                    if (!written)
+                    {
+                        try
+                        {
+                            var pending = destPath + ".pending_update";
+                            entry.ExtractToFile(pending, overwrite: true);
+                            MoveFileEx(pending, destPath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_DELAY_UNTIL_REBOOT);
+                            deferred++;
+                            Log(logPath, $"  deferred to reboot (locked): {relativePath}");
+                        }
+                        catch (Exception ex) { Log(logPath, $"  FAILED to write {relativePath}: {ex.Message}"); }
                     }
 
                     if (entryIndex % 25 == 0)
                         SetStatus($"Installing... {entryIndex}/{totalEntries}");
                 }
             }
-            Log(logPath, $"Extraction complete: {extracted} files written, {skipped} preserved.");
+            Log(logPath, $"Extraction complete: {extracted} files written, {skipped} preserved, {deferred} deferred to reboot.");
 
             // -------- Step 5: Cleanup --------
             try { File.Delete(sentinelPath); } catch { }
@@ -220,6 +251,14 @@ public class Program
             if (Directory.Exists(stagingDir))
             {
                 try { Directory.Delete(stagingDir, recursive: true); } catch { }
+            }
+
+            // If any file was locked and deferred, the swap finishes on reboot — tell the operator.
+            if (deferred > 0)
+            {
+                ShowInfo($"Update to v{targetVersion} installed.\n\n" +
+                         $"{deferred} file(s) were in use and will finish updating the next time you RESTART the computer.\n\n" +
+                         "Please restart the PC when convenient.");
             }
 
             // -------- Step 6: Mark post-update so the main app shows the What's New dialog --------
@@ -255,6 +294,34 @@ public class Program
                 $"Please contact support.");
             return 1;
         }
+    }
+
+    // Close every AccessControlPro process (main app + Admin + POS + any zombie/second instance)
+    // so no shared framework DLL stays locked during the file swap. Graceful close first, then kill.
+    private static void KillRelatedProcesses(string logPath)
+    {
+        var names = new[] { "AccessControlPro.WPF", "AccessControlPro.Admin", "AccessControlPro.POS" };
+        foreach (var name in names)
+        {
+            Process[] procs;
+            try { procs = Process.GetProcessesByName(name); } catch { continue; }
+            foreach (var p in procs)
+            {
+                try
+                {
+                    Log(logPath, $"Closing {name} (pid {p.Id})...");
+                    try { p.CloseMainWindow(); } catch { }
+                    if (!p.WaitForExit(4000))
+                    {
+                        p.Kill();
+                        p.WaitForExit(4000);
+                    }
+                }
+                catch (Exception ex) { Log(logPath, $"  close {name} warning: {ex.Message}"); }
+            }
+        }
+        // Give the OS a moment to release file handles after the processes die.
+        Thread.Sleep(800);
     }
 
     private static void WaitForProcessExit(int pid, TimeSpan timeout, string logPath)
@@ -297,5 +364,11 @@ public class Program
     {
         try { MessageBoxW(IntPtr.Zero, msg, "AccessControlPro Updater", MB_ICONERROR | MB_OK); }
         catch { Console.Error.WriteLine(msg); }
+    }
+
+    private static void ShowInfo(string msg)
+    {
+        try { MessageBoxW(IntPtr.Zero, msg, "AccessControlPro Updater", MB_ICONINFORMATION | MB_OK); }
+        catch { Console.WriteLine(msg); }
     }
 }
