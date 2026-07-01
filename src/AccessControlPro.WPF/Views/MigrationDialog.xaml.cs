@@ -144,12 +144,16 @@ public partial class MigrationDialog : Window, INotifyPropertyChanged
                 ? "\n\n" + Lang.MigErrors + ":\n" + string.Join("\n", result.Errors.Take(10))
                 : "";
 
+            var reportLine = string.IsNullOrEmpty(result.ReportPath)
+                ? ""
+                : "\n\n" + (Lang.IsArabic ? "تقرير الاستيراد: " : "Import report: ") + result.ReportPath;
+
             ResultsText.Text =
                 $"{Lang.MigImportComplete}\n\n" +
                 $"{Lang.MigImported}: {result.Imported}\n" +
                 $"{Lang.MigSkipped}: {result.Skipped}\n" +
                 $"{Lang.MigFailedCount}: {result.Failed}" +
-                errText;
+                errText + reportLine;
 
             CustomMessageBox.Show(
                 $"{Lang.MigImportComplete}\n{Lang.MigImported}: {result.Imported}",

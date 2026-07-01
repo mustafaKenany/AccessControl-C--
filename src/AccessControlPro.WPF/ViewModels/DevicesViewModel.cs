@@ -565,13 +565,21 @@ public partial class DevicesViewModel : ObservableObject
             var (mSynced, mFailed, pPushed, pFailed) = await Task.Run(() =>
                 _employeeService.SyncAllDataToDeviceAsync(device.Id, progress));
 
+            // Persist a device-sync report (pairs with the import report for a full picture).
+            var reportPath = AccessControlPro.Application.Services.ImportReportLog.WriteDeviceSyncReport(
+                device.Name, device.IP, mSynced, mFailed, pPushed, pFailed);
+
             StatusMessage = Lang.IsArabic
                 ? $"اكتمل: أعضاء {mSynced}، رموز {pPushed}"
                 : $"Done: {mSynced} members, {pPushed} passes";
 
-            var result = Lang.IsArabic
+            var reportLine = string.IsNullOrEmpty(reportPath)
+                ? ""
+                : "\n\n" + (Lang.IsArabic ? "تقرير المزامنة: " : "Sync report: ") + reportPath;
+            var result = (Lang.IsArabic
                 ? $"اكتمل التحميل على {device.Name}.\n\nالأعضاء: {mSynced}{(mFailed > 0 ? $" (فشل {mFailed})" : "")}\nرموز QR: {pPushed}{(pFailed > 0 ? $" (فشل {pFailed})" : "")}"
-                : $"Load complete on {device.Name}.\n\nMembers: {mSynced}{(mFailed > 0 ? $" ({mFailed} failed)" : "")}\nQR passes: {pPushed}{(pFailed > 0 ? $" ({pFailed} failed)" : "")}";
+                : $"Load complete on {device.Name}.\n\nMembers: {mSynced}{(mFailed > 0 ? $" ({mFailed} failed)" : "")}\nQR passes: {pPushed}{(pFailed > 0 ? $" ({pFailed} failed)" : "")}")
+                + reportLine;
             CustomMessageBox.Show(result, Lang.DevSyncAllPlayers,
                 (mFailed + pFailed) > 0 ? MsgType.Warning : MsgType.Success,
                 System.Windows.Application.Current.MainWindow);

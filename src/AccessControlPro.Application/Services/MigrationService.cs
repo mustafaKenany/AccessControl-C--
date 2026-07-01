@@ -171,6 +171,8 @@ public class MigrationService : IMigrationService
             }
         }
 
+        // Persist a full import report (all failures, not just the 10 shown on screen).
+        result.ReportPath = ImportReportLog.WriteImportReport(tableName, result);
         return result;
     }
 

@@ -14,6 +14,7 @@ public class MigrationResult
     public int Skipped { get; set; }
     public int Failed { get; set; }
     public List<string> Errors { get; set; } = new();
+    public string ReportPath { get; set; } = "";   // saved import-report file
 }
 
 public interface IMigrationService
