@@ -399,6 +399,26 @@
                                                 </ControlTemplate>
                                             </Button.Template>
                                         </Button>
+                                        <!-- Revoke expired members on the gate (remediation) -->
+                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.RevokeExpired, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                Command="{Binding DataContext.RevokeExpiredCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"
+                                                Visibility="{Binding DataContext.CanConnect, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BoolToVisibility}}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bg" Background="Transparent"
+                                                            CornerRadius="6" Padding="8,6">
+                                                        <fa:ImageAwesome Icon="UserTimes" Width="12" Height="12"
+                                                                         Foreground="#F7685B"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bg" Property="Background" Value="#18F7685B"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
                                         <!-- Edit/Rename -->
                                         <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.Edit, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 Command="{Binding DataContext.RenameDeviceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"

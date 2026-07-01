@@ -532,6 +532,45 @@ public partial class DevicesViewModel : ObservableObject
         await LoadDataOntoDeviceAsync(device!, askConfirm: true);
     }
 
+    // Remediation for the old 10-year-expiry bug: force the gate to reject every currently-expired
+    // member (their card may still carry a far-future validity). Run once per gym after updating.
+    [RelayCommand]
+    private async Task RevokeExpiredAsync(DeviceDto? device)
+    {
+        if (!await ValidateDeviceReadyAsync(device, Lang.RevokeExpired)) return;
+
+        if (!CustomMessageBox.Confirm(Lang.RevokeExpiredConfirm, Lang.RevokeExpired, MsgType.Warning,
+                System.Windows.Application.Current.MainWindow))
+            return;
+
+        try
+        {
+            IsLoading = true;
+            var progress = new Progress<(int current, int total, string cardNumber)>(p =>
+                StatusMessage = (Lang.IsArabic ? "إلغاء المنتهيين: " : "Revoking expired: ") + $"{p.current}/{p.total}");
+
+            var (revoked, failed, total) = await Task.Run(() =>
+                _employeeService.RevokeExpiredCardsFromDeviceAsync(device!.Id, progress));
+
+            var msg = total == 0
+                ? (Lang.IsArabic ? "لا توجد بطاقات منتهية على البوابة." : "No expired cards on the gate.")
+                : (Lang.IsArabic
+                    ? $"تم إلغاء وصول {revoked} بطاقة منتهية على {device!.Name}{(failed > 0 ? $" (فشل {failed})" : "")}."
+                    : $"Revoked {revoked} expired card(s) on {device!.Name}{(failed > 0 ? $" ({failed} failed)" : "")}.");
+            StatusMessage = msg;
+            CustomMessageBox.Show(msg, Lang.RevokeExpired,
+                failed > 0 ? MsgType.Warning : MsgType.Success,
+                System.Windows.Application.Current.MainWindow);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Revoke failed";
+            CustomMessageBox.Show($"Revoke failed: {ex.Message}", Lang.RevokeExpired,
+                MsgType.Error, System.Windows.Application.Current.MainWindow);
+        }
+        finally { IsLoading = false; }
+    }
+
     /// <summary>
     /// Repopulates a device with active-subscription members FIRST (gym usable within seconds),
     /// then the full QR pool (Daily Pass + Visitor) in the background, with phased progress.

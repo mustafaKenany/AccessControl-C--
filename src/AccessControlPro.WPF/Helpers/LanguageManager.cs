@@ -831,6 +831,8 @@ public class LanguageManager : INotifyPropertyChanged
 
     // Device Sync All Players
     public string DevSyncAllPlayers => GetString("DevSyncAllPlayers");
+    public string RevokeExpired => GetString("RevokeExpired");
+    public string RevokeExpiredConfirm => GetString("RevokeExpiredConfirm");
     public string DevSyncAllConfirm => GetString("DevSyncAllConfirm");
     public string DevSyncAllProgress => GetString("DevSyncAllProgress");
     public string DevSyncAllDone => GetString("DevSyncAllDone");

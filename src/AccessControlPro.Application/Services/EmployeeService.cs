@@ -581,7 +581,7 @@ public class EmployeeService : IEmployeeService
             employee.UsedVisits = 0;
         }
 
-        var newPermitTime = newEndDate.ToString("yyyy-MM-dd HH:mm:ss");
+        var newPermitTime = DevicePermitTime(newEndDate);
 
         // Step 1: Sync cards to hardware FIRST with new dates and permissions
         string? hardwareWarning = null;
@@ -972,16 +972,14 @@ public class EmployeeService : IEmployeeService
         if (device == null)
             throw new InvalidOperationException($"Device with ID {deviceId} not found in database.");
 
-        // Use card's ValidTo if it's in the future, otherwise use employee's EndDate, otherwise 10 years
+        // Use the later of the card's ValidTo and the employee's EndDate, valid through end-of-day.
         DateTime validEnd = card.ValidTo;
         if (validEnd < DateTime.Now)
         {
             var emp = await _employeeRepository.GetByIdWithCardsAsync(card.EmployeeId);
-            validEnd = emp?.EndDate ?? DateTime.MinValue;
+            if (emp != null && emp.EndDate > validEnd) validEnd = emp.EndDate;
         }
-        var permitTime = validEnd > DateTime.Now
-            ? validEnd.ToString("yyyy-MM-dd HH:mm:ss")
-            : DateTime.Now.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
+        var permitTime = DevicePermitTime(validEnd);
 
         var deviceInfo = BuildDeviceInfo(device);
 
@@ -1193,9 +1191,7 @@ public class EmployeeService : IEmployeeService
                         progress?.Report((synced + failed + 1, cardsToSync.Count, card.CardNumber));
                         try
                         {
-                            var permitTime = card.ValidTo > DateTime.Now
-                                ? card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss")
-                                : DateTime.Now.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
+                            var permitTime = DevicePermitTime(card.ValidTo);
 
                             var doorPerm = card.DoorPermissions;
                             if (string.IsNullOrEmpty(doorPerm) || doorPerm == "01000000")
@@ -1344,9 +1340,7 @@ public class EmployeeService : IEmployeeService
                         {
                             progress?.Report((totalUploaded + totalSkipped + totalFailed + 1, totalWork, card.CardNumber));
 
-                            var permitTime = card.ValidTo > DateTime.Now
-                                ? card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss")
-                                : DateTime.Now.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
+                            var permitTime = DevicePermitTime(card.ValidTo);
 
                             var doorPerm = card.DoorPermissions;
                             if (string.IsNullOrEmpty(doorPerm) || doorPerm == "01000000")
@@ -1413,9 +1407,7 @@ public class EmployeeService : IEmployeeService
         if (devices.Count == 0)
             return (0, 0, 0, new List<string> { "No devices found." });
 
-        var permitTime = card.ValidTo > DateTime.Now
-            ? card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss")
-            : DateTime.Now.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
+        var permitTime = DevicePermitTime(card.ValidTo);
 
         // Build device tuples for sequential execution with ping-first pattern
         var deviceTuples = devices.Select(d => (BuildDeviceInfo(d), d.Name, d.IP, d.Id));
@@ -1472,9 +1464,7 @@ public class EmployeeService : IEmployeeService
         // Sequential: for each card, ping-then-execute on each device
         foreach (var card in allCards)
         {
-            var permitTime = card.ValidTo > DateTime.Now
-                ? card.ValidTo.ToString("yyyy-MM-dd HH:mm:ss")
-                : DateTime.Now.AddYears(10).ToString("yyyy-MM-dd HH:mm:ss");
+            var permitTime = DevicePermitTime(card.ValidTo);
 
             var deviceTuples = devices.Select(d => (BuildDeviceInfo(d), d.Name, d.IP, d.Id));
 
@@ -1564,6 +1554,68 @@ public class EmployeeService : IEmployeeService
 
         var errors = result.Failed.Select(f => $"{f.Name} ({f.IP}): {f.Error}").ToList();
         return (result.SuccessCount, result.FailedCount, devices.Count, errors);
+    }
+
+    // Remediation for the old "10-year" bug: re-push every EXPIRED member's card to the gate with an
+    // immediate past expiry, so the controller rejects a card that was previously given a far-future
+    // validity. Batched (30/SDK session) like the normal sync to avoid flooding the device. Marks the
+    // cards not-on-device so it's self-limiting on subsequent runs.
+    public async Task<(int revoked, int failed, int total)> RevokeExpiredCardsFromDeviceAsync(
+        int deviceId, IProgress<(int current, int total, string cardNumber)>? progress = null)
+    {
+        var device = (await _deviceRepository.GetAllAsync()).FirstOrDefault(d => d.Id == deviceId);
+        if (device == null) throw new InvalidOperationException($"Device {deviceId} not found.");
+
+        var expired = (await _employeeRepository.GetExpiredAsync()).ToList();
+        var cards = expired
+            .Where(e => !e.IsFrozen && e.AccessCards != null)
+            .SelectMany(e => e.AccessCards!.Where(c => c.IsActive && c.IsSyncedToDevice))
+            .ToList();
+        if (cards.Count == 0) return (0, 0, 0);
+
+        var deviceInfo = BuildDeviceInfo(device);
+        var pastExpiry = DateTime.Now.AddMinutes(-1).ToString("yyyy-MM-dd HH:mm:ss");
+        int revoked = 0, failed = 0;
+        const int batchSize = 30;
+        var batches = cards.Select((c, i) => (c, i)).GroupBy(x => x.i / batchSize)
+            .Select(g => g.Select(x => x.c).ToList()).ToList();
+
+        foreach (var batch in batches)
+        {
+            var current = batch;
+            var batchResult = await _opHelper.ExecuteOnDevicesSequentialAsync(
+                new[] { (deviceInfo, device.Name, device.IP, device.Id) },
+                info =>
+                {
+                    foreach (var card in current)
+                    {
+                        progress?.Report((revoked + failed + 1, cards.Count, card.CardNumber));
+                        try
+                        {
+                            _sdk.AddAccessCard(info, card.CardNumber, card.CardPassword, card.OpenMode,
+                                card.DoorPermissions, pastExpiry, 1, card.TimePeriodIndex, card.HolidayEnabled);
+                        }
+                        catch { /* per-card best-effort; device-level result decides success */ }
+                    }
+                });
+
+            if (batchResult.SuccessCount > 0)
+            {
+                foreach (var card in current)
+                {
+                    card.IsSyncedToDevice = false;
+                    await _cardRepository.UpdateAsync(card);
+                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, false, "Expired — access revoked on gate");
+                    revoked++;
+                }
+            }
+            else failed += current.Count;
+        }
+
+        await LogAuditAsync("RevokeExpiredCards", "Device", deviceId,
+            $"Revoked {revoked} expired card(s) on gate {device.Name} (failed {failed}).",
+            $"تم إلغاء وصول {revoked} بطاقة منتهية على البوابة {device.Name} (فشل {failed}).");
+        return (revoked, failed, cards.Count);
     }
 
     public async Task<(int ok, int fail, int total, List<string> errors)> PushTempCardToDevicesAsync(
@@ -1783,7 +1835,7 @@ public class EmployeeService : IEmployeeService
 
         // Use the provided newEndDate if given (for unfreeze with extended date), otherwise use employee.EndDate
         var permitEnd = newEndDate ?? employee.EndDate;
-        var newPermitTime = permitEnd.ToString("yyyy-MM-dd HH:mm:ss");
+        var newPermitTime = DevicePermitTime(permitEnd);
 
         foreach (var card in syncedCards)
         {
@@ -1911,6 +1963,15 @@ public class EmployeeService : IEmployeeService
             ValidTo = c.ValidTo
         }).ToList()
     };
+
+    // The gate expiry (permitTime) for a card. Subscription dates are DATE-ONLY, so a member is
+    // valid THROUGH the end of their end-date day → push 23:59:59 of that day. CRITICAL: never fall
+    // back to a far-future date. The old code pushed "now + 10 years" whenever the date wasn't
+    // strictly in the future, so a card whose end date was TODAY (time already past) or expired got
+    // 10 years of gate access — expired members kept opening the door. A past end-of-day here makes
+    // the gate reject the card, which is exactly what we want for an expired member.
+    private static string DevicePermitTime(DateTime endDate)
+        => endDate.Date.AddDays(1).AddSeconds(-1).ToString("yyyy-MM-dd HH:mm:ss");
 
     private static int ComputeSyncStatus(Employee e)
     {

@@ -692,6 +692,8 @@
   <data name="DispCloseDisplay" xml:space="preserve"><value>إغلاق العرض</value></data>
   <!-- Device Sync All Players -->
   <data name="DevSyncAllPlayers" xml:space="preserve"><value>رفع جميع اللاعبين</value></data>
+  <data name="RevokeExpired" xml:space="preserve"><value>إلغاء المنتهيين من البوابة</value></data>
+  <data name="RevokeExpiredConfirm" xml:space="preserve"><value>هذا يعيد دفع بطاقة كل مشترك منتهي للبوابة بانتهاء فوري حتى يرفضها الباب. شغّلها مرة واحدة بعد التحديث لإزالة المنتهيين الذين قد يدخلون. متابعة؟</value></data>
   <data name="DevSyncAllConfirm" xml:space="preserve"><value>سيتم رفع جميع بطاقات اللاعبين النشطة إلى هذا الجهاز. هل تريد المتابعة؟</value></data>
   <data name="DevSyncAllProgress" xml:space="preserve"><value>جاري مزامنة اللاعبين مع الجهاز...</value></data>
   <data name="DevSyncAllDone" xml:space="preserve"><value>تم مزامنة جميع اللاعبين مع الجهاز بنجاح.</value></data>

@@ -44,6 +44,11 @@ public interface IEmployeeService
     /// <summary>Remove/expire card on selected devices. Pass null for ALL devices.</summary>
     Task<(int synced, int failed, int total, List<string> errors)> RemoveCardFromDevicesAsync(int cardId, IEnumerable<int>? deviceIds = null);
 
+    /// <summary>Remediation: re-push every EXPIRED member's card to the gate with an immediate past
+    /// expiry so the controller rejects it (fixes cards that carried the old far-future validity).</summary>
+    Task<(int revoked, int failed, int total)> RevokeExpiredCardsFromDeviceAsync(int deviceId,
+        IProgress<(int current, int total, string cardNumber)>? progress = null);
+
     /// <summary>
     /// Push a raw card number straight to the gate(s) valid until <paramref name="validTo"/>,
     /// so the controller itself rejects it afterwards (date-enforced expiry). Used by the

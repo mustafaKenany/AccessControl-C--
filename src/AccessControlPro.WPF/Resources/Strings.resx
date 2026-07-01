@@ -685,6 +685,8 @@ Phone or subscription type is still a placeholder value (MIG-... or "Migrated").
   <data name="DispCloseDisplay" xml:space="preserve"><value>Close Display</value></data>
   <!-- Device Sync All Players -->
   <data name="DevSyncAllPlayers" xml:space="preserve"><value>Upload All Players</value></data>
+  <data name="RevokeExpired" xml:space="preserve"><value>Revoke expired on gate</value></data>
+  <data name="RevokeExpiredConfirm" xml:space="preserve"><value>This re-pushes every EXPIRED member's card to the gate with an immediate expiry, so the door rejects them. Run this once after updating to clear members who could still get in. Continue?</value></data>
   <data name="DevSyncAllConfirm" xml:space="preserve"><value>This will upload all active player cards to this device. Continue?</value></data>
   <data name="DevSyncAllProgress" xml:space="preserve"><value>Syncing players to device...</value></data>
   <data name="DevSyncAllDone" xml:space="preserve"><value>All players synced to device successfully.</value></data>
