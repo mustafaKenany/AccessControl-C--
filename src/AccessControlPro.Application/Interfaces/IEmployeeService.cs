@@ -30,6 +30,11 @@ public interface IEmployeeService
     /// powers the "has card / no card" header badges so they don't reflect just the current page.</summary>
     Task<int> GetWithCardCountAsync(string? search = null);
 
+    /// <summary>DB-level paged load for a filter pill (1 Expiring / 2 Renewed / 3 Frozen / 4 Expired /
+    /// 5 Active) + search. Returns (page items, total, has-card count) so filters don't load all at once.</summary>
+    Task<(IEnumerable<EmployeeDto> Items, int TotalCount, int WithCardCount)> GetFilteredPagedAsync(
+        int filter, DateTime from, DateTime to, int page, int pageSize, string? search = null);
+
     /// <summary>Create an AccessCard record (from the member's stored CardNo) for every active member that
     /// lacks one. Members with no card number are skipped and reported. Cards are marked not-yet-on-device,
     /// so a device sync still pushes them to the gate. Returns (created, skippedNoNumber, totalMissing).</summary>

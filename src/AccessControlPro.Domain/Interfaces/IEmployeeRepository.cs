@@ -9,6 +9,11 @@ public interface IEmployeeRepository
     /// <summary>Count of members (matching the optional search) that have at least one card record —
     /// for the full-dataset "has card / no card" badges, independent of the current page.</summary>
     Task<int> GetWithCardCountAsync(string? search = null);
+
+    /// <summary>DB-level paged load for a filter pill (1 Expiring / 2 Renewed / 3 Frozen / 4 Expired /
+    /// 5 Active). Returns the page, total count, and has-card count so filters don't load all at once.</summary>
+    Task<(IEnumerable<Employee> Items, int TotalCount, int WithCardCount)> GetFilteredPagedAsync(
+        int filter, DateTime from, DateTime to, int page, int pageSize, string? search = null);
     Task<Employee?> GetByIdWithCardsAsync(int id);
     Task<Employee?> GetByEmployeeCodeAsync(string cardNo);
     Task<Employee?> GetByPhoneAsync(string phone);

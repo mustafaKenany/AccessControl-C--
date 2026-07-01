@@ -1047,6 +1047,13 @@ public class EmployeeService : IEmployeeService
     public Task<int> GetWithCardCountAsync(string? search = null)
         => _employeeRepository.GetWithCardCountAsync(search);
 
+    public async Task<(IEnumerable<EmployeeDto> Items, int TotalCount, int WithCardCount)> GetFilteredPagedAsync(
+        int filter, DateTime from, DateTime to, int page, int pageSize, string? search = null)
+    {
+        var (items, total, withCard) = await _employeeRepository.GetFilteredPagedAsync(filter, from, to, page, pageSize, search);
+        return (items.Select(ToDto).ToList(), total, withCard);
+    }
+
     public async Task<int> CountActiveMembersMissingCardAsync()
     {
         var today = DateTime.Today;

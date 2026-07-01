@@ -1301,36 +1301,19 @@ public partial class EmployeesViewModel : ObservableObject
             }
             else
             {
-                // Filter mode — load from service methods
+                // Filter mode — DB-level PAGED load so clicking a filter no longer pulls the whole
+                // matching set at once (was slow on big gyms). CurrentPage is reset by the caller
+                // (SetFilter / search change), not here, so the pager works across pages.
                 var (from, to) = GetPeriodRange();
-                IEnumerable<EmployeeDto> results = SelectedFilterIndex switch
-                {
-                    1 => await _employeeService.GetExpiringAsync(from, to),
-                    2 => await _employeeService.GetRenewedAsync(from, to),
-                    3 => await _employeeService.GetFrozenPlayersAsync(),
-                    4 => await _employeeService.GetExpiredPlayersAsync(),
-                    5 => await _employeeService.GetActivePlayersAsync(),
-                    _ => []
-                };
+                var search = string.IsNullOrWhiteSpace(SearchText) ? null : SearchText;
+                var (items, totalCount, withCard) = await _employeeService.GetFilteredPagedAsync(
+                    SelectedFilterIndex, from, to, CurrentPage, PageSize, search);
+                var list = items.ToList();
 
-                var list = results.ToList();
-
-                // Apply search filter on results
-                if (!string.IsNullOrWhiteSpace(SearchText))
-                {
-                    list = list.Where(e =>
-                        e.FullNameEn.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                        e.FullNameAr.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                        (e.CardNo ?? "").Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                        (e.Phone ?? "").Contains(SearchText, StringComparison.OrdinalIgnoreCase))
-                        .ToList();
-                }
-
-                TotalCount = list.Count;
-                TotalPages = 1;
-                CurrentPage = 1;
-                WithCardCount = list.Count(e => e.CardCount > 0);
-                WithoutCardCount = list.Count(e => e.CardCount == 0);
+                TotalCount = totalCount;
+                TotalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PageSize));
+                WithCardCount = withCard;
+                WithoutCardCount = totalCount - withCard;
 
                 Employees.Clear();
                 foreach (var emp in list)

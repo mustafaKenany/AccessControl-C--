@@ -24,6 +24,9 @@ public partial class DailyPassDialog : Window
     private readonly IEmployeeService _employeeService;
     private readonly bool _ar;
     private decimal _price;
+    private string _category = "Daily Pass";                 // income category for the chosen type
+    private List<DailyType> _types = new();                  // all daily-pass plans (name + price)
+    private sealed record DailyType(string Name, decimal Price);
 
     public DailyPassDialog(IQrPassService qrPassService, ILookupService lookupService,
         IFinanceService financeService, IEmployeeService employeeService)
@@ -55,38 +58,73 @@ public partial class DailyPassDialog : Window
         try
         {
             var plans = await _lookupService.GetActiveSubscriptionPlansAsync();
-            var daily = plans.FirstOrDefault(p =>
-                p.NameEn.Trim().Equals("Daily Pass", StringComparison.OrdinalIgnoreCase)
-                || p.NameEn.Trim().Equals("Daily", StringComparison.OrdinalIgnoreCase)
-                || p.NameAr.Contains("يومي"));
-            _price = daily?.Price ?? 0m;
+            // A gym can define MORE THAN ONE daily-entry plan (different tiers/prices). List them all;
+            // each entry is recorded under its own name so the owner sees revenue per tier.
+            _types = plans
+                .Where(p => p.NameEn.Trim().StartsWith("Daily", StringComparison.OrdinalIgnoreCase)
+                         || p.NameAr.Contains("يومي"))
+                .Select(p => new DailyType(string.IsNullOrWhiteSpace(p.NameEn) ? p.NameAr : p.NameEn.Trim(), p.Price))
+                .ToList();
         }
-        catch { _price = 0m; }
+        catch { _types = new(); }
 
-        PriceText.Text = _price.ToString("N0");
-        if (_price <= 0)
+        if (_types.Count > 1)
         {
-            PriceText.Foreground = System.Windows.Media.Brushes.OrangeRed;
-            TodaySummaryText.Text = _ar
-                ? "⚠ حدّد سعر خطة \"Daily Pass\" من لوحة الإدارة أولاً"
-                : "⚠ Set the \"Daily Pass\" plan price in Admin first";
+            TypeCombo.ItemsSource = _types.Select(t => $"{t.Name} — {t.Price:N0}").ToList();
+            TypeCombo.SelectedIndex = 0;
+            TypeCombo.Visibility = Visibility.Visible;   // triggers SelectionChanged -> ApplyType
         }
+        else
+        {
+            ApplyType(_types.FirstOrDefault());
+        }
+    }
+
+    private void TypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (TypeCombo.SelectedIndex >= 0 && TypeCombo.SelectedIndex < _types.Count)
+            ApplyType(_types[TypeCombo.SelectedIndex]);
+    }
+
+    private void ApplyType(DailyType? type)
+    {
+        _price = type?.Price ?? 0m;
+        _category = type?.Name ?? "Daily Pass";
+        PriceText.Text = _price.ToString("N0");
+        if (_price > 0)
+            PriceText.SetResourceReference(TextBlock.ForegroundProperty, "PrimaryLightBrush");
+        else
+            PriceText.Foreground = System.Windows.Media.Brushes.OrangeRed;
+        if (_price <= 0)
+            TodaySummaryText.Text = _ar
+                ? "⚠ حدّد سعر خطة \"دخول يومي\" من لوحة الإدارة أولاً"
+                : "⚠ Set the \"Daily Pass\" plan price in Admin first";
+        else
+            _ = RefreshTodayAsync();
     }
 
     private async System.Threading.Tasks.Task RefreshTodayAsync()
     {
-        if (_price <= 0) return;
         try
         {
             var today = DateTime.Today;
             var items = await _financeService.GetTransactionsAsync(
                 TransactionType.Income, today, today.AddDays(1).AddTicks(-1));
-            var daily = items.Where(t => t.Category == "Daily Pass").ToList();
+            // Match any daily-pass category (each tier has its own name), then break down per type.
+            var cats = _types.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (cats.Count == 0) cats.Add("Daily Pass");
+            var daily = items.Where(t => cats.Contains(t.Category)).ToList();
             var count = daily.Count;
             var total = daily.Sum(t => t.Amount);
-            TodaySummaryText.Text = _ar
-                ? $"اليوم: {count} دخول — الإجمالي {total:N0}"
-                : $"Today: {count} entries — total {total:N0}";
+
+            var header = _ar ? $"اليوم: {count} دخول — الإجمالي {total:N0}" : $"Today: {count} entries — total {total:N0}";
+            if (_types.Count > 1)
+            {
+                var perType = daily.GroupBy(t => t.Category)
+                    .Select(g => $"{g.Key}: {g.Count()} — {g.Sum(x => x.Amount):N0}");
+                header += "  (" + string.Join(" | ", perType) + ")";
+            }
+            TodaySummaryText.Text = header;
         }
         catch { /* summary is best-effort */ }
     }
@@ -98,11 +136,12 @@ public partial class DailyPassDialog : Window
         try
         {
             var pass = await _qrPassService.CreatePassAsync(
-                playerName: _ar ? "دخول يومي" : "Daily Pass",
+                playerName: _category,
                 phone: "",
                 fee: _price,
                 maxUses: 2,      // one entry + one exit — stops a found/shared ticket being reused
-                validDays: 1);   // today only
+                validDays: 1,    // today only
+                incomeCategory: _category);
 
             // Bind the code to the gate for today only (date-enforced + 2 uses). Check the result:
             // if it reached NO device, warn the cashier — the QR may not open the door.
@@ -146,7 +185,7 @@ public partial class DailyPassDialog : Window
         {
             // No QR / card issued — the captain admits the guest (joker card / push button).
             // We only record the fee so it shows in today's takings and Finance.
-            await _financeService.RecordIncomeAsync("Daily Pass", _price, "Daily Pass - manual entry");
+            await _financeService.RecordIncomeAsync(_category, _price, $"{_category} - manual entry");
             await RefreshTodayAsync();
             CustomMessageBox.Show(
                 _ar ? "تم تسجيل الدخول اليومي." : "Daily pass recorded.",
@@ -209,7 +248,7 @@ public partial class DailyPassDialog : Window
                 return;
             }
 
-            await _financeService.RecordIncomeAsync("Daily Pass", _price, $"Daily Pass - temp card {card}");
+            await _financeService.RecordIncomeAsync(_category, _price, $"{_category} - temp card {card}");
             DailyTempCardStore.Issue(card, _price);
             CardNumberBox.Clear();
             CardNumberBox.Focus();

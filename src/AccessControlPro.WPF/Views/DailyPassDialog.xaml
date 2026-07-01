@@ -22,6 +22,10 @@
             <TextBlock x:Name="DateText" FontSize="12" Foreground="{StaticResource TextMutedBrush}"
                        HorizontalAlignment="Center" Margin="0,0,0,14"/>
 
+            <!-- Entry type (shown only when the gym has more than one daily-pass plan) -->
+            <ComboBox x:Name="TypeCombo" Style="{StaticResource DarkComboBox}" Margin="0,0,0,8"
+                      Visibility="Collapsed" SelectionChanged="TypeCombo_SelectionChanged"/>
+
             <!-- Price -->
             <Border Background="#15FFFFFF" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
                 <DockPanel>

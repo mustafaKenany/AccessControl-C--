@@ -25,7 +25,7 @@ public class QrPassService : IQrPassService
     }
 
     public async Task<QrPassDto> CreatePassAsync(string playerName, string phone, decimal fee, int maxUses = 5, int validDays = 1,
-        int? deviceId = null, int doorNumber = 1, string deviceName = "")
+        int? deviceId = null, int doorNumber = 1, string deviceName = "", string incomeCategory = "Daily Pass")
     {
         var now = DateTime.Now;
 
@@ -69,7 +69,7 @@ public class QrPassService : IQrPassService
             var transaction = new Transaction
             {
                 Type = Domain.Enums.TransactionType.Income,
-                Category = "Daily Pass",
+                Category = incomeCategory,
                 Amount = fee,
                 Description = $"QR Daily Pass - {playerName}",
                 PaymentMethod = Domain.Enums.PaymentMethod.Cash,

@@ -45,6 +45,54 @@ public class EmployeeRepository : IEmployeeRepository
         return (items, totalCount);
     }
 
+    // DB-level paging for the filter pills (Expiring/Renewed/Frozen/Expired/Active) so clicking a
+    // filter no longer loads the WHOLE matching set at once. Returns the page + total + has-card count.
+    public async Task<(IEnumerable<Employee> Items, int TotalCount, int WithCardCount)> GetFilteredPagedAsync(
+        int filter, DateTime from, DateTime to, int page, int pageSize, string? search = null)
+    {
+        await using var db = _factory.CreateDbContext();
+        var now = DateTime.UtcNow;
+        var query = db.Employees.Include(e => e.AccessCards).AsQueryable();
+
+        query = filter switch
+        {
+            1 => query.Where(e => e.EndDate >= from && e.EndDate <= to),   // Expiring soon
+            2 => query.Where(e => e.StartDate >= from && e.StartDate <= to), // Renewed
+            3 => query.Where(e => e.IsFrozen),                              // Frozen
+            4 => query.Where(e => e.EndDate < now && !e.IsFrozen),         // Expired
+            5 => query.Where(e => e.EndDate >= now && !e.IsFrozen),        // Active
+            _ => query
+        };
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim();
+            var sNoLeadingZeros = s.TrimStart('0');
+            query = query.Where(e =>
+                EF.Functions.Like(e.FullNameEn, $"%{s}%") ||
+                EF.Functions.Like(e.FullNameAr ?? "", $"%{s}%") ||
+                EF.Functions.Like(e.CardNo ?? "", $"%{s}%") ||
+                (sNoLeadingZeros.Length > 0 && EF.Functions.Like(e.CardNo ?? "", $"%{sNoLeadingZeros}%")) ||
+                EF.Functions.Like(e.Phone ?? "", $"%{s}%"));
+        }
+
+        var total = await query.CountAsync();
+        var withCard = await query.CountAsync(e => e.AccessCards.Any());
+
+        IOrderedQueryable<Employee> ordered = filter switch
+        {
+            1 => query.OrderBy(e => e.EndDate),
+            2 => query.OrderByDescending(e => e.StartDate),
+            3 => query.OrderBy(e => e.FreezeStartDate),
+            4 => query.OrderByDescending(e => e.EndDate),
+            5 => query.OrderBy(e => e.EndDate),
+            _ => query.OrderByDescending(e => e.Id)
+        };
+
+        var items = await ordered.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        return (items, total, withCard);
+    }
+
     public async Task<int> GetWithCardCountAsync(string? search = null)
     {
         await using var db = _factory.CreateDbContext();
