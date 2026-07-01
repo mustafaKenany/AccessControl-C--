@@ -130,11 +130,9 @@ public class CloudSyncService : ICloudSyncService
             // Players (Employees): mutable, has UpdatedAt from v4.5 migration
             payload["players"] = await ReadTableAsync(local,
                 "SELECT Id, FullNameEn, FullNameAr, CardNo, Phone, SubscriptionType, StartDate, EndDate, " +
-                "SubscriptionFee, AmountPaid, MaxVisits, UsedVisits, IsFrozen, FreezeStartDate, " +
+                "SubscriptionFee, Discount, AmountPaid, MaxVisits, UsedVisits, IsFrozen, FreezeStartDate, " +
                 "CAST(0 AS BIT) AS IsDeleted, CreatedAt, '' AS PhotoPath, Height, Weight, Notes FROM Employees" +
                 DeltaWhere("UpdatedAt"), sinceFilter);
-            // NOTE: Discount is intentionally NOT synced to the cloud yet — the per-gym Players tables
-            // would need the column first (UpsertRows blindly inserts all keys). Local-only for now.
 
             // AccessEvents: append-only, use existing Timestamp (keep TOP 2000 cap as safety limit)
             payload["accessEvents"] = await ReadTableAsync(local,

@@ -2,7 +2,7 @@ namespace AccessControlPro.Web.Data;
 
 public record PlayerRow(int Id, string FullNameEn, string FullNameAr, string CardNo, string Phone,
     string SubscriptionType, DateTime StartDate, DateTime EndDate, decimal Fee, decimal Paid,
-    int MaxVisits, int UsedVisits, bool IsFrozen, DateTime? FreezeStartDate);
+    int MaxVisits, int UsedVisits, bool IsFrozen, DateTime? FreezeStartDate, decimal Discount = 0);
 
 public record EventRow(int Id, int DoorId, int? CardId, int EventCode, DateTime EventDate, string Details,
     string DoorName = "", string CardNumber = "", string PlayerNameEn = "", string PlayerNameAr = "");

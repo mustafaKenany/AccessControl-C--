@@ -51,7 +51,7 @@ else
                                 <td>@d.Phone</td>
                                 <td>@AccessControlPro.Web.Services.DualLanguageText.Single(d.DeleteReason, Session.IsArabic)</td>
                                 <td>@d.DeletedBy</td>
-                                <td>@d.DeletedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@d.DeletedAt.ToIraqTime().ToString("yyyy-MM-dd HH:mm")</td>
                             </tr>
                         }
                     </tbody>
@@ -105,7 +105,7 @@ else
                         </div>
                         <div class="mobile-card-row">
                             <span class="mobile-card-label">@L("Date", "التاريخ")</span>
-                            <span class="mobile-card-value">@d.DeletedAt.ToLocalTime().ToString("MM/dd HH:mm")</span>
+                            <span class="mobile-card-value">@d.DeletedAt.ToIraqTime().ToString("MM/dd HH:mm")</span>
                         </div>
                     </div>
                 }

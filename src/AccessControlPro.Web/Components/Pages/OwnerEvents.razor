@@ -61,7 +61,7 @@ else
                         @foreach (var ev in _events)
                         {
                             <tr>
-                                <td>@ev.EventDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@ev.EventDate.ToIraqTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                                 <td>@GetDeviceName(ev.DoorId)</td>
                                 <td>@(string.IsNullOrEmpty(ev.DoorName) ? GetDoorName(ev.DoorId) : ev.DoorName)</td>
                                 @{ var deskCardNo = GetCardDisplay(ev); }
@@ -90,7 +90,7 @@ else
             <div class="mobile-cards">
                 @foreach (var ev in _events)
                 {
-                    var local = ev.EventDate.ToLocalTime();
+                    var local = ev.EventDate.ToIraqTime();
                     <div class="mobile-card">
                         <div class="mobile-card-header">
                             <span class="mobile-card-name">@local.ToString("MM/dd HH:mm")</span>

@@ -334,6 +334,8 @@ END $$;
 -- values above 999.9 (bad client data, e.g. phone numbers typed into height) don't cause 22003 overflow.
 ALTER TABLE ""Players"" ALTER COLUMN ""Height"" TYPE DECIMAL(10,2);
 ALTER TABLE ""Players"" ALTER COLUMN ""Weight"" TYPE DECIMAL(10,2);
+-- Subscription discount (offers/promos) — synced from desktop; net owed = Fee - Discount - Paid.
+ALTER TABLE ""Players"" ADD COLUMN IF NOT EXISTS ""Discount"" DECIMAL(18,2) DEFAULT 0;
 
 -- Gyms table migration: add columns if missing
 ALTER TABLE ""Gyms"" ADD COLUMN IF NOT EXISTS ""SubscriptionPrice"" DECIMAL(18,2) DEFAULT 0;

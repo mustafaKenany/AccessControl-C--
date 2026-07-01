@@ -50,7 +50,7 @@ else
                     <tbody>
                         @foreach (var ev in _events)
                         {
-                            var local = ev.EventDate.ToLocalTime();
+                            var local = ev.EventDate.ToIraqTime();
                             <tr>
                                 <td>@local.ToString("yyyy-MM-dd")</td>
                                 <td>@local.ToString("HH:mm:ss")</td>
@@ -72,7 +72,7 @@ else
             <div class="mobile-cards">
                 @foreach (var ev in _events)
                 {
-                    var local = ev.EventDate.ToLocalTime();
+                    var local = ev.EventDate.ToIraqTime();
                     <div class="mobile-card">
                         <div class="mobile-card-header">
                             <span class="mobile-card-name">@local.ToString("MM/dd")</span>

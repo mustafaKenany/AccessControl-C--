@@ -135,7 +135,7 @@ else
                             var typeClass = t.Type == 0 ? "badge-active" : "badge-expired";
                             var amountClass = t.Type == 0 ? "text-success" : "text-danger";
                             <tr>
-                                <td>@t.TransactionDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@t.TransactionDate.ToIraqTime().ToString("yyyy-MM-dd HH:mm")</td>
                                 <td><span class="badge @typeClass">@typeLabel</span></td>
                                 <td>@t.Category</td>
                                 <td class="@amountClass">@t.Amount.ToString("N2")</td>
@@ -164,7 +164,7 @@ else
                         <div class="mobile-card-divider"></div>
                         <div class="mobile-card-row">
                             <span class="mobile-card-label">@L("Date", "التاريخ")</span>
-                            <span class="mobile-card-value">@t.TransactionDate.ToLocalTime().ToString("MM/dd HH:mm")</span>
+                            <span class="mobile-card-value">@t.TransactionDate.ToIraqTime().ToString("MM/dd HH:mm")</span>
                         </div>
                         <div class="mobile-card-row">
                             <span class="mobile-card-label">@L("Category", "الفئة")</span>
@@ -323,8 +323,9 @@ else
 
             // Outstanding balance (always all-time)
             using (var cmd = new Npgsql.NpgsqlCommand(
-                @"SELECT COALESCE(SUM(""SubscriptionFee"" - ""AmountPaid""), 0)
-                  FROM ""Players"" WHERE ""IsDeleted"" = FALSE AND ""SubscriptionFee"" > ""AmountPaid""", conn))
+                @"SELECT COALESCE(SUM(""SubscriptionFee"" - COALESCE(""Discount"",0) - ""AmountPaid""), 0)
+                  FROM ""Players"" WHERE ""IsDeleted"" = FALSE
+                    AND (""SubscriptionFee"" - COALESCE(""Discount"",0)) > ""AmountPaid""", conn))
             {
                 _outstanding = Convert.ToDecimal(await cmd.ExecuteScalarAsync());
             }

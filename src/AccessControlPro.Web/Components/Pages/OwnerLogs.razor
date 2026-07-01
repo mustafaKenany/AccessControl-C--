@@ -82,7 +82,7 @@ else
                         @foreach (var log in _logs)
                         {
                             <tr>
-                                <td>@log.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@log.Timestamp.ToIraqTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                                 <td><span class="badge @GetActionBadge(log.Action)">@log.Action</span></td>
                                 <td>@log.EntityType</td>
                                 <td>@log.EntityId</td>
@@ -102,7 +102,7 @@ else
                 {
                     <div class="mobile-card">
                         <div class="mobile-card-header">
-                            <span class="mobile-card-name">@log.Timestamp.ToLocalTime().ToString("MM/dd HH:mm")</span>
+                            <span class="mobile-card-name">@log.Timestamp.ToIraqTime().ToString("MM/dd HH:mm")</span>
                             <span class="badge @GetActionBadge(log.Action)">@log.Action</span>
                         </div>
                         <div class="mobile-card-divider"></div>

@@ -44,7 +44,7 @@ else
         "Expiring" => L("Expiring", "ينتهي قريبا"),
         _ => L("Expired", "منتهي")
     };
-    var remaining = _player.Fee - _player.Paid;
+    var remaining = _player.Fee - _player.Discount - _player.Paid;
     var visitsText = _player.MaxVisits > 0 ? $"{_player.UsedVisits}/{_player.MaxVisits}" : L("Unlimited", "غير محدود");
     var visitPercent = _player.MaxVisits > 0 ? Math.Min(100, _player.UsedVisits * 100 / _player.MaxVisits) : 0;
     var visitBarClass = visitPercent >= 90 ? "progress-danger" : visitPercent >= 70 ? "progress-warning" : "";
@@ -167,6 +167,13 @@ else
                         <span class="info-label">@L("Fee", "الرسوم")</span>
                         <span class="info-value">@_player.Fee.ToString("N0")</span>
                     </div>
+                    @if (_player.Discount > 0)
+                    {
+                        <div class="info-item">
+                            <span class="info-label">@L("Discount", "الخصم")</span>
+                            <span class="info-value text-success">@_player.Discount.ToString("N0")</span>
+                        </div>
+                    }
                     <div class="info-item">
                         <span class="info-label">@L("Paid", "المدفوع")</span>
                         <span class="info-value text-success">@_player.Paid.ToString("N0")</span>
@@ -444,7 +451,7 @@ else
                                     var eventIcon = eventLabel == L("Entry", "دخول") ? "fa-sign-in-alt" : "fa-sign-out-alt";
                                     var eventColor = eventLabel == L("Entry", "دخول") ? "text-success" : "text-warning";
                                     <tr>
-                                        <td>@v.EventDate.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                        <td>@v.EventDate.ToIraqTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                                         <td>@v.DoorName</td>
                                         <td class="@eventColor"><i class="fas @eventIcon"></i> @eventLabel</td>
                                     </tr>
@@ -554,7 +561,8 @@ else
                 @"SELECT ""Id"", ""FullNameEn"", ""FullNameAr"", COALESCE(""CardNo"",''), COALESCE(""Phone"",''),
                          COALESCE(""SubscriptionType"",''), ""StartDate"", ""EndDate"",
                          COALESCE(""SubscriptionFee"",0), COALESCE(""AmountPaid"",0),
-                         COALESCE(""MaxVisits"",0), COALESCE(""UsedVisits"",0), ""IsFrozen"", ""FreezeStartDate""
+                         COALESCE(""MaxVisits"",0), COALESCE(""UsedVisits"",0), ""IsFrozen"", ""FreezeStartDate"",
+                         COALESCE(""Discount"",0)
                   FROM ""Players"" WHERE ""Id"" = @id AND ""IsDeleted"" = FALSE", conn);
             cmd.Parameters.AddWithValue("id", PlayerId);
 
@@ -566,7 +574,8 @@ else
                     r.GetString(5), r.GetDateTime(6), r.GetDateTime(7),
                     r.GetDecimal(8), r.GetDecimal(9),
                     r.GetInt32(10), r.GetInt32(11), r.GetBoolean(12),
-                    r.IsDBNull(13) ? null : r.GetDateTime(13));
+                    r.IsDBNull(13) ? null : r.GetDateTime(13),
+                    r.GetDecimal(14));
             }
         }
         catch (Exception ex) { Console.WriteLine($"[OwnerPlayerProfile] LoadPlayerAsync Error: {ex.Message}"); }

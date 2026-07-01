@@ -246,7 +246,7 @@ else if (_player != null)
                 <div class="mobile-cards">
                     @foreach (var tx in _payments)
                     {
-                        var local = tx.TransactionDate.ToLocalTime();
+                        var local = tx.TransactionDate.ToIraqTime();
                         var typeLabel = tx.Type == 0 ? L("Income", "إيراد") : L("Expense", "مصروف");
                         var typeClass = tx.Type == 0 ? "badge-active" : "badge-expired";
                         <div class="mobile-card">
@@ -316,7 +316,7 @@ else if (_player != null)
                 <div class="mobile-cards">
                     @foreach (var v in _visits)
                     {
-                        var local = v.EventDate.ToLocalTime();
+                        var local = v.EventDate.ToIraqTime();
                         <div class="mobile-card">
                             <div class="mobile-card-header">
                                 <span class="mobile-card-name">@local.ToString("yyyy-MM-dd")</span>
@@ -353,7 +353,7 @@ else if (_player != null)
                 <div class="mobile-cards">
                     @foreach (var f in _freezes)
                     {
-                        var local = f.Timestamp.ToLocalTime();
+                        var local = f.Timestamp.ToIraqTime();
                         var isFreeze = f.Action.Equals("Freeze", StringComparison.OrdinalIgnoreCase) || f.Action == "FREEZE";
                         var actionLabel = isFreeze ? L("Frozen", "تجميد") : L("Unfrozen", "إلغاء التجميد");
                         var actionClass = isFreeze ? "badge-frozen" : "badge-active";

@@ -145,7 +145,7 @@ else if (Session.IsAuthenticated && Session.IsOwner)
                             @foreach (var ev in _recentEvents)
                             {
                                 <tr>
-                                    <td>@ev.EventDate.ToLocalTime().ToString("MM/dd HH:mm")</td>
+                                    <td>@ev.EventDate.ToIraqTime().ToString("MM/dd HH:mm")</td>
                                     <td>@GetPlayerDisplay(ev)</td>
                                     <td>@(string.IsNullOrEmpty(ev.DoorName) ? GetDoorName(ev.DoorId) : ev.DoorName)</td>
                                     <td>@GetEventName(ev.EventCode)</td>
@@ -162,7 +162,7 @@ else if (Session.IsAuthenticated && Session.IsOwner)
                         {
                             <div class="mobile-card">
                                 <div class="mobile-card-header">
-                                    <span class="mobile-card-name">@ev.EventDate.ToLocalTime().ToString("MM/dd HH:mm")</span>
+                                    <span class="mobile-card-name">@ev.EventDate.ToIraqTime().ToString("MM/dd HH:mm")</span>
                                     <span class="mobile-card-sub">@GetEventName(ev.EventCode)</span>
                                 </div>
                                 <div class="mobile-card-row">

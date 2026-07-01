@@ -31,7 +31,7 @@ else
         {
             <div class="stats-grid" style="max-width: 500px; margin: 0 auto;">
                 <div class="stat-card accent">
-                    <div class="stat-number" style="font-size: 1.2rem;">@_lastSync.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                    <div class="stat-number" style="font-size: 1.2rem;">@_lastSync.Value.ToIraqTime().ToString("yyyy-MM-dd HH:mm")</div>
                     <div class="stat-label">@L("Last Sync", "آخر مزامنة")</div>
                 </div>
             </div>
@@ -65,7 +65,7 @@ else
                             var statusClass = log.Status.ToLower() == "success" ? "badge-active" :
                                               log.Status.ToLower() == "failed" ? "badge-expired" : "badge-expiring";
                             <tr>
-                                <td>@log.SyncedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@log.SyncedAt.ToIraqTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                                 <td>@log.SyncType</td>
                                 <td><span class="badge @statusClass">@log.Status</span></td>
                                 <td>@log.Details</td>
