@@ -178,7 +178,7 @@ public partial class RenewSubscriptionDialog : Window
         EffectiveTimesCombo.Items.Clear();
 
         // Preset effective times values — must match AssignCardDialog exactly
-        var presetValues = new[] { 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 400, 500 };
+        var presetValues = new[] { 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 400, 500 };
 
         foreach (var val in presetValues)
         {

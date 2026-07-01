@@ -973,12 +973,23 @@ public class EmployeeService : IEmployeeService
             throw new InvalidOperationException($"Device with ID {deviceId} not found in database.");
 
         // Use the later of the card's ValidTo and the employee's EndDate, valid through end-of-day.
+        var member = await _employeeRepository.GetByIdWithCardsAsync(card.EmployeeId);
         DateTime validEnd = card.ValidTo;
-        if (validEnd < DateTime.Now)
+        if (member != null && member.EndDate > validEnd) validEnd = member.EndDate;
+
+        // Never push an EXPIRED or FROZEN member to the gate — keep the card in the DB only. (A member
+        // whose subscription ended, or is paused/frozen, stays in the database but is not on the device.)
+        if (validEnd.Date < DateTime.Today || member?.IsFrozen == true)
         {
-            var emp = await _employeeRepository.GetByIdWithCardsAsync(card.EmployeeId);
-            if (emp != null && emp.EndDate > validEnd) validEnd = emp.EndDate;
+            card.IsSyncedToDevice = false;
+            await _cardRepository.UpdateAsync(card);
+            await _sessionLogger.LogOperationAsync("SYNC_CARD_SKIPPED", "AccessCard", cardId,
+                $"Card {card.CardNumber} NOT pushed — member {(member?.IsFrozen == true ? "frozen" : $"expired ({validEnd:yyyy-MM-dd})")}. Kept in DB only.",
+                $"لم تُرسل البطاقة {card.CardNumber} — العضو {(member?.IsFrozen == true ? "مجمّد" : "منتهٍ")}. محفوظة بقاعدة البيانات فقط.",
+                _currentUser.Username);
+            return true;
         }
+
         var permitTime = DevicePermitTime(validEnd);
 
         var deviceInfo = BuildDeviceInfo(device);
@@ -1154,13 +1165,12 @@ public class EmployeeService : IEmployeeService
         // Step 2: Get all active cards for sync (no Employee navigation = no photos loaded)
         var allCards = (await _cardRepository.GetAllActiveForSyncAsync()).ToList();
 
-        // When repopulating a new/replacement device we only push members whose subscription is still
-        // valid — far fewer than the full roster, and the gate rejects expired cards anyway.
-        if (activeSubscriptionsOnly)
-        {
-            var today = DateTime.Today;
-            allCards = allCards.Where(c => c.ValidTo.Date >= today).ToList();
-        }
+        // ALWAYS skip EXPIRED and FROZEN members — they stay in the database but are never placed on
+        // the gate. (Expired = end date passed; a member whose end date is TODAY is still valid
+        // through end of day. Frozen = subscription paused, must not be able to enter.)
+        var today = DateTime.Today;
+        var frozenIds = (await _employeeRepository.GetFrozenAsync()).Select(e => e.Id).ToHashSet();
+        allCards = allCards.Where(c => c.ValidTo.Date >= today && !frozenIds.Contains(c.EmployeeId)).ToList();
 
         if (allCards.Count == 0) return (0, 0, 0);
 
@@ -1451,8 +1461,11 @@ public class EmployeeService : IEmployeeService
         var devices = await ResolveDevicesAsync(deviceIds);
         if (devices.Count == 0) return (0, 0, 0);
 
+        // Never push EXPIRED or FROZEN members to the gate — kept in the DB only. A member whose end
+        // date is TODAY is still valid through the end of the day.
+        var today = DateTime.Today;
         var allCards = (await _cardRepository.GetAllWithEmployeeAsync())
-            .Where(c => c.IsActive && c.Employee != null)
+            .Where(c => c.IsActive && c.Employee != null && c.ValidTo.Date >= today && !c.Employee.IsFrozen)
             .ToList();
 
         if (allCards.Count == 0) return (0, 0, 0);
