@@ -21,6 +21,7 @@ public interface IEmployeeRepository
     Task<IEnumerable<Employee>> GetByStartDateRangeAsync(DateTime from, DateTime to);
     Task<IEnumerable<Employee>> GetFrozenAsync();
     Task<IEnumerable<Employee>> GetExpiredAsync();
+    Task<IEnumerable<Employee>> GetActiveAsync();
     Task<IEnumerable<Employee>> GetOutstandingBalancesAsync();
     /// <summary>Lightweight: returns only Id, CardNo, StartDate, EndDate, MaxVisits (no photos)</summary>
     Task<IEnumerable<(int Id, string CardNo, DateTime StartDate, DateTime EndDate, int MaxVisits)>> GetCardInfoForSyncAsync();

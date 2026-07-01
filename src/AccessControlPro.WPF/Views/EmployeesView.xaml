@@ -264,6 +264,29 @@
                 </Button.Template>
             </Button>
 
+            <!-- Active subscriptions (not expired, not frozen) -->
+            <Button Command="{Binding SetFilterCommand}" CommandParameter="5" Cursor="Hand" Margin="0,0,6,0">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="chip" CornerRadius="14" Padding="14,6" Background="#1A44A1A0">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="CheckCircle" Width="11" Height="11"
+                                                 Foreground="#2ED47A" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Lang.FilterActive}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding SelectedFilterIndex}" Value="5">
+                                <Setter TargetName="chip" Property="Background" Value="#4D2ED47A"/>
+                            </DataTrigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="chip" Property="Background" Value="#3344A1A0"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+
             <!-- Separator -->
             <Border Width="1" Height="20" Background="#3A3A50" Margin="6,0,12,0" VerticalAlignment="Center">
                 <Border.Style>

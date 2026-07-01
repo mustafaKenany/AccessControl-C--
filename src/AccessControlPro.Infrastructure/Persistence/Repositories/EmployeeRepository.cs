@@ -159,6 +159,15 @@ public class EmployeeRepository : IEmployeeRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<Employee>> GetActiveAsync()
+    {
+        await using var db = _factory.CreateDbContext();
+        return await db.Employees.Include(e => e.AccessCards)
+            .Where(e => e.EndDate >= DateTime.UtcNow && !e.IsFrozen)
+            .OrderBy(e => e.EndDate)
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<Employee>> GetOutstandingBalancesAsync()
     {
         await using var db = _factory.CreateDbContext();

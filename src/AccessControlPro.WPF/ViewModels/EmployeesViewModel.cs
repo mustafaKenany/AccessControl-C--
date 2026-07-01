@@ -1309,6 +1309,7 @@ public partial class EmployeesViewModel : ObservableObject
                     2 => await _employeeService.GetRenewedAsync(from, to),
                     3 => await _employeeService.GetFrozenPlayersAsync(),
                     4 => await _employeeService.GetExpiredPlayersAsync(),
+                    5 => await _employeeService.GetActivePlayersAsync(),
                     _ => []
                 };
 

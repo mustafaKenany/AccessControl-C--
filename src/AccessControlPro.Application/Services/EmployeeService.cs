@@ -1860,6 +1860,12 @@ public class EmployeeService : IEmployeeService
         return employees.Select(ToDto);
     }
 
+    public async Task<IEnumerable<EmployeeDto>> GetActivePlayersAsync()
+    {
+        var employees = await _employeeRepository.GetActiveAsync();
+        return employees.Select(ToDto);
+    }
+
     private static EmployeeDto ToDto(Employee e) => new()
     {
         Id = e.Id,

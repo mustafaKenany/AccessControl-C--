@@ -96,4 +96,5 @@ public interface IEmployeeService
     Task<IEnumerable<EmployeeDto>> GetRenewedAsync(DateTime from, DateTime to);
     Task<IEnumerable<EmployeeDto>> GetFrozenPlayersAsync();
     Task<IEnumerable<EmployeeDto>> GetExpiredPlayersAsync();
+    Task<IEnumerable<EmployeeDto>> GetActivePlayersAsync();
 }
