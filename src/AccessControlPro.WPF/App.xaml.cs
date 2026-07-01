@@ -418,22 +418,18 @@ public partial class App : System.Windows.Application
         try
         {
             StartupLog("Migrating database...");
-            // Auto-create/migrate database on startup (skip if already at current version)
+            // ALWAYS run the migrator. It is idempotent (every statement is guarded by an
+            // IF NOT EXISTS) and fast, so it is safe to run on every startup — and it MUST,
+            // so that columns added in later releases reach EXISTING installs. A previous
+            // ".migration_v" marker pinned to "4.4" permanently skipped the migrator after the
+            // first run, so any newer column (e.g. Discount) never got added to old databases →
+            // "Invalid column name" errors. Never gate incremental schema migrations behind a
+            // one-time marker again. (Admin & POS already call it unconditionally.)
             using (var scope = _serviceProvider.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                var migrationMarker = Path.Combine(AppContext.BaseDirectory, ".migration_v");
-                var currentVersion = "4.4";
-                if (File.Exists(migrationMarker) && File.ReadAllText(migrationMarker).Trim() == currentVersion)
-                {
-                    StartupLog("DB migration skipped (already at v" + currentVersion + ")");
-                }
-                else
-                {
-                    DatabaseMigrator.EnsureSchemaUpToDate(db);
-                    File.WriteAllText(migrationMarker, currentVersion);
-                    StartupLog("DB migration completed to v" + currentVersion);
-                }
+                DatabaseMigrator.EnsureSchemaUpToDate(db);
+                StartupLog("DB migration ensured");
             }
         }
         catch (Exception ex)

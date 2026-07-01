@@ -1339,7 +1339,13 @@ public partial class EmployeesViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
+            // Never surface the raw DB/SQL error to the user (information disclosure + confusing).
+            // Log the technical detail; show a friendly, actionable message instead.
+            ActivityLogger.LogAction("Employees", "LoadError", ex.Message);
+            var msg = Lang.IsArabic
+                ? "تعذّر تحميل قائمة اللاعبين. أعد المحاولة، وإذا استمرت المشكلة أعد تشغيل البرنامج أو تواصل مع الدعم."
+                : "Could not load the players list. Please retry; if it persists, restart the app or contact support.";
+            CustomMessageBox.Show(msg, Lang.NavPlayers, MsgType.Error, System.Windows.Application.Current.MainWindow);
         }
         finally
         {
