@@ -28,9 +28,12 @@ public class FinanceService : IFinanceService
         var revenueTask = _transactionRepo.GetTotalByTypeAsync(TransactionType.Income, from, to);
         var expensesTask = _transactionRepo.GetTotalByTypeAsync(TransactionType.Expense, from, to);
         var recentTask = _transactionRepo.GetPagedAsync(1, 20, null, from, to, search);
-        var playersTask = _employeeRepo.GetOutstandingBalancesAsync();
+        // Outstanding: search + cap the DISPLAY list in the DB (was: load ALL then filter in C#);
+        // the correct TOTAL comes from a separate DB SUM so capping never skews it.
+        var playersTask = _employeeRepo.GetOutstandingBalancesAsync(search);
+        var unpaidSumTask = _employeeRepo.GetTotalOutstandingAsync();
 
-        await Task.WhenAll(revenueTask, expensesTask, recentTask, playersTask);
+        await Task.WhenAll(revenueTask, expensesTask, recentTask, playersTask, unpaidSumTask);
 
         var totalRevenue = await revenueTask;
         var totalExpenses = await expensesTask;
@@ -47,22 +50,12 @@ public class FinanceService : IFinanceService
                 Paid = e.AmountPaid
             }).ToList();
 
-        // Filter outstanding players by search text
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            outstanding = outstanding
-                .Where(o => o.NameEn.Contains(search, StringComparison.OrdinalIgnoreCase)
-                         || o.NameAr.Contains(search, StringComparison.OrdinalIgnoreCase)
-                         || o.CardNo.Contains(search, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
-
         return new FinanceSummaryDto
         {
             TotalRevenue = totalRevenue,
             TotalExpenses = totalExpenses,
             NetProfit = Math.Round(totalRevenue - totalExpenses, 2),
-            UnpaidBalances = outstanding.Sum(o => o.Remaining),
+            UnpaidBalances = await unpaidSumTask,
             RecentTransactions = recentItems.Select(ToDto).ToList(),
             OutstandingPlayers = outstanding
         };

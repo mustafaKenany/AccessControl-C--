@@ -29,13 +29,15 @@ public class AuditLogRepository : IAuditLogRepository
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var s = search.ToLower();
+            // SQL Server's default collation is case-insensitive — drop the ToLower() (it forced a
+            // per-row computed scan and helped nothing). The date range above is the primary filter.
+            var s = search.Trim();
             query = query.Where(l =>
-                l.Action.ToLower().Contains(s) ||
-                l.EntityType.ToLower().Contains(s) ||
-                l.Details.ToLower().Contains(s) ||
-                l.DetailsAr.ToLower().Contains(s) ||
-                l.PerformedBy.ToLower().Contains(s));
+                EF.Functions.Like(l.Action, "%" + s + "%") ||
+                EF.Functions.Like(l.EntityType, "%" + s + "%") ||
+                EF.Functions.Like(l.Details, "%" + s + "%") ||
+                EF.Functions.Like(l.DetailsAr, "%" + s + "%") ||
+                EF.Functions.Like(l.PerformedBy, "%" + s + "%"));
         }
 
         var totalCount = await query.CountAsync();

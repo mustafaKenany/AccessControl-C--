@@ -27,7 +27,9 @@ public interface IEmployeeRepository
     Task<IEnumerable<Employee>> GetFrozenAsync();
     Task<IEnumerable<Employee>> GetExpiredAsync();
     Task<IEnumerable<Employee>> GetActiveAsync();
-    Task<IEnumerable<Employee>> GetOutstandingBalancesAsync();
+    Task<IEnumerable<Employee>> GetOutstandingBalancesAsync(string? search = null, int take = 500);
+    /// <summary>DB-side SUM of net owed across ALL outstanding members (no rows loaded).</summary>
+    Task<decimal> GetTotalOutstandingAsync();
     /// <summary>Lightweight: returns only Id, CardNo, StartDate, EndDate, MaxVisits (no photos)</summary>
     Task<IEnumerable<(int Id, string CardNo, DateTime StartDate, DateTime EndDate, int MaxVisits)>> GetCardInfoForSyncAsync();
 }

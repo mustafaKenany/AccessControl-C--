@@ -66,10 +66,9 @@ public class AccessEventRepository : IAccessEventRepository
         RecordType? eventType = null, int? deviceId = null)
     {
         await using var db = _factory.CreateDbContext();
-        var query = db.AccessEvents
-            .Include(e => e.Door).ThenInclude(d => d.Device)
-            .Include(e => e.Card).ThenInclude(c => c!.Employee)
-            .AsQueryable();
+        // No Include — the projection below loads ONLY the displayed fields. The old Includes pulled
+        // the full Card.Employee row (incl. the PhotoData blob) for every event = a big slowdown.
+        var query = db.AccessEvents.AsQueryable();
 
         if (from.HasValue) query = query.Where(e => e.Timestamp >= from.Value);
         if (to.HasValue) query = query.Where(e => e.Timestamp <= to.Value);
@@ -91,6 +90,27 @@ public class AccessEventRepository : IAccessEventRepository
             .OrderByDescending(e => e.Timestamp)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .Select(e => new AccessEvent
+            {
+                Id = e.Id, DoorId = e.DoorId, CardId = e.CardId, EventType = e.EventType,
+                EventCode = e.EventCode, Timestamp = e.Timestamp, Details = e.Details,
+                Door = e.Door == null ? null! : new Door
+                {
+                    Id = e.Door.Id, Name = e.Door.Name,
+                    Device = e.Door.Device == null ? null! : new Device
+                    {
+                        Id = e.Door.Device.Id, Name = e.Door.Device.Name, SerialNumber = e.Door.Device.SerialNumber
+                    }
+                },
+                Card = e.Card == null ? null : new AccessCard
+                {
+                    Id = e.Card.Id, CardNumber = e.Card.CardNumber,
+                    Employee = e.Card.Employee == null ? null : new Employee
+                    {
+                        Id = e.Card.Employee.Id, FullNameEn = e.Card.Employee.FullNameEn, FullNameAr = e.Card.Employee.FullNameAr
+                    }
+                }
+            })
             .ToListAsync();
 
         return (items, total);

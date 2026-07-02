@@ -210,14 +210,24 @@ public class EmployeeRepository : IEmployeeRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<Employee>> GetOutstandingBalancesAsync()
+    public async Task<IEnumerable<Employee>> GetOutstandingBalancesAsync(string? search = null, int take = 500)
     {
         await using var db = _factory.CreateDbContext();
-        // Project WITHOUT the PhotoData blob — the Finance "outstanding" list shows no photo, so
-        // reading every outstanding player's photo was pure waste.
-        return await db.Employees
-            .Where(e => e.SubscriptionFee > e.AmountPaid)
+        // Search in the DB (was: load ALL outstanding then filter in C#) + cap the display list, and
+        // project WITHOUT the PhotoData blob (never shown). The full unpaid TOTAL comes from
+        // GetTotalOutstandingAsync (a DB SUM), so capping the list here doesn't skew the total.
+        var query = db.Employees.Where(e => e.SubscriptionFee > e.AmountPaid);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim();
+            query = query.Where(e =>
+                EF.Functions.Like(e.FullNameEn, "%" + s + "%") ||
+                EF.Functions.Like(e.FullNameAr, "%" + s + "%") ||
+                EF.Functions.Like(e.CardNo, "%" + s + "%"));
+        }
+        return await query
             .OrderByDescending(e => e.SubscriptionFee - e.AmountPaid)
+            .Take(take)
             .Select(e => new Employee
             {
                 Id = e.Id, FullNameEn = e.FullNameEn, FullNameAr = e.FullNameAr, CardNo = e.CardNo,
@@ -226,6 +236,15 @@ public class EmployeeRepository : IEmployeeRepository
                 StartDate = e.StartDate, EndDate = e.EndDate
             })
             .ToListAsync();
+    }
+
+    public async Task<decimal> GetTotalOutstandingAsync()
+    {
+        await using var db = _factory.CreateDbContext();
+        // DB-side SUM of net owed across ALL outstanding members — no rows loaded into memory.
+        return await db.Employees
+            .Where(e => e.SubscriptionFee > e.AmountPaid)
+            .SumAsync(e => e.SubscriptionFee - e.AmountPaid);
     }
 
     public async Task<IEnumerable<(int Id, string CardNo, DateTime StartDate, DateTime EndDate, int MaxVisits)>> GetCardInfoForSyncAsync()

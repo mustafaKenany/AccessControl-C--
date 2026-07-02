@@ -32,21 +32,33 @@ public class DeletedEmployeeRepository : IDeletedEmployeeRepository
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var s = search.ToLower();
+            // SQL Server's default collation is case-insensitive — the old ToLower() forced a
+            // computed scan and helped nothing. Use LIKE directly.
+            var s = search.Trim();
             query = query.Where(e =>
-                e.FullNameEn.ToLower().Contains(s) ||
-                e.FullNameAr.Contains(s) ||
-                e.CardNo.ToLower().Contains(s) ||
-                e.Phone.Contains(s) ||
-                e.DeleteReason.ToLower().Contains(s) ||
-                e.DeletedBy.ToLower().Contains(s));
+                EF.Functions.Like(e.FullNameEn, "%" + s + "%") ||
+                EF.Functions.Like(e.FullNameAr, "%" + s + "%") ||
+                EF.Functions.Like(e.CardNo, "%" + s + "%") ||
+                EF.Functions.Like(e.Phone, "%" + s + "%") ||
+                EF.Functions.Like(e.DeleteReason, "%" + s + "%") ||
+                EF.Functions.Like(e.DeletedBy, "%" + s + "%"));
         }
 
         var totalCount = await query.CountAsync();
+        // Project WITHOUT PhotoData — the deleted-records list never shows the photo and there is no
+        // restore flow, so reading the blob per row was pure waste.
         var items = await query
             .OrderByDescending(e => e.DeletedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .Select(e => new DeletedEmployee
+            {
+                Id = e.Id, OriginalId = e.OriginalId, FullNameEn = e.FullNameEn, FullNameAr = e.FullNameAr,
+                CardNo = e.CardNo, SubscriptionType = e.SubscriptionType, Phone = e.Phone,
+                SubscriptionFee = e.SubscriptionFee, AmountPaid = e.AmountPaid, StartDate = e.StartDate,
+                EndDate = e.EndDate, Notes = e.Notes, DeleteReason = e.DeleteReason, DeletedBy = e.DeletedBy,
+                DeletedAt = e.DeletedAt, OriginalCreatedAt = e.OriginalCreatedAt
+            })
             .ToListAsync();
 
         return (items, totalCount);
