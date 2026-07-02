@@ -261,6 +261,10 @@ public partial class EmployeesViewModel : ObservableObject
     {
         if (employee == null) return;
 
+        // Reload the full member INCLUDING the photo — the list DTOs omit the PhotoData blob for
+        // speed, so editing off the list DTO would blank the photo on save.
+        employee = await _employeeService.GetEmployeeByIdAsync(employee.Id) ?? employee;
+
         // Step 1: Show edit dialog with current data from DB
         var dialog = new AddEmployeeDialog(employee, _lookupService);
         dialog.SetValidationService(_employeeService);
@@ -786,6 +790,9 @@ public partial class EmployeesViewModel : ObservableObject
             System.Windows.Application.Current.MainWindow);
         if (!openEdit) return null;
 
+        // Reload the full member (incl. photo blob, which list DTOs omit) so editing doesn't blank it.
+        employee = await _employeeService.GetEmployeeByIdAsync(employee.Id) ?? employee;
+
         var editDialog = new AddEmployeeDialog(employee, _lookupService);
         editDialog.SetValidationService(_employeeService);
         editDialog.Owner = System.Windows.Application.Current.MainWindow;
@@ -1037,9 +1044,11 @@ public partial class EmployeesViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void PrintMemberCard(EmployeeDto? employee)
+    private async Task PrintMemberCard(EmployeeDto? employee)
     {
         if (employee == null) return;
+        // The ID card prints the photo — reload the full member (list DTOs omit the photo blob).
+        employee = await _employeeService.GetEmployeeByIdAsync(employee.Id) ?? employee;
         var dialog = new MemberCardDialog(employee)
         {
             Owner = System.Windows.Application.Current.MainWindow,

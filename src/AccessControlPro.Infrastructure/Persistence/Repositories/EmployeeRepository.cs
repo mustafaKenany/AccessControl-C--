@@ -16,32 +16,49 @@ public class EmployeeRepository : IEmployeeRepository
         return await db.Employees.Include(e => e.AccessCards).ToListAsync();
     }
 
+    // Digit-aware search: a card number (or a scanned card) uses an INDEXED exact/prefix seek — no
+    // full-table scan — which is what made card-scan search slow. Text searches use contains on the
+    // name/phone. Shared by the paged list, the filter pills, and the has-card count.
+    private static IQueryable<Employee> ApplySearch(IQueryable<Employee> query, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search)) return query;
+        var s = search.Trim();
+        if (s.All(char.IsDigit))
+        {
+            var z = s.TrimStart('0');
+            return query.Where(e =>
+                e.CardNo == s || e.CardNo == z
+                || EF.Functions.Like(e.CardNo, s + "%")
+                || (z.Length > 0 && EF.Functions.Like(e.CardNo, z + "%"))
+                || EF.Functions.Like(e.Phone, s + "%"));
+        }
+        return query.Where(e =>
+            EF.Functions.Like(e.FullNameEn, "%" + s + "%")
+            || EF.Functions.Like(e.FullNameAr, "%" + s + "%")
+            || EF.Functions.Like(e.Phone, "%" + s + "%"));
+    }
+
+    // List/search/filter queries must NOT read the PhotoData blob (the grid shows no photo — reading
+    // 100 photo blobs per page was the dominant slowdown). Project every scalar EXCEPT PhotoData;
+    // cards have no blob so load them fully. The photo is loaded on demand by GetByIdWithCardsAsync.
+    private static IQueryable<Employee> ProjectListShape(IQueryable<Employee> query) => query.Select(e => new Employee
+    {
+        Id = e.Id, FullNameEn = e.FullNameEn, FullNameAr = e.FullNameAr, CardNo = e.CardNo,
+        SubscriptionType = e.SubscriptionType, Phone = e.Phone, Height = e.Height, Weight = e.Weight,
+        SubscriptionFee = e.SubscriptionFee, Discount = e.Discount, AmountPaid = e.AmountPaid,
+        StartDate = e.StartDate, EndDate = e.EndDate, Notes = e.Notes, IsFrozen = e.IsFrozen,
+        FreezeStartDate = e.FreezeStartDate, CardBalance = e.CardBalance, Debt = e.Debt,
+        MaxVisits = e.MaxVisits, UsedVisits = e.UsedVisits, CreatedAt = e.CreatedAt,
+        AccessCards = e.AccessCards.ToList()
+    });
+
     public async Task<(IEnumerable<Employee> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? search = null)
     {
         await using var db = _factory.CreateDbContext();
-        var query = db.Employees.Include(e => e.AccessCards).AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var s = search.Trim();
-            // Strip leading zeros for card number matching (readers add leading zeros)
-            var sNoLeadingZeros = s.TrimStart('0');
-            // Use EF.Functions.Like for better SQL translation (uses SQL LIKE which can leverage indexes)
-            query = query.Where(e =>
-                EF.Functions.Like(e.FullNameEn, $"%{s}%") ||
-                EF.Functions.Like(e.FullNameAr ?? "", $"%{s}%") ||
-                EF.Functions.Like(e.CardNo ?? "", $"%{s}%") ||
-                (sNoLeadingZeros.Length > 0 && EF.Functions.Like(e.CardNo ?? "", $"%{sNoLeadingZeros}%")) ||
-                EF.Functions.Like(e.Phone ?? "", $"%{s}%"));
-        }
-
+        var query = ApplySearch(db.Employees.AsQueryable(), search);
         var totalCount = await query.CountAsync();
-        var items = await query
-            .OrderByDescending(e => e.Id)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
+        var items = await ProjectListShape(
+            query.OrderByDescending(e => e.Id).Skip((page - 1) * pageSize).Take(pageSize)).ToListAsync();
         return (items, totalCount);
     }
 
@@ -52,7 +69,7 @@ public class EmployeeRepository : IEmployeeRepository
     {
         await using var db = _factory.CreateDbContext();
         var now = DateTime.UtcNow;
-        var query = db.Employees.Include(e => e.AccessCards).AsQueryable();
+        var query = db.Employees.AsQueryable();
 
         query = filter switch
         {
@@ -64,17 +81,7 @@ public class EmployeeRepository : IEmployeeRepository
             _ => query
         };
 
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var s = search.Trim();
-            var sNoLeadingZeros = s.TrimStart('0');
-            query = query.Where(e =>
-                EF.Functions.Like(e.FullNameEn, $"%{s}%") ||
-                EF.Functions.Like(e.FullNameAr ?? "", $"%{s}%") ||
-                EF.Functions.Like(e.CardNo ?? "", $"%{s}%") ||
-                (sNoLeadingZeros.Length > 0 && EF.Functions.Like(e.CardNo ?? "", $"%{sNoLeadingZeros}%")) ||
-                EF.Functions.Like(e.Phone ?? "", $"%{s}%"));
-        }
+        query = ApplySearch(query, search);
 
         var total = await query.CountAsync();
         var withCard = await query.CountAsync(e => e.AccessCards.Any());
@@ -89,27 +96,14 @@ public class EmployeeRepository : IEmployeeRepository
             _ => query.OrderByDescending(e => e.Id)
         };
 
-        var items = await ordered.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var items = await ProjectListShape(ordered.Skip((page - 1) * pageSize).Take(pageSize)).ToListAsync();
         return (items, total, withCard);
     }
 
     public async Task<int> GetWithCardCountAsync(string? search = null)
     {
         await using var db = _factory.CreateDbContext();
-        var query = db.Employees.AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var s = search.Trim();
-            var sNoLeadingZeros = s.TrimStart('0');
-            query = query.Where(e =>
-                EF.Functions.Like(e.FullNameEn, $"%{s}%") ||
-                EF.Functions.Like(e.FullNameAr ?? "", $"%{s}%") ||
-                EF.Functions.Like(e.CardNo ?? "", $"%{s}%") ||
-                (sNoLeadingZeros.Length > 0 && EF.Functions.Like(e.CardNo ?? "", $"%{sNoLeadingZeros}%")) ||
-                EF.Functions.Like(e.Phone ?? "", $"%{s}%"));
-        }
-
+        var query = ApplySearch(db.Employees.AsQueryable(), search);
         return await query.CountAsync(e => e.AccessCards.Any());
     }
 
@@ -219,9 +213,18 @@ public class EmployeeRepository : IEmployeeRepository
     public async Task<IEnumerable<Employee>> GetOutstandingBalancesAsync()
     {
         await using var db = _factory.CreateDbContext();
+        // Project WITHOUT the PhotoData blob — the Finance "outstanding" list shows no photo, so
+        // reading every outstanding player's photo was pure waste.
         return await db.Employees
             .Where(e => e.SubscriptionFee > e.AmountPaid)
             .OrderByDescending(e => e.SubscriptionFee - e.AmountPaid)
+            .Select(e => new Employee
+            {
+                Id = e.Id, FullNameEn = e.FullNameEn, FullNameAr = e.FullNameAr, CardNo = e.CardNo,
+                Phone = e.Phone, SubscriptionType = e.SubscriptionType, SubscriptionFee = e.SubscriptionFee,
+                Discount = e.Discount, AmountPaid = e.AmountPaid, CardBalance = e.CardBalance, Debt = e.Debt,
+                StartDate = e.StartDate, EndDate = e.EndDate
+            })
             .ToListAsync();
     }
 

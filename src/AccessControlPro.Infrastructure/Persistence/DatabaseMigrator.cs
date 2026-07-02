@@ -718,6 +718,14 @@ public static class DatabaseMigrator
             // customer — including new ones — gets it automatically on first launch.
             @"IF (SELECT recovery_model_desc FROM sys.databases WHERE database_id = DB_ID()) <> 'SIMPLE'
               EXEC('ALTER DATABASE CURRENT SET RECOVERY SIMPLE WITH NO_WAIT');",
+
+            // v4.6: search/filter performance — EndDate powers the Expired/Active/Expiring filter pills
+            // (range predicate + ORDER BY); Phone for prefix search. (CardNo + Outstanding already indexed.)
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Employees_EndDate' AND object_id = OBJECT_ID('Employees'))
+              CREATE INDEX IX_Employees_EndDate ON Employees(EndDate);",
+
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Employees_Phone' AND object_id = OBJECT_ID('Employees'))
+              CREATE INDEX IX_Employees_Phone ON Employees(Phone) WHERE Phone <> '';",
         };
 
         var failedMigrations = new List<string>();
