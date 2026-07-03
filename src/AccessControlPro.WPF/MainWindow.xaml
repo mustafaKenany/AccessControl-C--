@@ -108,7 +108,8 @@
 
                         <!-- Send Diagnostics to Support -->
                         <Button Style="{StaticResource SidebarButton}"
-                                Click="SendDiagnosticsClick">
+                                Click="SendDiagnosticsClick"
+                                Visibility="{Binding CanSendDiagnostics, Converter={StaticResource BoolToVisibility}}">
                             <StackPanel Orientation="Horizontal">
                                 <fa:ImageAwesome Icon="CloudUpload" Width="16" Height="16"
                                                  Foreground="{StaticResource TextMutedBrush}"
@@ -120,7 +121,8 @@
 
                         <!-- Language Toggle -->
                         <Button Style="{StaticResource SidebarButton}"
-                                Command="{Binding ToggleLanguageCommand}">
+                                Command="{Binding ToggleLanguageCommand}"
+                                Visibility="{Binding CanChangeLanguage, Converter={StaticResource BoolToVisibility}}">
                             <StackPanel Orientation="Horizontal">
                                 <fa:ImageAwesome Icon="Globe" Width="16" Height="16"
                                                  Foreground="{StaticResource TextMutedBrush}"
@@ -311,7 +313,7 @@
 
                             <Button Style="{StaticResource SidebarButton}"
                                     Command="{Binding NavigateToCommand}" CommandParameter="Reminders"
-                                    Visibility="{Binding CanViewPlayers, Converter={StaticResource BoolToVisibility}}">
+                                    Visibility="{Binding CanViewReminders, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">
                                     <fa:ImageAwesome Icon="Whatsapp" Width="16" Height="16"
                                                      Foreground="{StaticResource TextMutedBrush}"

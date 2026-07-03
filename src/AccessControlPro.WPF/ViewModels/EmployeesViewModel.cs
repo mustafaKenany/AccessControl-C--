@@ -63,6 +63,10 @@ public partial class EmployeesViewModel : ObservableObject
     public bool CanRenew => _currentUser.HasPermission(AppPermission.PlayersRenew);
     public bool CanViewReports => _currentUser.HasPermission(AppPermission.PlayersReports);
     public bool CanSyncToDevice => _currentUser.HasPermission(AppPermission.PlayersSyncToDevice);
+    public bool CanDailyPass => _currentUser.HasPermission(AppPermission.PlayersDailyPass);
+    public bool CanBulkOperations => _currentUser.HasPermission(AppPermission.PlayersBulkOperations);
+    public bool CanCreateMissingCards => _currentUser.HasPermission(AppPermission.PlayersCreateMissingCards);
+    public bool CanPrintList => _currentUser.HasPermission(AppPermission.PlayersPrintList);
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -846,6 +850,20 @@ public partial class EmployeesViewModel : ObservableObject
                 MaxVisits = editDialog.MaxVisits
             };
             await _employeeService.UpdateEmployeeAsync(updated, reasonDialog.Reason);
+        }
+        catch (Exception ex)
+        {
+            // Show the same friendly validation message the Edit command uses and abort the renewal
+            // cleanly, instead of letting a duplicate-phone/card error crash to the global handler
+            // (classic gym, 2026-07: migrated members sharing phone "0" → unhandled DUPLICATE_PHONE).
+            var em = ex.Message;
+            if (em.StartsWith("DUPLICATE_CARD:"))
+                em = string.Format(Lang.DuplicateCardNo, em.Replace("DUPLICATE_CARD:", ""));
+            else if (em.StartsWith("DUPLICATE_PHONE:"))
+                em = string.Format(Lang.DuplicatePhone, em.Replace("DUPLICATE_PHONE:", ""));
+            CustomMessageBox.Show(em, Lang.AddPlayer, MsgType.Error,
+                System.Windows.Application.Current.MainWindow);
+            return null;
         }
         finally
         {

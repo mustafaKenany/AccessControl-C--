@@ -320,10 +320,10 @@
                 </Grid>
             </Border>
 
-            <!-- TAB 0: New Purchase Order Builder -->
-            <Border Margin="0" HorizontalAlignment="Left" Width="460">
-                <Border.Style>
-                    <Style TargetType="Border" BasedOn="{StaticResource DashboardCard}">
+            <!-- TAB 0: New Purchase Order Builder — form (left) + live items list (right) -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
                         <Setter Property="Visibility" Value="Collapsed"/>
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding SelectedTab}" Value="0">
@@ -331,8 +331,16 @@
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
-                </Border.Style>
-                <DockPanel>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="470"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- LEFT: order form (sizes to content) -->
+                <Border Grid.Column="0" Style="{StaticResource DashboardCard}" VerticalAlignment="Top">
+                <StackPanel>
                     <!-- Title -->
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,16">
                         <fa:ImageAwesome Icon="PlusCircle" Width="16" Height="16"
@@ -465,41 +473,57 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- PO Items List -->
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
-                        <ItemsControl ItemsSource="{Binding PoItems}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="{StaticResource BgInputBrush}" CornerRadius="10"
-                                            Padding="12,8" Margin="0,0,0,4">
-                                        <DockPanel>
-                                            <Button DockPanel.Dock="Right" Cursor="Hand"
-                                                    Command="{Binding DataContext.RemoveItemCommand, Source={StaticResource Proxy}}"
-                                                    CommandParameter="{Binding}"
-                                                    Background="Transparent" BorderThickness="0" Padding="6">
-                                                <fa:ImageAwesome Icon="Times" Width="10" Height="10" Foreground="#F7685B"/>
-                                            </Button>
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding ProductName}" FontSize="13" FontWeight="SemiBold"
-                                                           Foreground="{StaticResource TextPrimaryBrush}"/>
-                                                <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0">
-                                                    <TextBlock.Text>
-                                                        <MultiBinding StringFormat="{}{0} x {1:N0} = {2:N0}">
-                                                            <Binding Path="Quantity"/>
-                                                            <Binding Path="UnitCost"/>
-                                                            <Binding Path="TotalCost"/>
-                                                        </MultiBinding>
-                                                    </TextBlock.Text>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </DockPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </DockPanel>
-            </Border>
+                </StackPanel>
+                </Border>
+
+                <!-- RIGHT: items added to this order -->
+                <Border Grid.Column="2" Style="{StaticResource DashboardCard}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                            <fa:ImageAwesome Icon="ShoppingBasket" Width="14" Height="14"
+                                             Foreground="{StaticResource PrimaryLightBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Lang.PoAddItem}" FontSize="15"
+                                       Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding PoItems}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{StaticResource BgInputBrush}" CornerRadius="10"
+                                                Padding="14,10" Margin="0,0,0,6">
+                                            <DockPanel>
+                                                <Button DockPanel.Dock="Right" Cursor="Hand"
+                                                        Command="{Binding DataContext.RemoveItemCommand, Source={StaticResource Proxy}}"
+                                                        CommandParameter="{Binding}"
+                                                        Background="Transparent" BorderThickness="0" Padding="6">
+                                                    <fa:ImageAwesome Icon="Times" Width="11" Height="11" Foreground="#F7685B"/>
+                                                </Button>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding ProductName}" FontSize="13" FontWeight="SemiBold"
+                                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                    <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0">
+                                                        <TextBlock.Text>
+                                                            <MultiBinding StringFormat="{}{0} x {1:N0} = {2:N0}">
+                                                                <Binding Path="Quantity"/>
+                                                                <Binding Path="UnitCost"/>
+                                                                <Binding Path="TotalCost"/>
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </DockPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
 
         <!-- TAB 2: Stock Movements -->

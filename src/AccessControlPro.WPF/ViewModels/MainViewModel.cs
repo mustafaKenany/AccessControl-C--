@@ -82,6 +82,9 @@ public partial class MainViewModel : ObservableObject
     public bool CanViewMonitor => _currentUser.HasPermission(AppPermission.MonitorView);
     public bool CanViewDataMigration => _currentUser.HasPermission(AppPermission.DataMigration);
     public bool CanViewQrPass => _currentUser.HasPermission(AppPermission.QrPassManage);
+    public bool CanViewReminders => _currentUser.HasPermission(AppPermission.RemindersView);
+    public bool CanSendDiagnostics => _currentUser.HasPermission(AppPermission.DiagnosticsSend);
+    public bool CanChangeLanguage => _currentUser.HasPermission(AppPermission.AppChangeLanguage);
 
     public MainViewModel(
         DashboardViewModel dashboardViewModel,
@@ -139,7 +142,7 @@ public partial class MainViewModel : ObservableObject
             "Logs" => CanViewLogs,
             "DeletedRecords" => CanViewDeleted,
             "QrPass" => CanViewQrPass,
-            "Reminders" => CanViewPlayers,
+            "Reminders" => CanViewReminders,
             _ => true
         };
 

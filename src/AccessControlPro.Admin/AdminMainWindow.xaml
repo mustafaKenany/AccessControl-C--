@@ -57,6 +57,9 @@
                             <TextBlock Text="{Binding Lang.AppTitle}" FontSize="11"
                                        Foreground="{StaticResource TextMutedBrush}"
                                        HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            <TextBlock Text="{Binding AppVersion}" FontSize="10"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       HorizontalAlignment="Center" Margin="0,2,0,0"/>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
                                 <fa:ImageAwesome Icon="UserCircle" Width="12" Height="12"
                                                  Foreground="{StaticResource PrimaryLightBrush}"

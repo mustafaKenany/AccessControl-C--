@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Windows.Data;
 using AccessControlPro.Application.Services;
 using AccessControlPro.Domain.Entities;
 using AccessControlPro.WPF.Helpers;
@@ -33,10 +35,28 @@ public partial class QrPoolViewModel : ObservableObject
 
     public ObservableCollection<QrPoolEntry> AssignedList { get; } = new();
 
+    /// <summary>Filtered view over AssignedList — search by code / guest name / phone.</summary>
+    public ICollectionView AssignedView { get; }
+
+    [ObservableProperty] private string _searchText = "";
+    partial void OnSearchTextChanged(string value) => AssignedView.Refresh();
+
     public QrPoolViewModel(IQrPoolService qrPoolService, string connectionString)
     {
         _qrPoolService = qrPoolService;
         _connectionString = connectionString;
+        AssignedView = CollectionViewSource.GetDefaultView(AssignedList);
+        AssignedView.Filter = FilterAssigned;
+    }
+
+    private bool FilterAssigned(object obj)
+    {
+        var s = SearchText?.Trim();
+        if (string.IsNullOrEmpty(s)) return true;
+        if (obj is not QrPoolEntry e) return false;
+        return (e.Code?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (e.GuestName?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (e.GuestPhone?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false);
     }
 
     public async Task LoadAsync()

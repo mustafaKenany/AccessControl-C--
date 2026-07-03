@@ -35,7 +35,8 @@
                 <Button Style="{StaticResource PrimaryButton}"
                         Background="#2E7D32"
                         Command="{Binding CreateDailyPassCommand}" Margin="0,0,10,0"
-                        ToolTip="{Binding Lang.DailyPass}">
+                        ToolTip="{Binding Lang.DailyPass}"
+                        Visibility="{Binding CanDailyPass, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                         <fa:ImageAwesome Icon="Qrcode" Width="13" Height="13"
                                          Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
@@ -56,7 +57,8 @@
 
                 <Button Style="{StaticResource PrimaryButton}"
                         Background="#0D5C63"
-                        Command="{Binding BulkOperationCommand}">
+                        Command="{Binding BulkOperationCommand}"
+                        Visibility="{Binding CanBulkOperations, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                         <fa:ImageAwesome Icon="ListAlt" Width="13" Height="13"
                                          Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
@@ -67,7 +69,8 @@
                 <Button Style="{StaticResource PrimaryButton}"
                         Background="#0D5C63" Margin="10,0,0,0"
                         Command="{Binding CreateMissingCardsCommand}"
-                        ToolTip="{Binding Lang.CreateMissingCards}">
+                        ToolTip="{Binding Lang.CreateMissingCards}"
+                        Visibility="{Binding CanCreateMissingCards, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                         <fa:ImageAwesome Icon="IdCard" Width="13" Height="13"
                                          Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
@@ -78,7 +81,8 @@
                 <Button Style="{StaticResource PrimaryButton}"
                         Background="#247B7B" Margin="10,0,0,0"
                         Command="{Binding PrintListCommand}"
-                        ToolTip="{Binding Lang.PrintList}">
+                        ToolTip="{Binding Lang.PrintList}"
+                        Visibility="{Binding CanPrintList, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                         <fa:ImageAwesome Icon="Print" Width="13" Height="13"
                                          Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>

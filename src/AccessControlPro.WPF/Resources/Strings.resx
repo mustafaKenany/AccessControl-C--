@@ -449,6 +449,10 @@ Phone or subscription type is still a placeholder value (MIG-... or "Migrated").
   <data name="PermPlayersFreeze" xml:space="preserve"><value>Freeze Player</value></data>
   <data name="PermPlayersRenew" xml:space="preserve"><value>Renew Subscription</value></data>
   <data name="PermPlayersReports" xml:space="preserve"><value>Player Reports</value></data>
+  <data name="PermPlayersDailyPass" xml:space="preserve"><value>Daily Pass</value></data>
+  <data name="PermPlayersBulkOperations" xml:space="preserve"><value>Bulk Operations</value></data>
+  <data name="PermPlayersCreateMissingCards" xml:space="preserve"><value>Create Missing Cards</value></data>
+  <data name="PermPlayersPrintList" xml:space="preserve"><value>Print Players List</value></data>
   <data name="PermDevicesView" xml:space="preserve"><value>View Devices</value></data>
   <data name="PermDevicesAdd" xml:space="preserve"><value>Add Devices</value></data>
   <data name="PermDevicesEdit" xml:space="preserve"><value>Edit Devices</value></data>
@@ -483,6 +487,11 @@ Phone or subscription type is still a placeholder value (MIG-... or "Migrated").
   <data name="PermDataMigrationAccess" xml:space="preserve"><value>Data Migration</value></data>
   <data name="PermGroupQrPass" xml:space="preserve"><value>QR Pass</value></data>
   <data name="PermQrPassManage" xml:space="preserve"><value>Manage QR Pass</value></data>
+  <data name="PermGroupReminders" xml:space="preserve"><value>Reminders</value></data>
+  <data name="PermRemindersView" xml:space="preserve"><value>View Reminders</value></data>
+  <data name="PermGroupGeneral" xml:space="preserve"><value>General</value></data>
+  <data name="PermDiagnosticsSend" xml:space="preserve"><value>Send Diagnostics</value></data>
+  <data name="PermAppChangeLanguage" xml:space="preserve"><value>Change Language</value></data>
   <data name="PermGroupAdmin" xml:space="preserve"><value>Admin Panel</value></data>
 
   <!-- Change Password -->

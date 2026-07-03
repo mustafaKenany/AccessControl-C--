@@ -267,33 +267,25 @@
                                                             <ComboBox ItemsSource="{x:Static local:TimeSegmentItem.Hours}"
                                                                       SelectedItem="{Binding StartHour}"
                                                                       Width="52" FontSize="12"
-                                                                      Background="#2A2A3E" Foreground="#E0E0E0"
-                                                                      BorderBrush="#3A3A50" BorderThickness="1"
-                                                                      Padding="4,3"/>
+                                                                      Style="{StaticResource DarkComboBox}"/>
                                                             <TextBlock Text=":" Foreground="{StaticResource TextMutedBrush}"
                                                                        VerticalAlignment="Center" Margin="2,0"/>
                                                             <ComboBox ItemsSource="{x:Static local:TimeSegmentItem.Minutes}"
                                                                       SelectedItem="{Binding StartMinute}"
                                                                       Width="52" FontSize="12"
-                                                                      Background="#2A2A3E" Foreground="#E0E0E0"
-                                                                      BorderBrush="#3A3A50" BorderThickness="1"
-                                                                      Padding="4,3"/>
+                                                                      Style="{StaticResource DarkComboBox}"/>
                                                             <TextBlock Text=" - " Foreground="{StaticResource TextMutedBrush}"
                                                                        VerticalAlignment="Center" Margin="4,0"/>
                                                             <ComboBox ItemsSource="{x:Static local:TimeSegmentItem.Hours}"
                                                                       SelectedItem="{Binding EndHour}"
                                                                       Width="52" FontSize="12"
-                                                                      Background="#2A2A3E" Foreground="#E0E0E0"
-                                                                      BorderBrush="#3A3A50" BorderThickness="1"
-                                                                      Padding="4,3"/>
+                                                                      Style="{StaticResource DarkComboBox}"/>
                                                             <TextBlock Text=":" Foreground="{StaticResource TextMutedBrush}"
                                                                        VerticalAlignment="Center" Margin="2,0"/>
                                                             <ComboBox ItemsSource="{x:Static local:TimeSegmentItem.Minutes}"
                                                                       SelectedItem="{Binding EndMinute}"
                                                                       Width="52" FontSize="12"
-                                                                      Background="#2A2A3E" Foreground="#E0E0E0"
-                                                                      BorderBrush="#3A3A50" BorderThickness="1"
-                                                                      Padding="4,3"/>
+                                                                      Style="{StaticResource DarkComboBox}"/>
                                                         </StackPanel>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>

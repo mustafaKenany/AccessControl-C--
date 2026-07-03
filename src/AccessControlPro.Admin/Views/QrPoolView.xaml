@@ -289,21 +289,56 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" FontSize="15" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="Text" Value="Assigned Codes"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
-                                    <Setter Property="Text" Value="&#x0627;&#x0644;&#x0631;&#x0645;&#x0648;&#x0632; &#x0627;&#x0644;&#x0645;&#x0639;&#x064A;&#x0651;&#x0646;&#x0629;"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
+                <DockPanel Grid.Row="0" Margin="0,0,0,12">
+                    <TextBlock DockPanel.Dock="Left" FontSize="15" VerticalAlignment="Center"
+                               Foreground="{StaticResource TextPrimaryBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Assigned Codes"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                        <Setter Property="Text" Value="&#x0627;&#x0644;&#x0631;&#x0645;&#x0648;&#x0632; &#x0627;&#x0644;&#x0645;&#x0639;&#x064A;&#x0651;&#x0646;&#x0629;"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <!-- Search the assigned-codes list (by code / guest name / phone) -->
+                    <Border DockPanel.Dock="Right" HorizontalAlignment="Right" Width="290"
+                            Background="{StaticResource BgInputBrush}" CornerRadius="8" Padding="10,0">
+                        <DockPanel>
+                            <fa:ImageAwesome Icon="Search" Width="12" Height="12" DockPanel.Dock="Left"
+                                             Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <Grid>
+                                <TextBox x:Name="QrSearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextPrimaryBrush}"
+                                         CaretBrush="{StaticResource TextPrimaryBrush}" FontFamily="{StaticResource CairoFont}"
+                                         FontSize="12" Padding="0,8" VerticalContentAlignment="Center"/>
+                                <TextBlock IsHitTestVisible="False" VerticalAlignment="Center" FontSize="12"
+                                           Foreground="{StaticResource TextMutedBrush}" Margin="2,0,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Search code / guest / phone…"/>
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text, ElementName=QrSearchBox}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Lang.IsArabic}" Value="True">
+                                                    <Setter Property="Text" Value="&#x0628;&#x062D;&#x062B; &#x0628;&#x0627;&#x0644;&#x0643;&#x0648;&#x062F; &#x0623;&#x0648; &#x0627;&#x0644;&#x0636;&#x064A;&#x0641; &#x0623;&#x0648; &#x0627;&#x0644;&#x0647;&#x0627;&#x062A;&#x0641;&#x2026;"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+                </DockPanel>
 
                 <DataGrid Grid.Row="1"
-                          ItemsSource="{Binding AssignedList}"
+                          ItemsSource="{Binding AssignedView}"
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           Background="Transparent"

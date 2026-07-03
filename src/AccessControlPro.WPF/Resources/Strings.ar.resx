@@ -454,6 +454,10 @@
   <data name="PermPlayersFreeze" xml:space="preserve"><value>تجميد لاعب</value></data>
   <data name="PermPlayersRenew" xml:space="preserve"><value>تجديد الاشتراك</value></data>
   <data name="PermPlayersReports" xml:space="preserve"><value>تقارير اللاعبين</value></data>
+  <data name="PermPlayersDailyPass" xml:space="preserve"><value>الدخول اليومي</value></data>
+  <data name="PermPlayersBulkOperations" xml:space="preserve"><value>العمليات الجماعية</value></data>
+  <data name="PermPlayersCreateMissingCards" xml:space="preserve"><value>إنشاء البطاقات الناقصة</value></data>
+  <data name="PermPlayersPrintList" xml:space="preserve"><value>طباعة قائمة اللاعبين</value></data>
   <data name="PermDevicesView" xml:space="preserve"><value>عرض الأجهزة</value></data>
   <data name="PermDevicesAdd" xml:space="preserve"><value>إضافة أجهزة</value></data>
   <data name="PermDevicesEdit" xml:space="preserve"><value>تعديل الأجهزة</value></data>
@@ -488,6 +492,11 @@
   <data name="PermDataMigrationAccess" xml:space="preserve"><value>ترحيل البيانات</value></data>
   <data name="PermGroupQrPass" xml:space="preserve"><value>تصريح QR</value></data>
   <data name="PermQrPassManage" xml:space="preserve"><value>إدارة تصاريح QR</value></data>
+  <data name="PermGroupReminders" xml:space="preserve"><value>التذكيرات</value></data>
+  <data name="PermRemindersView" xml:space="preserve"><value>عرض التذكيرات</value></data>
+  <data name="PermGroupGeneral" xml:space="preserve"><value>عام</value></data>
+  <data name="PermDiagnosticsSend" xml:space="preserve"><value>إرسال ملفات التشخيص</value></data>
+  <data name="PermAppChangeLanguage" xml:space="preserve"><value>تغيير اللغة</value></data>
   <data name="PermGroupAdmin" xml:space="preserve"><value>لوحة الإدارة</value></data>
 
   <!-- Change Password -->

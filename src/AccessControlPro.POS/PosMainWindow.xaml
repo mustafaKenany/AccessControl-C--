@@ -46,8 +46,13 @@
                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="POS Terminal" FontSize="16" FontWeight="Bold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="POS Terminal" FontSize="16" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                                <TextBlock Text="{Binding AppVersion}" FontSize="11"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           VerticalAlignment="Bottom" Margin="8,0,0,2"/>
+                            </StackPanel>
                             <TextBlock Text="{Binding Lang.AppTitle}" FontSize="10"
                                        Foreground="{StaticResource TextMutedBrush}" Margin="0,-2,0,0"/>
                         </StackPanel>

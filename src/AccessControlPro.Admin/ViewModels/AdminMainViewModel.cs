@@ -33,6 +33,15 @@ public partial class AdminMainViewModel : ObservableObject
 
     public string CurrentUserDisplayName => _currentUser.DisplayName ?? _currentUser.Username ?? "";
 
+    public string AppVersion
+    {
+        get
+        {
+            var v = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version;
+            return v == null ? "" : $"v{v.Major}.{v.Minor}.{v.Build}";
+        }
+    }
+
     public AdminMainViewModel(
         UsersViewModel usersViewModel,
         SettingsViewModel settingsViewModel,

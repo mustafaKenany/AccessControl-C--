@@ -97,9 +97,12 @@ public class EmployeeService : IEmployeeService
         if (existing != null)
             throw new InvalidOperationException($"DUPLICATE_CARD:{dto.CardNo}");
 
-        var existingPhone = await _employeeRepository.GetByPhoneAsync(dto.Phone);
-        if (existingPhone != null)
-            throw new InvalidOperationException($"DUPLICATE_PHONE:{dto.Phone}");
+        if (!IsBlankPhone(dto.Phone))
+        {
+            var existingPhone = await _employeeRepository.GetByPhoneAsync(dto.Phone);
+            if (existingPhone != null)
+                throw new InvalidOperationException($"DUPLICATE_PHONE:{dto.Phone}");
+        }
 
         var employee = new Employee
         {
@@ -162,7 +165,7 @@ public class EmployeeService : IEmployeeService
                 throw new InvalidOperationException($"DUPLICATE_CARD:{dto.CardNo}");
         }
 
-        if (employee.Phone != dto.Phone)
+        if (employee.Phone != dto.Phone && !IsBlankPhone(dto.Phone))
         {
             var existingPhone = await _employeeRepository.GetByPhoneAsync(dto.Phone);
             if (existingPhone != null && existingPhone.Id != dto.Id)
@@ -1994,6 +1997,13 @@ public class EmployeeService : IEmployeeService
     // the gate reject the card, which is exactly what we want for an expired member.
     private static string DevicePermitTime(DateTime endDate)
         => endDate.Date.AddDays(1).AddSeconds(-1).ToString("yyyy-MM-dd HH:mm:ss");
+
+    // A blank / placeholder phone ("", whitespace, or "0") means "unknown" — many members
+    // legitimately have no phone, so it must NOT be treated as a uniqueness collision. Treating
+    // "0" as a real number crashed renewals for migrated members who all shared phone "0"
+    // (classic gym, 2026-07). Real (non-blank) phone uniqueness is still enforced.
+    private static bool IsBlankPhone(string? phone)
+        => string.IsNullOrWhiteSpace(phone) || phone.Trim() == "0";
 
     private static int ComputeSyncStatus(Employee e)
     {

@@ -23,6 +23,10 @@ public static class AppPermission
     public const string PlayersReports = "Players.Reports";
     public const string PlayersReassignCard = "Players.ReassignCard";
     public const string PlayersSyncToDevice = "Players.SyncToDevice";
+    public const string PlayersDailyPass = "Players.DailyPass";
+    public const string PlayersBulkOperations = "Players.BulkOperations";
+    public const string PlayersCreateMissingCards = "Players.CreateMissingCards";
+    public const string PlayersPrintList = "Players.PrintList";
 
     // Devices
     public const string DevicesView = "Devices.View";
@@ -62,6 +66,13 @@ public static class AppPermission
     // QR Pass
     public const string QrPassManage = "QrPass.Manage";
 
+    // Reminders
+    public const string RemindersView = "Reminders.View";
+
+    // General (app-wide actions)
+    public const string DiagnosticsSend = "Diagnostics.Send";
+    public const string AppChangeLanguage = "App.ChangeLanguage";
+
     // Dashboard
     public const string DashboardView = "Dashboard.View";
 
@@ -100,7 +111,7 @@ public static class AppPermission
         DashboardView,
         PlayersView, PlayersAdd, PlayersEdit, PlayersDelete,
         PlayersAssignCard, PlayersRemoveCard, PlayersReassignCard, PlayersFreeze, PlayersRenew, PlayersReports,
-        PlayersSyncToDevice,
+        PlayersSyncToDevice, PlayersDailyPass, PlayersBulkOperations, PlayersCreateMissingCards, PlayersPrintList,
         DevicesView, DevicesAdd, DevicesEdit, DevicesDelete, DevicesConnect,
         DoorsView, DoorsOpenClose, DoorsSettings,
         EventsView,
@@ -110,6 +121,8 @@ public static class AppPermission
         DeletedRecordsView,
         MonitorView,
         DataMigration, QrPassManage,
+        RemindersView,
+        DiagnosticsSend, AppChangeLanguage,
         POSSales, POSManageShift, POSApplyDiscount, POSPrintReceipt, POSViewSummary,
         TimeGroupsView, TimeGroupsManage,
         SubscriptionPlansView, SubscriptionPlansManage,
@@ -127,7 +140,8 @@ public static class AppPermission
         PlayersView,
         DevicesView,
         DoorsView,
-        EventsView
+        EventsView,
+        AppChangeLanguage
     ];
 
     /// <summary>
@@ -137,7 +151,7 @@ public static class AppPermission
     [
         ("AppAccess", [AccessMainApp, AccessPOS, AccessAdmin, AccessCloud]),
         ("Dashboard", [DashboardView]),
-        ("Players", [PlayersView, PlayersAdd, PlayersEdit, PlayersDelete, PlayersAssignCard, PlayersRemoveCard, PlayersReassignCard, PlayersFreeze, PlayersRenew, PlayersReports, PlayersSyncToDevice]),
+        ("Players", [PlayersView, PlayersAdd, PlayersEdit, PlayersDelete, PlayersAssignCard, PlayersRemoveCard, PlayersReassignCard, PlayersFreeze, PlayersRenew, PlayersReports, PlayersSyncToDevice, PlayersDailyPass, PlayersBulkOperations, PlayersCreateMissingCards, PlayersPrintList]),
         ("Devices", [DevicesView, DevicesAdd, DevicesEdit, DevicesDelete, DevicesConnect]),
         ("Doors", [DoorsView, DoorsOpenClose, DoorsSettings]),
         ("Events", [EventsView]),
@@ -151,6 +165,8 @@ public static class AppPermission
         ("Monitor", [MonitorView]),
         ("DataMigration", [DataMigration]),
         ("QrPass", [QrPassManage]),
+        ("Reminders", [RemindersView]),
+        ("General", [DiagnosticsSend, AppChangeLanguage]),
         ("Backup", [BackupView, BackupManage]),
         ("Admin", [AdminManageUsers, AdminManageSettings])
     ];

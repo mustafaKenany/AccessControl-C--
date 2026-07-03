@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using AccessControlPro.Application.DTOs;
 using AccessControlPro.Application.Interfaces;
 using AccessControlPro.Application.Services;
+using AccessControlPro.Domain.Enums;
 using AccessControlPro.WPF.Helpers;
 using AccessControlPro.WPF.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -16,8 +17,11 @@ public partial class DashboardViewModel : ObservableObject
     private readonly ILookupService _lookupService;
     private readonly IFinanceService _financeService;
     private readonly IEmployeeService _employeeService;
+    private readonly CurrentUserService _currentUser;
 
     public LanguageManager Lang => LanguageManager.Instance;
+
+    public bool CanDailyPass => _currentUser.HasPermission(AppPermission.PlayersDailyPass);
 
     [ObservableProperty]
     private int _totalDevices;
@@ -57,6 +61,7 @@ public partial class DashboardViewModel : ObservableObject
         _lookupService = lookupService;
         _financeService = financeService;
         _employeeService = employeeService;
+        _currentUser = currentUser;
         WelcomeMessage = currentUser.DisplayName ?? "";
     }
 

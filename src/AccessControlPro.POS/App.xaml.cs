@@ -112,6 +112,30 @@ public partial class App : System.Windows.Application
         // registered here too, or POS fails to start with a DI "Unable to resolve service" error.
         services.AddSingleton<Application.Helpers.DeviceOperationHelper>();
         services.AddScoped<IEmployeeService, EmployeeService>();
+        // EmployeeService also depends on IQrPoolService (added to its ctor in v4.6.25). The POS
+        // container never registered it → "Unable to resolve service for type 'IQrPoolService'"
+        // crash the moment the cashier resolves EmployeeService. Register it the same config-driven
+        // way the main WPF app does.
+        services.AddSingleton<IQrPoolService>(sp =>
+        {
+            var qrPoolSize = 3500;
+            var qrRangeStart = 50001001;
+            try
+            {
+                var settingsPath = System.IO.Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+                if (System.IO.File.Exists(settingsPath))
+                {
+                    var json = System.IO.File.ReadAllText(settingsPath);
+                    using var doc = System.Text.Json.JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("QrPoolSize", out var sizeEl))
+                        qrPoolSize = sizeEl.GetInt32();
+                    if (doc.RootElement.TryGetProperty("QrRangeStart", out var startEl))
+                        qrRangeStart = startEl.GetInt32();
+                }
+            }
+            catch { /* use defaults */ }
+            return new QrPoolService(connectionString, qrPoolSize, qrRangeStart);
+        });
 
         // Cloud sync
         services.AddSingleton<ICloudSyncService>(sp => new CloudSyncService(connectionString));

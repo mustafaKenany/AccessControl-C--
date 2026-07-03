@@ -726,6 +726,33 @@ public static class DatabaseMigrator
 
             @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Employees_Phone' AND object_id = OBJECT_ID('Employees'))
               CREATE INDEX IX_Employees_Phone ON Employees(Phone) WHERE Phone <> '';",
+
+            // v4.6.51: new granular permissions (Daily Pass, Bulk Ops, Create-Missing-Cards, Print-List,
+            // Reminders, Send-Diagnostics, Change-Language) previously had NO gate. This is a ONE-TIME data
+            // backfill so no existing operator loses a button they already had: grant the Players-area actions
+            // to any non-admin user who could already see Players, and grant the globally-available actions
+            // (diagnostics + language) to every non-admin user. Guarded by a marker table so it runs exactly
+            // once — otherwise it would re-grant to new users or undo an admin's deliberate removal. NOT a
+            // schema migration (new columns still always run); the marker only short-circuits THIS backfill.
+            // Admins bypass permission checks by role, so they are intentionally skipped.
+            @"IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = '__PermBackfill1')
+              BEGIN
+                UPDATE Users SET Permissions = Permissions + ',Players.DailyPass'
+                  WHERE Role <> 'Admin' AND Permissions LIKE '%Players.View%' AND Permissions NOT LIKE '%Players.DailyPass%';
+                UPDATE Users SET Permissions = Permissions + ',Players.BulkOperations'
+                  WHERE Role <> 'Admin' AND Permissions LIKE '%Players.View%' AND Permissions NOT LIKE '%Players.BulkOperations%';
+                UPDATE Users SET Permissions = Permissions + ',Players.CreateMissingCards'
+                  WHERE Role <> 'Admin' AND Permissions LIKE '%Players.View%' AND Permissions NOT LIKE '%Players.CreateMissingCards%';
+                UPDATE Users SET Permissions = Permissions + ',Players.PrintList'
+                  WHERE Role <> 'Admin' AND Permissions LIKE '%Players.View%' AND Permissions NOT LIKE '%Players.PrintList%';
+                UPDATE Users SET Permissions = Permissions + ',Reminders.View'
+                  WHERE Role <> 'Admin' AND Permissions LIKE '%Players.View%' AND Permissions NOT LIKE '%Reminders.View%';
+                UPDATE Users SET Permissions = Permissions + ',Diagnostics.Send'
+                  WHERE Role <> 'Admin' AND Permissions NOT LIKE '%Diagnostics.Send%';
+                UPDATE Users SET Permissions = Permissions + ',App.ChangeLanguage'
+                  WHERE Role <> 'Admin' AND Permissions NOT LIKE '%App.ChangeLanguage%';
+                CREATE TABLE __PermBackfill1 (Applied bit NOT NULL);
+              END",
         };
 
         var failedMigrations = new List<string>();

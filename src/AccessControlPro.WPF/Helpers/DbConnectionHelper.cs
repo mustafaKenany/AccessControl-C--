@@ -50,21 +50,34 @@ public static class DbConnectionHelper
     /// <summary>
     /// Checks if a SqlException indicates a connection/network problem.
     /// </summary>
-    public static bool IsConnectionError(Exception ex)
+    public static bool IsConnectionError(Exception? ex)
     {
-        if (ex is SqlException sqlEx)
+        // Walk the WHOLE inner-exception chain — EF wraps the real failure several levels deep
+        // (e.g. RetryLimitExceededException -> InvalidOperationException pool-timeout -> SqlException).
+        for (var e = ex; e != null; e = e.InnerException)
         {
-            // Network-related or instance-specific errors
-            return sqlEx.Number is 2 or 53 or -2 or 10054 or 10060 or 10061
-                or 233 or 258 or 4060 or 18456
-                || sqlEx.Class >= 20; // severity >= 20 = connection-level
+            if (e is SqlException sqlEx
+                && (sqlEx.Number is 2 or 53 or -2 or 10054 or 10060 or 10061
+                    or 233 or 258 or 4060 or 18456
+                    || sqlEx.Class >= 20)) // severity >= 20 = connection-level
+                return true;
+
+            // EF Core's retrying execution strategy gives up after N transient failures — it only
+            // ever retries transient (connection/timeout) errors, so this always means the DB was
+            // unreachable (power gym, 2026-07). Match by name to avoid an EF Core reference here.
+            if (e.GetType().Name == "RetryLimitExceededException")
+                return true;
+
+            var m = e.Message;
+            // Connection-pool exhaustion / timeout obtaining a connection.
+            if (m.Contains("timeout", StringComparison.OrdinalIgnoreCase)
+                && m.Contains("pool", StringComparison.OrdinalIgnoreCase))
+                return true;
+            // EF Core sometimes wraps in a plain InvalidOperationException.
+            if (m.Contains("connection", StringComparison.OrdinalIgnoreCase)
+                && m.Contains("server", StringComparison.OrdinalIgnoreCase))
+                return true;
         }
-
-        if (ex.InnerException is SqlException innerSql)
-            return IsConnectionError(innerSql);
-
-        // EF Core wraps in InvalidOperationException sometimes
-        return ex.Message.Contains("connection", StringComparison.OrdinalIgnoreCase)
-            && ex.Message.Contains("server", StringComparison.OrdinalIgnoreCase);
+        return false;
     }
 }
