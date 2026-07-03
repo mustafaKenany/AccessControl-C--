@@ -16,6 +16,7 @@ public partial class RenewSubscriptionDialog : Window
     private List<SubscriptionPlan> _plans = new();
     private readonly List<DeviceDto> _devices;
     private readonly List<CheckBox> _deviceCheckBoxes = new();
+    private readonly List<(int Number, CheckBox Check)> _doorChecks = new();
     private readonly ILookupService? _lookupService;
 
     public LanguageManager Lang => LanguageManager.Instance;
@@ -33,11 +34,16 @@ public partial class RenewSubscriptionDialog : Window
     {
         get
         {
-            var d1 = Door1Check.IsChecked == true ? "01" : "00";
-            var d2 = Door2Check.IsChecked == true ? "01" : "00";
-            var d3 = Door3Check.IsChecked == true ? "01" : "00";
-            var d4 = Door4Check.IsChecked == true ? "01" : "00";
-            return $"{d1}{d2}{d3}{d4}";
+            // Always emit the fixed 8-char positional string (door 1..4). A door checkbox that
+            // isn't shown (hardware has fewer doors) or is unchecked contributes "00".
+            var sb = new System.Text.StringBuilder();
+            for (int n = 1; n <= 4; n++)
+            {
+                var entry = _doorChecks.FirstOrDefault(c => c.Number == n);
+                var on = entry.Check != null && entry.Check.IsChecked == true;
+                sb.Append(on ? "01" : "00");
+            }
+            return sb.ToString();
         }
     }
 
@@ -65,12 +71,13 @@ public partial class RenewSubscriptionDialog : Window
         }
     }
 
-    public RenewSubscriptionDialog(EmployeeDto employee, List<DeviceDto> devices, ILookupService? lookupService = null)
+    public RenewSubscriptionDialog(EmployeeDto employee, List<DeviceDto> devices, ILookupService? lookupService = null, List<DoorDto>? doors = null)
     {
         _devices = devices ?? new List<DeviceDto>();
         _lookupService = lookupService;
         InitializeComponent();
         PlayerNameText.Text = $"{employee.FullNameEn} ({employee.CardNo})";
+        PopulateDoors(doors);
         LoadPlans();
         PopulateSubscriptionTypes();
         PopulatePeriods();
@@ -87,6 +94,40 @@ public partial class RenewSubscriptionDialog : Window
 
         if (_lookupService != null)
             _ = LoadPlansFromDbAsync();
+    }
+
+    private void PopulateDoors(List<DoorDto>? doors)
+    {
+        DoorPanel.Children.Clear();
+        _doorChecks.Clear();
+
+        // One checkbox per physical door (1..4) that actually exists on the configured devices,
+        // labelled with the door's real name from the Doors section. 2-door hardware shows 2,
+        // 4-door shows 4. Falls back to the classic Door 1..4 if none are configured yet.
+        var distinct = (doors ?? new List<DoorDto>())
+            .Where(d => d.DoorNumber >= 1 && d.DoorNumber <= 4)
+            .GroupBy(d => d.DoorNumber)
+            .OrderBy(g => g.Key)
+            .Select(g => new { Number = g.Key, Name = g.First().Name })
+            .ToList();
+
+        if (distinct.Count == 0)
+            for (int n = 1; n <= 4; n++)
+                distinct.Add(new { Number = n, Name = $"Door {n}" });
+
+        var style = (Style)FindResource("DarkCheckBox");
+        foreach (var d in distinct)
+        {
+            var cb = new CheckBox
+            {
+                Content = string.IsNullOrWhiteSpace(d.Name) ? $"Door {d.Number}" : d.Name,
+                IsChecked = true,
+                Style = style,
+                Margin = new Thickness(0, 2, 20, 2)
+            };
+            DoorPanel.Children.Add(cb);
+            _doorChecks.Add((d.Number, cb));
+        }
     }
 
     private void LoadPlans()
@@ -177,8 +218,10 @@ public partial class RenewSubscriptionDialog : Window
     {
         EffectiveTimesCombo.Items.Clear();
 
-        // Preset effective times values — must match AssignCardDialog exactly
-        var presetValues = new[] { 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 400, 500 };
+        // Preset effective times — must match AssignCardDialog: 1..60 (step 1), then 120,180,… (step 60).
+        var presetValues = System.Linq.Enumerable.Range(1, 60)
+            .Concat(new[] { 120, 180, 240, 300, 360, 420, 480, 540, 600 })
+            .ToArray();
 
         foreach (var val in presetValues)
         {
@@ -402,8 +445,7 @@ public partial class RenewSubscriptionDialog : Window
         if (string.IsNullOrWhiteSpace(FeeTextBox.Text) || NewFee <= 0)
             errors.Add(Lang.FeeRequired);
 
-        if (Door1Check.IsChecked != true && Door2Check.IsChecked != true &&
-            Door3Check.IsChecked != true && Door4Check.IsChecked != true)
+        if (!_doorChecks.Any(c => c.Check.IsChecked == true))
             errors.Add(Lang.SelectAtLeastOneDoor);
 
         if (_devices.Count > 0 && SelectedDeviceIds.Count == 0)

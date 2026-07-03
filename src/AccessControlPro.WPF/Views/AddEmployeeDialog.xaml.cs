@@ -76,7 +76,7 @@ public partial class AddEmployeeDialog : Window
         HeightTextBox.Text = existing.Height > 0 ? existing.Height.ToString() : "";
         WeightTextBox.Text = existing.Weight > 0 ? existing.Weight.ToString() : "";
         FeeTextBox.Text = existing.SubscriptionFee > 0 ? existing.SubscriptionFee.ToString() : "";
-        DiscountTextBox.Text = existing.Discount > 0 ? existing.Discount.ToString() : "";
+        DiscountTextBox.Text = existing.Discount > 0 ? existing.Discount.ToString() : "0";
         PaidTextBox.Text = existing.AmountPaid > 0 ? existing.AmountPaid.ToString() : "";
         NotesTextBox.Text = existing.Notes;
 

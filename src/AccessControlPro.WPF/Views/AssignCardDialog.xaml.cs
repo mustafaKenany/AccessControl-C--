@@ -11,6 +11,7 @@ public partial class AssignCardDialog : Window
 {
     private readonly List<DeviceDto> _devices;
     private readonly List<CheckBox> _deviceCheckBoxes = new();
+    private readonly List<(int Number, CheckBox Check)> _doorChecks = new();
     private List<TimeGroup> _timeGroups = new();
 
     public LanguageManager Lang => LanguageManager.Instance;
@@ -24,11 +25,16 @@ public partial class AssignCardDialog : Window
     {
         get
         {
-            var d1 = Door1Check.IsChecked == true ? "01" : "00";
-            var d2 = Door2Check.IsChecked == true ? "01" : "00";
-            var d3 = Door3Check.IsChecked == true ? "01" : "00";
-            var d4 = Door4Check.IsChecked == true ? "01" : "00";
-            return $"{d1}{d2}{d3}{d4}";
+            // Always emit the fixed 8-char positional string (door 1..4). A door checkbox that
+            // isn't shown (hardware has fewer doors) or is unchecked contributes "00".
+            var sb = new System.Text.StringBuilder();
+            for (int n = 1; n <= 4; n++)
+            {
+                var entry = _doorChecks.FirstOrDefault(c => c.Number == n);
+                var on = entry.Check != null && entry.Check.IsChecked == true;
+                sb.Append(on ? "01" : "00");
+            }
+            return sb.ToString();
         }
     }
 
@@ -55,7 +61,7 @@ public partial class AssignCardDialog : Window
         }
     }
 
-    public AssignCardDialog(EmployeeDto employee, List<DeviceDto> devices, ITimeGroupService? timeGroupService = null)
+    public AssignCardDialog(EmployeeDto employee, List<DeviceDto> devices, ITimeGroupService? timeGroupService = null, List<DoorDto>? doors = null)
     {
         _devices = devices ?? new List<DeviceDto>();
         InitializeComponent();
@@ -67,6 +73,7 @@ public partial class AssignCardDialog : Window
         ValidFromText.Text = employee.StartDate.ToString("yyyy-MM-dd");
         ValidToText.Text = employee.EndDate.ToString("yyyy-MM-dd");
 
+        PopulateDoors(doors);
         PopulateEffectiveTimes(employee.MaxVisits);
         PopulateDevices();
 
@@ -77,6 +84,40 @@ public partial class AssignCardDialog : Window
         {
             EffectiveTimesLabel.Visibility = Visibility.Collapsed;
             EffectiveTimesCombo.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void PopulateDoors(List<DoorDto>? doors)
+    {
+        DoorPanel.Children.Clear();
+        _doorChecks.Clear();
+
+        // One checkbox per physical door (1..4) that actually exists on the configured devices,
+        // labelled with the door's real name from the Doors section. 2-door hardware shows 2,
+        // 4-door shows 4. Falls back to the classic Door 1..4 if none are configured yet.
+        var distinct = (doors ?? new List<DoorDto>())
+            .Where(d => d.DoorNumber >= 1 && d.DoorNumber <= 4)
+            .GroupBy(d => d.DoorNumber)
+            .OrderBy(g => g.Key)
+            .Select(g => new { Number = g.Key, Name = g.First().Name })
+            .ToList();
+
+        if (distinct.Count == 0)
+            for (int n = 1; n <= 4; n++)
+                distinct.Add(new { Number = n, Name = $"Door {n}" });
+
+        var style = (Style)FindResource("DarkCheckBox");
+        foreach (var d in distinct)
+        {
+            var cb = new CheckBox
+            {
+                Content = string.IsNullOrWhiteSpace(d.Name) ? $"Door {d.Number}" : d.Name,
+                IsChecked = true,
+                Style = style,
+                Margin = new Thickness(0, 2, 20, 2)
+            };
+            DoorPanel.Children.Add(cb);
+            _doorChecks.Add((d.Number, cb));
         }
     }
 
@@ -142,8 +183,10 @@ public partial class AssignCardDialog : Window
     {
         EffectiveTimesCombo.Items.Clear();
 
-        // Preset effective times values
-        var presetValues = new[] { 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 400, 500 };
+        // Preset effective times: 1..60 in steps of 1, then 120, 180, 240 … in steps of 60.
+        var presetValues = System.Linq.Enumerable.Range(1, 60)
+            .Concat(new[] { 120, 180, 240, 300, 360, 420, 480, 540, 600 })
+            .ToArray();
 
         foreach (var val in presetValues)
         {
@@ -240,8 +283,7 @@ public partial class AssignCardDialog : Window
         if (string.IsNullOrWhiteSpace(CardNumber))
             errors.Add(Lang.CardNumberRequired);
 
-        if (Door1Check.IsChecked != true && Door2Check.IsChecked != true &&
-            Door3Check.IsChecked != true && Door4Check.IsChecked != true)
+        if (!_doorChecks.Any(c => c.Check.IsChecked == true))
             errors.Add(Lang.SelectAtLeastOneDoor);
 
         if (_devices.Count > 0 && SelectedDeviceIds.Count == 0)

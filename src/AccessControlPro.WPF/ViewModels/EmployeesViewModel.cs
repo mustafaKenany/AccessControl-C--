@@ -18,6 +18,7 @@ public partial class EmployeesViewModel : ObservableObject
     private readonly IDeviceService _deviceService;
     private readonly ILookupService _lookupService;
     private readonly ITimeGroupService _timeGroupService;
+    private readonly IDoorService _doorService;
     private readonly CurrentUserService _currentUser;
     private readonly IQrPassService _qrPassService;
     private readonly IFinanceService _financeService;
@@ -102,12 +103,13 @@ public partial class EmployeesViewModel : ObservableObject
 
     public ObservableCollection<EmployeeDto> Employees { get; } = new();
 
-    public EmployeesViewModel(IEmployeeService employeeService, IDeviceService deviceService, ILookupService lookupService, ITimeGroupService timeGroupService, CurrentUserService currentUser, IQrPassService qrPassService, IFinanceService financeService)
+    public EmployeesViewModel(IEmployeeService employeeService, IDeviceService deviceService, ILookupService lookupService, ITimeGroupService timeGroupService, CurrentUserService currentUser, IQrPassService qrPassService, IFinanceService financeService, IDoorService doorService)
     {
         _employeeService = employeeService;
         _deviceService = deviceService;
         _lookupService = lookupService;
         _timeGroupService = timeGroupService;
+        _doorService = doorService;
         _currentUser = currentUser;
         _qrPassService = qrPassService;
         _financeService = financeService;
@@ -216,12 +218,25 @@ public partial class EmployeesViewModel : ObservableObject
                 MaxVisits = dialog.MaxVisits
             };
 
-            await _employeeService.AddEmployeeAsync(dto);
+            var newId = await _employeeService.AddEmployeeAsync(dto);
             StatusMessage = Lang.AddPlayerSuccess;
             IsDataLoaded = true;
             await LoadPagedAsync();
-            CustomMessageBox.Show(Lang.AddPlayerSuccess, Lang.AddPlayer, MsgType.Success,
-                System.Windows.Application.Current.MainWindow);
+
+            // Shortcut for the operator: if a card number was entered, jump STRAIGHT into Assign Card
+            // (pre-filled + sync to the gate) right after registering — then the receipt. If no card
+            // was entered, skip to the receipt. The Assign Card dialog is still cancellable.
+            if (!string.IsNullOrWhiteSpace(dto.CardNo))
+            {
+                var created = await _employeeService.GetEmployeeByIdAsync(newId);
+                if (created != null)
+                    await AssignCardAsync(created);
+            }
+            else
+            {
+                CustomMessageBox.Show(Lang.AddPlayerSuccess, Lang.AddPlayer, MsgType.Success,
+                    System.Windows.Application.Current.MainWindow);
+            }
 
             // Optional 80mm registration receipt
             if (CustomMessageBox.Confirm(
@@ -451,8 +466,9 @@ public partial class EmployeesViewModel : ObservableObject
 
         // Load devices to show in dialog
         var devices = (await _deviceService.GetAllDevicesAsync()).ToList();
+        var doors = (await _doorService.GetAllDoorsAsync()).ToList();
 
-        var dialog = new AssignCardDialog(employee, devices, _timeGroupService);
+        var dialog = new AssignCardDialog(employee, devices, _timeGroupService, doors);
         dialog.Owner = System.Windows.Application.Current.MainWindow;
         dialog.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner;
 
@@ -883,7 +899,8 @@ public partial class EmployeesViewModel : ObservableObject
         if (employee == null) return;
 
         var devices = (await _deviceService.GetAllDevicesAsync()).ToList();
-        var dialog = new RenewSubscriptionDialog(employee, devices, _lookupService);
+        var doors = (await _doorService.GetAllDoorsAsync()).ToList();
+        var dialog = new RenewSubscriptionDialog(employee, devices, _lookupService, doors);
         dialog.Owner = System.Windows.Application.Current.MainWindow;
         dialog.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner;
 

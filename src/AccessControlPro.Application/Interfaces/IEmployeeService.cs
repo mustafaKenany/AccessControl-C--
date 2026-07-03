@@ -10,7 +10,7 @@ public interface IEmployeeService
     Task<IEnumerable<EmployeeDto>> GetAllEmployeesAsync();
     Task<(IEnumerable<EmployeeDto> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? search = null);
     Task<EmployeeDto?> GetEmployeeByIdAsync(int id);
-    Task AddEmployeeAsync(EmployeeDto dto);
+    Task<int> AddEmployeeAsync(EmployeeDto dto);
     Task<bool> UpdateEmployeeAsync(EmployeeDto dto, string? editReason = null);
     Task<bool> DeleteEmployeeAsync(int id);
     Task<bool> AssignCardAsync(int employeeId, AccessCardDto cardDto);

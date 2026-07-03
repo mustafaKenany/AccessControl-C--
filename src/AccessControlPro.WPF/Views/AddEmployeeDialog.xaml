@@ -278,7 +278,7 @@
                 <TextBlock Grid.Row="10" Grid.Column="0" Text="{Binding Lang.MemberDiscount}"
                            Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
                 <StackPanel Grid.Row="10" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
-                    <TextBox x:Name="DiscountTextBox" Width="120"
+                    <TextBox x:Name="DiscountTextBox" Width="120" Text="0"
                              Style="{StaticResource DarkTextBox}"
                              TextChanged="DiscountTextBox_TextChanged"
                              PreviewTextInput="NumberOnly_PreviewTextInput"

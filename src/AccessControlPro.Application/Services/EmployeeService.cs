@@ -76,7 +76,7 @@ public class EmployeeService : IEmployeeService
         return employee == null ? null : ToDto(employee);
     }
 
-    public async Task AddEmployeeAsync(EmployeeDto dto)
+    public async Task<int> AddEmployeeAsync(EmployeeDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);
         // At least one name (EN or AR) is required; if one is empty, copy the other
@@ -146,6 +146,8 @@ public class EmployeeService : IEmployeeService
             $"Added player: {dto.FullNameEn} ({dto.CardNo}) - Fee: {dto.SubscriptionFee}",
             $"تم إضافة لاعب: {dto.FullNameAr} ({dto.CardNo}) - الرسوم: {dto.SubscriptionFee}",
             _currentUser.Username);
+
+        return employee.Id;
     }
 
     public async Task<bool> UpdateEmployeeAsync(EmployeeDto dto, string? editReason = null)

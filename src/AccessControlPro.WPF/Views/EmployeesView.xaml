@@ -22,22 +22,6 @@
 
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                         HorizontalAlignment="Right" VerticalAlignment="Center">
-                <Border Background="{StaticResource BgInputBrush}" CornerRadius="10"
-                        Padding="12,8" Margin="0,0,10,0" MinWidth="220"
-                        ToolTip="{Binding Lang.SearchBoxHint}">
-                    <DockPanel>
-                        <fa:ImageAwesome Icon="Search" Width="13" Height="13"
-                                         Foreground="{StaticResource TextMutedBrush}"
-                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 Background="Transparent" BorderThickness="0"
-                                 Foreground="{StaticResource TextPrimaryBrush}"
-                                 FontSize="13" VerticalAlignment="Center"
-                                 CaretBrush="{StaticResource TextPrimaryBrush}"
-                                 ToolTip="{Binding Lang.SearchBoxHint}"/>
-                    </DockPanel>
-                </Border>
-
                 <Button Style="{StaticResource PrimaryButton}"
                         Background="{StaticResource PrimaryLightBrush}"
                         Command="{Binding ShowAllCommand}" Margin="0,0,10,0">
@@ -105,8 +89,39 @@
             </StackPanel>
         </DockPanel>
 
-        <!-- Stats Bar -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,20">
+        <!-- Search (prominent) + Stats -->
+        <DockPanel Grid.Row="1" Margin="0,0,0,20">
+            <!-- Search by name or card number -->
+            <Border DockPanel.Dock="Left" Background="{StaticResource BgInputBrush}" CornerRadius="10"
+                    Padding="14,10" MinWidth="320" Margin="0,0,16,0" VerticalAlignment="Center"
+                    ToolTip="{Binding Lang.SearchBoxHint}">
+                <Grid>
+                    <DockPanel>
+                        <fa:ImageAwesome Icon="Search" Width="14" Height="14" DockPanel.Dock="Left"
+                                         Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBox x:Name="PlayerSearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextPrimaryBrush}"
+                                 FontSize="14" VerticalAlignment="Center" CaretBrush="{StaticResource TextPrimaryBrush}"/>
+                    </DockPanel>
+                    <TextBlock Text="{Binding Lang.SearchBoxHint}" IsHitTestVisible="False"
+                               Foreground="{StaticResource TextMutedBrush}" FontSize="13"
+                               VerticalAlignment="Center" Margin="26,0,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=PlayerSearchBox}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+            </Border>
+
+            <!-- Stats badges + refresh -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
             <Border Background="{StaticResource BgCardBrush}" CornerRadius="10"
                     Padding="16,10" Margin="0,0,10,0">
                 <StackPanel Orientation="Horizontal">
@@ -152,7 +167,8 @@
                 <fa:ImageAwesome Icon="Refresh" Width="14" Height="14"
                                  Foreground="{StaticResource TextMutedBrush}"/>
             </Button>
-        </StackPanel>
+            </StackPanel>
+        </DockPanel>
 
         <!-- Filter Chips -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12"

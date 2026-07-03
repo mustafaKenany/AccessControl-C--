@@ -41,31 +41,44 @@
         <!-- Filter Bar -->
         <Border Grid.Row="1" Style="{StaticResource DashboardCard}" Padding="16,12" Margin="0,0,0,14">
             <StackPanel>
-                <!-- Row 1: Search + Event Type -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                    <fa:ImageAwesome Icon="Search" Width="14" Height="14"
-                                     Foreground="{StaticResource TextMutedBrush}"
-                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock Text="{Binding FinSearch, Source={x:Static helpers:LanguageManager.Instance}}"
-                               FontSize="12" Foreground="{StaticResource TextMutedBrush}"
-                               VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBox Style="{StaticResource DarkTextBox}" Width="220"
-                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             Padding="10,8" Margin="0,0,10,0"/>
-                    <Button Style="{StaticResource SecondaryButton}" Padding="14,8"
-                            Command="{Binding SearchCommand}" Margin="0,0,24,0">
-                        <fa:ImageAwesome Icon="Search" Width="14" Height="14"
-                                         Foreground="{StaticResource TextPrimaryBrush}"/>
+                <!-- Search (prominent, by name or card number) -->
+                <DockPanel Margin="0,0,0,10">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" Padding="16,9"
+                            Command="{Binding SearchCommand}" Margin="8,0,0,0">
+                        <fa:ImageAwesome Icon="Search" Width="14" Height="14" Foreground="{StaticResource TextPrimaryBrush}"/>
                     </Button>
+                    <Border Background="{StaticResource BgInputBrush}" CornerRadius="10" Padding="14,10"
+                            ToolTip="{Binding FinSearch, Source={x:Static helpers:LanguageManager.Instance}}">
+                        <Grid>
+                            <DockPanel>
+                                <fa:ImageAwesome Icon="Search" Width="14" Height="14" DockPanel.Dock="Left"
+                                                 Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <TextBox x:Name="EventSearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextPrimaryBrush}"
+                                         FontSize="14" VerticalAlignment="Center" CaretBrush="{StaticResource TextPrimaryBrush}"/>
+                            </DockPanel>
+                            <TextBlock Text="{Binding FinSearch, Source={x:Static helpers:LanguageManager.Instance}}" IsHitTestVisible="False"
+                                       Foreground="{StaticResource TextMutedBrush}" FontSize="13" VerticalAlignment="Center" Margin="26,0,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=EventSearchBox}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </Border>
+                </DockPanel>
 
-                    <fa:ImageAwesome Icon="Bolt" Width="14" Height="14"
-                                     Foreground="{StaticResource TextMutedBrush}"
-                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock Text="{Binding EventType, Source={x:Static helpers:LanguageManager.Instance}}"
-                               FontSize="12" Foreground="{StaticResource TextMutedBrush}"
-                               VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <ComboBox Width="140" SelectedIndex="{Binding SelectedEventTypeIndex}"
-                              Style="{StaticResource DarkComboBox}">
+                <!-- Filters (type / device / period) — wrap on narrow screens -->
+                <WrapPanel>
+                    <ComboBox Width="150" SelectedIndex="{Binding SelectedEventTypeIndex}" Margin="0,0,10,6"
+                              Style="{StaticResource DarkComboBox}"
+                              ToolTip="{Binding EventType, Source={x:Static helpers:LanguageManager.Instance}}">
                         <ComboBoxItem Content="{Binding FinAll, Source={x:Static helpers:LanguageManager.Instance}}"/>
                         <ComboBoxItem Content="{Binding EventCardAction, Source={x:Static helpers:LanguageManager.Instance}}"/>
                         <ComboBoxItem Content="{Binding EventButtonAction, Source={x:Static helpers:LanguageManager.Instance}}"/>
@@ -74,29 +87,15 @@
                         <ComboBoxItem Content="{Binding EventAlarm, Source={x:Static helpers:LanguageManager.Instance}}"/>
                         <ComboBoxItem Content="{Binding EventSystem, Source={x:Static helpers:LanguageManager.Instance}}"/>
                     </ComboBox>
-                </StackPanel>
 
-                <!-- Row 2: Device + Period + Filter button -->
-                <StackPanel Orientation="Horizontal">
-                    <fa:ImageAwesome Icon="Server" Width="14" Height="14"
-                                     Foreground="{StaticResource TextMutedBrush}"
-                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock Text="{Binding Device, Source={x:Static helpers:LanguageManager.Instance}}"
-                               FontSize="12" Foreground="{StaticResource TextMutedBrush}"
-                               VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <ComboBox Width="160" ItemsSource="{Binding DeviceFilters}"
-                              SelectedIndex="{Binding SelectedDeviceIndex}"
-                              DisplayMemberPath="Display"
-                              Style="{StaticResource DarkComboBox}" Margin="0,0,24,0"/>
+                    <ComboBox Width="170" ItemsSource="{Binding DeviceFilters}"
+                              SelectedIndex="{Binding SelectedDeviceIndex}" DisplayMemberPath="Display"
+                              Style="{StaticResource DarkComboBox}" Margin="0,0,10,6"
+                              ToolTip="{Binding Device, Source={x:Static helpers:LanguageManager.Instance}}"/>
 
-                    <fa:ImageAwesome Icon="Calendar" Width="14" Height="14"
-                                     Foreground="{StaticResource TextMutedBrush}"
-                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock Text="{Binding FinPeriod, Source={x:Static helpers:LanguageManager.Instance}}"
-                               FontSize="12" Foreground="{StaticResource TextMutedBrush}"
-                               VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <ComboBox Width="200" SelectedIndex="{Binding SelectedPeriodIndex}"
-                              Style="{StaticResource DarkComboBox}" Margin="0,0,10,0">
+                    <ComboBox Width="190" SelectedIndex="{Binding SelectedPeriodIndex}" Margin="0,0,10,6"
+                              Style="{StaticResource DarkComboBox}"
+                              ToolTip="{Binding FinPeriod, Source={x:Static helpers:LanguageManager.Instance}}">
                         <ComboBoxItem Content="{Binding FinAll, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipAll, Source={x:Static helpers:LanguageManager.Instance}}"/>
                         <ComboBoxItem Content="{Binding FinToday, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipToday, Source={x:Static helpers:LanguageManager.Instance}}"/>
                         <ComboBoxItem Content="{Binding FinYesterday, Source={x:Static helpers:LanguageManager.Instance}}" ToolTip="{Binding FilterTipYesterday, Source={x:Static helpers:LanguageManager.Instance}}"/>
@@ -110,16 +109,16 @@
                     </ComboBox>
 
                     <Button Style="{StaticResource SecondaryButton}" Padding="14,8"
-                            Command="{Binding FilterChangedCommand}" Margin="0,0,6,0">
+                            Command="{Binding FilterChangedCommand}" Margin="0,0,6,6">
                         <fa:ImageAwesome Icon="Filter" Width="14" Height="14"
                                          Foreground="{StaticResource TextPrimaryBrush}"/>
                     </Button>
-                    <Button Style="{StaticResource SecondaryButton}" Padding="14,8"
+                    <Button Style="{StaticResource SecondaryButton}" Padding="14,8" Margin="0,0,0,6"
                             Command="{Binding ClearFilterCommand}">
                         <fa:ImageAwesome Icon="Eraser" Width="14" Height="14"
                                          Foreground="{StaticResource TextMutedBrush}"/>
                     </Button>
-                </StackPanel>
+                </WrapPanel>
 
                 <!-- Date Range Display -->
                 <TextBlock Text="{Binding DateRangeText}"

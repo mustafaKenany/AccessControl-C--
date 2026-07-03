@@ -245,7 +245,7 @@
                          DataObject.Pasting="NumberOnly_Pasting"/>
                 <TextBlock Text="{Binding MemberDiscount, Source={x:Static helpers:LanguageManager.Instance}}"
                            Foreground="#9EC5C8" VerticalAlignment="Center" Margin="16,0,10,0" FontSize="13"/>
-                <TextBox x:Name="DiscountTextBox" Width="130"
+                <TextBox x:Name="DiscountTextBox" Width="130" Text="0"
                          Style="{StaticResource DarkTextBox}"
                          TextChanged="DiscountTextBox_TextChanged"
                          PreviewTextInput="NumberOnly_PreviewTextInput"
@@ -265,16 +265,8 @@
                        Text="{Binding DoorAccess, Source={x:Static helpers:LanguageManager.Instance}}"
                        Foreground="#9EC5C8" VerticalAlignment="Top" Margin="0,6,0,10" FontSize="13"/>
             <StackPanel Grid.Row="8" Grid.Column="1" Margin="0,0,0,10">
-                <WrapPanel>
-                    <CheckBox x:Name="Door1Check" Content="Door 1" IsChecked="True"
-                              Style="{StaticResource DarkCheckBox}" Margin="0,2,20,2"/>
-                    <CheckBox x:Name="Door2Check" Content="Door 2"
-                              Style="{StaticResource DarkCheckBox}" Margin="0,2,20,2"/>
-                    <CheckBox x:Name="Door3Check" Content="Door 3"
-                              Style="{StaticResource DarkCheckBox}" Margin="0,2,20,2"/>
-                    <CheckBox x:Name="Door4Check" Content="Door 4"
-                              Style="{StaticResource DarkCheckBox}" Margin="0,2,0,2"/>
-                </WrapPanel>
+                <!-- Doors are populated at runtime from the configured devices (real names + count). -->
+                <WrapPanel x:Name="DoorPanel"/>
             </StackPanel>
 
             <!-- Effective Times — hidden in Multi Device mode -->
