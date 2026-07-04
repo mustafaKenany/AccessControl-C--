@@ -255,6 +255,16 @@ public partial class DailyPassDialog : Window
             RefreshOutList();
             await RefreshTodayAsync();
 
+            // Optional 80mm receipt — gym name + bracelet no. + dates + price. Anonymous (no member
+            // name). Prints straight to the default printer (the gyms set an 80mm as default).
+            if (CustomMessageBox.Confirm(
+                    _ar ? "طباعة وصل الدخول اليومي؟" : "Print the daily-pass receipt?",
+                    LanguageManager.Instance.DailyPass, MsgType.Info, this))
+            {
+                try { ThermalReceipt.PrintDailyPass(card, DateTime.Today, validTo, _price); }
+                catch (Exception pe) { CustomMessageBox.Show(pe.Message, LanguageManager.Instance.DailyPass, MsgType.Error, this); }
+            }
+
             if (fail > 0)
                 CustomMessageBox.Show(
                     _ar ? $"تم الإصدار، لكن لم تصل إلى {fail} جهاز." : $"Issued, but {fail} device(s) were not reached.",

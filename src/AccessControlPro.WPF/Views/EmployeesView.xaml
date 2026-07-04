@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:fa="http://schemas.fontawesome.io/icons/">
 
-    <Grid Margin="32,28,32,32">
+    <Grid Margin="24,18,24,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -13,15 +13,14 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <DockPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="{Binding Lang.NavPlayers}"
-                       FontSize="26" FontWeight="Bold"
+        <!-- Header — title + toolbar that WRAPS on narrow screens (1366x768) so nothing clips -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,14">
+            <TextBlock DockPanel.Dock="Left" Text="{Binding Lang.NavPlayers}"
+                       FontSize="24" FontWeight="Bold"
                        Foreground="{StaticResource TextPrimaryBrush}"
-                       VerticalAlignment="Center"/>
+                       VerticalAlignment="Center" Margin="0,0,16,0"/>
 
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                        HorizontalAlignment="Right" VerticalAlignment="Center">
+            <WrapPanel HorizontalAlignment="Right" VerticalAlignment="Center">
                 <Button Style="{StaticResource PrimaryButton}"
                         Background="{StaticResource PrimaryLightBrush}"
                         Command="{Binding ShowAllCommand}" Margin="0,0,10,0">
@@ -90,7 +89,7 @@
                     </StackPanel>
                 </Button>
 
-            </StackPanel>
+            </WrapPanel>
         </DockPanel>
 
         <!-- Search (prominent) + Stats -->
@@ -174,15 +173,17 @@
             </StackPanel>
         </DockPanel>
 
-        <!-- Filter Chips -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12"
+        <!-- Filter Chips — WrapPanel so the pills (now with counts) reflow on narrow screens -->
+        <WrapPanel Grid.Row="2" Margin="0,0,0,12"
                     Visibility="{Binding CanViewReports, Converter={StaticResource BoolToVisibility}}">
             <!-- All -->
             <Button Command="{Binding SetFilterCommand}" CommandParameter="0" Cursor="Hand" Margin="0,0,6,0">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="chip" CornerRadius="14" Padding="14,6" Background="#1A44A1A0">
-                            <TextBlock Text="{Binding Lang.FilterAll}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}">
+                                <Run Text="{Binding Lang.FilterAll, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding AllCount, Mode=OneWay}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </TextBlock>
                         </Border>
                         <ControlTemplate.Triggers>
                             <DataTrigger Binding="{Binding SelectedFilterIndex}" Value="0">
@@ -203,7 +204,9 @@
                             <StackPanel Orientation="Horizontal">
                                 <fa:ImageAwesome Icon="ClockOutline" Width="11" Height="11"
                                                  Foreground="#FFB946" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Lang.RptExpiring}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}">
+                                    <Run Text="{Binding Lang.RptExpiring, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding ExpiringCount, Mode=OneWay}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </TextBlock>
                             </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -225,7 +228,9 @@
                             <StackPanel Orientation="Horizontal">
                                 <fa:ImageAwesome Icon="Repeat" Width="11" Height="11"
                                                  Foreground="#2ED47A" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Lang.RptRenewed}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}">
+                                    <Run Text="{Binding Lang.RptRenewed, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding RenewedCount, Mode=OneWay}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </TextBlock>
                             </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -247,7 +252,9 @@
                             <StackPanel Orientation="Horizontal">
                                 <fa:ImageAwesome Icon="PauseCircle" Width="11" Height="11"
                                                  Foreground="#78CDD7" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Lang.RptFrozen}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}">
+                                    <Run Text="{Binding Lang.RptFrozen, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding FrozenCount, Mode=OneWay}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </TextBlock>
                             </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -269,7 +276,9 @@
                             <StackPanel Orientation="Horizontal">
                                 <fa:ImageAwesome Icon="TimesCircle" Width="11" Height="11"
                                                  Foreground="#F7685B" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Lang.RptExpired}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}">
+                                    <Run Text="{Binding Lang.RptExpired, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding ExpiredCount, Mode=OneWay}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </TextBlock>
                             </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -292,7 +301,9 @@
                             <StackPanel Orientation="Horizontal">
                                 <fa:ImageAwesome Icon="CheckCircle" Width="11" Height="11"
                                                  Foreground="#2ED47A" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Lang.FilterActive}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}">
+                                    <Run Text="{Binding Lang.FilterActive, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding ActiveCount, Mode=OneWay}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </TextBlock>
                             </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -410,7 +421,7 @@
                     </Button.Template>
                 </Button>
             </StackPanel>
-        </StackPanel>
+        </WrapPanel>
 
         <!-- Table Header -->
         <Border Grid.Row="3" Background="{StaticResource BgInputBrush}" CornerRadius="12,12,0,0" Padding="18,12">
@@ -449,7 +460,7 @@
                      Switching to VirtualizingStackPanel + ScrollViewer.CanContentScroll
                      means only ~20 visible rows have Visual containers at any time.
                      Recycling mode reuses containers as the user scrolls. -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto" CanContentScroll="True">
+                <ScrollViewer VerticalScrollBarVisibility="Visible" CanContentScroll="True">
                     <ItemsControl ItemsSource="{Binding Employees}"
                                   VirtualizingStackPanel.IsVirtualizing="True"
                                   VirtualizingStackPanel.VirtualizationMode="Recycling"

@@ -159,7 +159,7 @@
                     </StackPanel>
 
                     <!-- Navigation -->
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="8,16,8,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Visible" Margin="8,16,8,0">
                         <StackPanel>
                             <Button Style="{StaticResource SidebarButton}"
                                     Command="{Binding NavigateToCommand}" CommandParameter="Dashboard">

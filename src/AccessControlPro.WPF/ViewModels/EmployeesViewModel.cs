@@ -80,6 +80,16 @@ public partial class EmployeesViewModel : ObservableObject
     [ObservableProperty]
     private int _withoutCardCount;
 
+    // Live per-filter counts over the WHOLE dataset (respecting the current period + search) so the
+    // gym owner sees his totals at a glance on every pill. Recomputed only when the context changes
+    // (page 1), not on page navigation. Filter indexes: 1=Expiring 2=Renewed 3=Frozen 4=Expired 5=Active.
+    [ObservableProperty] private int _allCount;
+    [ObservableProperty] private int _activeCount;
+    [ObservableProperty] private int _expiringCount;
+    [ObservableProperty] private int _expiredCount;
+    [ObservableProperty] private int _frozenCount;
+    [ObservableProperty] private int _renewedCount;
+
     [ObservableProperty]
     private bool _isLoading;
 
@@ -544,7 +554,12 @@ public partial class EmployeesViewModel : ObservableObject
             if (success)
             {
                 var updatedEmployee = await _employeeService.GetEmployeeByIdAsync(employee.Id);
-                var latestCard = updatedEmployee?.Cards?.LastOrDefault();
+                // Sync the card we JUST assigned (match by number), not merely the "last" card — if the
+                // member had other cards, LastOrDefault could push a stale card and leave the new one
+                // un-synced, so its "gate sync" dot stayed red even though the assign reported success.
+                var latestCard = updatedEmployee?.Cards?.FirstOrDefault(c => c.IsActive
+                                     && string.Equals(c.CardNumber, dialog.CardNumber, StringComparison.OrdinalIgnoreCase))
+                                 ?? updatedEmployee?.Cards?.LastOrDefault();
 
                 if (selectedDeviceIds.Count > 0 && latestCard != null)
                 {
@@ -1318,6 +1333,23 @@ public partial class EmployeesViewModel : ObservableObject
         }
     }
 
+    // Best-effort per-filter counts (whole dataset). Reuses the existing paged methods with size=1 —
+    // each returns the filter's full TotalCount from a fast indexed COUNT. Never blocks the list.
+    private async Task LoadFilterCountsAsync(string? search)
+    {
+        try
+        {
+            var (from, to) = GetPeriodRange();
+            AllCount = (await _employeeService.GetPagedAsync(1, 1, search)).TotalCount;
+            ExpiringCount = (await _employeeService.GetFilteredPagedAsync(1, from, to, 1, 1, search)).TotalCount;
+            RenewedCount  = (await _employeeService.GetFilteredPagedAsync(2, from, to, 1, 1, search)).TotalCount;
+            FrozenCount   = (await _employeeService.GetFilteredPagedAsync(3, from, to, 1, 1, search)).TotalCount;
+            ExpiredCount  = (await _employeeService.GetFilteredPagedAsync(4, from, to, 1, 1, search)).TotalCount;
+            ActiveCount   = (await _employeeService.GetFilteredPagedAsync(5, from, to, 1, 1, search)).TotalCount;
+        }
+        catch { /* counts are a nicety — never fail the screen over them */ }
+    }
+
     private async Task LoadPagedAsync()
     {
         ActivityLogger.LogAction("Employees", "LoadPage", $"page={CurrentPage} filter={SelectedFilterIndex} search={SearchText}");
@@ -1363,6 +1395,11 @@ public partial class EmployeesViewModel : ObservableObject
                 foreach (var emp in list)
                     Employees.Add(emp);
             }
+
+            // Refresh the per-pill owner counts only when the context (filter/period/search/refresh
+            // or a mutation) changed — those all reset to page 1; plain page navigation keeps them.
+            if (CurrentPage == 1)
+                await LoadFilterCountsAsync(string.IsNullOrWhiteSpace(SearchText) ? null : SearchText);
         }
         catch (Exception ex)
         {

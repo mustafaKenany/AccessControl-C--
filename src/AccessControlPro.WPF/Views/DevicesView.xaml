@@ -130,7 +130,7 @@
                     <ColumnDefinition Width="55"/>
                     <ColumnDefinition Width="50"/>
                     <ColumnDefinition Width="55"/>
-                    <ColumnDefinition Width="280"/>
+                    <ColumnDefinition Width="330"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="{Binding Lang.Status}" FontSize="12"
                            Foreground="{StaticResource TextMutedBrush}"/>
@@ -173,7 +173,7 @@
                                         <ColumnDefinition Width="55"/>
                                         <ColumnDefinition Width="50"/>
                                         <ColumnDefinition Width="55"/>
-                                        <ColumnDefinition Width="280"/>
+                                        <ColumnDefinition Width="330"/>
                                     </Grid.ColumnDefinitions>
 
                                     <!-- Status dot -->
@@ -237,9 +237,9 @@
                                                    HorizontalAlignment="Center"/>
                                     </Border>
 
-                                    <!-- Actions -->
-                                    <StackPanel Grid.Column="8" Orientation="Horizontal"
-                                                VerticalAlignment="Center">
+                                    <!-- Actions — WrapPanel so all buttons stay reachable (Delete was
+                                         clipping off the fixed-width column at 1366x768) -->
+                                    <WrapPanel Grid.Column="8" VerticalAlignment="Center">
                                         <!-- Connect -->
                                         <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.Connect, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 Command="{Binding DataContext.ConnectDeviceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -255,25 +255,6 @@
                                                     <ControlTemplate.Triggers>
                                                         <Trigger Property="IsMouseOver" Value="True">
                                                             <Setter TargetName="bg" Property="Background" Value="#1878CDD7"/>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Button.Template>
-                                        </Button>
-                                        <!-- Device Info -->
-                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.DeviceInfo, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                Command="{Binding DataContext.GetDeviceInfoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}">
-                                            <Button.Template>
-                                                <ControlTemplate TargetType="Button">
-                                                    <Border x:Name="bg" Background="Transparent"
-                                                            CornerRadius="6" Padding="8,6">
-                                                        <fa:ImageAwesome Icon="InfoCircle" Width="12" Height="12"
-                                                                         Foreground="{StaticResource PrimaryLightBrush}"/>
-                                                    </Border>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="bg" Property="Background" Value="#18247B7B"/>
                                                         </Trigger>
                                                     </ControlTemplate.Triggers>
                                                 </ControlTemplate>
@@ -299,86 +280,6 @@
                                                 </ControlTemplate>
                                             </Button.Template>
                                         </Button>
-                                        <!-- Sync Time -->
-                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.SyncTime, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                Command="{Binding DataContext.SyncTimeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}"
-                                                Visibility="{Binding DataContext.CanConnect, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BoolToVisibility}}">
-                                            <Button.Template>
-                                                <ControlTemplate TargetType="Button">
-                                                    <Border x:Name="bg" Background="Transparent"
-                                                            CornerRadius="6" Padding="8,6">
-                                                        <fa:ImageAwesome Icon="ClockOutline" Width="12" Height="12"
-                                                                         Foreground="{StaticResource WarningBrush}"/>
-                                                    </Border>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="bg" Property="Background" Value="#18FFB946"/>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Button.Template>
-                                        </Button>
-                                        <!-- Change IP -->
-                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.ChangeIP, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                Command="{Binding DataContext.ChangeIPCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}"
-                                                Visibility="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BoolToVisibility}}">
-                                            <Button.Template>
-                                                <ControlTemplate TargetType="Button">
-                                                    <Border x:Name="bg" Background="Transparent"
-                                                            CornerRadius="6" Padding="8,6">
-                                                        <fa:ImageAwesome Icon="Exchange" Width="12" Height="12"
-                                                                         Foreground="{StaticResource WarningBrush}"/>
-                                                    </Border>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="bg" Property="Background" Value="#18FFB946"/>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Button.Template>
-                                        </Button>
-                                        <!-- Factory Reset -->
-                                        <Button Cursor="Hand" ToolTip="Factory Reset"
-                                                Command="{Binding DataContext.FactoryResetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}"
-                                                Visibility="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BoolToVisibility}}">
-                                            <Button.Template>
-                                                <ControlTemplate TargetType="Button">
-                                                    <Border x:Name="bg" Background="Transparent"
-                                                            CornerRadius="6" Padding="8,6">
-                                                        <fa:ImageAwesome Icon="Recycle" Width="12" Height="12"
-                                                                         Foreground="#E63946"/>
-                                                    </Border>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="bg" Property="Background" Value="#18E63946"/>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Button.Template>
-                                        </Button>
-                                        <!-- Download Logs -->
-                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.DownloadLogs, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                Command="{Binding DataContext.DownloadLogsCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}"
-                                                Visibility="{Binding DataContext.CanConnect, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BoolToVisibility}}">
-                                            <Button.Template>
-                                                <ControlTemplate TargetType="Button">
-                                                    <Border x:Name="bg" Background="Transparent"
-                                                            CornerRadius="6" Padding="8,6">
-                                                        <fa:ImageAwesome Icon="Download" Width="12" Height="12"
-                                                                         Foreground="#2D6A4F"/>
-                                                    </Border>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="bg" Property="Background" Value="#182D6A4F"/>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Button.Template>
-                                        </Button>
                                         <!-- Sync All Players -->
                                         <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.DevSyncAllPlayers, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 Command="{Binding DataContext.SyncAllPlayersCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -399,25 +300,47 @@
                                                 </ControlTemplate>
                                             </Button.Template>
                                         </Button>
-                                        <!-- Revoke expired members on the gate (remediation) -->
-                                        <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.RevokeExpired, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                Command="{Binding DataContext.RevokeExpiredCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}"
-                                                Visibility="{Binding DataContext.CanConnect, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BoolToVisibility}}">
+                                        <!-- More — rarely-used device actions (info, sync time, revoke expired,
+                                             change IP, download logs, factory reset) in an overflow menu -->
+                                        <Button Cursor="Hand" Click="DeviceMoreClick" ToolTip="More"
+                                                Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
                                             <Button.Template>
                                                 <ControlTemplate TargetType="Button">
                                                     <Border x:Name="bg" Background="Transparent"
                                                             CornerRadius="6" Padding="8,6">
-                                                        <fa:ImageAwesome Icon="UserTimes" Width="12" Height="12"
-                                                                         Foreground="#F7685B"/>
+                                                        <fa:ImageAwesome Icon="EllipsisH" Width="12" Height="12"
+                                                                         Foreground="{StaticResource TextMutedBrush}"/>
                                                     </Border>
                                                     <ControlTemplate.Triggers>
                                                         <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="bg" Property="Background" Value="#18F7685B"/>
+                                                            <Setter TargetName="bg" Property="Background" Value="#18FFFFFF"/>
                                                         </Trigger>
                                                     </ControlTemplate.Triggers>
                                                 </ControlTemplate>
                                             </Button.Template>
+                                            <Button.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="{Binding PlacementTarget.Tag.Lang.DeviceInfo, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              Command="{Binding PlacementTarget.Tag.GetDeviceInfoCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                    <MenuItem Header="{Binding PlacementTarget.Tag.Lang.SyncTime, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              Command="{Binding PlacementTarget.Tag.SyncTimeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                    <MenuItem Header="{Binding PlacementTarget.Tag.Lang.RevokeExpired, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              Command="{Binding PlacementTarget.Tag.RevokeExpiredCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                    <Separator/>
+                                                    <MenuItem Header="{Binding PlacementTarget.Tag.Lang.ChangeIP, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              Command="{Binding PlacementTarget.Tag.ChangeIPCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                    <MenuItem Header="{Binding PlacementTarget.Tag.Lang.DownloadLogs, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              Command="{Binding PlacementTarget.Tag.DownloadLogsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                    <MenuItem Header="Factory Reset"
+                                                              Command="{Binding PlacementTarget.Tag.FactoryResetCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
                                         </Button>
                                         <!-- Edit/Rename -->
                                         <Button Cursor="Hand" ToolTip="{Binding DataContext.Lang.Edit, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -459,7 +382,7 @@
                                                 </ControlTemplate>
                                             </Button.Template>
                                         </Button>
-                                    </StackPanel>
+                                    </WrapPanel>
                                 </Grid>
                             </Border>
                             <DataTemplate.Triggers>

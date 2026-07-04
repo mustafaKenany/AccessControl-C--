@@ -87,6 +87,40 @@ public static class ThermalReceipt
         PrintToDefault(doc, title);
     }
 
+    /// <summary>
+    /// 80mm receipt for an anonymous daily-entry pass (temp card / bracelet): gym header,
+    /// the bracelet/card number, valid-from & valid-to dates, and the price. NO member name —
+    /// a daily pass is anonymous. Prints directly to the default printer.
+    /// </summary>
+    public static void PrintDailyPass(string cardNo, DateTime validFrom, DateTime validTo, decimal fee)
+    {
+        var lang = LanguageManager.Instance;
+        var doc = NewDoc(lang);
+        var title = lang.IsArabic ? "دخول يومي" : "Daily Pass";
+
+        BuildHeader(doc, title);
+
+        var table = TwoColTable();
+        var rg = new TableRowGroup();
+        AddRow(rg, lang.IsArabic ? "رقم السوار" : "Bracelet No.", cardNo);
+        AddRow(rg, lang.StartDate, validFrom.ToString("yyyy-MM-dd"));
+        AddRow(rg, lang.EndDate, validTo.ToString("yyyy-MM-dd"));
+        table.RowGroups.Add(rg);
+        doc.Blocks.Add(table);
+
+        Divider(doc);
+
+        var finTable = TwoColTable();
+        var finRg = new TableRowGroup();
+        AddRow(finRg, lang.Fee, fee.ToString("N0"), FontWeights.Bold);
+        finTable.RowGroups.Add(finRg);
+        doc.Blocks.Add(finTable);
+
+        Centered(doc, lang.IsArabic ? "شكراً" : "Thank you", 11, FontWeights.Bold, 0);
+
+        PrintToDefault(doc, title);
+    }
+
     // ---- shared building blocks ----
 
     private static FlowDocument NewDoc(LanguageManager lang) => new()
