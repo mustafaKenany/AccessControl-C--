@@ -1628,10 +1628,18 @@ public class EmployeeService : IEmployeeService
             {
                 foreach (var card in current)
                 {
-                    card.IsSyncedToDevice = false;
-                    await _cardRepository.UpdateAsync(card);
-                    await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, false, "Expired — access revoked on gate");
+                    // The gate revoke already succeeded for this batch — count it regardless.
                     revoked++;
+                    // Local bookkeeping is best-effort: a concurrent cloud sync/migration may have
+                    // re-keyed or removed the card row, so never let a stale-row failure abort the
+                    // whole revoke (and skip the audit log). Gate access is already revoked.
+                    try
+                    {
+                        card.IsSyncedToDevice = false;
+                        await _cardRepository.UpdateAsync(card);
+                        await _cardDeviceSyncRepository.UpsertAsync(card.Id, device.Id, false, "Expired — access revoked on gate");
+                    }
+                    catch { /* card row changed/removed under us; access is already revoked on the gate */ }
                 }
             }
             else failed += current.Count;

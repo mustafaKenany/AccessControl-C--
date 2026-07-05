@@ -20,7 +20,7 @@ public partial class ReportsViewModel : ObservableObject
     public LanguageManager Lang => LanguageManager.Instance;
 
     [ObservableProperty] private bool _isLoading;
-    [ObservableProperty] private int _selectedReportType; // 0=Players 1=Finance 2=Inventory 3=Sales 4=Purchases 5=Movements 6=Supplier
+    [ObservableProperty] private int _selectedReportType; // 0=Players 1=Finance 2=Inventory 3=Sales 4=Purchases 5=Movements 6=Supplier 7=Daily
     [ObservableProperty] private DateTime _dateFrom = DateTime.Today.AddMonths(-1);
     [ObservableProperty] private DateTime _dateTo = DateTime.Today;
 
@@ -36,6 +36,7 @@ public partial class ReportsViewModel : ObservableObject
     public ObservableCollection<PurchaseOrderDto> PurchaseResults { get; } = new();
     public ObservableCollection<StockMovementDto> MovementResults { get; } = new();
     public ObservableCollection<SupplierPurchaseRow> SupplierResults { get; } = new();
+    public ObservableCollection<DailyEntryRow> DailyResults { get; } = new();
 
     [ObservableProperty] private int _resultCount;
     [ObservableProperty] private decimal _reportTotal;       // sales revenue / purchases total for the period
@@ -179,6 +180,27 @@ public partial class ReportsViewModel : ObservableObject
                     ResultCount = rows.Count;
                     ReportTotal = inRange.Sum(o => o.TotalAmount - o.Discount);
                     break;
+
+                case 7: // Daily entries — daily-pass income within the range (count + revenue)
+                    var incomes = await _financeService.GetTransactionsAsync(
+                        Domain.Enums.TransactionType.Income,
+                        DateFrom.Date, DateTo.Date.AddDays(1).AddTicks(-1));
+                    var dailyRows = incomes
+                        .Where(t => IsDailyPassCategory(t.Category))
+                        .OrderByDescending(t => t.CreatedAt)
+                        .Select(t => new DailyEntryRow
+                        {
+                            When = t.CreatedAt,
+                            Tier = t.Category,
+                            Amount = t.Amount,
+                            Description = t.Description
+                        })
+                        .ToList();
+                    DailyResults.Clear();
+                    foreach (var r in dailyRows) DailyResults.Add(r);
+                    ResultCount = dailyRows.Count;
+                    ReportTotal = dailyRows.Sum(r => r.Amount);
+                    break;
             }
         }
         catch (Exception ex)
@@ -186,6 +208,16 @@ public partial class ReportsViewModel : ObservableObject
             CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
         }
         finally { IsLoading = false; }
+    }
+
+    /// <summary>A transaction belongs to the daily-entry report if its category is a daily-pass
+    /// plan — same heuristic the Daily Pass dialog uses to pick plans (name starts "Daily" or
+    /// contains "يومي"), so every entry it records is captured here.</summary>
+    private static bool IsDailyPassCategory(string? category)
+    {
+        if (string.IsNullOrWhiteSpace(category)) return false;
+        return category.TrimStart().StartsWith("Daily", StringComparison.OrdinalIgnoreCase)
+            || category.Contains("يومي");
     }
 
     [RelayCommand]
@@ -199,6 +231,7 @@ public partial class ReportsViewModel : ObservableObject
             "purchases" => 4,
             "movements" => 5,
             "supplier" => 6,
+            "daily" => 7,
             _ => 0
         };
     }
@@ -275,6 +308,15 @@ public partial class ReportsViewModel : ObservableObject
                 foreach (var r in SupplierResults)
                     rows.Add(new[] { r.ProductName, r.Quantity.ToString(), r.Total.ToString("N0") });
                 total = new[] { ar ? $"المشتريات: {ReportTotal:N0}  —  المستحق: {SupplierBalance:N0}" : $"Purchased: {ReportTotal:N0}  —  Outstanding: {SupplierBalance:N0}", "", "" };
+                break;
+            case 7:
+                title = Lang.RptDaily;
+                headers = new[] { Lang.SmDate, Lang.PrdCategory, Lang.PrdPrice, Lang.AuditDetails };
+                widths = new[] { 1.6, 1.6, 1.2, 3.0 };
+                rightCols = new[] { 2 };
+                foreach (var r in DailyResults)
+                    rows.Add(new[] { r.When.ToString("yyyy-MM-dd HH:mm"), r.Tier, r.Amount.ToString("N0"), r.Description });
+                total = new[] { ar ? $"العدد: {ResultCount}  —  الإجمالي" : $"Count: {ResultCount}  —  TOTAL", "", ReportTotal.ToString("N0"), "" };
                 break;
             default:
                 return;
@@ -365,6 +407,12 @@ public partial class ReportsViewModel : ObservableObject
                     foreach (var r in SupplierResults)
                         lines.Add($"\"{CsvSafe(r.ProductName)}\",{r.Quantity},{r.Total}");
                     break;
+
+                case 7:
+                    lines.Add("DateTime,Tier,Amount,Description");
+                    foreach (var r in DailyResults)
+                        lines.Add($"{r.When:yyyy-MM-dd HH:mm},\"{CsvSafe(r.Tier)}\",{r.Amount},\"{CsvSafe(r.Description)}\"");
+                    break;
             }
 
             await File.WriteAllLinesAsync(dialog.FileName, lines);
@@ -394,4 +442,13 @@ public class SupplierPurchaseRow
     public string ProductName { get; set; } = "";
     public int Quantity { get; set; }
     public decimal Total { get; set; }
+}
+
+/// <summary>One daily-entry (daily-pass) row: when it was sold, which tier/plan, the amount, and detail.</summary>
+public class DailyEntryRow
+{
+    public DateTime When { get; set; }
+    public string Tier { get; set; } = "";
+    public decimal Amount { get; set; }
+    public string Description { get; set; } = "";
 }

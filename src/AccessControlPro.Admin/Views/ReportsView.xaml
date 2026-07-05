@@ -268,6 +268,25 @@
                                Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
             </Border>
+            <!-- Daily entries -->
+            <Border Margin="4,8" CornerRadius="10" Padding="14,10" Cursor="Hand" MouseLeftButtonUp="DailyTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedReportType}" Value="7">
+                                <Setter Property="Background" Value="#1A2ED47A"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <fa:ImageAwesome Icon="Calendar" Width="14" Height="14" Foreground="#2ED47A"
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding Lang.RptDaily}" FontSize="13"
+                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </UniformGrid>
 
         <!-- Date Filter + Run -->
@@ -641,6 +660,52 @@
                             <DataGridTextColumn Header="{Binding Data.Lang.PrdName, Source={StaticResource Proxy}}" Binding="{Binding ProductName}" Width="*"/>
                             <DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="120"/>
                             <DataGridTextColumn Header="Total" Binding="{Binding Total, StringFormat='{}{0:N0}'}" Width="160"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+
+                <!-- Daily entries (Tab 7): per-entry list + count/revenue summary -->
+                <Grid>
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedReportType}" Value="7">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="{StaticResource BgInputBrush}" CornerRadius="10"
+                            Padding="16,12" Margin="0,0,0,12">
+                        <UniformGrid Columns="2">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Lang.RptResults}" FontSize="12"
+                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding ResultCount}" FontSize="20" FontWeight="Bold"
+                                           Foreground="{StaticResource PrimaryLightBrush}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Lang.RptDailyRevenue}" FontSize="12"
+                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding ReportTotal, StringFormat='{}{0:N0}'}" FontSize="20" FontWeight="Bold"
+                                           Foreground="#2ED47A"/>
+                            </StackPanel>
+                        </UniformGrid>
+                    </Border>
+
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding DailyResults}"
+                              Style="{StaticResource RptGrid}" Visibility="Visible">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{Binding Data.Lang.SmDate, Source={StaticResource Proxy}}" Binding="{Binding When, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Width="150"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.PrdCategory, Source={StaticResource Proxy}}" Binding="{Binding Tier}" Width="160"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.PrdPrice, Source={StaticResource Proxy}}" Binding="{Binding Amount, StringFormat='{}{0:N0}'}" Width="110"/>
+                            <DataGridTextColumn Header="{Binding Data.Lang.AuditDetails, Source={StaticResource Proxy}}" Binding="{Binding Description}" Width="*"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>

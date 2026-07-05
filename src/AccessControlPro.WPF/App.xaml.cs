@@ -1136,11 +1136,11 @@ public partial class App : System.Windows.Application
                 catch { }
             }), System.Windows.Threading.DispatcherPriority.Background);
 
-            // Scheduled daily app-restart — resets the memory-leak baseline twice a day (default
-            // 16:00 and 23:00). Restarts ONLY when no dialog is open ("if it's open and OK"); if the
-            // operator is mid-action at the slot time it retries every minute for 30 min, then skips
-            // that slot for the day. Times are configurable via appsettings "AppRestartTimes":
-            // ["16:00","23:00"] — an empty array turns it off.
+            // Scheduled daily app-restart — resets the memory-leak baseline. DISABLED by default;
+            // a gym opts in per-machine via appsettings "AppRestartTimes":["05:00"] (pick an OFF-HOUR).
+            // Even when enabled it restarts ONLY during genuine idle — no dialog open AND no
+            // keyboard/mouse for 10 min (see IsSafeToRestart) — so it can never interrupt an operator
+            // mid-shift. It retries each minute for 30 min, then skips that slot for the day.
             var restartTimes = LoadRestartTimes();
             if (restartTimes.Count > 0)
             {
@@ -1153,18 +1153,22 @@ public partial class App : System.Windows.Application
                         foreach (var (h, m) in restartTimes)
                         {
                             var slotKey = $"{now:yyyy-MM-dd}:{h:D2}:{m:D2}";
-                            if (_restartSlotsDone.Contains(slotKey)) continue;
+                            // Skip if we already restarted for this slot. The marker is PERSISTED to disk
+                            // (not just in-memory) — otherwise the restart wipes the in-memory set and the
+                            // relaunched process restarts again every minute for the whole window (a loop).
+                            if (_restartSlotsDone.Contains(slotKey) || LoadLastRestartSlot() == slotKey) continue;
                             var slot = now.Date.AddHours(h).AddMinutes(m);
                             if (now < slot) continue;                                  // not time yet
                             if (now >= slot.AddMinutes(30)) { _restartSlotsDone.Add(slotKey); continue; } // missed the window
-                            if (IsSafeToRestart())
+                            if (IsSafeToRestart(requireIdle: true))
                             {
                                 _restartSlotsDone.Add(slotKey);
+                                SaveLastRestartSlot(slotKey);   // persist BEFORE exiting so the relaunch doesn't loop
                                 try { RollingLogFile.Append(MemoryLogPath, $"{now:yyyy-MM-dd HH:mm:ss} [info] scheduled restart ({h:D2}:{m:D2}) — refreshing memory\n"); } catch { }
                                 RestartApp("scheduled memory refresh");
                                 return;
                             }
-                            // busy (a dialog is open) — leave the slot pending and retry next minute.
+                            // busy (dialog open, or machine actively in use) — leave the slot pending and retry next minute.
                         }
                     }
                     catch { }
@@ -1484,12 +1488,13 @@ public partial class App : System.Windows.Application
     }
 
     /// <summary>Parses the daily scheduled-restart times from appsettings ("AppRestartTimes":
-    /// ["16:00","23:00"]); defaults to 16:00 + 23:00 when the key is absent. An empty array
-    /// disables the feature.</summary>
+    /// ["05:00"]). DISABLED by default (empty) — the scheduled restart only runs for a gym that
+    /// explicitly opts in, and even then only during genuine idle (see IsSafeToRestart). This
+    /// avoids ever restarting a busy gym out from under the operator during working hours.</summary>
     private static List<(int h, int m)> LoadRestartTimes()
     {
         var result = new List<(int, int)>();
-        string[] raw = { "16:00", "23:00" }; // defaults
+        string[] raw = System.Array.Empty<string>(); // OFF by default — opt in per gym via appsettings
         try
         {
             var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
@@ -1512,6 +1517,29 @@ public partial class App : System.Windows.Application
         return result;
     }
 
+    /// <summary>File that records the last scheduled-restart slot we completed (e.g. "2026-07-05:23:00").
+    /// Persisting it survives the restart itself, so the relaunched process knows the slot is done and
+    /// does NOT restart again — the fix for the every-minute restart loop.</summary>
+    private static string ScheduledRestartMarkerPath =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                     "AccessControlPro", "scheduled_restart.txt");
+
+    private static string LoadLastRestartSlot()
+    {
+        try { return File.Exists(ScheduledRestartMarkerPath) ? File.ReadAllText(ScheduledRestartMarkerPath).Trim() : ""; }
+        catch { return ""; }
+    }
+
+    private static void SaveLastRestartSlot(string slotKey)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(ScheduledRestartMarkerPath)!);
+            File.WriteAllText(ScheduledRestartMarkerPath, slotKey);
+        }
+        catch { /* best-effort: default-OFF + idle-gate already prevent the loop */ }
+    }
+
     private static void RestartApp(string reason = "restart")
     {
         // Mark the exit as PLANNED so the next launch doesn't fire a false "crash-recovery"
@@ -1524,16 +1552,38 @@ public partial class App : System.Windows.Application
         Environment.Exit(0);
     }
 
-    /// <summary>True only when no modal dialog is open — i.e. the operator isn't mid-action, so a
-    /// scheduled/OOM auto-restart won't interrupt them. The main window is the one expected visible
-    /// window; any extra visible window is a dialog.</summary>
-    private static bool IsSafeToRestart()
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+    /// <summary>How long since the last keyboard/mouse input on this machine (0 if unavailable).</summary>
+    private static TimeSpan UserIdleTime()
+    {
+        try
+        {
+            var lii = new LASTINPUTINFO { cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<LASTINPUTINFO>() };
+            if (GetLastInputInfo(ref lii))
+                return TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - lii.dwTime));
+        }
+        catch { }
+        return TimeSpan.Zero;
+    }
+
+    /// <summary>Safe to auto-restart only when no dialog is open (operator not mid-action). When
+    /// <paramref name="requireIdle"/> is set (the scheduled restart), ALSO require the machine to
+    /// have had no keyboard/mouse input for 10 minutes — so a scheduled restart can never interrupt
+    /// someone actively using the app. OOM self-heal passes false: the app is already failing, so a
+    /// no-dialog moment is enough.</summary>
+    private static bool IsSafeToRestart(bool requireIdle = false)
     {
         try
         {
             var app = System.Windows.Application.Current;
             if (app == null) return false;
-            return app.Windows.OfType<System.Windows.Window>().Count(w => w.IsVisible) <= 1;
+            if (app.Windows.OfType<System.Windows.Window>().Count(w => w.IsVisible) > 1) return false;
+            if (requireIdle && UserIdleTime() < TimeSpan.FromMinutes(10)) return false;
+            return true;
         }
         catch { return false; }
     }

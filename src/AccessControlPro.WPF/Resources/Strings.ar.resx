@@ -667,6 +667,8 @@
   <data name="RptPurchases" xml:space="preserve"><value>المشتريات</value></data>
   <data name="RptMovements" xml:space="preserve"><value>حركة المواد</value></data>
   <data name="RptSupplier" xml:space="preserve"><value>المورد</value></data>
+  <data name="RptDaily" xml:space="preserve"><value>الدخول اليومي</value></data>
+  <data name="RptDailyRevenue" xml:space="preserve"><value>إجمالي الإيراد</value></data>
   <data name="RptPurchasedInRange" xml:space="preserve"><value>المشتريات (الفترة المحددة)</value></data>
   <data name="RptOutstanding" xml:space="preserve"><value>الرصيد المستحق (الكلي)</value></data>
 

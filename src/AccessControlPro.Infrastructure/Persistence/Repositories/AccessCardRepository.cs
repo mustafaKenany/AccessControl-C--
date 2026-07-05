@@ -84,7 +84,17 @@ public class AccessCardRepository : IAccessCardRepository
     {
         await using var db = _factory.CreateDbContext();
         db.AccessCards.Update(card);
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // The card row no longer matches (0 rows affected) — a concurrent cloud sync or
+            // migration re-keyed/removed it while this detached entity was held in memory.
+            // AccessCard carries no RowVersion token, so this can only mean "row gone", and
+            // there is nothing left to persist. Swallow rather than crash the caller.
+        }
     }
 
     public async Task DeleteAsync(int id)

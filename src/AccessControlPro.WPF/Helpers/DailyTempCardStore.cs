@@ -24,7 +24,26 @@ public static class DailyTempCardStore
     private static string FilePath =>
         Path.Combine(AppContext.BaseDirectory, "daily_temp_cards.json");
 
+    /// <summary>
+    /// A daily-pass card auto-frees itself after this long even if the cashier never clicks
+    /// "Return" — the bracelet is back in the pool and the same number can be issued again.
+    /// The gate already auto-rejects the card after its issue night (ValidTo = that day 23:59),
+    /// so this only clears the local "still out" flag. Default: 24 hours.
+    /// </summary>
+    public static readonly TimeSpan AutoReturnAfter = TimeSpan.FromHours(24);
+
+    /// <summary>Cards still out — those issued within the last <see cref="AutoReturnAfter"/>.
+    /// Anything older is auto-returned (pruned from disk) so its number is re-issuable.</summary>
     public static List<TempCard> LoadOut()
+    {
+        var all = LoadRaw();
+        var cutoff = DateTime.Now - AutoReturnAfter;
+        var active = all.Where(c => c.IssuedAt > cutoff).ToList();
+        if (active.Count != all.Count) Save(active);   // drop expired entries from disk
+        return active;
+    }
+
+    private static List<TempCard> LoadRaw()
     {
         try
         {

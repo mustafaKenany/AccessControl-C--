@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Printing;
 using System.Windows;
 using System.Windows.Controls;
@@ -139,6 +140,7 @@ public static class ThermalReceipt
     {
         var lang = LanguageManager.Instance;
 
+        bool logoDrawn = false;
         if (!string.IsNullOrWhiteSpace(GymProfile.LogoPath) && File.Exists(GymProfile.LogoPath))
         {
             try
@@ -157,15 +159,35 @@ public static class ThermalReceipt
                     HorizontalAlignment = HorizontalAlignment.Center
                 };
                 doc.Blocks.Add(new BlockUIContainer(img) { Margin = new Thickness(0, 0, 0, 4) });
+                logoDrawn = true;
             }
             catch { /* a bad logo path must never block the receipt */ }
+        }
+        if (!logoDrawn)
+        {
+            // Reserve a blank area at the very top as the logo's place, so the receipt always has a
+            // spot for it. Upload a logo once in Admin → Settings and it fills this space automatically.
+            doc.Blocks.Add(new BlockUIContainer(new Border { Height = 44 }) { Margin = new Thickness(0, 0, 0, 4) });
         }
 
         Centered(doc, GymProfile.DisplayName, 16, FontWeights.Bold, 2);
         if (!string.IsNullOrWhiteSpace(GymProfile.Owner))
             Centered(doc, GymProfile.Owner, 10, FontWeights.Normal, 2, Brushes.DimGray);
         if (!string.IsNullOrWhiteSpace(GymProfile.Phone))
-            Centered(doc, GymProfile.Phone, 9, FontWeights.Normal, 4, Brushes.Gray);
+        {
+            // Print the phone as a plain left-to-right string with no spaces. On an Arabic (RTL)
+            // receipt a raw number gets visually regrouped (e.g. "7375 917 0772"); forcing LTR and
+            // stripping whitespace prints it exactly as entered, e.g. 07712345678.
+            var phone = new string(GymProfile.Phone.Where(ch => !char.IsWhiteSpace(ch)).ToArray());
+            doc.Blocks.Add(new Paragraph(new Run(phone))
+            {
+                FontSize = 9,
+                Foreground = Brushes.Gray,
+                TextAlignment = TextAlignment.Center,
+                FlowDirection = FlowDirection.LeftToRight,
+                Margin = new Thickness(0, 0, 0, 4)
+            });
+        }
         Centered(doc, title, 13, FontWeights.Bold, 2);
 
         var serialLabel = lang.IsArabic ? "رقم الوصل" : "Receipt #";

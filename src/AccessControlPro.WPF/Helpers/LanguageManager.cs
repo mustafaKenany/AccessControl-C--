@@ -739,6 +739,8 @@ public class LanguageManager : INotifyPropertyChanged
     public string RptPurchases => GetString("RptPurchases");
     public string RptMovements => GetString("RptMovements");
     public string RptSupplier => GetString("RptSupplier");
+    public string RptDaily => GetString("RptDaily");
+    public string RptDailyRevenue => GetString("RptDailyRevenue");
     public string RptPurchasedInRange => GetString("RptPurchasedInRange");
     public string RptOutstanding => GetString("RptOutstanding");
     public string RptRun => GetString("RptRun");
@@ -1605,6 +1607,8 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(RptPurchases));
         OnPropertyChanged(nameof(RptMovements));
         OnPropertyChanged(nameof(RptSupplier));
+        OnPropertyChanged(nameof(RptDaily));
+        OnPropertyChanged(nameof(RptDailyRevenue));
         OnPropertyChanged(nameof(RptPurchasedInRange));
         OnPropertyChanged(nameof(RptOutstanding));
         OnPropertyChanged(nameof(RptRun));
