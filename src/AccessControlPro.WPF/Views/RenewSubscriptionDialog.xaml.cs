@@ -30,6 +30,20 @@ public partial class RenewSubscriptionDialog : Window
     public decimal NewDiscount => decimal.TryParse(DiscountTextBox.Text.Trim(), out var d) ? d : 0;
     public decimal NewAmountPaid => decimal.TryParse(PaidTextBox.Text.Trim(), out var p) ? p : 0;
 
+    // Migrated-member correction (option A: fix name/phone inside the Renew dialog, no separate Edit).
+    public bool IsMigratedCorrection { get; private set; }
+    public string CorrectedNameEn => CorrectNameEnBox.Text.Trim();
+    public string CorrectedNameAr => CorrectNameArBox.Text.Trim();
+    public string CorrectedPhone => CorrectPhoneBox.Text.Trim();
+
+    private static bool IsMigrationDefault(EmployeeDto e)
+    {
+        bool phoneIsDefault = !string.IsNullOrEmpty(e.Phone)
+            && Regex.IsMatch(e.Phone, @"^MIG-\d+$", RegexOptions.IgnoreCase);
+        bool subTypeIsDefault = string.Equals(e.SubscriptionType, "Migrated", StringComparison.OrdinalIgnoreCase);
+        return phoneIsDefault || subTypeIsDefault;
+    }
+
     public string DoorPermissions
     {
         get
@@ -77,6 +91,26 @@ public partial class RenewSubscriptionDialog : Window
         _lookupService = lookupService;
         InitializeComponent();
         PlayerNameText.Text = $"{employee.FullNameEn} ({employee.CardNo})";
+
+        // Migrated member → show the inline data-correction panel (fix name/phone + renew in one go).
+        IsMigratedCorrection = IsMigrationDefault(employee);
+        if (IsMigratedCorrection)
+        {
+            var ar = LanguageManager.Instance.IsArabic;
+            CorrectionPanel.Visibility = Visibility.Visible;
+            CorrectionHint.Text = ar
+                ? "لاعب مُرحّل ببيانات ناقصة — صحّح اسمه وهاتفه هنا؛ التجديد يصحّح بياناته بنفس الوقت."
+                : "Migrated member with placeholder data — correct the name/phone here; renewing fixes it too.";
+            CorrectNameEnLabel.Text = ar ? "الاسم (إنجليزي)" : "Name (English)";
+            CorrectNameArLabel.Text = ar ? "الاسم (عربي)" : "Name (Arabic)";
+            CorrectPhoneLabel.Text = ar ? "الهاتف" : "Phone";
+            CorrectNameEnBox.Text = employee.FullNameEn;
+            CorrectNameArBox.Text = employee.FullNameAr;
+            // Clear the MIG-N placeholder so the operator types the real number (blank is allowed).
+            CorrectPhoneBox.Text = (!string.IsNullOrEmpty(employee.Phone)
+                && Regex.IsMatch(employee.Phone, @"^MIG-\d+$", RegexOptions.IgnoreCase)) ? "" : employee.Phone;
+        }
+
         PopulateDoors(doors);
         LoadPlans();
         PopulateSubscriptionTypes();
@@ -450,6 +484,12 @@ public partial class RenewSubscriptionDialog : Window
 
         if (_devices.Count > 0 && SelectedDeviceIds.Count == 0)
             errors.Add(Lang.SelectAtLeastOneDevice);
+
+        // Migrated member: require at least one real name (phone may stay blank = "unknown").
+        if (IsMigratedCorrection
+            && string.IsNullOrWhiteSpace(CorrectNameEnBox.Text)
+            && string.IsNullOrWhiteSpace(CorrectNameArBox.Text))
+            errors.Add(Lang.IsArabic ? "أدخل اسم اللاعب" : "Enter the member's name");
 
         if (errors.Count > 0)
         {

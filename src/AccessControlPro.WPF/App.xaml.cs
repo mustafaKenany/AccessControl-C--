@@ -41,6 +41,7 @@ public partial class App : System.Windows.Application
     private DispatcherTimer? _memoryMonitorTimer;
     private DispatcherTimer? _restartBannerTimer;
     private DispatcherTimer? _deviceWatchdogTimer;
+    private DispatcherTimer? _scheduledRestartTimer;
     // Tracks last-known reachability per device IP so the watchdog only alerts on a state change.
     private readonly Dictionary<string, bool> _deviceReachable = new();
     private static readonly DateTime _appStartedAt = DateTime.Now;
@@ -48,6 +49,12 @@ public partial class App : System.Windows.Application
     // timer so it can prompt a graceful restart when memory creeps high — before the
     // receptionist force-kills a "heavy" app (the observed Basmia pattern).
     private static volatile int _lastWorkingSetMb;
+    // OOM auto-recovery: count OutOfMemoryExceptions this session; after a few, restart cleanly
+    // at the next safe moment (no dialog open) instead of limping toward a hard kill.
+    private static int _oomCount;
+    // Scheduled daily app-restart slots already fired today (keyed "yyyy-MM-dd:HH:mm") so each
+    // slot fires at most once/day even though the watchdog ticks every minute.
+    private static readonly HashSet<string> _restartSlotsDone = new();
     private static readonly string CrashLogPath = Path.Combine(AppContext.BaseDirectory, "crash_log.txt");
     private static readonly string MemoryLogPath = Path.Combine(AppContext.BaseDirectory, "memory_log.txt");
 
@@ -125,6 +132,22 @@ public partial class App : System.Windows.Application
             if (e.Exception is OutOfMemoryException)
             {
                 try { GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true); } catch { }
+                // Self-heal: after a few OOMs in one session the process is doomed to keep dying —
+                // restart cleanly at the next safe moment (no dialog open) instead of limping into
+                // a hard kill. The nightly scheduled restart also resets memory; this is the
+                // fast-path when the leak fills memory within a single session.
+                _oomCount++;
+                try
+                {
+                    RollingLogFile.Append(MemoryLogPath,
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [error] OutOfMemoryException #{_oomCount} (ws~{_lastWorkingSetMb}MB)\n");
+                }
+                catch { }
+                if (_oomCount >= 3 && IsSafeToRestart())
+                {
+                    try { RollingLogFile.Append(MemoryLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [error] {_oomCount} OOMs — auto-restarting to reset memory\n"); } catch { }
+                    RestartApp("OOM auto-recovery");
+                }
                 return;
             }
 
@@ -1067,10 +1090,13 @@ public partial class App : System.Windows.Application
                     var uptime = DateTime.Now - _appStartedAt;
                     _lastWorkingSetMb = (int)ws;
 
+                    // Open-window count is the clearest WPF-leak signal: if it climbs over hours,
+                    // dialogs/windows are being retained (not GC'd). Runs on the UI dispatcher thread.
+                    var winCount = System.Windows.Application.Current?.Windows.Count ?? 0;
                     var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [info] " +
                                $"ws={ws}MB private={priv}MB heap={heap}MB " +
                                $"gen0={GC.CollectionCount(0)} gen1={GC.CollectionCount(1)} gen2={GC.CollectionCount(2)} " +
-                               $"uptime={uptime.TotalHours:F1}h\n";
+                               $"windows={winCount} uptime={uptime.TotalHours:F1}h\n";
                     RollingLogFile.Append(MemoryLogPath, line);
 
                     // Warning thresholds: at >500 MB working set we shout, at >700 MB we
@@ -1109,6 +1135,43 @@ public partial class App : System.Windows.Application
                 }
                 catch { }
             }), System.Windows.Threading.DispatcherPriority.Background);
+
+            // Scheduled daily app-restart — resets the memory-leak baseline twice a day (default
+            // 16:00 and 23:00). Restarts ONLY when no dialog is open ("if it's open and OK"); if the
+            // operator is mid-action at the slot time it retries every minute for 30 min, then skips
+            // that slot for the day. Times are configurable via appsettings "AppRestartTimes":
+            // ["16:00","23:00"] — an empty array turns it off.
+            var restartTimes = LoadRestartTimes();
+            if (restartTimes.Count > 0)
+            {
+                _scheduledRestartTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+                _scheduledRestartTimer.Tick += (_, _) =>
+                {
+                    try
+                    {
+                        var now = DateTime.Now;
+                        foreach (var (h, m) in restartTimes)
+                        {
+                            var slotKey = $"{now:yyyy-MM-dd}:{h:D2}:{m:D2}";
+                            if (_restartSlotsDone.Contains(slotKey)) continue;
+                            var slot = now.Date.AddHours(h).AddMinutes(m);
+                            if (now < slot) continue;                                  // not time yet
+                            if (now >= slot.AddMinutes(30)) { _restartSlotsDone.Add(slotKey); continue; } // missed the window
+                            if (IsSafeToRestart())
+                            {
+                                _restartSlotsDone.Add(slotKey);
+                                try { RollingLogFile.Append(MemoryLogPath, $"{now:yyyy-MM-dd HH:mm:ss} [info] scheduled restart ({h:D2}:{m:D2}) — refreshing memory\n"); } catch { }
+                                RestartApp("scheduled memory refresh");
+                                return;
+                            }
+                            // busy (a dialog is open) — leave the slot pending and retry next minute.
+                        }
+                    }
+                    catch { }
+                };
+                _scheduledRestartTimer.Start();
+                StartupLog($"Scheduled app-restart at: {string.Join(", ", restartTimes.Select(t => $"{t.h:D2}:{t.m:D2}"))}");
+            }
 
             // Restart-recommended reminder. Both leaks (WPF Visual tree + native SDK)
             // are usage-driven but accumulate over time. At 5+ days uptime the customer
@@ -1420,13 +1483,59 @@ public partial class App : System.Windows.Application
         catch { /* ignore — mutex may already be released */ }
     }
 
-    private static void RestartApp()
+    /// <summary>Parses the daily scheduled-restart times from appsettings ("AppRestartTimes":
+    /// ["16:00","23:00"]); defaults to 16:00 + 23:00 when the key is absent. An empty array
+    /// disables the feature.</summary>
+    private static List<(int h, int m)> LoadRestartTimes()
     {
+        var result = new List<(int, int)>();
+        string[] raw = { "16:00", "23:00" }; // defaults
+        try
+        {
+            var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            if (File.Exists(settingsPath))
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(settingsPath));
+                if (doc.RootElement.TryGetProperty("AppRestartTimes", out var el)
+                    && el.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    raw = el.EnumerateArray().Select(x => x.GetString() ?? "").Where(s => s.Length > 0).ToArray();
+            }
+        }
+        catch { /* use defaults */ }
+        foreach (var s in raw)
+        {
+            var parts = s.Split(':');
+            if (parts.Length == 2 && int.TryParse(parts[0], out var h) && int.TryParse(parts[1], out var m)
+                && h >= 0 && h < 24 && m >= 0 && m < 60)
+                result.Add((h, m));
+        }
+        return result;
+    }
+
+    private static void RestartApp(string reason = "restart")
+    {
+        // Mark the exit as PLANNED so the next launch doesn't fire a false "crash-recovery"
+        // bundle (Environment.Exit below skips OnExit → RecordCleanExit never runs).
+        try { LastRunStateTracker.RecordPlannedRestart(reason); } catch { }
         ReleaseSingleInstanceMutex();
         var exePath = Environment.ProcessPath;
         if (exePath != null)
             Process.Start(exePath);
         Environment.Exit(0);
+    }
+
+    /// <summary>True only when no modal dialog is open — i.e. the operator isn't mid-action, so a
+    /// scheduled/OOM auto-restart won't interrupt them. The main window is the one expected visible
+    /// window; any extra visible window is a dialog.</summary>
+    private static bool IsSafeToRestart()
+    {
+        try
+        {
+            var app = System.Windows.Application.Current;
+            if (app == null) return false;
+            return app.Windows.OfType<System.Windows.Window>().Count(w => w.IsVisible) <= 1;
+        }
+        catch { return false; }
     }
 
     /// <summary>
@@ -1946,6 +2055,11 @@ public partial class App : System.Windows.Application
 
         // Launch Updater.exe and exit the WPF app so file locks release
         StartupLog($"Update staged successfully — handing off to Updater.exe");
+        // Mark this as a PLANNED exit BEFORE handing off: the Updater kills this process to swap
+        // files, which can race (and lose to) OnExit→RecordCleanExit and leave the state at
+        // "running" → a spurious "crash-recovery" bundle on the next launch. Recording it here
+        // first means the worst case is "planned_restart", never a false crash.
+        try { LastRunStateTracker.RecordPlannedRestart("auto-update"); } catch { }
         Dispatcher.Invoke(() =>
         {
             try

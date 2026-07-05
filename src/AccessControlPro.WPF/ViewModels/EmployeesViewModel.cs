@@ -924,13 +924,9 @@ public partial class EmployeesViewModel : ObservableObject
         try
         {
 
-        // Block renewal on still-migrated records. Migration sets sentinels (Phone="MIG-N",
-        // SubscriptionType="Migrated") for records imported from the old DB without enough
-        // info. Forcing the user to update via Edit dialog before renewal ensures the player
-        // record actually reflects real data and matches what's in the device.
-        employee = await EnsureMigrationDefaultsResolvedAsync(employee);
-        if (employee == null) return;
-
+        // Migrated members are corrected INSIDE the Renew dialog now (option A) — no separate
+        // blocking Edit step. The dialog shows a name/phone correction panel for migrated records;
+        // those edits are applied as part of the renewal below (see dialog.IsMigratedCorrection).
         var devices = (await _deviceService.GetAllDevicesAsync()).ToList();
         var doors = (await _doorService.GetAllDoorsAsync()).ToList();
         var dialog = new RenewSubscriptionDialog(employee, devices, _lookupService, doors);
@@ -998,6 +994,32 @@ public partial class EmployeesViewModel : ObservableObject
         try
         {
             StatusMessage = Lang.RenewingSubscription + " (syncing to device, please wait...)";
+
+            // Migrated member correction (option A): fix name/phone FIRST, then renew — one flow.
+            // The renewal itself replaces the "Migrated" subscription type + sets the new dates.
+            if (dialog.IsMigratedCorrection)
+            {
+                var full = await _employeeService.GetEmployeeByIdAsync(employee.Id);
+                if (full != null)
+                {
+                    full.FullNameEn = dialog.CorrectedNameEn;
+                    full.FullNameAr = dialog.CorrectedNameAr;
+                    full.Phone = dialog.CorrectedPhone;
+                    try
+                    {
+                        await _employeeService.UpdateEmployeeAsync(full, "renewal data correction");
+                    }
+                    catch (Exception cex)
+                    {
+                        var em = cex.Message;
+                        if (em.StartsWith("DUPLICATE_PHONE:")) em = string.Format(Lang.DuplicatePhone, em.Replace("DUPLICATE_PHONE:", ""));
+                        else if (em.StartsWith("DUPLICATE_CARD:")) em = string.Format(Lang.DuplicateCardNo, em.Replace("DUPLICATE_CARD:", ""));
+                        CustomMessageBox.Show(em, Lang.RenewSubscription, MsgType.Error, System.Windows.Application.Current.MainWindow);
+                        IsLoading = false;
+                        return; // abort — operator corrects the data and retries
+                    }
+                }
+            }
 
             var success = await _employeeService.RenewSubscriptionAsync(
                 employee.Id,

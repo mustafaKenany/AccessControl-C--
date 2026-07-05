@@ -151,6 +151,39 @@
     </Window.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+        <!-- Migrated-member data correction — shown ONLY for a migrated member. Correcting the
+             name/phone here + renewing = one flow (no separate Edit dialog). -->
+        <Border x:Name="CorrectionPanel" Visibility="Collapsed" Margin="28,20,28,0"
+                Background="#14FFB946" BorderBrush="#40FFB946" BorderThickness="1" CornerRadius="8" Padding="14,12">
+            <StackPanel>
+                <TextBlock x:Name="CorrectionHint" Foreground="#FFD98A" FontSize="12"
+                           TextWrapping="Wrap" Margin="0,0,0,10"/>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="140"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="CorrectNameEnLabel" Grid.Row="0" Grid.Column="0" Foreground="#9EC5C8"
+                               VerticalAlignment="Center" Margin="0,0,0,8" FontSize="13"/>
+                    <TextBox x:Name="CorrectNameEnBox" Grid.Row="0" Grid.Column="1"
+                             Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                    <TextBlock x:Name="CorrectNameArLabel" Grid.Row="1" Grid.Column="0" Foreground="#9EC5C8"
+                               VerticalAlignment="Center" Margin="0,0,0,8" FontSize="13"/>
+                    <TextBox x:Name="CorrectNameArBox" Grid.Row="1" Grid.Column="1"
+                             Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                    <TextBlock x:Name="CorrectPhoneLabel" Grid.Row="2" Grid.Column="0" Foreground="#9EC5C8"
+                               VerticalAlignment="Center" FontSize="13"/>
+                    <TextBox x:Name="CorrectPhoneBox" Grid.Row="2" Grid.Column="1"
+                             Style="{StaticResource DarkTextBox}"/>
+                </Grid>
+            </StackPanel>
+        </Border>
         <Grid Margin="28,24,28,20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>  <!-- 0: Title -->
@@ -333,5 +366,6 @@
                 </Button>
             </StackPanel>
         </Grid>
+        </StackPanel>
     </ScrollViewer>
 </Window>
