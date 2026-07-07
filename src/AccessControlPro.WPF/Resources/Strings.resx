@@ -172,6 +172,7 @@
   <data name="SubscriptionRequired" xml:space="preserve"><value>Please select a subscription type.</value></data>
   <data name="PeriodRequired" xml:space="preserve"><value>Please select a subscription period.</value></data>
   <data name="FeeRequired" xml:space="preserve"><value>Subscription fee is required.</value></data>
+  <data name="FeeBelowPlan" xml:space="preserve"><value>Fee cannot be less than the plan price ({0}).</value></data>
   <data name="PhotoRequired" xml:space="preserve"><value>Player photo is required.</value></data>
   <data name="HeightInvalid" xml:space="preserve"><value>Height must be between 50 and 250 cm.</value></data>
   <data name="WeightInvalid" xml:space="preserve"><value>Weight must be between 20 and 300 kg.</value></data>

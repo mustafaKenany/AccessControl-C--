@@ -285,10 +285,29 @@ public partial class EmployeesViewModel : ObservableObject
         }
     }
 
+    /// <summary>A member still on the placeholder "Migrated" subscription — imported from the old
+    /// system, not yet activated. These are corrected inside Renew, never edited directly.</summary>
+    private static bool IsMigratedType(string? subscriptionType)
+        => string.Equals(subscriptionType?.Trim(), "Migrated", StringComparison.OrdinalIgnoreCase);
+
     [RelayCommand]
     private async Task EditEmployeeAsync(EmployeeDto? employee)
     {
         if (employee == null) return;
+
+        // Migrated members are NOT editable directly — their name/phone are corrected inside the
+        // Renew dialog (the amber correction panel), so there's one clean "activate + correct" flow
+        // and no half-corrected migrated records. Route the Edit action straight to Renew.
+        if (IsMigratedType(employee.SubscriptionType))
+        {
+            CustomMessageBox.Show(
+                Lang.IsArabic
+                    ? "هذا عضو مُرحّل — يتم تصحيح بياناته أثناء التجديد."
+                    : "This is a migrated member — their details are corrected during Renew.",
+                Lang.Edit, MsgType.Info, System.Windows.Application.Current.MainWindow);
+            await RenewSubscriptionAsync(employee);
+            return;
+        }
 
         // Reload the full member INCLUDING the photo — the list DTOs omit the PhotoData blob for
         // speed, so editing off the list DTO would blank the photo on save.

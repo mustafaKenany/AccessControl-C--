@@ -70,8 +70,10 @@ public partial class LogsViewModel : ObservableObject
     partial void OnSearchTextChanged(string value)
     {
         CurrentPage = 1;
-        if (IsDataLoaded)
-            _ = DebouncedSearchAsync();
+        // Typing in the search box auto-loads the logs — the operator no longer has to click
+        // "Show All" first for search to do anything.
+        IsDataLoaded = true;
+        _ = DebouncedSearchAsync();
     }
 
     private async Task DebouncedSearchAsync()

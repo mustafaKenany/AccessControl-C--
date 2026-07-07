@@ -31,17 +31,33 @@
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                         HorizontalAlignment="Right" VerticalAlignment="Center">
                 <Border Background="{StaticResource BgInputBrush}" CornerRadius="10"
-                        Padding="12,8" Margin="0,0,10,0" MinWidth="220">
-                    <DockPanel>
-                        <fa:ImageAwesome Icon="Search" Width="13" Height="13"
-                                         Foreground="{StaticResource TextMutedBrush}"
-                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 Background="Transparent" BorderThickness="0"
-                                 Foreground="{StaticResource TextPrimaryBrush}"
-                                 FontSize="13" VerticalAlignment="Center"
-                                 CaretBrush="{StaticResource TextPrimaryBrush}"/>
-                    </DockPanel>
+                        Padding="14,10" Margin="0,0,10,0" MinWidth="320" VerticalAlignment="Center"
+                        ToolTip="{Binding Lang.SearchBoxHint}">
+                    <Grid>
+                        <DockPanel>
+                            <fa:ImageAwesome Icon="Search" Width="14" Height="14" DockPanel.Dock="Left"
+                                             Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBox x:Name="LogSearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                     FontSize="14" VerticalAlignment="Center"
+                                     CaretBrush="{StaticResource TextPrimaryBrush}"/>
+                        </DockPanel>
+                        <TextBlock Text="{Binding Lang.SearchBoxHint}" IsHitTestVisible="False"
+                                   Foreground="{StaticResource TextMutedBrush}" FontSize="13"
+                                   VerticalAlignment="Center" Margin="26,0,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Text, ElementName=LogSearchBox}" Value="">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
                 </Border>
 
                 <Button Style="{StaticResource PrimaryButton}"

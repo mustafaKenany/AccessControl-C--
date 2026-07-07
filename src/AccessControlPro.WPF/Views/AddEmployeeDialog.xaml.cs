@@ -345,18 +345,19 @@ public partial class AddEmployeeDialog : Window
 
         if (months == 0)
         {
-            // Custom: enable EndDate, fee editable
+            // Custom: enable the date pickers. Fee is always editable; custom has no preset minimum.
             EndDatePicker.IsEnabled = true;
-            FeeTextBox.IsReadOnly = false;
+            StartDatePicker.IsEnabled = true;
+            _defaultFee = 0;
         }
         else
         {
-            // Preset: auto-calc dates, fee read-only
+            // Preset: auto-calc dates + auto-fill the fee. The fee stays EDITABLE — the operator can
+            // raise it above the plan price (validation blocks going below the plan price).
             EndDatePicker.IsEnabled = false;
             var start = DateTime.Today;
             StartDatePicker.SelectedDate = start;
             EndDatePicker.SelectedDate = ComputeEndDate(GetSelectedPlan(), start, months);
-            FeeTextBox.IsReadOnly = true;
             RecalcFee();
         }
     }
@@ -396,13 +397,17 @@ public partial class AddEmployeeDialog : Window
 
     #region Calculations
 
+    // The plan-derived fee for the selected period — the MINIMUM the operator may charge (0 = no
+    // minimum, e.g. custom period). The Fee field is editable but validation blocks going below this.
+    private decimal _defaultFee;
+
     private void RecalcFee()
     {
         if (FeeTextBox == null) return;
 
         var plan = GetSelectedPlan();
         var months = GetSelectedMonths();
-        if (plan == null || months <= 0) return;
+        if (plan == null || months <= 0) { _defaultFee = 0; return; }
 
         // Day/Month plans with a real price bill the flat plan price × periods (exact —
         // no proration surprises); legacy/duration-less plans keep the per-month rate.
@@ -410,6 +415,7 @@ public partial class AddEmployeeDialog : Window
             FeeTextBox.Text = (plan.Price * months).ToString();
         else if (plan.MonthlyRate > 0)
             FeeTextBox.Text = (plan.MonthlyRate * months).ToString();
+        _defaultFee = decimal.TryParse(FeeTextBox.Text, out var f) ? f : 0;
     }
 
     private void UpdateRemaining()
@@ -775,6 +781,8 @@ public partial class AddEmployeeDialog : Window
 
         if (string.IsNullOrWhiteSpace(FeeTextBox.Text) || SubscriptionFee <= 0)
             errors.Add(Lang.FeeRequired);
+        else if (_defaultFee > 0 && SubscriptionFee < _defaultFee)
+            errors.Add(string.Format(Lang.FeeBelowPlan, _defaultFee.ToString("N0")));
 
         if (_photoData == null || _photoData.Length == 0)
             errors.Add(Lang.PhotoRequired);

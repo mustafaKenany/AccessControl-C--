@@ -141,8 +141,8 @@ public class EmployeeService : IEmployeeService
         }
 
         await LogAuditAsync("Create", "Player", employee.Id,
-            $"Added player: {dto.FullNameEn} ({dto.CardNo})",
-            $"تم إضافة لاعب: {dto.FullNameAr} ({dto.CardNo})");
+            $"Registered player: {dto.FullNameEn} (card {dto.CardNo}), subscription {dto.SubscriptionType}, from {dto.StartDate:yyyy-MM-dd} to {dto.EndDate:yyyy-MM-dd}",
+            $"تسجيل لاعب: {dto.FullNameAr} (بطاقة {dto.CardNo})، الاشتراك {dto.SubscriptionType}، من {dto.StartDate:yyyy-MM-dd} إلى {dto.EndDate:yyyy-MM-dd}");
 
         // Log to session file
         await _sessionLogger.LogOperationAsync("CREATE", "Player", employee.Id,
@@ -390,6 +390,12 @@ public class EmployeeService : IEmployeeService
                 $"Soft-deleted player: {employee.FullNameEn} ({employee.CardNo}). Reason: {reason}{logNote}",
                 $"تم حذف لاعب: {employee.FullNameAr} ({employee.CardNo}). السبب: {reason}{logNote}");
 
+            // Second stage: the GATE side of the delete, as its own record (when card removal succeeded).
+            if (hardwareWarning == null && cards.Count > 0)
+                await LogAuditAsync("SoftDelete", "Player", id,
+                    $"Player {employee.FullNameEn} (card {employee.CardNo}) removed from the gate (deleted)",
+                    $"تمت إزالة اللاعب {employee.FullNameAr} (بطاقة {employee.CardNo}) من البوابة (حذف)");
+
             await _sessionLogger.LogOperationAsync("SOFT_DELETE", "Player", id,
                 $"Soft-deleted player: {employee.FullNameEn} ({employee.CardNo}). Reason: {reason}{logNote}",
                 $"تم حذف لاعب: {employee.FullNameAr} ({employee.CardNo}). السبب: {reason}{logNote}",
@@ -450,6 +456,12 @@ public class EmployeeService : IEmployeeService
         await LogAuditAsync("Freeze", "Player", id,
             $"Froze player: {employee.FullNameEn} ({employee.CardNo}). Reason: {reason}{logNote}",
             $"تم تجميد لاعب: {employee.FullNameAr} ({employee.CardNo}). السبب: {reason}{logNote}");
+
+        // Second stage: the GATE side of the freeze, as its own record (when the disable succeeded).
+        if (hardwareWarning == null && (employee.AccessCards?.Any(c => c.IsActive) ?? false))
+            await LogAuditAsync("Freeze", "Player", id,
+                $"Player {employee.FullNameEn} (card {employee.CardNo}) disabled on the gate (frozen)",
+                $"تم تعطيل اللاعب {employee.FullNameAr} (بطاقة {employee.CardNo}) على البوابة (تجميد)");
 
         // Log to session file
         await _sessionLogger.LogOperationAsync("FREEZE", "Player", id,
@@ -540,6 +552,12 @@ public class EmployeeService : IEmployeeService
             $"Unfroze player: {employee.FullNameEn} ({employee.CardNo}). Freeze duration: {freezeDays} days. EndDate extended to {employee.EndDate:yyyy-MM-dd}{logNote}",
             $"تم إلغاء تجميد لاعب: {employee.FullNameAr} ({employee.CardNo}). مدة التجميد: {freezeDays} يوم. تاريخ الانتهاء الجديد: {employee.EndDate:yyyy-MM-dd}{logNote}");
 
+        // Second stage: the GATE side of the unfreeze, as its own record (when the re-enable succeeded).
+        if (hardwareWarning == null && (employee.AccessCards?.Any(c => c.IsActive) ?? false))
+            await LogAuditAsync("Unfreeze", "Player", id,
+                $"Player {employee.FullNameEn} (card {employee.CardNo}) re-enabled on the gate (unfrozen)",
+                $"تمت إعادة تفعيل اللاعب {employee.FullNameAr} (بطاقة {employee.CardNo}) على البوابة (إلغاء تجميد)");
+
         // Log to session file
         await _sessionLogger.LogOperationAsync("UNFREEZE", "Player", id,
             $"Unfroze player: {employee.FullNameEn} ({employee.CardNo}). Freeze duration: {freezeDays} days{logNote}",
@@ -590,6 +608,7 @@ public class EmployeeService : IEmployeeService
 
         // Step 1: Sync cards to hardware FIRST with new dates and permissions
         string? hardwareWarning = null;
+        var renewGateNames = new HashSet<string>();   // gates the card reached — for the gate-stage audit record
         var cards = employee.AccessCards?.Where(c => c.IsActive).ToList() ?? new List<AccessCard>();
         if (cards.Count > 0)
         {
@@ -615,13 +634,21 @@ public class EmployeeService : IEmployeeService
                     });
 
                     foreach (var s in result.Succeeded)
+                    {
                         await _cardDeviceSyncRepository.UpsertAsync(card.Id, s.DeviceId, true);
+                        renewGateNames.Add(devices.First(d => d.Id == s.DeviceId).Name);
+                    }
 
                     foreach (var f in result.Failed)
                     {
                         await _cardDeviceSyncRepository.UpsertAsync(card.Id, f.DeviceId, false, f.Error);
                         hardwareWarning ??= $"Some devices could not be updated: {f.Error}";
                     }
+
+                    // Reflect the push result on the card's own sync flag — the Players-list dot reads
+                    // AccessCard.IsSyncedToDevice, NOT the CardDeviceSync table. Without this a renewed
+                    // card that IS on the gate still showed a red dot. Synced = reached ≥1 gate.
+                    card.IsSyncedToDevice = result.Succeeded.Any();
                 }
             }
         }
@@ -687,6 +714,16 @@ public class EmployeeService : IEmployeeService
             $"النوع: {oldType} → {subscriptionType}. " +
             $"المدة: {periodLabelAr}. الرسوم: {fee}. المدفوع: {amountPaid}. " +
             $"تاريخ الانتهاء القديم: {oldEndDate:yyyy-MM-dd} → الجديد: {employee.EndDate:yyyy-MM-dd}{logNote}");
+
+        // Second stage: the GATE side of the renewal, as its own record — so the log clearly shows
+        // both the database step (above) and the gate step (below) for every renewal.
+        if (renewGateNames.Count > 0)
+        {
+            var gates = string.Join(", ", renewGateNames);
+            await LogAuditAsync("SyncCard", "Player", id,
+                $"Player {employee.FullNameEn} (card {employee.CardNo}) synced with gate(s) after renewal: {gates}",
+                $"تمت مزامنة اللاعب {employee.FullNameAr} (بطاقة {employee.CardNo}) مع البوابة/البوابات بعد التجديد: {gates}");
+        }
 
         // Log to session file
         await _sessionLogger.LogOperationAsync("RENEW", "Player", id,
@@ -1028,9 +1065,11 @@ public class EmployeeService : IEmployeeService
         await _cardRepository.UpdateAsync(card);
         await _cardDeviceSyncRepository.UpsertAsync(cardId, deviceId, true);
 
+        var syncNameEn = member?.FullNameEn ?? "";
+        var syncNameAr = member?.FullNameAr ?? "";
         await LogAuditAsync("SyncCard", "AccessCard", cardId,
-            $"Synced card {card.CardNumber} to device {device.Name} ({device.IP})",
-            $"تم مزامنة بطاقة {card.CardNumber} مع جهاز {device.Name} ({device.IP})");
+            $"Player {syncNameEn} (card {card.CardNumber}) synced with gate {device.Name} ({device.IP})",
+            $"تمت مزامنة اللاعب {syncNameAr} (بطاقة {card.CardNumber}) مع البوابة {device.Name} ({device.IP})");
 
         await _sessionLogger.LogOperationAsync("SYNC_CARD", "AccessCard", cardId,
             $"Successfully synced card {card.CardNumber} to device {device.Name}",
@@ -1459,9 +1498,11 @@ public class EmployeeService : IEmployeeService
         card.IsSyncedToDevice = result.SuccessCount > 0;
         await _cardRepository.UpdateAsync(card);
 
+        var member = await _employeeRepository.GetByIdWithCardsAsync(card.EmployeeId);
+        var okGates = string.Join(", ", devices.Where(d => result.Succeeded.Any(s => s.DeviceId == d.Id)).Select(d => d.Name));
         await LogAuditAsync("SyncCardAllDevices", "AccessCard", cardId,
-            $"Synced card {card.CardNumber} to {result.SuccessCount}/{devices.Count} devices. Failed: {result.FailedCount}",
-            $"تم مزامنة بطاقة {card.CardNumber} مع {result.SuccessCount}/{devices.Count} جهاز. فشل: {result.FailedCount}");
+            $"Player {member?.FullNameEn} (card {card.CardNumber}) synced with {result.SuccessCount}/{devices.Count} gate(s){(okGates.Length > 0 ? ": " + okGates : "")}. Failed: {result.FailedCount}",
+            $"تمت مزامنة اللاعب {member?.FullNameAr} (بطاقة {card.CardNumber}) مع {result.SuccessCount}/{devices.Count} بوابة{(okGates.Length > 0 ? ": " + okGates : "")}. فشل: {result.FailedCount}");
 
         var errors = result.Failed.Select(f => $"{f.Name} ({f.IP}): {f.Error}").ToList();
         return (result.SuccessCount, result.FailedCount, devices.Count, errors);

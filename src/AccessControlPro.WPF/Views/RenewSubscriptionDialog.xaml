@@ -243,16 +243,17 @@
                        Visibility="Collapsed">
                 <Run Text="Start → End"/>
             </TextBlock>
-            <StackPanel x:Name="CustomDatesPanel" Grid.Row="4" Grid.Column="1" Orientation="Horizontal"
+            <StackPanel x:Name="CustomDatesPanel" Grid.Row="4" Grid.Column="1" Orientation="Vertical"
                         Margin="0,0,0,10" Visibility="Collapsed">
-                <DatePicker x:Name="CustomStartDate" Width="160"
-                            Background="#2A2A3E" Foreground="#E0E0E0" BorderBrush="#3A3A50"
-                            FontFamily="{StaticResource CairoFont}" FontSize="13" FontWeight="Bold"
+                <TextBlock Text="{Binding StartDate, Source={x:Static helpers:LanguageManager.Instance}}"
+                           Foreground="#78CDD7" FontSize="11" Margin="0,0,0,3"/>
+                <DatePicker x:Name="CustomStartDate"
+                            Style="{StaticResource DarkDatePicker}" Margin="0,0,0,10"
                             SelectedDateChanged="CustomDate_Changed"/>
-                <TextBlock Text="→" Foreground="#78CDD7" VerticalAlignment="Center" Margin="10,0" FontSize="16"/>
-                <DatePicker x:Name="CustomEndDate" Width="160"
-                            Background="#2A2A3E" Foreground="#E0E0E0" BorderBrush="#3A3A50"
-                            FontFamily="{StaticResource CairoFont}" FontSize="13" FontWeight="Bold"
+                <TextBlock Text="{Binding EndDate, Source={x:Static helpers:LanguageManager.Instance}}"
+                           Foreground="#78CDD7" FontSize="11" Margin="0,0,0,3"/>
+                <DatePicker x:Name="CustomEndDate"
+                            Style="{StaticResource DarkDatePicker}"
                             SelectedDateChanged="CustomDate_Changed"/>
             </StackPanel>
 

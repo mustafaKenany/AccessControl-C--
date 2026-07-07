@@ -177,6 +177,7 @@
   <data name="SubscriptionRequired" xml:space="preserve"><value>يرجى اختيار نوع الاشتراك.</value></data>
   <data name="PeriodRequired" xml:space="preserve"><value>يرجى اختيار مدة الاشتراك.</value></data>
   <data name="FeeRequired" xml:space="preserve"><value>الرسوم مطلوبة.</value></data>
+  <data name="FeeBelowPlan" xml:space="preserve"><value>لا يمكن أن تكون الرسوم أقل من سعر الخطة ({0}).</value></data>
   <data name="PhotoRequired" xml:space="preserve"><value>صورة اللاعب مطلوبة.</value></data>
   <data name="HeightInvalid" xml:space="preserve"><value>يجب أن يكون الطول بين 50 و 250 سم.</value></data>
   <data name="WeightInvalid" xml:space="preserve"><value>يجب أن يكون الوزن بين 20 و 300 كجم.</value></data>

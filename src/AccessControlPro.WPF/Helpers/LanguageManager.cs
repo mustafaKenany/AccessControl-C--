@@ -191,6 +191,7 @@ public class LanguageManager : INotifyPropertyChanged
     public string SubscriptionRequired => GetString("SubscriptionRequired");
     public string PeriodRequired => GetString("PeriodRequired");
     public string FeeRequired => GetString("FeeRequired");
+    public string FeeBelowPlan => GetString("FeeBelowPlan");
     public string PhotoRequired => GetString("PhotoRequired");
     public string HeightInvalid => GetString("HeightInvalid");
     public string WeightInvalid => GetString("WeightInvalid");
@@ -1173,6 +1174,7 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(SubscriptionRequired));
         OnPropertyChanged(nameof(PeriodRequired));
         OnPropertyChanged(nameof(FeeRequired));
+        OnPropertyChanged(nameof(FeeBelowPlan));
         OnPropertyChanged(nameof(PhotoRequired));
         OnPropertyChanged(nameof(HeightInvalid));
         OnPropertyChanged(nameof(WeightInvalid));

@@ -240,16 +240,14 @@
                 <TextBlock Grid.Row="7" Grid.Column="0" Text="{Binding Lang.StartDate}"
                            Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
                 <DatePicker x:Name="StartDatePicker" Grid.Row="7" Grid.Column="1"
-                            FontSize="13" Margin="0,0,0,10"
-                            Foreground="#E0E0E0" BorderThickness="0"
+                            Style="{StaticResource DarkDatePicker}" Margin="0,0,0,10"
                             IsEnabled="False"/>
 
                 <!-- End Date -->
                 <TextBlock Grid.Row="8" Grid.Column="0" Text="{Binding Lang.EndDate}"
                            Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
                 <DatePicker x:Name="EndDatePicker" Grid.Row="8" Grid.Column="1"
-                            FontSize="13" Margin="0,0,0,10"
-                            Foreground="#E0E0E0" BorderThickness="0"
+                            Style="{StaticResource DarkDatePicker}" Margin="0,0,0,10"
                             IsEnabled="False"/>
 
                 <!-- Fee / Paid Row -->
@@ -257,7 +255,7 @@
                            Foreground="#9EC5C8" VerticalAlignment="Center" Margin="0,0,0,10" FontSize="13"/>
                 <StackPanel Grid.Row="9" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
                     <TextBox x:Name="FeeTextBox" Width="120"
-                             Style="{StaticResource DarkTextBox}" IsReadOnly="True"
+                             Style="{StaticResource DarkTextBox}"
                              TextChanged="FeeTextBox_TextChanged"
                              PreviewTextInput="NumberOnly_PreviewTextInput"
                              DataObject.Pasting="NumberOnly_Pasting"/>

@@ -152,4 +152,198 @@
         </Setter>
     </Style>
 
+    <!-- ===================================================================================
+         Themed dark DatePicker + Calendar. Referenced as {StaticResource DarkDatePicker} by
+         the Add-player and Renew custom-date pickers so the popup calendar matches the app
+         (dark chrome, teal today/selection) instead of the default light Windows calendar.
+         =================================================================================== -->
+
+    <!-- Individual day cells -->
+    <Style x:Key="DarkCalendarDayButton" TargetType="CalendarDayButton">
+        <Setter Property="Foreground" Value="#E0E0E0"/>
+        <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="MinWidth" Value="32"/>
+        <Setter Property="MinHeight" Value="30"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CalendarDayButton">
+                    <Border x:Name="bd" CornerRadius="6" Margin="1" Background="Transparent"
+                            BorderThickness="1.5" BorderBrush="Transparent">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="#3344A1A0"/>
+                        </Trigger>
+                        <Trigger Property="IsToday" Value="True">
+                            <Setter TargetName="bd" Property="BorderBrush" Value="#78CDD7"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="#44A1A0"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </Trigger>
+                        <Trigger Property="IsInactive" Value="True">
+                            <Setter Property="Foreground" Value="#5A5A70"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="#444458"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Month / year selection cells -->
+    <Style x:Key="DarkCalendarButton" TargetType="CalendarButton">
+        <Setter Property="Foreground" Value="#E0E0E0"/>
+        <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="MinWidth" Value="42"/>
+        <Setter Property="MinHeight" Value="42"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CalendarButton">
+                    <Border x:Name="bd" CornerRadius="6" Margin="2" Background="Transparent">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="#3344A1A0"/>
+                        </Trigger>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="#44A1A0"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Calendar chrome (prev / title / next header + the month & year grids) -->
+    <Style x:Key="DarkCalendarItem" TargetType="CalendarItem">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CalendarItem">
+                    <Border Background="#232336" BorderBrush="#3A3A50" BorderThickness="1.5" CornerRadius="8" Padding="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="PART_PreviousButton" Grid.Column="0" Content="&#9664;"
+                                        Foreground="#78CDD7" Background="Transparent" BorderThickness="0"
+                                        Padding="8,2" Cursor="Hand"/>
+                                <Button x:Name="PART_HeaderButton" Grid.Column="1" Foreground="#E0E0E0"
+                                        Background="Transparent" BorderThickness="0" FontWeight="Bold"
+                                        FontFamily="{StaticResource CairoFont}" FontSize="13" Cursor="Hand"/>
+                                <Button x:Name="PART_NextButton" Grid.Column="2" Content="&#9654;"
+                                        Foreground="#78CDD7" Background="Transparent" BorderThickness="0"
+                                        Padding="8,2" Cursor="Hand"/>
+                            </Grid>
+                            <Grid Grid.Row="1">
+                                <Grid x:Name="PART_MonthView" Visibility="Visible">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                                        <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+                                </Grid>
+                                <Grid x:Name="PART_YearView" Visibility="Hidden">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="DarkCalendar" TargetType="Calendar">
+        <Setter Property="Background" Value="#232336"/>
+        <Setter Property="Foreground" Value="#E0E0E0"/>
+        <Setter Property="BorderBrush" Value="#3A3A50"/>
+        <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+        <Setter Property="CalendarDayButtonStyle" Value="{StaticResource DarkCalendarDayButton}"/>
+        <Setter Property="CalendarButtonStyle" Value="{StaticResource DarkCalendarButton}"/>
+        <Setter Property="CalendarItemStyle" Value="{StaticResource DarkCalendarItem}"/>
+    </Style>
+
+    <!-- The DatePicker box itself: dark field + a teal calendar glyph button -->
+    <Style x:Key="DarkDatePicker" TargetType="DatePicker">
+        <Setter Property="CalendarStyle" Value="{StaticResource DarkCalendar}"/>
+        <Setter Property="Foreground" Value="#E0E0E0"/>
+        <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DatePicker">
+                    <Border x:Name="root" Background="#2A2A3E" BorderBrush="#3A3A50" BorderThickness="1.5" CornerRadius="6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="38"/>
+                            </Grid.ColumnDefinitions>
+                            <DatePickerTextBox x:Name="PART_TextBox" Grid.Column="0"
+                                               VerticalContentAlignment="Center" Margin="8,0,0,0"
+                                               Background="Transparent" BorderThickness="0"
+                                               Foreground="#E0E0E0"/>
+                            <Button x:Name="PART_Button" Grid.Column="1" Focusable="False"
+                                    Background="#222238" BorderThickness="1.5,0,0,0" BorderBrush="#3A3A50" Cursor="Hand">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bbd" Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                                            <TextBlock Text="&#128197;" FontSize="15" Foreground="#78CDD7"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bbd" Property="Background" Value="#2E2E48"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                            <Popup x:Name="PART_Popup" AllowsTransparency="True" StaysOpen="False"
+                                   Placement="Bottom"/>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="root" Property="BorderBrush" Value="#44A1A0"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="root" Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>
