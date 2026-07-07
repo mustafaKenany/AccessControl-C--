@@ -91,6 +91,7 @@ The central screen. Shows a virtualized, paged list (handles thousands of member
   - Months-type plan → `EndDate = StartDate.AddMonths(Duration × periods)`; fee = `Price × periods`.
   - This matters: a "20-day month" plan must give exactly 20 days and one flat charge — never round to a calendar month.
 - **Discount** is an absolute amount (not %). **Outstanding balance = Fee − Discount − AmountPaid.** Partial payment is allowed; the unpaid remainder is tracked and surfaced in Finance.
+- **Editable fee:** the fee auto-fills from the selected plan (`Price × periods`) but is **editable** by anyone who can add a member. Validation requires it be `> 0` **and ≥ the plan-derived default** — i.e. you may charge *above* the plan price (a surcharge) but never *below* it. A custom-period subscription has no preset minimum (fee just `> 0`).
 - **Max visits:** `0` = unlimited (date-based only); `>0` = capped number of entries. Hardware ceiling is 65535.
 - Multiple daily-pass tiers are supported by simply creating 2+ plans named as daily tiers; the daily-pass dialog then shows a tier selector and books revenue per tier.
 
@@ -111,6 +112,8 @@ State is **computed from data**, not stored:
 **Renewal:** sets `StartDate = today`, `EndDate = today + duration`, resets `UsedVisits = 0`, clears frozen, then re-pushes all active cards to the gate with the new validity. Fee/discount/paid can change at renewal.
 
 **Soft delete:** moves the member to an archive table with reason + who/when; best-effort removes their cards from the gate. A "Deleted Records" screen lists archives (no restore flow in the reference product — if you add restore, keep the photo).
+
+**Migrated members:** members imported from a previous system carry a placeholder subscription type `"Migrated"` (and often a placeholder phone). They keep their imported data until they are activated. **Direct editing of a migrated member is disabled** — the Edit action routes to the **Renew** flow, where a correction panel fixes name/phone as part of setting the real subscription, i.e. one atomic "correct + activate" step. This prevents half-corrected imports (e.g. a fixed phone but a still-placeholder subscription).
 
 ---
 
@@ -210,9 +213,9 @@ Feature-flagged on per gym.
 - **Users & roles:** create/edit/deactivate operators; username immutable; reset password; role (Admin/User) + **granular permission set** (see Section 17). Never hard-delete a user with history — deactivate.
 - **Products / Categories / Suppliers:** CRUD; categories cover income, expense, and product groupings (with optional rate).
 - **Purchase orders & inventory:** create PO (supplier, items, qty, unit cost, discount, amount-paid), which records stock-in; PO history with partial-payment tracking (Pending/Partial/Paid, remaining balance); stock-movements ledger (In/Out with reference/supplier/user); supplier-balances (owed) view; low-stock monitoring.
-- **Reports:** members/expiry, finance, inventory snapshot, sales-by-product (with profit = revenue − cost), purchases, stock movements, supplier history. Print + CSV export; all period-based reports have date-range pickers.
+- **Reports:** members/expiry, finance, inventory snapshot, sales-by-product (with profit = revenue − cost), purchases, stock movements, supplier history, and **daily entries** (per-day daily-pass entries with total count + revenue). Print + CSV export; all period-based reports have date-range pickers.
 - **Alerts:** expiring-soon / already-expired / frozen tabs.
-- **Audit log viewer:** immutable, searchable, paginated.
+- **Audit log viewer:** immutable, searchable (by player name, card number, action, or operator), paginated, period-filtered. Every operator action is recorded with a **bilingual, descriptive detail** — e.g. register logs the name, card number, and start/end dates; renew logs the old→new dates and fee. **Two-stage gate records:** any action that touches the controller writes **two** entries — one for the database step and a second for the gate step (e.g. "Player X (card Y) synced with the gate", "…disabled on the gate", "…removed from the gate") — so both are visible and searchable. Records carry action, entity type/id, details (both languages), operator, and UTC timestamp.
 - **Backup & restore:** manual native DB backup to a chosen file; restore with a strong confirmation (replaces the DB; single-user during restore; auto-recover to multi-user; rollback on failure); backup health tracked.
 - **Settings:** company/gym/owner/contact info + logo (used on receipts and headers).
 - **Subscription plans** and **Time groups** management (Sections 3 and 5).
