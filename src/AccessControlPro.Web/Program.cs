@@ -84,6 +84,13 @@ try
     var db = app.Services.GetRequiredService<DbHelper>();
     await db.InitializeDatabaseAsync();
     Console.WriteLine("Database initialized successfully.");
+
+    // Also migrate EVERY tenant DB (not just the master) so a column added to DbHelper
+    // reaches gyms provisioned before the edit — otherwise the desktop pushes a column the
+    // tenant lacks and /api/sync fails that table per-row (silent). Idempotent + best-effort.
+    var gymDbForMigration = app.Services.GetRequiredService<GymDbHelper>();
+    var migratedCount = await gymDbForMigration.MigrateAllTenantsAsync();
+    Console.WriteLine($"Tenant schema migration complete: {migratedCount} database(s) checked.");
 }
 catch (Exception ex)
 {

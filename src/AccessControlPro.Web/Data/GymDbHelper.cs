@@ -178,6 +178,47 @@ public class GymDbHelper
         return null;
     }
 
+    /// <summary>
+    /// Runs the idempotent schema init (<see cref="DbHelper.InitializeDatabaseAsync"/>) against
+    /// EVERY gym database, not just the master. Tenant DBs are otherwise only initialised once,
+    /// at creation time (<see cref="CreateGymDatabaseAsync"/>) — so any column later added to
+    /// DbHelper never reaches a gym that was provisioned before the edit. The desktop then pushes
+    /// that column and the dynamic /api/sync upsert fails per-row for that whole table (silent
+    /// partial sync). Running this on Web startup mirrors the desktop's per-launch migrator and
+    /// keeps every tenant current. All statements are CREATE/ALTER ... IF NOT EXISTS, so re-running
+    /// is a no-op on already-current DBs. Best-effort per gym: a failure on one DB is logged and
+    /// skipped so one bad tenant never blocks app startup.
+    /// </summary>
+    public async Task<int> MigrateAllTenantsAsync()
+    {
+        var dbNames = new List<string>();
+        using (var masterConn = await GetMasterConnectionAsync())
+        using (var cmd = new NpgsqlCommand(
+            @"SELECT DISTINCT ""DatabaseName"" FROM ""Gyms"" WHERE ""DatabaseName"" <> ''", masterConn))
+        using (var r = await cmd.ExecuteReaderAsync())
+        {
+            while (await r.ReadAsync())
+                if (!r.IsDBNull(0)) dbNames.Add(r.GetString(0));
+        }
+
+        int migrated = 0;
+        foreach (var dbName in dbNames)
+        {
+            try
+            {
+                var builder = new NpgsqlConnectionStringBuilder(_masterConnectionString) { Database = dbName };
+                var dbHelper = new DbHelper(builder.ConnectionString);
+                await dbHelper.InitializeDatabaseAsync();
+                migrated++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Tenant schema migration skipped for '{dbName}': {ex.Message}");
+            }
+        }
+        return migrated;
+    }
+
     /// <summary>Create a new database for a gym and initialize tables</summary>
     public async Task CreateGymDatabaseAsync(string databaseName)
     {
