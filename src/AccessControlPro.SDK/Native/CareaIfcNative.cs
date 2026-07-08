@@ -45,6 +45,51 @@ public static class CareaIfcNative
             throw new DllNotFoundException(
                 $"Failed to load {DllName} from {dllPath}. Win32 error: {error}");
         }
+
+        // The vendor SDK DLLs (CareaIfc/CtrlEx/DoorCtrller/MyCPlusPlus) were shipped as
+        // *debug* MFC builds — they import msvcr100d.dll + mfc100ud.dll. On certain code
+        // paths (notably opening the Real-Time Monitor) an internal MFC ASSERT fires
+        // AfxGetInstanceHandle() with a NULL module handle, popping a modal
+        // "Microsoft Visual C++ Debug Library — Debug Assertion Failed" dialog that blocks
+        // the whole app until the operator clicks a button. A release build of the same DLL
+        // would simply carry on. We can't rebuild the vendor binaries, so we neutralise the
+        // dialog: route the debug CRT's assert/error reports away from the modal window
+        // (WNDW) to the debugger channel, which makes _CrtDbgReport return 0 = "continue"
+        // when no debugger is attached — i.e. the assert becomes a no-op, matching release
+        // behaviour. msvcr100d.dll is a single shared instance for ALL vendor DLLs in this
+        // process, so one call covers every one of them (and MFC's wide-char asserts too,
+        // since the report mode is shared across the ANSI and wide report paths).
+        SuppressNativeDebugAssertions();
+    }
+
+    // --- Debug-CRT assertion suppression (see PreloadNativeLibraries above) -----------------
+    private const int _CRT_ERROR = 1;
+    private const int _CRT_ASSERT = 2;
+    private const int _CRTDBG_MODE_DEBUG = 0x2; // OutputDebugString channel (no modal dialog)
+
+    [DllImport("msvcr100d.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int _CrtSetReportMode(int reportType, int reportMode);
+
+    private static bool _assertsSuppressed;
+
+    /// <summary>
+    /// Redirects the debug CRT's assertion/error reports off the modal dialog so a vendor-DLL
+    /// MFC ASSERT can never freeze the app. Best-effort: silently no-ops if msvcr100d.dll is
+    /// absent (e.g. a machine that somehow shipped without the debug runtime).
+    /// </summary>
+    public static void SuppressNativeDebugAssertions()
+    {
+        if (_assertsSuppressed) return;
+        _assertsSuppressed = true;
+        try
+        {
+            _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_DEBUG);
+            _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG);
+        }
+        catch
+        {
+            // msvcr100d.dll not present / entry point missing — nothing to suppress.
+        }
     }
 
     [DllImport(DllName, CharSet = CharSet.Unicode, CallingConvention = Convention)]

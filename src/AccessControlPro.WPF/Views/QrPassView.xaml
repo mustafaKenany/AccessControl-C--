@@ -130,10 +130,12 @@
 
         <!-- ═══ Table Body ═══ -->
         <Border Grid.Row="3" Background="{StaticResource BgCardBrush}" CornerRadius="0,0,12,12">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" CanContentScroll="True">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" CanContentScroll="True"
+                          PanningMode="VerticalOnly">
                 <ItemsControl ItemsSource="{Binding Passes}"
                               VirtualizingStackPanel.IsVirtualizing="True"
                               VirtualizingStackPanel.VirtualizationMode="Recycling"
+                              VirtualizingPanel.ScrollUnit="Pixel"
                               ScrollViewer.CanContentScroll="True">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
