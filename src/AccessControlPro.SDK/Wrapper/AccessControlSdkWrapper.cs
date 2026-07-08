@@ -724,6 +724,29 @@ public class AccessControlSdkWrapper : IAccessControlSdk
         _monitorMain.ConnectError += (_, _, _) => { };
         _monitorMain.PasswordError += (_, _, _) => { };
 
+        // Warm up each device's native connection BEFORE the first BeginWatch.
+        // BeginWatch uses a very short timeout (TimeOutMSEL=600ms), so the FIRST attempt
+        // after the Monitor screen is (re-)entered frequently ERRORS OUT: the previous
+        // session's CloseWatch left the controller's TCP session cold and 600ms isn't
+        // enough to re-establish it. Operators learned to work around this by running the
+        // Devices "connection check" (getDevInfo) first, then returning to Monitor — that
+        // call re-opens the session with its own longer timeout. We now do that connection
+        // handshake automatically here: the FIRST command the device sees is a getDevInfo
+        // "connect", so the BeginWatch that follows lands on a live session. Best-effort —
+        // a timeout/error here is swallowed; BeginWatch (+ the 10s keepalive) still runs.
+        foreach (var device in devices)
+        {
+            try
+            {
+                var info = GetDeviceInfo(device);
+                SdkLog($"StartMonitoring: connection warm-up (getDevInfo) for {device.SerialNumber} -> {(string.IsNullOrEmpty(info) ? "empty" : "ok")}");
+            }
+            catch (Exception ex)
+            {
+                SdkLog($"StartMonitoring: connection warm-up failed for {device.SerialNumber}: {ex.Message}");
+            }
+        }
+
         foreach (var device in devices)
             SendBeginWatch(device);
 

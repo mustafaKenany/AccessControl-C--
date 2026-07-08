@@ -155,6 +155,10 @@ public partial class MonitorViewModel : ObservableObject
 
             // Track monitoring state so DeviceOperationHelper can restart after SDK reset
             _opHelper.SetMonitoringState(deviceInfos, OnMonitorEvent);
+            // StartMonitoring first sends a connection handshake (getDevInfo) to each device,
+            // then BeginWatch — so re-entering the Monitor screen no longer errors on a cold
+            // connection (previously the operator had to run a manual "connection check" first).
+            StatusMessage = "Establishing device connection...";
             _sdk.StartMonitoring(deviceInfos, OnMonitorEvent);
             ConnectedDevices = devices.Count;
             IsMonitoring = true;
