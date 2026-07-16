@@ -219,8 +219,22 @@ public static class ThermalReceipt
     {
         var pd = DefaultPrinterOrWarn();
         if (pd == null) return;
-        var paginator = ((IDocumentPaginatorSource)doc).DocumentPaginator;
-        pd.PrintDocument(paginator, jobName);
+        try
+        {
+            var paginator = ((IDocumentPaginatorSource)doc).DocumentPaginator;
+            pd.PrintDocument(paginator, jobName);
+        }
+        catch (Exception ex)
+        {
+            // Some default printers / drivers throw (e.g. NotSupportedException from PrintDocument on a
+            // misconfigured or virtual printer). Never let a print failure crash the app — warn instead.
+            var ar = LanguageManager.Instance.IsArabic;
+            CustomMessageBox.Show(
+                (ar ? "تعذّرت الطباعة على الطابعة الافتراضية. تحقّق من توصيل الطابعة وتعريفها ثم أعد المحاولة."
+                    : "Could not print to the default printer. Check that the printer is connected and its driver is installed, then try again.")
+                + "\n\n" + ex.Message,
+                ar ? "طباعة" : "Print", MsgType.Warning);
+        }
     }
 
     /// <summary>Returns a PrintDialog pointed at the default printer, or null (after showing a

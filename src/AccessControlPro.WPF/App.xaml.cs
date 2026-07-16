@@ -1136,14 +1136,20 @@ public partial class App : System.Windows.Application
                 catch { }
             }), System.Windows.Threading.DispatcherPriority.Background);
 
-            // Scheduled daily app-restart — resets the memory-leak baseline. DISABLED by default;
-            // a gym opts in per-machine via appsettings "AppRestartTimes":["05:00"] (pick an OFF-HOUR).
-            // Even when enabled it restarts ONLY during genuine idle — no dialog open AND no
-            // keyboard/mouse for 10 min (see IsSafeToRestart) — so it can never interrupt an operator
-            // mid-shift. It retries each minute for 30 min, then skips that slot for the day.
+            // Scheduled twice-daily FULL PC REBOOT — the surest reset for the 32-bit address-space
+            // leak: it clears the whole process AND the native SDK's handles/memory, not just the
+            // managed heap. Default ON at 17:00 + 22:00; configurable per gym via appsettings
+            // "AppRestartTimes":["17:00","22:00"] (empty array turns it off). Windows shows a ~2-minute
+            // warning before rebooting so staff can finish a sale (or cancel with `shutdown /a`). It
+            // is SKIPPED if the app only started recently (a fresh process has no leak worth a reboot —
+            // this also covers the app relaunching after the reboot). The persisted slot marker stops
+            // it re-firing once the machine comes back up.
             var restartTimes = LoadRestartTimes();
             if (restartTimes.Count > 0)
             {
+                // Since the reboot is enabled, make sure the app comes back up after the machine
+                // restarts (needs the PC to auto-login to the desktop as well).
+                EnsureAutoStartOnBoot();
                 _scheduledRestartTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
                 _scheduledRestartTimer.Tick += (_, _) =>
                 {
@@ -1153,28 +1159,27 @@ public partial class App : System.Windows.Application
                         foreach (var (h, m) in restartTimes)
                         {
                             var slotKey = $"{now:yyyy-MM-dd}:{h:D2}:{m:D2}";
-                            // Skip if we already restarted for this slot. The marker is PERSISTED to disk
-                            // (not just in-memory) — otherwise the restart wipes the in-memory set and the
-                            // relaunched process restarts again every minute for the whole window (a loop).
+                            // Skip if we already rebooted for this slot. The marker is PERSISTED to disk —
+                            // otherwise the reboot wipes the in-memory set and the relaunched app could
+                            // re-trigger inside the same window.
                             if (_restartSlotsDone.Contains(slotKey) || LoadLastRestartSlot() == slotKey) continue;
                             var slot = now.Date.AddHours(h).AddMinutes(m);
                             if (now < slot) continue;                                  // not time yet
                             if (now >= slot.AddMinutes(30)) { _restartSlotsDone.Add(slotKey); continue; } // missed the window
-                            if (IsSafeToRestart(requireIdle: true))
-                            {
-                                _restartSlotsDone.Add(slotKey);
-                                SaveLastRestartSlot(slotKey);   // persist BEFORE exiting so the relaunch doesn't loop
-                                try { RollingLogFile.Append(MemoryLogPath, $"{now:yyyy-MM-dd HH:mm:ss} [info] scheduled restart ({h:D2}:{m:D2}) — refreshing memory\n"); } catch { }
-                                RestartApp("scheduled memory refresh");
-                                return;
-                            }
-                            // busy (dialog open, or machine actively in use) — leave the slot pending and retry next minute.
+                            // Don't reboot a machine whose app only just started — memory is already fresh,
+                            // so a reboot would be pure disruption. Also skips the post-reboot relaunch.
+                            if (ProcessUptime() < TimeSpan.FromHours(2)) { _restartSlotsDone.Add(slotKey); continue; }
+                            _restartSlotsDone.Add(slotKey);
+                            SaveLastRestartSlot(slotKey);   // persist BEFORE the reboot so the relaunch doesn't re-fire
+                            try { RollingLogFile.Append(MemoryLogPath, $"{now:yyyy-MM-dd HH:mm:ss} [info] scheduled PC reboot ({h:D2}:{m:D2})\n"); } catch { }
+                            RebootMachine();
+                            return;
                         }
                     }
                     catch { }
                 };
                 _scheduledRestartTimer.Start();
-                StartupLog($"Scheduled app-restart at: {string.Join(", ", restartTimes.Select(t => $"{t.h:D2}:{t.m:D2}"))}");
+                StartupLog($"Scheduled PC reboot at: {string.Join(", ", restartTimes.Select(t => $"{t.h:D2}:{t.m:D2}"))}");
             }
 
             // Restart-recommended reminder. Both leaks (WPF Visual tree + native SDK)
@@ -1487,14 +1492,13 @@ public partial class App : System.Windows.Application
         catch { /* ignore — mutex may already be released */ }
     }
 
-    /// <summary>Parses the daily scheduled-restart times from appsettings ("AppRestartTimes":
-    /// ["05:00"]). DISABLED by default (empty) — the scheduled restart only runs for a gym that
-    /// explicitly opts in, and even then only during genuine idle (see IsSafeToRestart). This
-    /// avoids ever restarting a busy gym out from under the operator during working hours.</summary>
+    /// <summary>Parses the twice-daily PC-reboot times from appsettings ("AppRestartTimes":
+    /// ["17:00","22:00"]). Defaults to 17:00 + 22:00 (ON) when the key is absent; an empty array
+    /// turns the scheduled reboot off for that gym. Each entry is "HH:mm" (24-hour).</summary>
     private static List<(int h, int m)> LoadRestartTimes()
     {
         var result = new List<(int, int)>();
-        string[] raw = System.Array.Empty<string>(); // OFF by default — opt in per gym via appsettings
+        string[] raw = { "17:00", "22:00" }; // default ON — twice-daily PC reboot (5 PM + 10 PM)
         try
         {
             var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
@@ -1550,6 +1554,51 @@ public partial class App : System.Windows.Application
         if (exePath != null)
             Process.Start(exePath);
         Environment.Exit(0);
+    }
+
+    /// <summary>How long the current app process has been running (large value if unknown, so the
+    /// scheduled reboot still proceeds).</summary>
+    private static TimeSpan ProcessUptime()
+    {
+        try { return DateTime.Now - Process.GetCurrentProcess().StartTime; }
+        catch { return TimeSpan.FromDays(365); }
+    }
+
+    /// <summary>Registers the app to launch automatically after Windows login (HKCU Run key), so a
+    /// scheduled PC reboot brings the gate software back up on its own — no manual reopen. HKCU needs
+    /// no admin; idempotent (refreshes the exe path each launch). Only meaningful if the PC also has
+    /// Windows AUTO-LOGIN enabled so it reaches the desktop without a manual password after reboot.</summary>
+    private static void EnsureAutoStartOnBoot()
+    {
+        try
+        {
+            var exe = Environment.ProcessPath;
+            if (string.IsNullOrEmpty(exe)) return;
+            using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\Run");
+            key?.SetValue("AccessControlPro", "\"" + exe + "\"");
+        }
+        catch { /* best-effort — startup registration is non-critical */ }
+    }
+
+    /// <summary>Triggers a FULL WINDOWS REBOOT with a ~2-minute warning (for the scheduled memory
+    /// reset). Marks the exit PLANNED first so the next boot doesn't log a false crash bundle.
+    /// Best-effort — silently no-ops if the account lacks reboot privilege. Staff can abort the
+    /// pending reboot with `shutdown /a` during the countdown.</summary>
+    private static void RebootMachine()
+    {
+        try { LastRunStateTracker.RecordPlannedRestart("scheduled PC reboot"); } catch { }
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "shutdown.exe",
+                Arguments = "/r /t 120 /c \"Scheduled maintenance restart - اعادة تشغيل الصيانة المجدولة\"",
+                CreateNoWindow = true,
+                UseShellExecute = false
+            });
+        }
+        catch { /* best-effort — e.g. insufficient privilege to reboot */ }
     }
 
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
