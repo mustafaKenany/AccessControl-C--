@@ -57,6 +57,11 @@ public partial class App : System.Windows.Application
     private static readonly HashSet<string> _restartSlotsDone = new();
     private static readonly string CrashLogPath = Path.Combine(AppContext.BaseDirectory, "crash_log.txt");
     private static readonly string MemoryLogPath = Path.Combine(AppContext.BaseDirectory, "memory_log.txt");
+    // Managed-heap histogram log (the file name contains "log" so the diagnostics bundler picks it
+    // up automatically). Captured when memory is elevated so a bundle shows WHAT is leaking.
+    private static readonly string HeapLogPath = Path.Combine(AppContext.BaseDirectory, "heap_log.txt");
+    private static DateTime _lastHeapCaptureAt = DateTime.MinValue;
+    private static int _heapCaptureRunning; // 0/1 guard so two captures never overlap
 
     // === Native debug-dialog suppression =================================================
     // The Hikvision/Dnake SDK (FCardCDrive.dll and friends) is built against the DEBUG
@@ -1098,6 +1103,24 @@ public partial class App : System.Windows.Application
                                $"gen0={GC.CollectionCount(0)} gen1={GC.CollectionCount(1)} gen2={GC.CollectionCount(2)} " +
                                $"windows={winCount} uptime={uptime.TotalHours:F1}h\n";
                     RollingLogFile.Append(MemoryLogPath, line);
+
+                    // When memory is elevated, capture a managed-heap histogram into heap_log.txt (which
+                    // the diagnostics bundle auto-includes) so we can see WHAT is leaking without a
+                    // multi-GB dump. Runs OFF the UI thread (the snapshot walks the whole heap, ~seconds),
+                    // throttled to hourly, and only in a SAFE window: high enough to be diagnostic (>600 MB)
+                    // but with headroom left so the capture itself doesn't tip a 32-bit process over (<1500 MB).
+                    if (ws > 600 && ws < 1500
+                        && (DateTime.Now - _lastHeapCaptureAt) > TimeSpan.FromMinutes(60)
+                        && System.Threading.Interlocked.CompareExchange(ref _heapCaptureRunning, 1, 0) == 0)
+                    {
+                        _lastHeapCaptureAt = DateTime.Now;
+                        System.Threading.Tasks.Task.Run(() =>
+                        {
+                            try { RollingLogFile.Append(HeapLogPath, HeapHistogram.CaptureTopTypes(25)); }
+                            catch { }
+                            finally { System.Threading.Interlocked.Exchange(ref _heapCaptureRunning, 0); }
+                        });
+                    }
 
                     // Warning thresholds: at >500 MB working set we shout, at >700 MB we
                     // proactively trigger a Gen2 compacting GC and log a critical entry.

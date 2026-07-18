@@ -98,6 +98,19 @@ public partial class MainWindow : Window
 
         try
         {
+            // Capture a fresh managed-heap histogram first, so this bundle carries a snapshot of what's
+            // using memory right now (works at any memory level — great for the leak hunt on demand).
+            await Task.Run(() =>
+            {
+                try
+                {
+                    RollingLogFile.Append(
+                        System.IO.Path.Combine(AppContext.BaseDirectory, "heap_log.txt"),
+                        HeapHistogram.CaptureTopTypes(25));
+                }
+                catch { }
+            });
+
             var diag = _serviceProvider.GetRequiredService<IDiagnosticsService>();
             var result = await Task.Run(() => diag.UploadAsync("manual", note));
 
