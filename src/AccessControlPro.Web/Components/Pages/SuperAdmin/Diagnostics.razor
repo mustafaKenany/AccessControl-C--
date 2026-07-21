@@ -9,6 +9,13 @@
 <div class="page-header">
     <h1 style="color: #7E57C2;">Diagnostics Bundles</h1>
     <div style="display: flex; gap: 0.5rem;">
+        @if (_selected.Count > 0)
+        {
+            <button class="btn-sm" style="background: #DC2626; color: #fff; border: none; cursor: pointer;"
+                    title="Delete the selected bundles" @onclick="DeleteSelectedAsync">
+                <i class="fas fa-trash"></i> Delete Selected (@_selected.Count)
+            </button>
+        }
         <button class="btn-sm" style="background: #DC2626; color: #fff; border: none; cursor: pointer;"
                 title="Delete every bundle older than 30 days" @onclick="DeleteOldAsync">
             <i class="fas fa-broom"></i> Delete &gt; 30 days
@@ -74,6 +81,11 @@ else
             <table class="data-table">
                 <thead>
                     <tr>
+                        <th style="width: 34px;">
+                            <input type="checkbox" title="Select all"
+                                   checked="@(_bundles.Count > 0 && _selected.Count == _bundles.Count)"
+                                   @onchange="ToggleSelectAll" />
+                        </th>
                         <th>Gym</th>
                         <th>Uploaded</th>
                         <th>Trigger</th>
@@ -85,7 +97,11 @@ else
                 <tbody>
                     @foreach (var b in _bundles)
                     {
-                        <tr>
+                        <tr style="@(_selected.Contains(b.Id) ? "background: rgba(126,87,194,0.10);" : "")">
+                            <td>
+                                <input type="checkbox" checked="@_selected.Contains(b.Id)"
+                                       @onchange="e => ToggleOne(b.Id, (bool)(e.Value ?? false))" />
+                            </td>
                             <td>
                                 <strong>@b.GymName</strong>
                                 <span style="color: var(--text-secondary); font-size: 0.8rem; display: block;">#@b.GymId</span>
@@ -120,6 +136,7 @@ else
 
 @code {
     private List<BundleRow> _bundles = new();
+    private readonly HashSet<int> _selected = new();
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
@@ -130,6 +147,7 @@ else
     private async Task LoadAsync()
     {
         _loading = true;
+        _selected.Clear();   // a fresh load clears any prior selection (ids may have changed)
         StateHasChanged();
 
         try
@@ -170,6 +188,27 @@ else
             _loading = false;
             StateHasChanged();
         }
+    }
+
+    private void ToggleOne(int id, bool on)
+    {
+        if (on) _selected.Add(id); else _selected.Remove(id);
+    }
+
+    private void ToggleSelectAll(ChangeEventArgs e)
+    {
+        var on = (bool)(e.Value ?? false);
+        _selected.Clear();
+        if (on) foreach (var b in _bundles) _selected.Add(b.Id);
+    }
+
+    private async Task DeleteSelectedAsync()
+    {
+        if (_selected.Count == 0) return;
+        var ok = await JS.InvokeAsync<bool>("confirm", $"Delete {_selected.Count} selected bundle(s) permanently?");
+        if (!ok) return;
+        await DeleteByIdsAsync(_selected.ToList());
+        await LoadAsync();
     }
 
     private async Task DeleteBundleAsync(int id)
