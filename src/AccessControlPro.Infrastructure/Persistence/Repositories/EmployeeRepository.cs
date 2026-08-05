@@ -16,6 +16,20 @@ public class EmployeeRepository : IEmployeeRepository
         return await db.Employees.Include(e => e.AccessCards).ToListAsync();
     }
 
+    // Photo-free, AsNoTracking projection for the 10-second expiry monitor. The old path loaded every
+    // player's full JPEG (PhotoData byte[]) + card graph, tracked, every 10s → ~108 MB/min of dead
+    // photo churn that fragmented the 32-bit heap into OutOfMemoryException. Here EF selects only the
+    // scalar fields it needs and computes "has an active synced card" as a SQL EXISTS — no blobs.
+    public async Task<IReadOnlyList<ExpiryMonitorRow>> GetExpiryMonitorRowsAsync()
+    {
+        await using var db = _factory.CreateDbContext();
+        return await db.Employees.AsNoTracking()
+            .Select(e => new ExpiryMonitorRow(
+                e.Id, e.FullNameEn, e.IsFrozen, e.EndDate, e.MaxVisits, e.UsedVisits,
+                e.AccessCards.Any(c => c.IsActive && c.IsSyncedToDevice)))
+            .ToListAsync();
+    }
+
     // Digit-aware search: a card number (or a scanned card) uses an INDEXED exact/prefix seek — no
     // full-table scan — which is what made card-scan search slow. Text searches use contains on the
     // name/phone. Shared by the paged list, the filter pills, and the has-card count.

@@ -2,8 +2,17 @@ using AccessControlPro.Domain.Entities;
 
 namespace AccessControlPro.Domain.Interfaces;
 
+/// <summary>Lightweight, PHOTO-FREE row for the 10-second expiry monitor. Loading full players WITH
+/// their JPEG PhotoData every 10s was the 32-bit OOM leak (~108 MB/min of dead photo byte[]).</summary>
+public record ExpiryMonitorRow(int Id, string FullNameEn, bool IsFrozen, DateTime EndDate,
+    int MaxVisits, int UsedVisits, bool HasActiveSyncedCard);
+
 public interface IEmployeeRepository
 {
+    /// <summary>Photo-free, AsNoTracking projection of every player's expiry-relevant fields, for the
+    /// frequent (10s) expiry monitor. NEVER load PhotoData on this hot path — that was the OOM leak.</summary>
+    Task<IReadOnlyList<ExpiryMonitorRow>> GetExpiryMonitorRowsAsync();
+
     Task<IEnumerable<Employee>> GetAllWithCardsAsync();
     Task<(IEnumerable<Employee> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? search = null);
     /// <summary>Count of members (matching the optional search) that have at least one card record —

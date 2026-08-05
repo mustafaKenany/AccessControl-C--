@@ -176,10 +176,12 @@ public class DiagnosticsService : IDiagnosticsService
         var dir = AppContext.BaseDirectory;
         // Prioritise the high-signal files, then anything else ending in .txt that
         // looks like a log. The first matches dominate the 20 MB budget.
+        // heap_log/memory_log are the leak-hunt files — always include them FIRST so a bloated log
+        // folder can never push them out of the 20 MB budget.
         var priorityNames = new[]
         {
-            "crash_log.txt", "startup_log.txt", "cloud_sync_log.txt",
-            "diagnostics_log.txt", "session.log"
+            "crash_log.txt", "startup_log.txt", "heap_log.txt", "memory_log.txt",
+            "cloud_sync_log.txt", "diagnostics_log.txt", "session.log"
         };
         foreach (var name in priorityNames)
         {
@@ -187,15 +189,17 @@ public class DiagnosticsService : IDiagnosticsService
             if (File.Exists(path)) yield return path;
         }
 
-        // Then any *_log.txt or session.log files that weren't already picked up
+        // Then any other *log*.txt — NEWEST first, EXCLUDING the rotated "legacy" archives
+        // (RollingLogFile keeps dozens of auth_log_legacy_*.txt that bloated bundles to ~1 MB and
+        // pushed out the useful logs). Cap to the 15 most recent.
         if (Directory.Exists(dir))
         {
-            foreach (var file in Directory.EnumerateFiles(dir, "*log*.txt", SearchOption.TopDirectoryOnly)
-                                          .OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc))
-            {
-                if (!priorityNames.Any(n => string.Equals(Path.GetFileName(file), n, StringComparison.OrdinalIgnoreCase)))
-                    yield return file;
-            }
+            var extra = Directory.EnumerateFiles(dir, "*log*.txt", SearchOption.TopDirectoryOnly)
+                .Where(f => Path.GetFileName(f).IndexOf("legacy", StringComparison.OrdinalIgnoreCase) < 0)
+                .Where(f => !priorityNames.Any(n => string.Equals(Path.GetFileName(f), n, StringComparison.OrdinalIgnoreCase)))
+                .OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc)
+                .Take(15);
+            foreach (var file in extra) yield return file;
         }
 
         // And the Logs/ subfolder if it exists (legacy / future location)

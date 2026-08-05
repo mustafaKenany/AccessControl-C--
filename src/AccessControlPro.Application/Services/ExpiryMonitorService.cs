@@ -63,35 +63,25 @@ public class ExpiryMonitorService : IExpiryMonitorService
 
         try
         {
-            // Only fetch expired + visit-exhausted players (NOT all employees)
-            var expiredPlayers = (await _employeeRepository.GetExpiredAsync()).ToList();
-            var visitExhausted = await GetVisitExhaustedPlayersAsync();
+            // PHOTO-FREE lightweight query. This runs every ~10 s; the old path loaded every player's
+            // full JPEG (PhotoData byte[]) + card graph, tracked, each cycle → ~108 MB/min of dead photo
+            // churn that fragmented the 32-bit heap into OutOfMemoryException. We only COUNT + log for the
+            // status report (the hardware itself enforces expiry via the effectiveTimes countdown + date).
+            var rows = await _employeeRepository.GetExpiryMonitorRowsAsync();
 
-            // Combine both lists, deduplicate by Id
-            var playersToDisable = expiredPlayers
-                .Concat(visitExhausted)
-                .GroupBy(e => e.Id)
-                .Select(g => g.First())
-                .ToList();
-
-            if (playersToDisable.Count == 0) return result;
-
-            // DO NOT send SDK commands here — hardware handles expiry via effectiveTimes countdown + date check.
-            // Sending SDK commands every 10 seconds floods the device and causes TCP stuck issues.
-            // Just log and count for reporting purposes.
-            foreach (var employee in playersToDisable)
+            foreach (var r in rows)
             {
-                if (employee.IsFrozen) continue;
+                if (r.IsFrozen) continue;
 
-                if (employee.EndDate < DateTime.Now)
+                if (r.EndDate < DateTime.Now)
                 {
                     result.DateExpired++;
-                    result.Details.Add($"{employee.FullNameEn} (ID:{employee.Id}): Date expired ({employee.EndDate:yyyy-MM-dd})");
+                    result.Details.Add($"{r.FullNameEn} (ID:{r.Id}): Date expired ({r.EndDate:yyyy-MM-dd})");
                 }
-                else if (employee.MaxVisits > 0 && employee.UsedVisits >= employee.MaxVisits)
+                else if (r.MaxVisits > 0 && r.UsedVisits >= r.MaxVisits && r.HasActiveSyncedCard)
                 {
                     result.VisitExpired++;
-                    result.Details.Add($"{employee.FullNameEn} (ID:{employee.Id}): Visit limit reached ({employee.UsedVisits}/{employee.MaxVisits})");
+                    result.Details.Add($"{r.FullNameEn} (ID:{r.Id}): Visit limit reached ({r.UsedVisits}/{r.MaxVisits})");
                 }
             }
         }
@@ -102,25 +92,6 @@ public class ExpiryMonitorService : IExpiryMonitorService
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// Gets players who have exhausted their visit count (MaxVisits > 0 and UsedVisits >= MaxVisits).
-    /// Lightweight query — only fetches visit-based players with active synced cards.
-    /// </summary>
-    private async Task<IEnumerable<Employee>> GetVisitExhaustedPlayersAsync()
-    {
-        try
-        {
-            var allWithCards = await _employeeRepository.GetAllWithCardsAsync();
-            return allWithCards
-                .Where(e => !e.IsFrozen && e.MaxVisits > 0 && e.UsedVisits >= e.MaxVisits
-                    && e.AccessCards != null && e.AccessCards.Any(c => c.IsActive && c.IsSyncedToDevice));
-        }
-        catch
-        {
-            return [];
-        }
     }
 
     private static DeviceInfo BuildDeviceInfo(Device device) => new()

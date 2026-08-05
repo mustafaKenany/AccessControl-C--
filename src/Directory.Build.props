@@ -4,8 +4,8 @@
        the release zip carried stale internal DLLs while only the app DLLs were version-stamped.
        Bump this one value per release. -->
   <PropertyGroup>
-    <Version>4.6.60</Version>
-    <AssemblyVersion>4.6.60.0</AssemblyVersion>
-    <FileVersion>4.6.60.0</FileVersion>
+    <Version>4.6.61</Version>
+    <AssemblyVersion>4.6.61.0</AssemblyVersion>
+    <FileVersion>4.6.61.0</FileVersion>
   </PropertyGroup>
 </Project>

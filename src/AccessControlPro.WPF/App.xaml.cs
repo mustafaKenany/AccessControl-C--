@@ -38,7 +38,7 @@ public partial class App : System.Windows.Application
     private string? _pendingLockWarning;
     private DispatcherTimer? _cleanupDailyTimer;
     private DispatcherTimer? _qrPoolTimer;
-    private DispatcherTimer? _memoryMonitorTimer;
+    private System.Threading.Timer? _memoryMonitorTimer;
     private DispatcherTimer? _restartBannerTimer;
     private DispatcherTimer? _deviceWatchdogTimer;
     private DispatcherTimer? _scheduledRestartTimer;
@@ -1078,86 +1078,20 @@ public partial class App : System.Windows.Application
                 }
             });
 
-            // Memory pressure monitor — logs working set + heap stats every 10 min to
-            // memory_log.txt. Picked up by the diagnostics bundler. After the Basmia
-            // OOM crashes on 2026-05-18 we want clear breadcrumbs showing memory growth
-            // BEFORE the next OOM, not just at the crash moment. Logs are tiny (~80 bytes
-            // per sample) so 60-day rolling retention costs <100 KB total.
-            _memoryMonitorTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(10) };
-            _memoryMonitorTimer.Tick += (_, _) =>
+            // Memory pressure monitor — logs working set + heap stats to memory_log.txt (bundled) and
+            // captures a heap histogram when memory is elevated. Runs on a BACKGROUND thread
+            // (System.Threading.Timer), NOT the UI dispatcher: the old DispatcherTimer was starved
+            // exactly when memory was high (so bundles only ever had the startup sample and the heap
+            // capture never fired), and its blocking compacting GC froze the UI. First sample ~15 s
+            // after startup, then every 10 min.
+            try
             {
-                try
-                {
-                    var proc = Process.GetCurrentProcess();
-                    var ws = proc.WorkingSet64 / (1024 * 1024);
-                    var priv = proc.PrivateMemorySize64 / (1024 * 1024);
-                    var heap = GC.GetTotalMemory(forceFullCollection: false) / (1024 * 1024);
-                    var uptime = DateTime.Now - _appStartedAt;
-                    _lastWorkingSetMb = (int)ws;
-
-                    // Open-window count is the clearest WPF-leak signal: if it climbs over hours,
-                    // dialogs/windows are being retained (not GC'd). Runs on the UI dispatcher thread.
-                    var winCount = System.Windows.Application.Current?.Windows.Count ?? 0;
-                    var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [info] " +
-                               $"ws={ws}MB private={priv}MB heap={heap}MB " +
-                               $"gen0={GC.CollectionCount(0)} gen1={GC.CollectionCount(1)} gen2={GC.CollectionCount(2)} " +
-                               $"windows={winCount} uptime={uptime.TotalHours:F1}h\n";
-                    RollingLogFile.Append(MemoryLogPath, line);
-
-                    // When memory is elevated, capture a managed-heap histogram into heap_log.txt (which
-                    // the diagnostics bundle auto-includes) so we can see WHAT is leaking without a
-                    // multi-GB dump. Runs OFF the UI thread (the snapshot walks the whole heap, ~seconds),
-                    // throttled to hourly, and only in a SAFE window: high enough to be diagnostic (>600 MB)
-                    // but with headroom left so the capture itself doesn't tip a 32-bit process over (<1500 MB).
-                    if (ws > 600 && ws < 1500
-                        && (DateTime.Now - _lastHeapCaptureAt) > TimeSpan.FromMinutes(60)
-                        && System.Threading.Interlocked.CompareExchange(ref _heapCaptureRunning, 1, 0) == 0)
-                    {
-                        _lastHeapCaptureAt = DateTime.Now;
-                        System.Threading.Tasks.Task.Run(() =>
-                        {
-                            try { RollingLogFile.Append(HeapLogPath, HeapHistogram.CaptureTopTypes(25)); }
-                            catch { }
-                            finally { System.Threading.Interlocked.Exchange(ref _heapCaptureRunning, 0); }
-                        });
-                    }
-
-                    // Warning thresholds: at >500 MB working set we shout, at >700 MB we
-                    // proactively trigger a Gen2 compacting GC and log a critical entry.
-                    if (ws > 700)
-                    {
-                        RollingLogFile.Append(MemoryLogPath,
-                            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [error] working set high ({ws} MB) — forcing Gen2 compacting GC\n");
-                        // GCCollectionMode.Aggressive requires blocking:true — passing false throws
-                        // "AggressiveGC requires setting the blocking parameter to true", which made
-                        // this emergency compaction fail every time it was needed (the very moment
-                        // memory was highest). Blocking here is fine: it runs on the monitor's
-                        // background timer thread, not the UI thread.
-                        GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
-                    }
-                    else if (ws > 500)
-                    {
-                        RollingLogFile.Append(MemoryLogPath,
-                            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [warn] working set elevated ({ws} MB) — consider closing/reopening the app today\n");
-                    }
-                }
-                catch (Exception ex2)
-                {
-                    try { RollingLogFile.Append(MemoryLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [error] monitor failed: {ex2.Message}\n"); } catch { }
-                }
-            };
-            _memoryMonitorTimer.Start();
-            // Fire one sample on startup so we have a baseline reading
-            _memoryMonitorTimer.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                try
-                {
-                    var proc = Process.GetCurrentProcess();
-                    var ws = proc.WorkingSet64 / (1024 * 1024);
-                    RollingLogFile.Append(MemoryLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [info] === STARTUP === ws={ws}MB pid={proc.Id}\n");
-                }
-                catch { }
-            }), System.Windows.Threading.DispatcherPriority.Background);
+                var p0 = Process.GetCurrentProcess();
+                RollingLogFile.Append(MemoryLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [info] === STARTUP === ws={p0.WorkingSet64 / (1024 * 1024)}MB pid={p0.Id}\n");
+            }
+            catch { }
+            _memoryMonitorTimer = new System.Threading.Timer(_ => SampleMemory(),
+                null, TimeSpan.FromSeconds(15), TimeSpan.FromMinutes(10));
 
             // Scheduled twice-daily FULL PC REBOOT — the surest reset for the 32-bit address-space
             // leak: it clears the whole process AND the native SDK's handles/memory, not just the
@@ -1565,6 +1499,72 @@ public partial class App : System.Windows.Application
             File.WriteAllText(ScheduledRestartMarkerPath, slotKey);
         }
         catch { /* best-effort: default-OFF + idle-gate already prevent the loop */ }
+    }
+
+    /// <summary>One memory-monitor sample, run on a BACKGROUND thread (System.Threading.Timer). Logs
+    /// ws/heap/GC/window-count to memory_log.txt, captures a heap histogram when memory is elevated,
+    /// and force-compacts at >700 MB — all off the UI thread so it keeps firing (and doesn't freeze
+    /// the UI) exactly when memory is high, which is when we need the breadcrumbs.</summary>
+    private static void SampleMemory()
+    {
+        try
+        {
+            var proc = Process.GetCurrentProcess();
+            var ws = (int)(proc.WorkingSet64 / (1024 * 1024));
+            var priv = proc.PrivateMemorySize64 / (1024 * 1024);
+            var heap = GC.GetTotalMemory(false) / (1024 * 1024);
+            var uptime = DateTime.Now - _appStartedAt;
+            _lastWorkingSetMb = ws;
+
+            // Window count is a WPF-leak signal but is UI-thread-only. Read it WITHOUT blocking (1.5 s
+            // budget) — if the UI thread is too busy to answer, log windows=-1, which itself flags a
+            // saturated UI thread at this memory level.
+            int winCount = -1;
+            try
+            {
+                var app = System.Windows.Application.Current;
+                if (app != null)
+                {
+                    var op = app.Dispatcher.InvokeAsync(() => app.Windows.Count);
+                    if (op.Wait(TimeSpan.FromMilliseconds(1500)) == System.Windows.Threading.DispatcherOperationStatus.Completed)
+                        winCount = op.Result;
+                }
+            }
+            catch { }
+
+            RollingLogFile.Append(MemoryLogPath,
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [info] ws={ws}MB private={priv}MB heap={heap}MB " +
+                $"gen0={GC.CollectionCount(0)} gen1={GC.CollectionCount(1)} gen2={GC.CollectionCount(2)} " +
+                $"windows={winCount} uptime={uptime.TotalHours:F1}h\n");
+
+            // Elevated memory → capture a managed-heap histogram (already off-UI here). Throttled hourly,
+            // safe window (<1500 MB) so the capture can't tip a 32-bit process over.
+            if (ws > 600 && ws < 1500
+                && (DateTime.Now - _lastHeapCaptureAt) > TimeSpan.FromMinutes(60)
+                && System.Threading.Interlocked.CompareExchange(ref _heapCaptureRunning, 1, 0) == 0)
+            {
+                _lastHeapCaptureAt = DateTime.Now;
+                try { RollingLogFile.Append(HeapLogPath, HeapHistogram.CaptureTopTypes(25)); }
+                catch { }
+                finally { System.Threading.Interlocked.Exchange(ref _heapCaptureRunning, 0); }
+            }
+
+            if (ws > 700)
+            {
+                RollingLogFile.Append(MemoryLogPath,
+                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [error] working set high ({ws} MB) — forcing Gen2 compacting GC\n");
+                GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+            }
+            else if (ws > 500)
+            {
+                RollingLogFile.Append(MemoryLogPath,
+                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [warn] working set elevated ({ws} MB)\n");
+            }
+        }
+        catch (Exception ex)
+        {
+            try { RollingLogFile.Append(MemoryLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [error] monitor failed: {ex.Message}\n"); } catch { }
+        }
     }
 
     private static void RestartApp(string reason = "restart")

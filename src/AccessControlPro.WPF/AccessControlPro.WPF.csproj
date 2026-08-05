@@ -83,7 +83,7 @@
     <!-- ClrMD: lets the app snapshot its OWN managed heap and log a top-types histogram into the
          diagnostics bundle, so a memory leak can be diagnosed remotely without a multi-GB dump. -->
     <PackageReference Include="Microsoft.Diagnostics.Runtime" Version="3.1.*" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.*">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.28">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
