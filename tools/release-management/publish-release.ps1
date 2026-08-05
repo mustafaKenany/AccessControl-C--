@@ -23,11 +23,21 @@ $ErrorActionPreference = "Stop"
 
 # ----- Config -----
 $VpsHost        = "root@89.116.39.155"
-# Blazor app is deployed directly into /var/www/gymapp/ — wwwroot is a sibling
-# of the AccessControlPro.Web executable (NOT inside it as the name suggests).
-$VpsReleasesDir = "/var/www/gymapp/wwwroot/releases"
+# IMPORTANT (post "face"-project nginx reorg, 2026-08): the ZIP and the manifest
+# now live in DIFFERENT directories.
+#   * ZIP -> /var/www/releases/  — nginx serves it via
+#            `location /releases/ { alias /var/www/releases/; }` on hmtech.solutions.
+#            This dir is SHARED with the face project's zips.
+#   * manifest (latest.json) -> /var/www/gymapp/wwwroot/releases/  — read by the
+#            Blazor /api/version/latest endpoint, which is what the desktop
+#            UpdateCheckService actually polls. Do NOT drop a gymapp latest.json
+#            into the shared /var/www/releases/ (it would collide with face's).
+# The static URL https://hmtech.solutions/releases/latest.json 404s BY DESIGN —
+# we verify via the API endpoint + a direct GET of the download zip instead.
+$VpsZipDir      = "/var/www/releases"
+$VpsManifestDir = "/var/www/gymapp/wwwroot/releases"
 $VerifyUrl      = "https://hmtech.solutions/api/version/latest"
-$StaticUrl      = "https://hmtech.solutions/releases/latest.json"
+$ZipUrlBase     = "https://hmtech.solutions/releases"
 $RepoRoot       = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 
 # All 3 customer apps publish into the SAME folder so they share DLLs.
@@ -106,7 +116,8 @@ Write-Host "  Mandatory:     $mandatory"
 Write-Host "  English notes: $notesEn"
 Write-Host "  Arabic notes:  $notesAr"
 Write-Host "  VPS:           $VpsHost"
-Write-Host "  Target folder: $VpsReleasesDir"
+Write-Host "  ZIP folder:    $VpsZipDir  (shared /releases/ alias)"
+Write-Host "  Manifest:      $VpsManifestDir/latest.json  (read by /api/version/latest)"
 Write-Host ""
 $confirm = Read-Host "Proceed? (Y/n)"
 if ($confirm -eq 'n' -or $confirm -eq 'N') {
@@ -191,22 +202,33 @@ Write-Host ""
 Write-Host "Step 6/7 - Uploading to VPS" -ForegroundColor Yellow
 Write-Host "----------------------------------------"
 
-# Ensure the releases folder exists on the VPS before scp (idempotent — safe to re-run)
-Write-Host "  Ensuring releases folder exists on VPS..."
-ssh $VpsHost "mkdir -p $VpsReleasesDir"
+# Ensure both target folders exist on the VPS before scp (idempotent — safe to re-run)
+Write-Host "  Ensuring release folders exist on VPS..."
+ssh $VpsHost "mkdir -p $VpsZipDir $VpsManifestDir"
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: could not create $VpsReleasesDir on VPS." -ForegroundColor Red
-    Write-Host "Check that the path exists. Run: ssh $VpsHost `"ls -la /var/www/gymapp/AccessControlPro.Web/wwwroot/`""
+    Write-Host "ERROR: could not create $VpsZipDir / $VpsManifestDir on VPS." -ForegroundColor Red
     exit 1
 }
 
-Write-Host "  Uploading ZIP (may prompt for VPS password if no SSH key)..."
-scp $zipPath "${VpsHost}:${VpsReleasesDir}/"
+Write-Host "  Uploading ZIP to $VpsZipDir (may prompt for VPS password if no SSH key)..."
+scp $zipPath "${VpsHost}:${VpsZipDir}/"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: scp upload failed." -ForegroundColor Red
     exit 1
 }
-Write-Host "  OK - ZIP uploaded" -ForegroundColor Green
+
+# Verify the server-side SHA-256 matches what we built locally BEFORE we publish
+# the manifest — guards against a truncated/corrupted upload pointing customers
+# at a zip whose hash won't match (their updater would reject it fleet-wide).
+Write-Host "  Verifying server-side SHA-256 matches local..."
+$serverSha = (ssh $VpsHost "sha256sum $VpsZipDir/$zipName").Split(' ')[0]
+if ($serverSha -and ($serverSha.ToLower() -eq $sha.ToLower())) {
+    Write-Host "  OK - ZIP uploaded, server SHA matches local ($($sha.Substring(0,12))...)" -ForegroundColor Green
+} else {
+    Write-Host "ERROR: server SHA ($serverSha) != local ($sha)." -ForegroundColor Red
+    Write-Host "       Upload is corrupt/incomplete — aborting BEFORE the manifest goes live." -ForegroundColor Red
+    exit 1
+}
 
 # Build the latest.json content
 $releasedAt = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
@@ -231,7 +253,7 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 [System.IO.File]::WriteAllText($tempManifest, $manifest, $utf8NoBom)
 
 Write-Host "  Uploading latest.json (may prompt for VPS password if no SSH key)..."
-scp $tempManifest "${VpsHost}:${VpsReleasesDir}/latest.json"
+scp $tempManifest "${VpsHost}:${VpsManifestDir}/latest.json"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: scp upload of latest.json failed." -ForegroundColor Red
     exit 1
@@ -245,33 +267,35 @@ Write-Host "Step 7/7 - Verifying it is live" -ForegroundColor Yellow
 Write-Host "----------------------------------------"
 Start-Sleep -Seconds 2
 
-# Try the static URL first (works as long as Blazor's UseStaticFiles is enabled —
-# no need for the /api/version/latest endpoint to be deployed yet).
-$staticOk = $false
+# (1) The API endpoint is the SOURCE OF TRUTH — it's exactly what the desktop
+# UpdateCheckService polls (/api/version/latest reads wwwroot/releases/latest.json).
 try {
-    $resp = Invoke-RestMethod -Uri $StaticUrl -Method Get -TimeoutSec 10
+    $resp = Invoke-RestMethod -Uri $VerifyUrl -Method Get -TimeoutSec 15
     if ($resp.version -eq $version) {
-        Write-Host "  OK - $StaticUrl is serving v$version" -ForegroundColor Green
-        $staticOk = $true
+        Write-Host "  OK - $VerifyUrl is serving v$version (mandatory=$($resp.mandatory))" -ForegroundColor Green
     } else {
-        Write-Host "  WARN - static URL returned version $($resp.version), expected $version" -ForegroundColor Yellow
+        Write-Host "  WARN - API returned version $($resp.version), expected $version" -ForegroundColor Yellow
     }
 } catch {
-    Write-Host "  WARN - Static URL not reachable: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host "  WARN - API endpoint not reachable: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
-# Try the API endpoint (only works after the new Blazor build is deployed to VPS)
+# (2) Confirm the download the manifest points at is actually reachable — a 200
+# with the full byte count. This is the exact GET each customer's updater performs,
+# and it exercises the shared /releases/ nginx alias -> $VpsZipDir.
+$zipUrl = "$ZipUrlBase/$zipName"
 try {
-    $resp2 = Invoke-RestMethod -Uri $VerifyUrl -Method Get -TimeoutSec 10
-    if ($resp2.version -eq $version) {
-        Write-Host "  OK - $VerifyUrl is serving v$version" -ForegroundColor Green
+    $head = Invoke-WebRequest -Uri $zipUrl -Method Head -TimeoutSec 20
+    $len  = [int64]$head.Headers['Content-Length']
+    if ($head.StatusCode -eq 200 -and $len -eq $zipSize) {
+        Write-Host "  OK - $zipUrl is live (HTTP 200, $len bytes)" -ForegroundColor Green
+    } else {
+        Write-Host "  WARN - $zipUrl returned HTTP $($head.StatusCode), Content-Length $len (expected 200 / $zipSize)" -ForegroundColor Yellow
     }
 } catch {
-    if ($staticOk) {
-        Write-Host "  INFO - API endpoint not yet active (deploy new Blazor build to enable it)" -ForegroundColor Cyan
-    } else {
-        Write-Host "  WARN - API endpoint also unreachable" -ForegroundColor Yellow
-    }
+    Write-Host "  ERROR - download URL not reachable: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "          Customers would see the update but fail to download it." -ForegroundColor Red
+    Write-Host "          Check the /releases/ nginx alias points at $VpsZipDir." -ForegroundColor Red
 }
 
 # ----- Done -----
@@ -281,6 +305,6 @@ Write-Host "  Release v$version published successfully" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Verify manually any time:"
-Write-Host "  Static:  $StaticUrl"
-Write-Host "  API:     $VerifyUrl"
+Write-Host "  API:      $VerifyUrl   (source of truth — what the desktop polls)"
+Write-Host "  Download: $ZipUrlBase/$zipName"
 Write-Host ""
