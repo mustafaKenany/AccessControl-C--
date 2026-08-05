@@ -1339,15 +1339,19 @@ public class EmployeeService : IEmployeeService
             }
         }
 
-        // Step 2: Get all active cards
+        // Step 2: Get all active cards, then keep only members whose subscription is CURRENT.
+        // Never push EXPIRED or FROZEN members to the gate — they stay in the DB only. This is also
+        // why a 5,000-member gym pushes only its ACTIVE members here, not every subscriber.
         var allCards = (await _cardRepository.GetAllActiveForSyncAsync()).ToList();
+        var today = DateTime.Today;
+        var frozenEmpIds = (await _employeeRepository.GetFrozenAsync()).Select(e => e.Id).ToHashSet();
+        allCards = allCards.Where(c => c.ValidTo.Date >= today && !frozenEmpIds.Contains(c.EmployeeId)).ToList();
         if (allCards.Count == 0) return (0, 0, 0, 0);
 
         var devices = await ResolveDevicesAsync(deviceIds);
         if (devices.Count == 0) return (0, 0, 0, allCards.Count);
 
         int totalUploaded = 0, totalSkipped = 0, totalFailed = 0;
-        int progressIndex = 0;
         int totalWork = allCards.Count * devices.Count;
 
         // Step 3: Upload using the SAME SDK pattern as individual assign
@@ -1356,25 +1360,13 @@ public class EmployeeService : IEmployeeService
         {
             var deviceInfo = BuildDeviceInfo(device);
 
-            // Get cards already synced to this device
-            var syncedRecords = await _cardDeviceSyncRepository.GetByDeviceIdAsync(device.Id);
-            var alreadySynced = syncedRecords
-                .Where(s => s.IsSynced)
-                .Select(s => s.AccessCardId)
-                .ToHashSet();
-
-            // Build list of cards to upload (skip already synced)
-            var cardsToUpload = new List<AccessCard>();
-            foreach (var card in allCards)
-            {
-                progressIndex++;
-                if (alreadySynced.Contains(card.Id))
-                {
-                    totalSkipped++;
-                    continue;
-                }
-                cardsToUpload.Add(card);
-            }
+            // ALWAYS re-upload every active card — do NOT skip "already synced" ones. The local sync
+            // state goes stale whenever the controller is factory-reset / zeroed / swapped: the device
+            // is then EMPTY but the DB still marks the cards as on it, so skipping would push nothing
+            // and every card reads "not registered" (the basmia 2026-07 incident — the whole gate was
+            // down after an "Upload All" following a device reset). Re-pushing an existing card is
+            // harmless — AddAccessCard just overwrites it.
+            var cardsToUpload = allCards;
 
             if (cardsToUpload.Count == 0) continue;
 
