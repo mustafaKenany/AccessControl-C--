@@ -486,6 +486,31 @@
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>
+
+                        <!-- View Shift Report (X) — live drawer breakdown without closing the shift -->
+                        <Button Padding="24,12"
+                                Command="{Binding PosVm.ViewShiftReportCommand}"
+                                HorizontalAlignment="Center" Margin="0,12,0,0"
+                                Visibility="{Binding PosVm.HasOpenShift, Converter={StaticResource BoolToVisibility}}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="xbg" CornerRadius="12" Padding="24,12"
+                                            Background="#20FFFFFF" Cursor="Hand">
+                                        <StackPanel Orientation="Horizontal">
+                                            <fa:ImageAwesome Icon="FileTextOutline" Width="15" Height="15"
+                                                             Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Lang.PosShiftReport}" FontSize="15"
+                                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="xbg" Property="Background" Value="#33FFFFFF"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

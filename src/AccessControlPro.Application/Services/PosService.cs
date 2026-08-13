@@ -20,6 +20,7 @@ public class PosService : IPosService
     private readonly IEmployeeRepository _employeeRepo;
     private readonly IStockMovementRepository _stockMovementRepo;
     private readonly IPosShiftRepository _shiftRepo;
+    private readonly IPosTransactionRepository _posTxnRepo;
     private readonly CurrentUserService _currentUser;
 
     public PosService(
@@ -28,6 +29,7 @@ public class PosService : IPosService
         IEmployeeRepository employeeRepo,
         IStockMovementRepository stockMovementRepo,
         IPosShiftRepository shiftRepo,
+        IPosTransactionRepository posTxnRepo,
         CurrentUserService currentUser)
     {
         _productRepo = productRepo;
@@ -35,6 +37,7 @@ public class PosService : IPosService
         _employeeRepo = employeeRepo;
         _stockMovementRepo = stockMovementRepo;
         _shiftRepo = shiftRepo;
+        _posTxnRepo = posTxnRepo;
         _currentUser = currentUser;
     }
 
@@ -119,7 +122,7 @@ public class PosService : IPosService
     }
 
     public async Task<bool> SellAsync(List<CartItemDto> items, PaymentMethod method, int? employeeId = null,
-        decimal discountAmount = 0, string discountReason = "")
+        decimal discountAmount = 0, string discountReason = "", decimal? amountPaid = null)
     {
         if (items == null || items.Count == 0)
             return false;
@@ -130,18 +133,20 @@ public class PosService : IPosService
                 throw new ArgumentException($"Quantity must be positive for '{item.ProductName}'.");
             if (item.Price < 0)
                 throw new ArgumentException($"Price cannot be negative for '{item.ProductName}'.");
+            if (item.DiscountAmount < 0)
+                throw new ArgumentException($"Discount cannot be negative for '{item.ProductName}'.");
         }
+        if (discountAmount < 0)
+            throw new ArgumentException("Order discount cannot be negative.");
 
-        if ((method == PaymentMethod.CardBalance || method == PaymentMethod.Credit) && !employeeId.HasValue)
-            throw new ArgumentException("A player must be selected for card-balance or credit payment.");
+        // Feature 1 — a sale can only happen inside an open cash-drawer shift, so every sale lands in
+        // a shift's X/Z report and the drawer reconciles. Open a shift first (POS → Shift).
+        if (await _shiftRepo.GetOpenShiftAsync() == null)
+            throw new InvalidOperationException("No open shift. Open a shift before selling.");
 
-        var subtotal = items.Sum(i => i.Price * i.Quantity);
-        var itemDiscounts = items.Sum(i => i.DiscountAmount);
-        var totalDiscount = discountAmount + itemDiscounts;
-        var totalAmount = subtotal - totalDiscount;
-        if (totalAmount < 0) totalAmount = 0;
-
-        // Pre-validate ALL stock before any deduction
+        // Load the products FIRST and re-price every line from the DB — never trust the client-sent
+        // price. The catalogue price in the database is authoritative; all money below is derived from
+        // it. Stock + expiry are validated in the same pass before any deduction.
         var productIds = items.Select(i => i.ProductId).Distinct();
         var products = await _productRepo.GetByIdsAsync(productIds);
         var productMap = products.ToDictionary(p => p.Id);
@@ -150,67 +155,122 @@ public class PosService : IPosService
         {
             if (!productMap.TryGetValue(item.ProductId, out var product))
                 throw new InvalidOperationException($"Product '{item.ProductName}' no longer exists.");
+            if (item.Price != product.Price)
+            {
+                Log($"Re-priced '{item.ProductName}': client={item.Price} -> db={product.Price}", "warn");
+                item.Price = product.Price;   // authoritative catalogue price
+            }
             if (product.Stock < item.Quantity)
                 throw new InvalidOperationException($"Insufficient stock for '{item.ProductName}'. Available: {product.Stock}, Requested: {item.Quantity}");
+            // Feature 6 — don't sell perishables (supplements/vitamins) past their expiry date.
+            if (product.ExpiryDate.HasValue && product.ExpiryDate.Value.Date < DateTime.Today)
+                throw new InvalidOperationException($"'{item.ProductName}' expired on {product.ExpiryDate.Value:yyyy-MM-dd} and cannot be sold.");
         }
 
-        // If paying by card balance, check sufficient funds
-        if (method == PaymentMethod.CardBalance && employeeId.HasValue)
+        var subtotal = items.Sum(i => i.Price * i.Quantity);
+        var itemDiscounts = items.Sum(i => i.DiscountAmount);
+        var totalDiscount = discountAmount + itemDiscounts;
+        var totalAmount = subtotal - totalDiscount;
+        if (totalAmount < 0) totalAmount = 0;
+
+        // Work out how much is paid NOW vs taken on credit (debt).
+        //   CardBalance : always paid in full from the wallet.
+        //   Credit      : "on account" — defaults to the whole amount on credit (amountPaid overrides).
+        //   Cash        : defaults to paid in full; a smaller amountPaid leaves the remainder as debt.
+        decimal paidNow;
+        if (method == PaymentMethod.CardBalance)
         {
-            var employee = await _employeeRepo.GetByIdWithCardsAsync(employeeId.Value);
+            var employee = await _employeeRepo.GetByIdWithCardsAsync(employeeId ?? throw new ArgumentException("A player must be selected for card-balance payment."));
             if (employee == null || employee.CardBalance < totalAmount)
-                return false;
-
-            employee.CardBalance -= totalAmount;
-            await _employeeRepo.UpdateAsync(employee);
+                return false;               // insufficient wallet — no charge, no stock change
+            paidNow = totalAmount;
         }
-
-        // Credit sale ("on account") — add to the player's debt, no block / no limit.
-        if (method == PaymentMethod.Credit && employeeId.HasValue)
+        else if (method == PaymentMethod.Credit)
         {
-            var employee = await _employeeRepo.GetByIdWithCardsAsync(employeeId.Value)
-                ?? throw new InvalidOperationException("Selected player not found.");
-            employee.Debt += totalAmount;
-            await _employeeRepo.UpdateAsync(employee);
+            paidNow = amountPaid ?? 0m;
         }
-
-        // Deduct stock + record stock movements
-        foreach (var item in items)
+        else
         {
-            var product = productMap[item.ProductId];
-            product.Stock -= item.Quantity;
-            await _productRepo.UpdateAsync(product);
+            paidNow = amountPaid ?? totalAmount;
+        }
+        if (paidNow < 0) paidNow = 0;
+        if (paidNow > totalAmount) paidNow = totalAmount;
 
-            await _stockMovementRepo.AddAsync(new StockMovement
-            {
-                ProductId = item.ProductId,
-                Type = MovementType.Out,
-                Quantity = item.Quantity,
-                UnitPrice = item.Price,
-                Reference = "POS Sale",
-                Description = $"Sold to customer",
-                CreatedBy = _currentUser.Username ?? "System"
-            });
+        var debtAdded = method == PaymentMethod.CardBalance ? 0m : totalAmount - paidNow;
+        if (debtAdded > 0 && !employeeId.HasValue)
+            throw new ArgumentException("A player must be selected to sell on credit (leave a debt).");
+
+        // Record the NET unit price on each movement (list price − this item's discount − its share of
+        // the whole-order discount, allocated by line value) so the product-sales report shows revenue
+        // actually earned, not the pre-discount list total.
+        decimal NetUnitPrice(CartItemDto item)
+        {
+            var grossLine = item.Price * item.Quantity;
+            var orderShare = subtotal > 0 ? discountAmount * (grossLine / subtotal) : 0m;
+            var netLine = grossLine - item.DiscountAmount - orderShare;
+            if (netLine < 0) netLine = 0;
+            return item.Quantity > 0 ? Math.Round(netLine / item.Quantity, 4) : item.Price;
         }
 
-        // Create income transaction
-        var description = string.Join(", ", items.Select(i => $"{i.ProductName} x{i.Quantity}"));
-        await _transactionRepo.AddAsync(new Transaction
+        // One receipt number per sale — stamped on the income row AND every movement, so a later
+        // refund can be matched back to exactly this sale (and its already-refunded quantities).
+        var receiptNo = NewReceiptNo();
+
+        var stockChanges = items
+            .GroupBy(i => i.ProductId)
+            .Select(g => (ProductId: g.Key, StockDelta: -g.Sum(i => i.Quantity)))
+            .ToList();
+
+        var movements = items.Select(item => new StockMovement
+        {
+            ProductId = item.ProductId,
+            Type = MovementType.Out,
+            Quantity = item.Quantity,
+            UnitPrice = NetUnitPrice(item),
+            Reference = "POS Sale",
+            Description = "Sold to customer",
+            ReceiptNo = receiptNo,
+            RelatedEmployeeId = employeeId,   // the buyer (card/credit/member sales); null for walk-ins
+            CreatedBy = _currentUser.Username ?? "System"
+        }).ToList();
+
+        var creditNote = debtAdded > 0 ? $" [credit: paid {paidNow:N0}, owes {debtAdded:N0}]" : "";
+        var description = string.Join(", ", items.Select(i => $"{i.ProductName} x{i.Quantity}")) + creditNote;
+
+        // Income = the cash actually taken now (keeps the drawer/shift right). A full-credit sale
+        // (paid 0) records no cash row — only the goods leaving and the debt going up.
+        Transaction? incomeTxn = paidNow <= 0 ? null : new Transaction
         {
             Type = TransactionType.Income,
             Category = "POS Sale",
-            Amount = totalAmount,
+            Amount = paidNow,
             Description = description,
             RelatedEmployeeId = employeeId,
             PaymentMethod = method,
             DiscountAmount = totalDiscount,
             DiscountReason = discountReason,
+            ReceiptNo = receiptNo,
             CreatedBy = _currentUser.Username ?? "System"
-        });
+        };
 
-        Log($"Sale OK: items={items.Count} subtotal={subtotal} discount={totalDiscount} total={totalAmount} method={method} employeeId={(employeeId?.ToString() ?? "n/a")} by={_currentUser.Username}");
+        // Build the whole write-set and persist it in ONE atomic transaction: stock deductions, stock
+        // movements, the cash income, the card debit AND the player's debt all commit together or not
+        // at all — so a mid-sale failure can't leave money/stock/debt half-applied, and concurrent
+        // terminals can't oversell or overdraw (row-locked inside the engine).
+        var cardDelta = method == PaymentMethod.CardBalance ? -totalAmount : 0m;
+        var employeeToUpdate = (method == PaymentMethod.CardBalance || debtAdded > 0) ? employeeId : null;
+        await _posTxnRepo.PersistAtomicAsync(stockChanges, movements, incomeTxn,
+            employeeToUpdate, cardDelta, debtAdded);
+
+        Log($"Sale OK: items={items.Count} total={totalAmount} paidNow={paidNow} debt={debtAdded} method={method} receipt={receiptNo} employeeId={(employeeId?.ToString() ?? "n/a")} by={_currentUser.Username}");
         return true;
     }
+
+    // Short, sortable, unique-per-sale receipt id: a timestamp (invariant digits) + 12 hex of a Guid,
+    // so even many sales in the same second don't collide. Fits the nvarchar(50) ReceiptNo column.
+    private static string NewReceiptNo()
+        => DateTime.Now.ToString("yyMMddHHmmss", System.Globalization.CultureInfo.InvariantCulture)
+           + "-" + Guid.NewGuid().ToString("N")[..12];
 
     public async Task<decimal> GetCardBalanceAsync(int employeeId)
     {
@@ -398,27 +458,64 @@ public class PosService : IPosService
         return shift;
     }
 
+    // Builds the full cashier drawer report for a shift window. Shared by the live X report and the
+    // Z (close) report so the expected-cash math can never diverge between them. Windows are in UTC to
+    // match Transaction.CreatedAt. NOTE our income categories: "POS Sale" / "Card Top-Up" /
+    // "Debt Collection"; refunds are Expense/"POS Refund" (populated once Feature 3 ships).
+    private async Task<ShiftReportDto> BuildShiftReportAsync(PosShift shift, DateTime asOf, bool isClosed, decimal? closingCash = null)
+    {
+        async Task<List<Transaction>> Q(TransactionType type, string category)
+            => (await _transactionRepo.GetPagedAsync(1, int.MaxValue, type,
+                from: shift.OpenedAt, to: asOf, category: category)).Items.ToList();
+
+        var sales = await Q(TransactionType.Income, "POS Sale");
+        var refunds = await Q(TransactionType.Expense, "POS Refund");
+        var topUps = await Q(TransactionType.Income, "Card Top-Up");
+        var debtPays = await Q(TransactionType.Income, "Debt Collection");
+
+        decimal Cash(IEnumerable<Transaction> ts) => ts.Where(t => t.PaymentMethod == PaymentMethod.Cash).Sum(t => t.Amount);
+
+        var cashSales = Cash(sales);
+        var cardSales = sales.Where(t => t.PaymentMethod == PaymentMethod.CardBalance).Sum(t => t.Amount);
+        var cashTopUps = Cash(topUps);
+        var cashDebtPayments = Cash(debtPays);
+        var cashRefunds = Cash(refunds);
+        var expected = shift.OpeningCash + cashSales + cashTopUps + cashDebtPayments - cashRefunds;
+
+        return new ShiftReportDto
+        {
+            OpenedBy = shift.OpenedBy, OpenedAt = shift.OpenedAt, AsOf = asOf, IsClosed = isClosed,
+            OpeningCash = shift.OpeningCash, CashSales = cashSales, CardSales = cardSales,
+            CashTopUps = cashTopUps, CashDebtPayments = cashDebtPayments, CashRefunds = cashRefunds,
+            ExpectedCash = expected, TotalSales = sales.Sum(t => t.Amount), SalesCount = sales.Count,
+            TotalDiscounts = sales.Sum(t => t.DiscountAmount),
+            ClosingCash = closingCash, Variance = closingCash.HasValue ? closingCash.Value - expected : null
+        };
+    }
+
+    /// <summary>Live "X" report for the currently open shift (a snapshot that does NOT close it).</summary>
+    public async Task<ShiftReportDto?> GetShiftReportAsync()
+    {
+        var shift = await GetOpenShiftAsync();
+        return shift == null ? null : await BuildShiftReportAsync(shift, DateTime.UtcNow, isClosed: false);
+    }
+
     public async Task<PosShift> CloseShiftAsync(decimal closingCash)
     {
         var shift = await GetOpenShiftAsync()
             ?? throw new InvalidOperationException("No open shift found.");
 
-        // Calculate sales during shift
-        var (transactions, _) = await _transactionRepo.GetPagedAsync(
-            1, int.MaxValue, TransactionType.Income,
-            from: shift.OpenedAt, to: DateTime.UtcNow, category: "POS Sale");
-
-        var txList = transactions.ToList();
-        shift.TotalSales = txList.Sum(t => t.Amount);
-        shift.TotalCashSales = txList.Where(t => t.PaymentMethod == PaymentMethod.Cash).Sum(t => t.Amount);
-        shift.TotalCardSales = txList.Where(t => t.PaymentMethod == PaymentMethod.CardBalance).Sum(t => t.Amount);
+        var report = await BuildShiftReportAsync(shift, DateTime.UtcNow, isClosed: true, closingCash);
+        shift.TotalSales = report.TotalSales;
+        shift.TotalCashSales = report.CashSales;
+        shift.TotalCardSales = report.CardSales;
         shift.ClosingCash = closingCash;
-        shift.Variance = closingCash - (shift.OpeningCash + shift.TotalCashSales);
+        shift.Variance = report.Variance!.Value;
         shift.ClosedAt = DateTime.UtcNow;
         shift.Status = "Closed";
 
         await _shiftRepo.UpdateAsync(shift);
-        Log($"CloseShift OK: id={shift.Id} openingCash={shift.OpeningCash} cashSales={shift.TotalCashSales} cardSales={shift.TotalCardSales} closingCash={closingCash} variance={shift.Variance}");
+        Log($"CloseShift OK: id={shift.Id} openingCash={shift.OpeningCash} cashSales={shift.TotalCashSales} cardSales={shift.TotalCardSales} closingCash={closingCash} variance={shift.Variance} expected={report.ExpectedCash}");
         return shift;
     }
 }

@@ -15,9 +15,10 @@ public interface IPosService
     // Barcode lookup
     Task<ProductDto?> GetByBarcodeAsync(string barcode);
 
-    // Sales
+    // Sales. amountPaid: how much cash the customer hands over now; the remainder (if a player is
+    // selected) becomes their POS debt. null = pay in full (Cash/CardBalance) or fully on credit (Credit).
     Task<bool> SellAsync(List<CartItemDto> items, PaymentMethod method, int? employeeId = null,
-        decimal discountAmount = 0, string discountReason = "");
+        decimal discountAmount = 0, string discountReason = "", decimal? amountPaid = null);
 
     // Card balance
     Task<decimal> GetCardBalanceAsync(int employeeId);
@@ -40,6 +41,9 @@ public interface IPosService
     Task<PosShift?> GetOpenShiftAsync();
     Task<PosShift> OpenShiftAsync(decimal openingCash);
     Task<PosShift> CloseShiftAsync(decimal closingCash);
+    /// <summary>Live "X" end-of-day report for the open shift (drawer breakdown; does NOT close it).
+    /// Returns null if no shift is open.</summary>
+    Task<ShiftReportDto?> GetShiftReportAsync();
 }
 
 public class CartItemDto

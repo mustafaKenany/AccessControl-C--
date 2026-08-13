@@ -78,7 +78,8 @@ public class PosTransactionRepository : IPosTransactionRepository
                         employee.Debt += debtDelta;
                         if (employee.Debt < 0) employee.Debt = 0;   // never carry a negative debt
                         // Track the debt-age window: stamp when it first goes positive, clear when settled.
-                        if (debtBefore <= 0 && employee.Debt > 0) employee.DebtSince = DateTime.Now;
+                        // Stored UTC to match Transaction.CreatedAt (system-wide "store UTC, display +3").
+                        if (debtBefore <= 0 && employee.Debt > 0) employee.DebtSince = DateTime.UtcNow;
                         else if (employee.Debt <= 0) employee.DebtSince = null;
                     }
                 }

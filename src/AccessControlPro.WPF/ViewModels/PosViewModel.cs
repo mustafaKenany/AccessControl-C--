@@ -817,8 +817,10 @@ public partial class PosViewModel : ObservableObject
             HasOpenShift = false;
             ShiftStatusText = string.Empty;
 
-            // Show shift report
-            var expected = shift.OpeningCash + shift.TotalCashSales;
+            // Show shift report. Expected drawer cash is derived from the service's accurate Variance
+            // (Variance = ClosingCash − ExpectedCash), which already accounts for cash top-ups, debt
+            // collections and refunds — not just cash sales.
+            var expected = shift.ClosingCash - shift.Variance;
             var reportMsg = $"{Lang.PosShiftReport}\n\n" +
                 $"{Lang.PosOpeningCash}: {shift.OpeningCash:N0}\n" +
                 $"{Lang.PosTodaySales}: {shift.TotalSales:N0}\n" +
@@ -829,6 +831,40 @@ public partial class PosViewModel : ObservableObject
                 $"{Lang.PosVariance}: {shift.Variance:N0}";
 
             CustomMessageBox.Show(reportMsg, Lang.PosShiftClosed, MsgType.Info);
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
+        }
+    }
+
+    // Live "X" report — the current drawer breakdown WITHOUT closing the shift, so the cashier can
+    // reconcile mid-shift. Reuses the same service math that the Z (close) report uses.
+    [RelayCommand]
+    private async Task ViewShiftReportAsync()
+    {
+        try
+        {
+            var r = await _posService.GetShiftReportAsync();
+            if (r == null)
+            {
+                CustomMessageBox.Show(Lang.PosShiftOpen, Lang.PosShiftReport, MsgType.Info);
+                return;
+            }
+
+            var msg =
+                $"{Lang.PosOpeningCash}: {r.OpeningCash:N0}\n" +
+                $"{Lang.PosCashSales}: {r.CashSales:N0}\n" +
+                $"{Lang.PosCardSales}: {r.CardSales:N0}\n" +
+                $"+ {Lang.PosTopUps} ({Lang.PosCash}): {r.CashTopUps:N0}\n" +
+                $"+ {Lang.PosDebtPaid} ({Lang.PosCash}): {r.CashDebtPayments:N0}\n" +
+                $"- {Lang.PosRefunds} ({Lang.PosCash}): {r.CashRefunds:N0}\n" +
+                $"{Lang.PosExpectedCash}: {r.ExpectedCash:N0}\n\n" +
+                $"{Lang.PosTotalTransactions}: {r.SalesCount}\n" +
+                $"{Lang.PosTodaySales}: {r.TotalSales:N0}\n" +
+                $"{Lang.PosTotalDiscounts}: {r.TotalDiscounts:N0}";
+
+            CustomMessageBox.Show(msg, Lang.PosShiftReport, MsgType.Info);
         }
         catch (Exception ex)
         {
