@@ -720,6 +720,10 @@ public class LanguageManager : INotifyPropertyChanged
     public string AlertExpiring => GetString("AlertExpiring");
     public string AlertExpired => GetString("AlertExpired");
     public string AlertFrozen => GetString("AlertFrozen");
+    public string AlertLowStock => GetString("AlertLowStock");
+    public string AlertExpiringProducts => GetString("AlertExpiringProducts");
+    public string PrdReorderLevel => GetString("PrdReorderLevel");
+    public string PrdExpiry => GetString("PrdExpiry");
     public string AlertFreezeDate => GetString("AlertFreezeDate");
 
     // Backup
@@ -1600,6 +1604,10 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(AlertExpiring));
         OnPropertyChanged(nameof(AlertExpired));
         OnPropertyChanged(nameof(AlertFrozen));
+        OnPropertyChanged(nameof(AlertLowStock));
+        OnPropertyChanged(nameof(AlertExpiringProducts));
+        OnPropertyChanged(nameof(PrdReorderLevel));
+        OnPropertyChanged(nameof(PrdExpiry));
         OnPropertyChanged(nameof(AlertFreezeDate));
         // Backup
         OnPropertyChanged(nameof(NavBackup));

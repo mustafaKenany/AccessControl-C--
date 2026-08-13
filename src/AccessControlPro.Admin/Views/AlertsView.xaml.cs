@@ -22,4 +22,14 @@ public partial class AlertsView : UserControl
     {
         if (DataContext is AlertsViewModel vm) vm.ShowTabCommand.Execute("frozen");
     }
+
+    private void LowStockTab_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is AlertsViewModel vm) vm.ShowTabCommand.Execute("lowstock");
+    }
+
+    private void ExpiringProductsTab_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is AlertsViewModel vm) vm.ShowTabCommand.Execute("expiringproducts");
+    }
 }

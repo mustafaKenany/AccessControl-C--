@@ -11,23 +11,30 @@ namespace AccessControlPro.Admin.ViewModels;
 public partial class AlertsViewModel : ObservableObject
 {
     private readonly IEmployeeService _employeeService;
+    private readonly IInventoryService _inventoryService;
 
     public LanguageManager Lang => LanguageManager.Instance;
 
     [ObservableProperty] private bool _isLoading;
-    [ObservableProperty] private int _selectedTab; // 0=Expiring, 1=Expired, 2=Frozen
+    [ObservableProperty] private int _selectedTab; // 0=Expiring 1=Expired 2=Frozen 3=LowStock 4=ExpiringProducts
 
     public ObservableCollection<EmployeeDto> ExpiringPlayers { get; } = new();
     public ObservableCollection<EmployeeDto> ExpiredPlayers { get; } = new();
     public ObservableCollection<EmployeeDto> FrozenPlayers { get; } = new();
+    // Feature 6 — product (retail) alerts.
+    public ObservableCollection<ProductDto> LowStockProducts { get; } = new();
+    public ObservableCollection<ProductDto> ExpiringProducts { get; } = new();
 
     [ObservableProperty] private int _expiringCount;
     [ObservableProperty] private int _expiredCount;
     [ObservableProperty] private int _frozenCount;
+    [ObservableProperty] private int _lowStockCount;
+    [ObservableProperty] private int _expiringProductsCount;
 
-    public AlertsViewModel(IEmployeeService employeeService)
+    public AlertsViewModel(IEmployeeService employeeService, IInventoryService inventoryService)
     {
         _employeeService = employeeService;
+        _inventoryService = inventoryService;
     }
 
     [RelayCommand]
@@ -58,6 +65,18 @@ public partial class AlertsViewModel : ObservableObject
             foreach (var p in frozen)
                 FrozenPlayers.Add(p);
             FrozenCount = FrozenPlayers.Count;
+
+            // Product low-stock (at/under reorder level or out of stock)
+            var lowStock = await _inventoryService.GetLowStockProductsAsync();
+            LowStockProducts.Clear();
+            foreach (var p in lowStock) LowStockProducts.Add(p);
+            LowStockCount = LowStockProducts.Count;
+
+            // Products expiring within 30 days (and expired items still in stock)
+            var expiringProducts = await _inventoryService.GetExpiringProductsAsync(30);
+            ExpiringProducts.Clear();
+            foreach (var p in expiringProducts) ExpiringProducts.Add(p);
+            ExpiringProductsCount = ExpiringProducts.Count;
         }
         catch (Exception ex)
         {
@@ -73,6 +92,8 @@ public partial class AlertsViewModel : ObservableObject
         {
             "expired" => 1,
             "frozen" => 2,
+            "lowstock" => 3,
+            "expiringproducts" => 4,
             _ => 0
         };
     }

@@ -25,7 +25,7 @@
         </StackPanel>
 
         <!-- Tab Buttons -->
-        <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,12">
+        <UniformGrid Grid.Row="1" Columns="5" Margin="0,0,0,12">
             <!-- Expiring -->
             <Border Margin="0,0,4,0" CornerRadius="10" Padding="16,12" Cursor="Hand"
                     MouseLeftButtonUp="ExpiringTab_Click">
@@ -95,6 +95,54 @@
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="{Binding Lang.AlertFrozen}" FontSize="12" Foreground="{StaticResource TextMutedBrush}"/>
                         <TextBlock Text="{Binding FrozenCount}" FontSize="22" FontWeight="Bold" Foreground="#6CB4EE"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+            <!-- Low Stock (products) -->
+            <Border Margin="4,0" CornerRadius="10" Padding="16,12" Cursor="Hand"
+                    MouseLeftButtonUp="LowStockTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedTab}" Value="3">
+                                <Setter Property="Background" Value="#1AF7685B"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <DockPanel>
+                    <Border Width="40" Height="40" CornerRadius="10" Background="#20F7685B" DockPanel.Dock="Left" Margin="0,0,12,0">
+                        <fa:ImageAwesome Icon="Cubes" Width="18" Height="18" Foreground="#F7685B"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Lang.AlertLowStock}" FontSize="12" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Text="{Binding LowStockCount}" FontSize="22" FontWeight="Bold" Foreground="#F7685B"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+            <!-- Expiring Products -->
+            <Border Margin="4,0,0,0" CornerRadius="10" Padding="16,12" Cursor="Hand"
+                    MouseLeftButtonUp="ExpiringProductsTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedTab}" Value="4">
+                                <Setter Property="Background" Value="#1AFFB946"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <DockPanel>
+                    <Border Width="40" Height="40" CornerRadius="10" Background="#20FFB946" DockPanel.Dock="Left" Margin="0,0,12,0">
+                        <fa:ImageAwesome Icon="ClockOutline" Width="18" Height="18" Foreground="#FFB946"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Lang.AlertExpiringProducts}" FontSize="12" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Text="{Binding ExpiringProductsCount}" FontSize="22" FontWeight="Bold" Foreground="#FFB946"/>
                     </StackPanel>
                 </DockPanel>
             </Border>
@@ -324,6 +372,68 @@
                                             Binding="{Binding SubscriptionType}" Width="140"/>
                         <DataGridTextColumn Header="{Binding Data.Lang.AlertFreezeDate, Source={StaticResource Proxy}}"
                                             Binding="{Binding FreezeStartDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="120"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Low Stock Products (Tab 3) -->
+                <DataGrid ItemsSource="{Binding LowStockProducts}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          Background="Transparent" BorderThickness="0"
+                          RowBackground="#0E2A2D" AlternatingRowBackground="#112F32"
+                          Foreground="{StaticResource TextPrimaryBrush}"
+                          GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#15FFFFFF"
+                          HeadersVisibility="Column" SelectionMode="Single" CanUserResizeRows="False"
+                          FontFamily="{StaticResource CairoFont}" FontSize="13" FontWeight="Bold">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedTab}" Value="3">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdName, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Name}" Width="*"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdCategory, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Category}" Width="150"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdStock, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Stock}" Width="100"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdReorderLevel, Source={StaticResource Proxy}}"
+                                            Binding="{Binding ReorderLevel}" Width="120"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Expiring Products (Tab 4) -->
+                <DataGrid ItemsSource="{Binding ExpiringProducts}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          Background="Transparent" BorderThickness="0"
+                          RowBackground="#0E2A2D" AlternatingRowBackground="#112F32"
+                          Foreground="{StaticResource TextPrimaryBrush}"
+                          GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#15FFFFFF"
+                          HeadersVisibility="Column" SelectionMode="Single" CanUserResizeRows="False"
+                          FontFamily="{StaticResource CairoFont}" FontSize="13" FontWeight="Bold">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedTab}" Value="4">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdName, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Name}" Width="*"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdCategory, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Category}" Width="150"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdStock, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Stock}" Width="100"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PrdExpiry, Source={StaticResource Proxy}}"
+                                            Binding="{Binding ExpiryDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="120"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>

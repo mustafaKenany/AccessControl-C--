@@ -552,6 +552,8 @@
   <data name="PrdCategory" xml:space="preserve"><value>الفئة</value></data>
   <data name="PrdStockTake" xml:space="preserve"><value>جرد المخزون</value></data>
   <data name="PrdStock" xml:space="preserve"><value>المخزون</value></data>
+  <data name="PrdReorderLevel" xml:space="preserve"><value>حد الطلب</value></data>
+  <data name="PrdExpiry" xml:space="preserve"><value>الانتهاء</value></data>
   <data name="PrdAddNew" xml:space="preserve"><value>إضافة منتج</value></data>
   <data name="PrdEdit" xml:space="preserve"><value>تعديل المنتج</value></data>
   <!-- Suppliers -->
@@ -645,6 +647,8 @@
   <data name="AlertExpiring" xml:space="preserve"><value>تنتهي قريباً</value></data>
   <data name="AlertExpired" xml:space="preserve"><value>منتهية</value></data>
   <data name="AlertFrozen" xml:space="preserve"><value>مجمدة</value></data>
+  <data name="AlertLowStock" xml:space="preserve"><value>نقص المخزون</value></data>
+  <data name="AlertExpiringProducts" xml:space="preserve"><value>منتجات تنتهي</value></data>
   <data name="AlertFreezeDate" xml:space="preserve"><value>تاريخ التجميد</value></data>
   <!-- Backup -->
   <data name="NavBackup" xml:space="preserve"><value>النسخ الاحتياطي</value></data>
