@@ -82,6 +82,7 @@ public static class AppPermission
     public const string POSApplyDiscount = "POS.ApplyDiscount";
     public const string POSPrintReceipt = "POS.PrintReceipt";
     public const string POSViewSummary = "POS.ViewSummary";
+    public const string POSRefund = "POS.Refund";
 
     // Time Groups
     public const string TimeGroupsView = "TimeGroups.View";
@@ -123,7 +124,7 @@ public static class AppPermission
         DataMigration, QrPassManage,
         RemindersView,
         DiagnosticsSend, AppChangeLanguage,
-        POSSales, POSManageShift, POSApplyDiscount, POSPrintReceipt, POSViewSummary,
+        POSSales, POSManageShift, POSApplyDiscount, POSPrintReceipt, POSViewSummary, POSRefund,
         TimeGroupsView, TimeGroupsManage,
         SubscriptionPlansView, SubscriptionPlansManage,
         BackupView, BackupManage,
@@ -157,7 +158,7 @@ public static class AppPermission
         ("Events", [EventsView]),
         ("Finance", [FinanceView, FinanceManage]),
         ("CashFlow", [CashFlowView, CashFlowManage]),
-        ("POS", [POSSales, POSManageShift, POSApplyDiscount, POSPrintReceipt, POSViewSummary]),
+        ("POS", [POSSales, POSManageShift, POSApplyDiscount, POSPrintReceipt, POSViewSummary, POSRefund]),
         ("TimeGroups", [TimeGroupsView, TimeGroupsManage]),
         ("SubscriptionPlans", [SubscriptionPlansView, SubscriptionPlansManage]),
         ("Logs", [LogsView]),

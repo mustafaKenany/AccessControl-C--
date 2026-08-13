@@ -778,6 +778,11 @@ public static class DatabaseMigrator
             // Index the receipt number — the recent-sales picker + refund lookup query by it.
             @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_StockMovements_ReceiptNo')
               CREATE INDEX IX_StockMovements_ReceiptNo ON StockMovements(ReceiptNo);",
+
+            // Grant the new POS.Refund permission to existing cashiers (anyone who can already sell).
+            // Idempotent: the NOT LIKE guard prevents adding it twice. Admins bypass permission checks.
+            @"UPDATE Users SET Permissions = Permissions + ',POS.Refund'
+              WHERE Role <> 'Admin' AND Permissions LIKE '%POS.Sales%' AND Permissions NOT LIKE '%POS.Refund%';",
         };
 
         var failedMigrations = new List<string>();

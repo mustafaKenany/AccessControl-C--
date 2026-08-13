@@ -672,6 +672,7 @@ public class LanguageManager : INotifyPropertyChanged
     public string PosCash => GetString("PosCash");
     public string PosDebtPaid => GetString("PosDebtPaid");
     public string PosRefunds => GetString("PosRefunds");
+    public string PosRefund => GetString("PosRefund");
     public string PosByPaymentMethod => GetString("PosByPaymentMethod");
 
     // Stock Movements
@@ -1551,6 +1552,7 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(PosCash));
         OnPropertyChanged(nameof(PosDebtPaid));
         OnPropertyChanged(nameof(PosRefunds));
+        OnPropertyChanged(nameof(PosRefund));
         OnPropertyChanged(nameof(PosByPaymentMethod));
         // Stock Movements
         OnPropertyChanged(nameof(SmTitle));

@@ -939,6 +939,7 @@
   <data name="PosCash" xml:space="preserve"><value>نقد</value></data>
   <data name="PosDebtPaid" xml:space="preserve"><value>تسديد ديون</value></data>
   <data name="PosRefunds" xml:space="preserve"><value>المرتجعات</value></data>
+  <data name="PosRefund" xml:space="preserve"><value>استرجاع</value></data>
   <data name="PosByPaymentMethod" xml:space="preserve"><value>حسب طريقة الدفع</value></data>
   <data name="BtnSync" xml:space="preserve"><value>مزامنة الآن</value></data>
   <!-- Filter Tooltips -->

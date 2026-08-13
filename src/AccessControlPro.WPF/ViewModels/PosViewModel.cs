@@ -395,6 +395,62 @@ public partial class PosViewModel : ObservableObject
         }
     }
 
+    // Feature 3 — refund tied to an ORIGINAL sale: the cashier picks a past receipt and refunds only
+    // what was sold on it (capped to what's still un-refunded, at the exact price paid). Anti-fraud.
+    [RelayCommand]
+    private async Task RefundFromReceiptAsync()
+    {
+        if (!_currentUser.HasPermission(AppPermission.POSRefund))
+        {
+            CustomMessageBox.Show(Lang.IsArabic ? "لا تملك صلاحية الاسترجاع." : "You don't have refund permission.",
+                Lang.ValidationTitle, MsgType.Warning);
+            return;
+        }
+
+        List<PosSaleDto> sales;
+        try { sales = await _posService.GetRecentSalesAsync(40); }
+        catch (Exception ex) { CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error); return; }
+
+        if (sales.All(s => s.FullyRefunded))
+        {
+            CustomMessageBox.Show(Lang.IsArabic ? "ما أكو مبيعات قابلة للاسترجاع." : "No refundable sales found.",
+                Lang.PosShiftReport, MsgType.Info);
+            return;
+        }
+
+        // A refund must land inside an open shift too (symmetric with selling), so it reconciles.
+        if (await _posService.GetOpenShiftAsync() == null)
+        {
+            CustomMessageBox.Show(Lang.IsArabic ? "لازم تفتح وردية قبل الاسترجاع." : "Open a shift before refunding.",
+                Lang.ValidationTitle, MsgType.Warning);
+            return;
+        }
+
+        var dialog = new Views.RefundSaleDialog(sales) { Owner = System.Windows.Application.Current.MainWindow };
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            // Method + player + debt handling are derived from the ORIGINAL sale inside the service.
+            var ok = await _posService.RefundSaleAsync(dialog.SelectedReceiptNo, dialog.RefundItems);
+            if (!ok) return;
+
+            await LoadProductsAsync();
+            await LoadTodaySalesAsync();
+            if (SelectedPlayer != null)
+                await RefreshPlayerInfoAsync();
+
+            var refunded = dialog.RefundItems.Sum(i => i.Price * i.Quantity);
+            CustomMessageBox.Show(
+                (Lang.IsArabic ? "تم استرجاع " : "Refunded ") + refunded.ToString("N0"),
+                Lang.IsArabic ? "استرجاع" : "Refund", MsgType.Success);
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
+        }
+    }
+
     [RelayCommand]
     private async Task TopUpCardAsync()
     {

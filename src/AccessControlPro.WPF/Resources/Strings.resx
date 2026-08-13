@@ -932,6 +932,7 @@ Card sync errors on some devices:
   <data name="PosCash" xml:space="preserve"><value>Cash</value></data>
   <data name="PosDebtPaid" xml:space="preserve"><value>Debt Paid</value></data>
   <data name="PosRefunds" xml:space="preserve"><value>Refunds</value></data>
+  <data name="PosRefund" xml:space="preserve"><value>Refund</value></data>
   <data name="PosByPaymentMethod" xml:space="preserve"><value>By Payment Method</value></data>
   <data name="BtnSync" xml:space="preserve"><value>Sync Now</value></data>
   <!-- Filter Tooltips -->
