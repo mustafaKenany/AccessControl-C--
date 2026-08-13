@@ -287,6 +287,25 @@
                                Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
             </Border>
+            <!-- Debtors -->
+            <Border Margin="4,8" CornerRadius="10" Padding="14,10" Cursor="Hand" MouseLeftButtonUp="DebtorsTab_Click">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#112F32"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedReportType}" Value="8">
+                                <Setter Property="Background" Value="#1A2ED47A"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <fa:ImageAwesome Icon="MoneyBillAlt" Width="14" Height="14" Foreground="#F7685B"
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding Lang.RptDebtors}" FontSize="13"
+                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </UniformGrid>
 
         <!-- Date Filter + Run -->
@@ -418,6 +437,76 @@
                                             Binding="{Binding AmountPaid, StringFormat='{}{0:N0}'}" Width="90"/>
                         <DataGridTextColumn Header="{Binding Data.Lang.Remaining, Source={StaticResource Proxy}}"
                                             Binding="{Binding RemainingBalance, StringFormat='{}{0:N0}'}" Width="90"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Debtors Results (Tab 8) — who owes money + days owing -->
+                <DataGrid ItemsSource="{Binding DebtorResults}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          Background="Transparent" BorderThickness="0"
+                          RowBackground="#0E2A2D" AlternatingRowBackground="#112F32"
+                          Foreground="{StaticResource TextPrimaryBrush}"
+                          GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#15FFFFFF"
+                          HeadersVisibility="Column" SelectionMode="Single" CanUserResizeRows="False"
+                          FontFamily="{StaticResource CairoFont}" FontSize="13" FontWeight="Bold">
+                    <DataGrid.Style>
+                        <Style TargetType="DataGrid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedReportType}" Value="8">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Style>
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#143436"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                            <Setter Property="FontFamily" Value="{StaticResource CairoFont}"/>
+                            <Setter Property="FontSize" Value="13"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Padding" Value="14,10"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridColumnHeader">
+                                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                              TextBlock.Foreground="{TemplateBinding Foreground}"
+                                                              TextBlock.FontFamily="{TemplateBinding FontFamily}"
+                                                              TextBlock.FontSize="{TemplateBinding FontSize}"
+                                                              TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Padding" Value="14,8"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridCell">
+                                        <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                            <ContentPresenter VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.CellStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{Binding Data.Lang.PlayerName, Source={StaticResource Proxy}}"
+                                            Binding="{Binding FullNameEn}" Width="*"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.Phone, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Phone}" Width="130"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.RptDebtAmount, Source={StaticResource Proxy}}"
+                                            Binding="{Binding Debt, StringFormat='{}{0:N0}'}" Width="120"/>
+                        <DataGridTextColumn Header="{Binding Data.Lang.RptDaysInDebt, Source={StaticResource Proxy}}"
+                                            Binding="{Binding DaysInDebt}" Width="120"/>
                     </DataGrid.Columns>
                 </DataGrid>
 

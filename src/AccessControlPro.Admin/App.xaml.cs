@@ -119,6 +119,7 @@ public partial class App : System.Windows.Application
         services.AddScoped<ILookupService, LookupService>();
         services.AddScoped<ISupplierService, SupplierService>();
         services.AddScoped<IInventoryService, InventoryService>();
+        services.AddScoped<IPosService, PosService>();   // for the Admin Debtors report (players with POS debt)
         services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IFinanceService, FinanceService>();
         services.AddScoped<IEmployeeService, EmployeeService>();

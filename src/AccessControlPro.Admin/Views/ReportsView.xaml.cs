@@ -47,4 +47,9 @@ public partial class ReportsView : UserControl
     {
         if (DataContext is ReportsViewModel vm) vm.SelectReportCommand.Execute("daily");
     }
+
+    private void DebtorsTab_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is ReportsViewModel vm) vm.SelectReportCommand.Execute("debtors");
+    }
 }

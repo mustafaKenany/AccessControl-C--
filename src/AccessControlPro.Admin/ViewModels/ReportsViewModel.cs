@@ -42,17 +42,24 @@ public partial class ReportsViewModel : ObservableObject
     [ObservableProperty] private decimal _reportTotal;       // sales revenue / purchases total for the period
     [ObservableProperty] private decimal _reportTotalProfit; // sales profit for the period
 
+    private readonly IPosService _posService;
+
     public ReportsViewModel(
         IEmployeeService employeeService,
         IFinanceService financeService,
         IInventoryService inventoryService,
-        ISupplierService supplierService)
+        ISupplierService supplierService,
+        IPosService posService)
     {
         _employeeService = employeeService;
         _financeService = financeService;
         _inventoryService = inventoryService;
         _supplierService = supplierService;
+        _posService = posService;
     }
+
+    /// <summary>Players who currently owe money from POS credit sales, with debt-aging (days owing).</summary>
+    public ObservableCollection<EmployeeDto> DebtorResults { get; } = new();
 
     /// <summary>Populate the supplier picker the first time the Supplier report is opened.</summary>
     public async Task EnsureSuppliersLoadedAsync()
@@ -201,6 +208,15 @@ public partial class ReportsViewModel : ObservableObject
                     ResultCount = dailyRows.Count;
                     ReportTotal = dailyRows.Sum(r => r.Amount);
                     break;
+
+                case 8: // Debtors — players who owe money, most-owed first, with days-owing aging
+                    var debtors = (await _posService.GetPlayersWithDebtAsync())
+                        .OrderByDescending(e => e.Debt).ToList();
+                    DebtorResults.Clear();
+                    foreach (var d in debtors) DebtorResults.Add(d);
+                    ResultCount = debtors.Count;
+                    ReportTotal = debtors.Sum(d => d.Debt);
+                    break;
             }
         }
         catch (Exception ex)
@@ -232,6 +248,7 @@ public partial class ReportsViewModel : ObservableObject
             "movements" => 5,
             "supplier" => 6,
             "daily" => 7,
+            "debtors" => 8,
             _ => 0
         };
     }

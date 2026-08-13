@@ -669,6 +669,9 @@
   <data name="RptMovements" xml:space="preserve"><value>حركة المواد</value></data>
   <data name="RptSupplier" xml:space="preserve"><value>المورد</value></data>
   <data name="RptDaily" xml:space="preserve"><value>الدخول اليومي</value></data>
+  <data name="RptDebtors" xml:space="preserve"><value>المدينون</value></data>
+  <data name="RptDebtAmount" xml:space="preserve"><value>المبلغ المستحق</value></data>
+  <data name="RptDaysInDebt" xml:space="preserve"><value>أيام الدين</value></data>
   <data name="RptDailyRevenue" xml:space="preserve"><value>إجمالي الإيراد</value></data>
   <data name="RptPurchasedInRange" xml:space="preserve"><value>المشتريات (الفترة المحددة)</value></data>
   <data name="RptOutstanding" xml:space="preserve"><value>الرصيد المستحق (الكلي)</value></data>
