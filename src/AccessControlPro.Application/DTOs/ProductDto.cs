@@ -10,6 +10,8 @@ public class ProductDto
     public decimal CostPrice { get; set; }   // buy price (latest purchase cost)
     public string Category { get; set; } = string.Empty;
     public int Stock { get; set; }
+    public int ReorderLevel { get; set; }
+    public DateTime? ExpiryDate { get; set; }
     public bool IsActive { get; set; } = true;
 
     /// <summary>Unit profit margin (sell - cost). Negative if selling below cost.</summary>

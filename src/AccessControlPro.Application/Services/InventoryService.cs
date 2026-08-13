@@ -12,6 +12,7 @@ public class InventoryService : IInventoryService
     private readonly IPurchaseOrderRepository _poRepo;
     private readonly ITransactionRepository _transactionRepo;
     private readonly IStockMovementRepository _stockMovementRepo;
+    private readonly IPosTransactionRepository _posTxnRepo;
     private readonly CurrentUserService _currentUser;
 
     public InventoryService(
@@ -19,14 +20,24 @@ public class InventoryService : IInventoryService
         IPurchaseOrderRepository poRepo,
         ITransactionRepository transactionRepo,
         IStockMovementRepository stockMovementRepo,
+        IPosTransactionRepository posTxnRepo,
         CurrentUserService currentUser)
     {
         _productRepo = productRepo;
         _poRepo = poRepo;
         _transactionRepo = transactionRepo;
         _stockMovementRepo = stockMovementRepo;
+        _posTxnRepo = posTxnRepo;
         _currentUser = currentUser;
     }
+
+    // Shared Product -> DTO mapping (includes the new ReorderLevel/ExpiryDate for the alerts screens).
+    private static ProductDto MapProduct(Product p) => new()
+    {
+        Id = p.Id, Name = p.Name, NameAr = p.NameAr, Barcode = p.Barcode,
+        Price = p.Price, CostPrice = p.CostPrice, Category = p.Category, Stock = p.Stock,
+        ReorderLevel = p.ReorderLevel, ExpiryDate = p.ExpiryDate, IsActive = p.IsActive
+    };
 
     public async Task<IEnumerable<ProductDto>> GetAllProductsAsync()
     {
@@ -64,6 +75,8 @@ public class InventoryService : IInventoryService
             CostPrice = dto.CostPrice,
             Category = dto.Category,
             Stock = dto.Stock,
+            ReorderLevel = dto.ReorderLevel,
+            ExpiryDate = dto.ExpiryDate,
             IsActive = true
         });
     }
@@ -88,6 +101,8 @@ public class InventoryService : IInventoryService
         product.CostPrice = dto.CostPrice;
         product.Category = dto.Category;
         product.Stock = dto.Stock;
+        product.ReorderLevel = dto.ReorderLevel;
+        product.ExpiryDate = dto.ExpiryDate;
         product.IsActive = dto.IsActive;
         await _productRepo.UpdateAsync(product);
     }
@@ -433,6 +448,171 @@ public class InventoryService : IInventoryService
         if (from.HasValue) q = q.Where(m => m.CreatedAt >= from.Value.Date);
         if (to.HasValue) q = q.Where(m => m.CreatedAt < to.Value.Date.AddDays(1));
         return q.OrderByDescending(m => m.CreatedAt).Select(MapToDto);
+    }
+
+    // ── Feature 5/6 — sales reports, dashboard, stock-take, alerts (ported from the fork) ──
+
+    /// <summary>Product-level sales for a period, built from stock movements: POS sales (Out) minus
+    /// refunds (Return), with cost from each product's current cost → profit/margin.</summary>
+    public async Task<IEnumerable<ProductSalesReportItemDto>> GetProductSalesReportAsync(DateTime from, DateTime to)
+    {
+        var movements = await _stockMovementRepo.GetByDateRangeAsync(from, to);
+        var byProduct = new Dictionary<int, ProductSalesReportItemDto>();
+
+        foreach (var m in movements)
+        {
+            var isSale = m.Type == MovementType.Out && m.Reference == "POS Sale";
+            var isReturn = m.Type == MovementType.Return && m.Reference == "POS Refund";
+            if (!isSale && !isReturn) continue;
+
+            if (!byProduct.TryGetValue(m.ProductId, out var row))
+            {
+                row = new ProductSalesReportItemDto
+                {
+                    ProductId = m.ProductId,
+                    Name = m.Product?.Name ?? "",
+                    NameAr = m.Product?.NameAr ?? "",
+                    Category = m.Product?.Category ?? ""
+                };
+                byProduct[m.ProductId] = row;
+            }
+
+            if (isSale) { row.QtySold += m.Quantity; row.Revenue += m.UnitPrice * m.Quantity; }
+            else { row.QtyReturned += m.Quantity; row.Revenue -= m.UnitPrice * m.Quantity; }
+        }
+
+        // Cost of the net units sold, valued at each product's current cost.
+        var ids = byProduct.Keys.ToList();
+        if (ids.Count > 0)
+        {
+            var products = (await _productRepo.GetByIdsAsync(ids)).ToDictionary(p => p.Id);
+            foreach (var row in byProduct.Values)
+                if (products.TryGetValue(row.ProductId, out var p))
+                    row.Cost = p.CostPrice * row.NetQty;
+        }
+
+        return byProduct.Values.OrderByDescending(r => r.Revenue).ToList();
+    }
+
+    public async Task<IEnumerable<ProductDto>> GetLowStockProductsAsync()
+    {
+        var products = await _productRepo.GetAllActiveAsync();
+        // Below the reorder threshold when one is set, OR out of stock entirely — a sold-out item must
+        // surface even if its reorder level was left at 0.
+        return products
+            .Where(p => (p.ReorderLevel > 0 && p.Stock <= p.ReorderLevel) || p.Stock <= 0)
+            .OrderBy(p => p.Stock)
+            .Select(MapProduct)
+            .ToList();
+    }
+
+    public async Task<IEnumerable<ProductDto>> GetExpiringProductsAsync(int withinDays)
+    {
+        var cutoff = DateTime.Today.AddDays(withinDays);
+        var products = await _productRepo.GetAllActiveAsync();
+        // Items expiring within the window. Already-expired items are included ONLY while they still
+        // have stock (they need pulling off the shelf); long-expired sold-out items are just noise.
+        return products
+            .Where(p => p.ExpiryDate.HasValue && p.ExpiryDate.Value.Date <= cutoff
+                        && (p.ExpiryDate.Value.Date >= DateTime.Today || p.Stock > 0))
+            .OrderBy(p => p.ExpiryDate)
+            .Select(MapProduct)
+            .ToList();
+    }
+
+    public async Task<List<StockTakeLineDto>> GetStockTakeSheetAsync()
+    {
+        var products = await _productRepo.GetAllActiveAsync();
+        return products
+            .OrderBy(p => p.Category).ThenBy(p => p.Name)
+            .Select(p => new StockTakeLineDto
+            {
+                ProductId = p.Id, Name = p.Name, NameAr = p.NameAr, Barcode = p.Barcode,
+                Category = p.Category, Cost = p.CostPrice,
+                SystemStock = p.Stock, CountedStock = p.Stock   // starts equal; operator edits the count
+            })
+            .ToList();
+    }
+
+    /// <summary>Apply a physical count: for every product whose counted stock differs from system
+    /// stock, record an Adjustment movement (signed delta) and set stock to the counted value — all in
+    /// ONE atomic transaction so a failure can't leave the count half-applied.</summary>
+    public async Task<StockTakeResultDto> ApplyStockTakeAsync(IEnumerable<(int ProductId, int CountedStock)> counts)
+    {
+        var countList = counts.ToList();
+        foreach (var c in countList)
+            if (c.CountedStock < 0) throw new ArgumentException("Counted stock cannot be negative.");
+
+        var ids = countList.Select(c => c.ProductId).Distinct().ToList();
+        var products = (await _productRepo.GetByIdsAsync(ids)).ToDictionary(p => p.Id);
+
+        var stockChanges = new List<(int ProductId, int StockDelta)>();
+        var movements = new List<StockMovement>();
+        var result = new StockTakeResultDto();
+
+        foreach (var c in countList)
+        {
+            if (!products.TryGetValue(c.ProductId, out var product)) continue;
+            var delta = c.CountedStock - product.Stock;
+            if (delta == 0) continue;
+
+            stockChanges.Add((c.ProductId, delta));
+            movements.Add(new StockMovement
+            {
+                ProductId = c.ProductId,
+                Type = MovementType.Adjustment,
+                Quantity = delta,
+                UnitPrice = product.CostPrice,
+                Reference = "Stock Take",
+                Description = $"Stock take: {product.Stock} → {c.CountedStock}",
+                CreatedBy = _currentUser.Username ?? "System"
+            });
+
+            result.LinesAdjusted++;
+            if (delta < 0) { result.TotalShortageUnits += -delta; result.ShortageValueAtCost += -delta * product.CostPrice; }
+            else result.TotalOverageUnits += delta;
+        }
+
+        if (stockChanges.Count > 0)
+            await _posTxnRepo.PersistAtomicAsync(stockChanges, movements, null, null, 0m, 0m);
+
+        return result;
+    }
+
+    public async Task<SalesDashboardDto> GetSalesDashboardAsync(DateTime from, DateTime to, int monthsBack = 6)
+    {
+        var report = (await GetProductSalesReportAsync(from, to)).ToList();
+        var (_, salesCount) = await _transactionRepo.GetPagedAsync(1, 1, TransactionType.Income,
+            from: from, to: to.AddDays(-1), category: "POS Sale");
+
+        var dash = new SalesDashboardDto
+        {
+            From = from, To = to,
+            TotalRevenue = report.Sum(r => r.Revenue),
+            TotalProfit = report.Sum(r => r.Profit),
+            UnitsSold = report.Sum(r => r.NetQty),
+            SalesCount = salesCount,
+            TopSellers = report.OrderByDescending(r => r.Revenue).Take(8).ToList(),
+            SlowMovers = report.Where(r => r.QtySold > 0).OrderBy(r => r.Revenue).Take(8).ToList()
+        };
+
+        // Monthly revenue/profit trend for the `monthsBack` calendar months ending in the selected
+        // range's last month, so the trend lines up with the KPI window.
+        var anchor = to.AddDays(-1);
+        var firstThisMonth = new DateTime(anchor.Year, anchor.Month, 1);
+        for (int i = monthsBack - 1; i >= 0; i--)
+        {
+            var mStart = firstThisMonth.AddMonths(-i);
+            var mEnd = mStart.AddMonths(1);
+            var mRep = (await GetProductSalesReportAsync(mStart, mEnd)).ToList();
+            dash.MonthlyTrend.Add(new MonthlySalesPointDto
+            {
+                Year = mStart.Year, Month = mStart.Month, Label = mStart.ToString("yyyy-MM"),
+                Revenue = mRep.Sum(r => r.Revenue), Profit = mRep.Sum(r => r.Profit)
+            });
+        }
+
+        return dash;
     }
 
     private static StockMovementDto MapToDto(StockMovement m) => new()

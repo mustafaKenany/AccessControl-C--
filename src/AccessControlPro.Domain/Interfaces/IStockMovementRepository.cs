@@ -14,6 +14,8 @@ public interface IStockMovementRepository
     Task<IEnumerable<StockMovement>> GetRecentSaleMovementsAsync(int receiptCount);
     /// <summary>All movements tied to one receipt (sale lines + refunds), Product included.</summary>
     Task<IEnumerable<StockMovement>> GetByReceiptNoAsync(string receiptNo);
+    /// <summary>Movements in [from, to) with Product included — for the product-sales report/dashboard.</summary>
+    Task<IEnumerable<StockMovement>> GetByDateRangeAsync(DateTime from, DateTime to);
     /// <summary>Removes all movements tied to a purchase order — used when a PO is edited and its movements are rebuilt.</summary>
     Task DeleteByPurchaseOrderAsync(int purchaseOrderId);
 }

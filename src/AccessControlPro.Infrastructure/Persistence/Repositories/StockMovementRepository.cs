@@ -49,6 +49,15 @@ public class StockMovementRepository : IStockMovementRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<StockMovement>> GetByDateRangeAsync(DateTime from, DateTime to)
+    {
+        await using var db = _factory.CreateDbContext();
+        return await db.StockMovements
+            .Include(m => m.Product)
+            .Where(m => m.CreatedAt >= from && m.CreatedAt < to)
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<StockMovement>> GetByProductIdAsync(int productId)
     {
         await using var db = _factory.CreateDbContext();
