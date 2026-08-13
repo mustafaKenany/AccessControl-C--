@@ -753,6 +753,31 @@ public static class DatabaseMigrator
                   WHERE Role <> 'Admin' AND Permissions NOT LIKE '%App.ChangeLanguage%';
                 CREATE TABLE __PermBackfill1 (Applied bit NOT NULL);
               END",
+
+            // ── v4.7.0: POS retail port from the HikVision fork (features 1-6) ──
+            // Debt-aging: when the player's POS debt first went positive (drives the debtors "days owing" report).
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Employees') AND name = 'DebtSince')
+              ALTER TABLE Employees ADD DebtSince datetime2 NULL;",
+            // Back-fill: any player who already owes but has no DebtSince gets stamped 'now' so aging starts from the upgrade.
+            @"UPDATE Employees SET DebtSince = SYSDATETIME() WHERE Debt > 0 AND DebtSince IS NULL;",
+
+            // Product low-stock threshold + optional expiry (block-expired-sale + expiry/low-stock alerts).
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'ReorderLevel')
+              ALTER TABLE Products ADD ReorderLevel int NOT NULL DEFAULT 0;",
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'ExpiryDate')
+              ALTER TABLE Products ADD ExpiryDate datetime2 NULL;",
+
+            // Receipt number on sales + their stock movements so a refund can reverse the EXACT original sale,
+            // and the player each sale line went to (for per-player sale history / refund-to-player).
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Transactions') AND name = 'ReceiptNo')
+              ALTER TABLE Transactions ADD ReceiptNo nvarchar(50) NOT NULL DEFAULT '';",
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('StockMovements') AND name = 'ReceiptNo')
+              ALTER TABLE StockMovements ADD ReceiptNo nvarchar(50) NOT NULL DEFAULT '';",
+            @"IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('StockMovements') AND name = 'RelatedEmployeeId')
+              ALTER TABLE StockMovements ADD RelatedEmployeeId int NULL;",
+            // Index the receipt number — the recent-sales picker + refund lookup query by it.
+            @"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_StockMovements_ReceiptNo')
+              CREATE INDEX IX_StockMovements_ReceiptNo ON StockMovements(ReceiptNo);",
         };
 
         var failedMigrations = new List<string>();

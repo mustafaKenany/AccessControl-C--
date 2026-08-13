@@ -17,6 +17,9 @@ public class Transaction
     public string DiscountReason { get; set; } = string.Empty;
     /// <summary>Optional link back to a source document, e.g. "PO-12" for a purchase-order expense. Lets the entry stay in sync when that document is edited.</summary>
     public string Reference { get; set; } = string.Empty;
+    /// <summary>Unique per-sale receipt number (e.g. "R-20260813-0007"). Ties a POS-sale transaction
+    /// to its stock movements so a refund can reverse the exact original sale. Empty for non-sale rows.</summary>
+    public string ReceiptNo { get; set; } = string.Empty;
 
     public Employee? RelatedEmployee { get; set; }
 }

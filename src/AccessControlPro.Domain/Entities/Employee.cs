@@ -27,6 +27,12 @@ public class Employee
     /// </summary>
     public decimal Debt { get; set; }
 
+    /// <summary>
+    /// When the player's POS debt first went positive (for the debtors "days owing" aging report).
+    /// Stamped when Debt goes 0→positive, cleared when it returns to 0. Null = no outstanding debt.
+    /// </summary>
+    public DateTime? DebtSince { get; set; }
+
     /// <summary>Visit-count subscription: max allowed visits (0 = unlimited/date-based only).</summary>
     public int MaxVisits { get; set; }
     /// <summary>Visit-count subscription: visits used so far.</summary>

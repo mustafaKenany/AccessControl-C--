@@ -67,6 +67,7 @@ public static class DependencyInjection
         services.AddSingleton<IQrPassRepository, QrPassRepository>();
         services.AddSingleton<ITimeGroupRepository, TimeGroupRepository>();
         services.AddSingleton<IPosShiftRepository, PosShiftRepository>();
+        services.AddSingleton<IPosTransactionRepository, PosTransactionRepository>();
 
         // SDK
         services.AddSingleton<IAccessControlSdk, AccessControlSdkWrapper>();
