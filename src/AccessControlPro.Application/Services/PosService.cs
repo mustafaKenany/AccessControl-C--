@@ -272,6 +272,130 @@ public class PosService : IPosService
         => DateTime.Now.ToString("yyMMddHHmmss", System.Globalization.CultureInfo.InvariantCulture)
            + "-" + Guid.NewGuid().ToString("N")[..12];
 
+    // ── Feature 3 — Refund tied to the original sale ──
+
+    /// <summary>The most recent sales (one per receipt) with per-line remaining-refundable quantities,
+    /// for the "refund from a recent sale" picker.</summary>
+    public async Task<List<PosSaleDto>> GetRecentSalesAsync(int count = 30)
+    {
+        var movements = (await _stockMovementRepo.GetRecentSaleMovementsAsync(count)).ToList();
+        var sales = new List<PosSaleDto>();
+        foreach (var g in movements.Where(m => !string.IsNullOrEmpty(m.ReceiptNo)).GroupBy(m => m.ReceiptNo))
+        {
+            var outs = g.Where(m => m.Type == MovementType.Out).ToList();
+            if (outs.Count == 0) continue;
+            var returns = g.Where(m => m.Type == MovementType.Return).ToList();
+
+            var lines = outs.GroupBy(m => m.ProductId).Select(pg => new PosSaleLineDto
+            {
+                ProductId = pg.Key,
+                ProductName = pg.First().Product?.Name ?? $"#{pg.Key}",
+                UnitPrice = pg.First().UnitPrice,
+                SoldQty = pg.Sum(x => x.Quantity),
+                RefundedQty = returns.Where(r => r.ProductId == pg.Key).Sum(r => r.Quantity)
+            }).ToList();
+
+            sales.Add(new PosSaleDto
+            {
+                ReceiptNo = g.Key,
+                Time = outs.Max(m => m.CreatedAt),
+                Total = lines.Sum(l => l.UnitPrice * l.SoldQty),
+                RefundableTotal = lines.Sum(l => l.UnitPrice * l.RefundableQty),
+                ItemsSummary = string.Join(", ", lines.Select(l => $"{l.ProductName} x{l.SoldQty}")),
+                Lines = lines
+            });
+        }
+        return sales.OrderByDescending(s => s.Time).ToList();
+    }
+
+    /// <summary>Refund specific items from a past receipt: never more than remains un-refunded, at the
+    /// exact net price paid, back to the original payment instrument. Cancels the sale's outstanding
+    /// debt first, then refunds only the paid fraction as money. Anti-fraud + atomic.</summary>
+    public async Task<bool> RefundSaleAsync(string receiptNo, List<CartItemDto> items, string reason = "")
+    {
+        if (string.IsNullOrWhiteSpace(receiptNo)) throw new ArgumentException("A sale receipt is required.");
+        if (items == null || items.Count == 0) return false;
+
+        var movements = (await _stockMovementRepo.GetByReceiptNoAsync(receiptNo)).ToList();
+        var outs = movements.Where(m => m.Type == MovementType.Out).ToList();
+        if (outs.Count == 0) throw new InvalidOperationException("Original sale not found for this receipt.");
+        var returns = movements.Where(m => m.Type == MovementType.Return).ToList();
+
+        var refundMovements = new List<StockMovement>();
+        var stockChanges = new List<(int ProductId, int StockDelta)>();
+        decimal refundAmount = 0;
+        var buyerId = outs[0].RelatedEmployeeId;   // the sale's buyer (from the sale movements)
+
+        foreach (var item in items)
+        {
+            if (item.Quantity <= 0) continue;
+            var soldLines = outs.Where(o => o.ProductId == item.ProductId).ToList();
+            if (soldLines.Count == 0)
+                throw new InvalidOperationException($"'{item.ProductName}' was not part of this sale.");
+            var sold = soldLines.Sum(o => o.Quantity);
+            var alreadyRefunded = returns.Where(r => r.ProductId == item.ProductId).Sum(r => r.Quantity);
+            var remaining = sold - alreadyRefunded;
+            if (item.Quantity > remaining)
+                throw new InvalidOperationException($"Cannot refund {item.Quantity} of '{item.ProductName}': only {remaining} remain refundable on this receipt.");
+
+            var unit = soldLines[0].UnitPrice;   // refund at the exact net price paid — never current price
+            refundAmount += unit * item.Quantity;
+            stockChanges.Add((item.ProductId, item.Quantity));   // stock returns to shelf
+            refundMovements.Add(new StockMovement
+            {
+                ProductId = item.ProductId,
+                Type = MovementType.Return,
+                Quantity = item.Quantity,
+                UnitPrice = unit,
+                Reference = "POS Refund",
+                Description = string.IsNullOrWhiteSpace(reason) ? "Customer return" : reason,
+                ReceiptNo = receiptNo,
+                RelatedEmployeeId = buyerId,
+                CreatedBy = _currentUser.Username ?? "System"
+            });
+        }
+        if (refundMovements.Count == 0) return false;
+
+        // Derive the ORIGINAL sale's payment method + how much was actually PAID vs taken on debt.
+        // Returning goods cancels THIS sale's outstanding debt first, then refunds the rest as MONEY to
+        // the original instrument. Never cancels more than the player's current debt, and never pays out
+        // for a portion that was taken on credit and never paid.
+        var saleTxn = await _transactionRepo.GetPosSaleByReceiptAsync(receiptNo);
+        var method = saleTxn?.PaymentMethod ?? PaymentMethod.Cash;
+        if (saleTxn?.RelatedEmployeeId != null) buyerId = saleTxn.RelatedEmployeeId;
+        var saleTotal = outs.Sum(o => o.UnitPrice * o.Quantity);
+        var paidTotal = saleTxn?.Amount ?? 0m;
+
+        var paidFraction = saleTotal > 0 ? Math.Min(1m, paidTotal / saleTotal) : 1m;
+        var moneyRefund = Math.Round(refundAmount * paidFraction, 2);
+        var creditPortion = refundAmount - moneyRefund;
+        decimal debtReduce = 0m;
+        if (buyerId.HasValue && creditPortion > 0)
+        {
+            var currentDebt = await GetDebtAsync(buyerId.Value);
+            debtReduce = Math.Min(creditPortion, currentDebt);
+        }
+
+        // Cash/card money-out is booked as an expense only for the portion actually refunded as money.
+        Transaction? expenseTxn = moneyRefund <= 0 ? null : new Transaction
+        {
+            Type = TransactionType.Expense,
+            Category = "POS Refund",
+            Amount = moneyRefund,
+            Description = $"Refund for receipt {receiptNo}" + (string.IsNullOrWhiteSpace(reason) ? "" : $" — {reason}"),
+            RelatedEmployeeId = buyerId,
+            PaymentMethod = method,
+            ReceiptNo = receiptNo,
+            CreatedBy = _currentUser.Username ?? "System"
+        };
+
+        var cardDelta = method == PaymentMethod.CardBalance ? moneyRefund : 0m;   // credit the original wallet
+        var empToUpdate = (method == PaymentMethod.CardBalance || debtReduce > 0) ? buyerId : null;
+        await _posTxnRepo.PersistAtomicAsync(stockChanges, refundMovements, expenseTxn, empToUpdate, cardDelta, -debtReduce);
+        Log($"RefundSale OK: receipt={receiptNo} refund={refundAmount} money={moneyRefund} debtReduced={debtReduce} method={method} by={_currentUser.Username}");
+        return true;
+    }
+
     public async Task<decimal> GetCardBalanceAsync(int employeeId)
     {
         var employee = await _employeeRepo.GetByIdWithCardsAsync(employeeId);
@@ -319,27 +443,25 @@ public class PosService : IPosService
         var employee = await _employeeRepo.GetByIdWithCardsAsync(employeeId)
             ?? throw new InvalidOperationException($"Employee with ID {employeeId} not found.");
 
-        if (amount > employee.Debt) amount = employee.Debt; // never collect more than owed
-        if (amount <= 0) return;
+        var pay = Math.Min(amount, employee.Debt); // never collect more than owed
+        if (pay <= 0) return;
 
-        var debtBefore = employee.Debt;
-        employee.Debt -= amount;
-        if (employee.Debt < 0) employee.Debt = 0;
-        await _employeeRepo.UpdateAsync(employee);
-
-        // Record the cash received settling the credit sale.
-        await _transactionRepo.AddAsync(new Transaction
+        // Record the cash income AND lower the debt atomically. The engine also clears DebtSince when
+        // the debt reaches 0, so the aging clock resets correctly and the drawer stays consistent.
+        var incomeTxn = new Transaction
         {
             Type = TransactionType.Income,
             Category = "Debt Collection",
-            Amount = amount,
+            Amount = pay,
             Description = $"Debt payment from {employee.FullNameEn}",
             RelatedEmployeeId = employeeId,
             PaymentMethod = PaymentMethod.Cash,
             CreatedBy = _currentUser.Username ?? "System"
-        });
+        };
+        await _posTxnRepo.PersistAtomicAsync(
+            Array.Empty<(int, int)>(), Array.Empty<StockMovement>(), incomeTxn, employeeId, 0m, -pay);
 
-        Log($"CollectDebt OK: employeeId={employeeId} player={employee.FullNameEn} amount={amount} before={debtBefore} after={employee.Debt}");
+        Log($"CollectDebt OK: employeeId={employeeId} player={employee.FullNameEn} amount={pay} before={employee.Debt} after={employee.Debt - pay}");
     }
 
     public async Task<IEnumerable<EmployeeDto>> GetPlayersWithDebtAsync()
@@ -355,7 +477,8 @@ public class PosService : IPosService
                 FullNameAr = e.FullNameAr,
                 CardNo = e.CardNo,
                 Phone = e.Phone,
-                Debt = e.Debt
+                Debt = e.Debt,
+                DebtSince = e.DebtSince
             });
     }
 

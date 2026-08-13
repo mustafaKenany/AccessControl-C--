@@ -21,6 +21,34 @@ public class StockMovementRepository : IStockMovementRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<StockMovement>> GetRecentSaleMovementsAsync(int receiptCount)
+    {
+        await using var db = _factory.CreateDbContext();
+        // The N most recent sale receipts (by last movement time)...
+        var receipts = await db.StockMovements
+            .Where(m => m.ReceiptNo != "" && m.Reference == "POS Sale")
+            .GroupBy(m => m.ReceiptNo)
+            .Select(g => new { Receipt = g.Key, Last = g.Max(x => x.CreatedAt) })
+            .OrderByDescending(x => x.Last)
+            .Take(receiptCount)
+            .Select(x => x.Receipt)
+            .ToListAsync();
+        // ...and ALL their movements (sale lines + any refunds) so remaining-refundable can be computed.
+        return await db.StockMovements
+            .Include(m => m.Product)
+            .Where(m => m.ReceiptNo != "" && receipts.Contains(m.ReceiptNo))
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<StockMovement>> GetByReceiptNoAsync(string receiptNo)
+    {
+        await using var db = _factory.CreateDbContext();
+        return await db.StockMovements
+            .Include(m => m.Product)
+            .Where(m => m.ReceiptNo == receiptNo)
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<StockMovement>> GetByProductIdAsync(int productId)
     {
         await using var db = _factory.CreateDbContext();

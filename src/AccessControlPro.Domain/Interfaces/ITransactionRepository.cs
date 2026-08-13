@@ -12,6 +12,9 @@ public interface ITransactionRepository
     Task<Transaction?> GetByIdAsync(int id);
     /// <summary>Find a transaction by its source-document reference (e.g. "PO-12"). Returns the most recent match.</summary>
     Task<Transaction?> GetByReferenceAsync(string reference);
+    /// <summary>The income row for a POS sale by its receipt number — lets a refund learn the original
+    /// payment method and how much was actually paid (vs taken on credit).</summary>
+    Task<Transaction?> GetPosSaleByReceiptAsync(string receiptNo);
     Task AddAsync(Transaction transaction);
     Task UpdateAsync(Transaction transaction);
     Task DeleteAsync(int id);

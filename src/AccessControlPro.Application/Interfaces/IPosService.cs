@@ -28,8 +28,15 @@ public interface IPosService
     Task<decimal> GetDebtAsync(int employeeId);
     /// <summary>Player pays down their POS debt. Records the cash as income and lowers the debt.</summary>
     Task CollectDebtAsync(int employeeId, decimal amount);
-    /// <summary>Players who currently owe money from credit sales (Debt &gt; 0).</summary>
+    /// <summary>Players who currently owe money from credit sales (Debt &gt; 0), with debt-aging info.</summary>
     Task<IEnumerable<EmployeeDto>> GetPlayersWithDebtAsync();
+
+    // Feature 3 — refund tied to the original sale
+    /// <summary>Recent sales (one per receipt) with per-line remaining-refundable quantities.</summary>
+    Task<List<PosSaleDto>> GetRecentSalesAsync(int count = 30);
+    /// <summary>Refund specific items from a receipt (capped at what remains, at the price paid, to the
+    /// original instrument; cancels the sale's debt first). Returns false if nothing to refund.</summary>
+    Task<bool> RefundSaleAsync(string receiptNo, List<CartItemDto> items, string reason = "");
 
     // Today's sales summary
     Task<(int Count, decimal Total)> GetTodaySalesAsync();

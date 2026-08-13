@@ -23,6 +23,9 @@ public class EmployeeDto
     public int CardCount { get; set; }
     public decimal CardBalance { get; set; }
     public decimal Debt { get; set; }   // owed from POS credit sales
+    public DateTime? DebtSince { get; set; }   // when the debt first went positive (for aging)
+    /// <summary>Days the player has owed money (debt aging), or 0 if not in debt / unknown.</summary>
+    public int DaysInDebt => DebtSince.HasValue ? Math.Max(0, (int)(DateTime.UtcNow - DebtSince.Value).TotalDays) : 0;
     public int MaxVisits { get; set; }
     public int UsedVisits { get; set; }
     public int RemainingVisits => MaxVisits > 0 ? Math.Max(0, MaxVisits - UsedVisits) : -1; // -1 = unlimited

@@ -61,6 +61,16 @@ public class TransactionRepository : ITransactionRepository
             .FirstOrDefaultAsync();
     }
 
+    public async Task<Transaction?> GetPosSaleByReceiptAsync(string receiptNo)
+    {
+        if (string.IsNullOrWhiteSpace(receiptNo)) return null;
+        await using var db = _factory.CreateDbContext();
+        return await db.Transactions
+            .Where(t => t.ReceiptNo == receiptNo && t.Category == "POS Sale" && t.Type == TransactionType.Income)
+            .OrderBy(t => t.CreatedAt)
+            .FirstOrDefaultAsync();
+    }
+
     public async Task AddAsync(Transaction transaction)
     {
         await using var db = _factory.CreateDbContext();
