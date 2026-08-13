@@ -198,4 +198,44 @@ public partial class ProductsViewModel : ObservableObject
     {
         ClearFields();
     }
+
+    // Feature 5 — physical stock-take: load the count sheet, let the operator edit counts, then apply
+    // the differences as signed Adjustment movements (atomic, via the service).
+    [RelayCommand]
+    private async Task StockTakeAsync()
+    {
+        try
+        {
+            var sheet = await _inventoryService.GetStockTakeSheetAsync();
+            if (sheet.Count == 0)
+            {
+                CustomMessageBox.Show(Lang.IsArabic ? "لا توجد أصناف للجرد." : "No products to count.",
+                    Lang.ValidationTitle, MsgType.Info);
+                return;
+            }
+
+            var dialog = new Views.StockTakeDialog(sheet)
+            { Owner = System.Windows.Application.Current.MainWindow };
+            if (dialog.ShowDialog() != true) return;
+
+            if (dialog.Counts.Count == 0)
+            {
+                CustomMessageBox.Show(Lang.IsArabic ? "لا يوجد فرق لتطبيقه." : "No differences to apply.",
+                    Lang.IsArabic ? "جرد المخزون" : "Stock Take", MsgType.Info);
+                return;
+            }
+
+            var result = await _inventoryService.ApplyStockTakeAsync(dialog.Counts);
+            await LoadAsync();
+
+            var msg = Lang.IsArabic
+                ? $"تم تعديل {result.LinesAdjusted} صنف.\nنقص: {result.TotalShortageUnits} وحدة (بقيمة {result.ShortageValueAtCost:N0})\nزيادة: {result.TotalOverageUnits} وحدة"
+                : $"Adjusted {result.LinesAdjusted} item(s).\nShortage: {result.TotalShortageUnits} units (worth {result.ShortageValueAtCost:N0})\nOverage: {result.TotalOverageUnits} units";
+            CustomMessageBox.Show(msg, Lang.IsArabic ? "جرد المخزون" : "Stock Take", MsgType.Success);
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(ex.Message, Lang.ValidationTitle, MsgType.Error);
+        }
+    }
 }

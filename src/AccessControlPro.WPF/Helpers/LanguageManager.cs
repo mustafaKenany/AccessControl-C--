@@ -572,6 +572,7 @@ public class LanguageManager : INotifyPropertyChanged
     public string PrdCostPrice => GetString("PrdCostPrice");
     public string PrdProfit => GetString("PrdProfit");
     public string PrdCategory => GetString("PrdCategory");
+    public string PrdStockTake => GetString("PrdStockTake");
     public string PrdStock => GetString("PrdStock");
     public string PrdAddNew => GetString("PrdAddNew");
     public string PrdEdit => GetString("PrdEdit");
@@ -1474,6 +1475,7 @@ public class LanguageManager : INotifyPropertyChanged
         OnPropertyChanged(nameof(PrdCostPrice));
         OnPropertyChanged(nameof(PrdProfit));
         OnPropertyChanged(nameof(PrdCategory));
+        OnPropertyChanged(nameof(PrdStockTake));
         OnPropertyChanged(nameof(PrdStock));
         OnPropertyChanged(nameof(PrdAddNew));
         OnPropertyChanged(nameof(PrdEdit));

@@ -44,6 +44,14 @@
                 <Border Grid.Row="0" Background="{StaticResource BgInputBrush}" CornerRadius="8"
                         Padding="10,0" Margin="0,0,0,12">
                     <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" Padding="14,6"
+                                Margin="8,4" Command="{Binding StockTakeCommand}" Cursor="Hand">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="Calculator" Width="13" Height="13"
+                                                 VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding Lang.PrdStockTake}" FontSize="12" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                         <fa:ImageAwesome Icon="Search" Width="13" Height="13" DockPanel.Dock="Left"
                                          Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
