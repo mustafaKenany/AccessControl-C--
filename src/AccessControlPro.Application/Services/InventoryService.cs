@@ -42,18 +42,7 @@ public class InventoryService : IInventoryService
     public async Task<IEnumerable<ProductDto>> GetAllProductsAsync()
     {
         var products = await _productRepo.GetAllAsync();
-        return products.Select(p => new ProductDto
-        {
-            Id = p.Id,
-            Name = p.Name,
-            NameAr = p.NameAr,
-            Barcode = p.Barcode,
-            Price = p.Price,
-            CostPrice = p.CostPrice,
-            Category = p.Category,
-            Stock = p.Stock,
-            IsActive = p.IsActive
-        });
+        return products.Select(MapProduct);
     }
 
     public async Task AddProductAsync(ProductDto dto)

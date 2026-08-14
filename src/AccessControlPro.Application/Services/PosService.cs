@@ -51,8 +51,11 @@ public class PosService : IPosService
             NameAr = p.NameAr,
             Barcode = p.Barcode,
             Price = p.Price,
+            CostPrice = p.CostPrice,
             Category = p.Category,
             Stock = p.Stock,
+            ReorderLevel = p.ReorderLevel,
+            ExpiryDate = p.ExpiryDate,
             IsActive = p.IsActive
         });
     }
@@ -68,8 +71,11 @@ public class PosService : IPosService
             NameAr = p.NameAr,
             Barcode = p.Barcode,
             Price = p.Price,
+            CostPrice = p.CostPrice,
             Category = p.Category,
             Stock = p.Stock,
+            ReorderLevel = p.ReorderLevel,
+            ExpiryDate = p.ExpiryDate,
             IsActive = p.IsActive
         };
     }
