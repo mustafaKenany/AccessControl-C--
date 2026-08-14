@@ -27,6 +27,8 @@ public partial class ProductsViewModel : ObservableObject
     [ObservableProperty] private string _editPrice = "";
     [ObservableProperty] private string _editCostPrice = "";
     [ObservableProperty] private string _editCategory = "";
+    [ObservableProperty] private string _editReorderLevel = "";
+    [ObservableProperty] private DateTime? _editExpiryDate;
 
     private readonly List<ProductDto> _allProducts = new();
     public ObservableCollection<ProductDto> Products { get; } = new();
@@ -96,6 +98,8 @@ public partial class ProductsViewModel : ObservableObject
             EditPrice = value.Price.ToString("0");
             EditCostPrice = value.CostPrice.ToString("0");
             EditCategory = value.Category;
+            EditReorderLevel = value.ReorderLevel.ToString();
+            EditExpiryDate = value.ExpiryDate;
             IsEditing = true;
         }
         else
@@ -112,6 +116,8 @@ public partial class ProductsViewModel : ObservableObject
         EditPrice = "";
         EditCostPrice = "";
         EditCategory = "";
+        EditReorderLevel = "";
+        EditExpiryDate = null;
         SelectedProduct = null;
         IsEditing = false;
     }
@@ -135,6 +141,10 @@ public partial class ProductsViewModel : ObservableObject
         decimal.TryParse(EditCostPrice, out var costPrice);
         if (costPrice < 0) costPrice = 0;
 
+        // Reorder level (low-stock alert threshold) — optional, 0 = no threshold.
+        int.TryParse(EditReorderLevel, out var reorderLevel);
+        if (reorderLevel < 0) reorderLevel = 0;
+
         try
         {
             if (IsEditing && SelectedProduct != null)
@@ -145,6 +155,8 @@ public partial class ProductsViewModel : ObservableObject
                 SelectedProduct.Price = price;
                 SelectedProduct.CostPrice = costPrice;
                 SelectedProduct.Category = EditCategory.Trim();
+                SelectedProduct.ReorderLevel = reorderLevel;
+                SelectedProduct.ExpiryDate = EditExpiryDate;
                 await _inventoryService.UpdateProductAsync(SelectedProduct);
             }
             else
@@ -158,6 +170,8 @@ public partial class ProductsViewModel : ObservableObject
                     CostPrice = costPrice,
                     Category = EditCategory.Trim(),
                     Stock = 0,
+                    ReorderLevel = reorderLevel,
+                    ExpiryDate = EditExpiryDate,
                     IsActive = true
                 });
             }

@@ -215,6 +215,17 @@
                               SelectedItem="{Binding EditCategory, Mode=TwoWay}"
                               Style="{StaticResource DarkComboBox}" Margin="0,0,0,14"/>
 
+                    <!-- Reorder level — low-stock alert threshold (0 = no alert) -->
+                    <TextBlock Text="{Binding Lang.PrdReorderLevel}" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                    <TextBox Text="{Binding EditReorderLevel, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource DarkTextBox}" Margin="0,0,0,14"/>
+
+                    <!-- Expiry date — optional; blocks selling past it + drives expiry alerts -->
+                    <TextBlock Text="{Binding Lang.PrdExpiry}" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                    <DatePicker SelectedDate="{Binding EditExpiryDate, Mode=TwoWay}" Margin="0,0,0,14"/>
+
                     <Border Height="1" Background="#15FFFFFF" Margin="0,4,0,14"/>
 
                     <!-- Buttons -->
