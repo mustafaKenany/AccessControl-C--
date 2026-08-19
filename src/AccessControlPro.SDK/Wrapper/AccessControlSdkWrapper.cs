@@ -712,12 +712,20 @@ public class AccessControlSdkWrapper : IAccessControlSdk
         StopMonitoring();
         Initialize();
 
+        // Re-arm the debug-CRT assertion suppression. The vendor SDK ships DEBUG MFC binaries and
+        // MFC resets the CRT report mode back to the modal "Debug Assertion Failed" dialog whenever
+        // it re-initialises — so opening the Monitor a SECOND time would otherwise pop that dialog
+        // and freeze the till (the exact symptom operators reported). Re-apply right before AND
+        // right after the assert-prone ConnectMain / BeginWatch path so every re-entry stays silent.
+        CareaIfcNative.SuppressNativeDebugAssertions();
+
         lock (_monitorLock)
         {
             _monitoredDevices = devices;
             _onMonitorEvent = onEvent;
         }
         _monitorMain = new ConnectMain();
+        CareaIfcNative.SuppressNativeDebugAssertions();
         _monitorMain.WatchEvent += OnWatchEvent;
         _monitorMain.CommandAchieve += (_, _, _) => { };
         _monitorMain.CommandTimeout += (_, _, _, _) => { };
@@ -754,6 +762,9 @@ public class AccessControlSdkWrapper : IAccessControlSdk
         _keepAliveTimer = new System.Timers.Timer(10000);
         _keepAliveTimer.Elapsed += (_, _) =>
         {
+            // Keep the assert-dialog suppression armed for the whole monitoring session — MFC can
+            // re-set the report mode at any time. Cheap + idempotent, so re-applying every 10s is safe.
+            CareaIfcNative.SuppressNativeDebugAssertions();
             List<DeviceInfo>? devices;
             lock (_monitorLock)
             {

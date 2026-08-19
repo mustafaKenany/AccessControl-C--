@@ -70,17 +70,21 @@ public static class CareaIfcNative
     [DllImport("msvcr100d.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern int _CrtSetReportMode(int reportType, int reportMode);
 
-    private static bool _assertsSuppressed;
-
     /// <summary>
     /// Redirects the debug CRT's assertion/error reports off the modal dialog so a vendor-DLL
-    /// MFC ASSERT can never freeze the app. Best-effort: silently no-ops if msvcr100d.dll is
-    /// absent (e.g. a machine that somehow shipped without the debug runtime).
+    /// MFC ASSERT can never freeze the app (matching what a Release build of the DLL would do).
+    /// Best-effort: silently no-ops if msvcr100d.dll is absent.
+    ///
+    /// ⚠️ NO one-time guard — this MUST be re-appliable. The vendor SDK ships DEBUG MFC binaries,
+    /// and MFC resets the CRT report mode back to the modal "Debug Assertion Failed" dialog every
+    /// time it re-initialises (e.g. each time the Real-Time Monitor opens / a new ConnectMain window
+    /// is created). A single call at startup is therefore undone the moment the Monitor is opened a
+    /// SECOND time — which is exactly when operators saw the popup return and the till froze. So we
+    /// re-call this right before every assert-prone native path (see StartMonitoring). The call is
+    /// cheap and idempotent, so re-applying it liberally is safe.
     /// </summary>
     public static void SuppressNativeDebugAssertions()
     {
-        if (_assertsSuppressed) return;
-        _assertsSuppressed = true;
         try
         {
             _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_DEBUG);
