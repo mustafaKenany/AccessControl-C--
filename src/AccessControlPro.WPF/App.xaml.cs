@@ -1957,19 +1957,79 @@ public partial class App : System.Windows.Application
 
         StartupLog($"Update available: v{result.CurrentVersion} → v{result.LatestVersion}, mandatory={result.IsMandatory}");
 
-        // Respect snooze/skip unless it's a mandatory update
-        if (!result.IsMandatory && checker.IsSnoozed(result.Manifest.Version))
+        // SILENT BACKGROUND UPDATE — no prompt. Operators found the per-launch "update now?" popup
+        // disruptive (and, while an update was failing to install, it re-appeared every launch). We
+        // now download + stage the update quietly and install it at the first safe+idle moment
+        // (no dialog open + 10 min of no input), then greet the operator with a "the app was updated
+        // by the company" notice on the next launch. The install still needs a ~30s restart because
+        // the DLLs are locked while the app runs — but the operator never makes a decision, and the
+        // restart lands during a natural quiet gap. (The old interactive ShowUpdatePrompt is retained
+        // for a possible future manual "check for updates" button but is no longer auto-invoked.)
+        await SilentBackgroundUpdateAsync(result.Manifest);
+    }
+
+    // Fields backing the silent background update flow.
+    private UpdateInstallResult? _stagedUpdate;
+    private DispatcherTimer? _applyUpdateTimer;
+
+    /// <summary>Downloads + stages the update quietly (no prompt, no splash), then installs it at the
+    /// first safe+idle moment via a low-frequency timer. On the next launch a "updated by the company"
+    /// notice is shown (see <see cref="ShowPostUpdateNotesIfAny"/>).</summary>
+    private async Task SilentBackgroundUpdateAsync(VersionManifest manifest)
+    {
+        if (_stagedUpdate != null) return; // already staged this session — the timer will install it
+        var installer = _serviceProvider.GetRequiredService<IUpdateInstallerService>();
+        StartupLog($"Silent update: downloading v{manifest.Version} in the background...");
+
+        UpdateInstallResult staged;
+        try { staged = await installer.DownloadAndStageAsync(manifest); }
+        catch (Exception ex)
         {
-            StartupLog($"Update v{result.Manifest.Version} is snoozed/skipped — not prompting");
+            StartupLog($"Silent update download errored: {ex.Message} — will retry on the next check.");
+            return;
+        }
+        if (!staged.Success)
+        {
+            StartupLog($"Silent update staging failed: {staged.ErrorMessage} — will retry on the next check.");
             return;
         }
 
-        // Marshal back to UI thread for the prompt
+        _stagedUpdate = staged;
+        StartupLog($"Update v{manifest.Version} staged silently. Installing at the first safe+idle moment.");
         Dispatcher.Invoke(() =>
         {
-            try { ShowUpdatePrompt(result, checker); }
-            catch (Exception ex) { StartupLog($"Update prompt error: {ex.Message}"); }
+            _applyUpdateTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+            _applyUpdateTimer.Tick -= ApplyStagedUpdateTick;
+            _applyUpdateTimer.Tick += ApplyStagedUpdateTick;
+            _applyUpdateTimer.Start();
+            ApplyStagedUpdateTick(null, EventArgs.Empty); // try immediately in case it's already idle
         });
+    }
+
+    // Installs the staged update the moment the app is safe AND the operator has been idle for 10 min,
+    // so a sale/edit is never interrupted. Runs on the UI thread (DispatcherTimer tick).
+    private void ApplyStagedUpdateTick(object? sender, EventArgs e)
+    {
+        var staged = _stagedUpdate;
+        if (staged == null) { _applyUpdateTimer?.Stop(); return; }
+        if (!IsSafeToRestart(requireIdle: true)) return; // wait for a genuinely quiet moment
+
+        StartupLog($"Applying staged update v{staged.TargetVersion} (safe+idle) — handing off to Updater.exe.");
+        // Record a PLANNED exit first so the Updater killing us can't look like a crash next launch.
+        try { LastRunStateTracker.RecordPlannedRestart("auto-update"); } catch { }
+        var installer = _serviceProvider.GetRequiredService<IUpdateInstallerService>();
+        try
+        {
+            installer.TriggerInstallAndExit(staged);
+            _stagedUpdate = null;
+            _applyUpdateTimer?.Stop();
+            Shutdown();
+        }
+        catch (Exception ex)
+        {
+            // Leave _stagedUpdate + the timer running so a later tick retries the hand-off.
+            StartupLog($"Silent update: Updater launch failed: {ex.Message} — will retry on a later tick.");
+        }
     }
 
     private void ShowUpdatePrompt(UpdateCheckResult check, IUpdateCheckService checker)
@@ -2039,7 +2099,7 @@ public partial class App : System.Windows.Application
         try { File.Delete(markerPath); } catch { }
 
         var isAr = Helpers.LanguageManager.Instance.IsArabic;
-        var title = isAr ? $"تم التحديث إلى الإصدار {installedVersion}" : $"Updated to version {installedVersion}";
+        var title = isAr ? "تم تحديث التطبيق من الشركة" : "The app was updated by the company";
 
         // Fetch the manifest one more time to get release notes (the staged ZIP is gone).
         // This is best-effort: if the VPS is unreachable, we just show a generic success message.
@@ -2057,8 +2117,8 @@ public partial class App : System.Windows.Application
         catch { notes = ""; }
 
         var body = string.IsNullOrWhiteSpace(notes)
-            ? (isAr ? $"تم تثبيت الإصدار {installedVersion} بنجاح." : $"Version {installedVersion} installed successfully.")
-            : (isAr ? $"ما الجديد في الإصدار {installedVersion}:\n\n{notes}" : $"What's new in version {installedVersion}:\n\n{notes}");
+            ? (isAr ? $"تم تحديث التطبيق إلى الإصدار {installedVersion} بنجاح." : $"The app was updated to version {installedVersion} successfully.")
+            : (isAr ? $"تم تحديث التطبيق إلى الإصدار {installedVersion}.\n\nالجديد:\n{notes}" : $"The app was updated to version {installedVersion}.\n\nWhat's new:\n{notes}");
 
         MessageBox.Show(body, title, MessageBoxButton.OK, MessageBoxImage.Information);
         StartupLog($"Post-update dialog shown for v{installedVersion}");
