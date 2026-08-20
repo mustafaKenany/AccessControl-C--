@@ -192,8 +192,60 @@
                         </StackPanel>
                     </StackPanel>
 
+                    <!-- ── Pinned quick-access: the two most-used screens (Monitor + Players), always
+                         visible + prominent ABOVE the scroll so a gym owner never has to hunt/scroll
+                         for them. Monitor used to sit at the very bottom of the scroll where owners
+                         (especially new ones) kept losing it. ── -->
+                    <StackPanel Margin="8,14,8,0">
+                        <!-- المراقبة المباشرة -->
+                        <Button Command="{Binding OpenMonitorCommand}" Cursor="Hand" Margin="0,0,0,8"
+                                Visibility="{Binding CanViewMonitor, Converter={StaticResource BoolToVisibility}}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="mb" CornerRadius="12" Padding="16,13" Background="#3344A1A0"
+                                            BorderBrush="#7044A1A0" BorderThickness="1.5">
+                                        <StackPanel Orientation="Horizontal">
+                                            <fa:ImageAwesome Icon="Eye" Width="18" Height="18" Foreground="White"
+                                                             VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                            <TextBlock Text="{Binding Lang.NavMonitor}" FontSize="15" FontWeight="Bold"
+                                                       Foreground="White" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="mb" Property="Background" Value="#5544A1A0"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <!-- اللاعبين -->
+                        <Button Command="{Binding NavigateToCommand}" CommandParameter="Employees" Cursor="Hand"
+                                Visibility="{Binding CanViewPlayers, Converter={StaticResource BoolToVisibility}}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="pb" CornerRadius="12" Padding="16,13" Background="#3344A1A0"
+                                            BorderBrush="#7044A1A0" BorderThickness="1.5">
+                                        <StackPanel Orientation="Horizontal">
+                                            <fa:ImageAwesome Icon="Users" Width="18" Height="18" Foreground="White"
+                                                             VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                            <TextBlock Text="{Binding Lang.NavPlayers}" FontSize="15" FontWeight="Bold"
+                                                       Foreground="White" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="pb" Property="Background" Value="#5544A1A0"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <Border Height="1" Background="#18FFFFFF" Margin="4,14,4,2"/>
+                    </StackPanel>
+
                     <!-- ── Navigation Menu ── -->
-                    <ScrollViewer VerticalScrollBarVisibility="Visible" Margin="8,16,8,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Visible" Margin="8,4,8,0">
                         <StackPanel>
                             <Button Style="{StaticResource SidebarButton}"
                                     Command="{Binding NavigateToCommand}" CommandParameter="Dashboard">
@@ -224,17 +276,6 @@
                                                      Foreground="{StaticResource TextMutedBrush}"
                                                      VerticalAlignment="Center" Margin="0,0,14,0"/>
                                     <TextBlock Text="{Binding Lang.NavDoors}" FontSize="14" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-
-                            <Button Style="{StaticResource SidebarButton}"
-                                    Command="{Binding NavigateToCommand}" CommandParameter="Employees"
-                                    Visibility="{Binding CanViewPlayers, Converter={StaticResource BoolToVisibility}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <fa:ImageAwesome Icon="Users" Width="16" Height="16"
-                                                     Foreground="{StaticResource TextMutedBrush}"
-                                                     VerticalAlignment="Center" Margin="0,0,14,0"/>
-                                    <TextBlock Text="{Binding Lang.NavPlayers}" FontSize="14" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
 
@@ -319,19 +360,6 @@
                                                      Foreground="{StaticResource TextMutedBrush}"
                                                      VerticalAlignment="Center" Margin="0,0,14,0"/>
                                     <TextBlock Text="{Binding Lang.NavReminders}" FontSize="14" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-
-                            <Border Height="1" Background="#10FFFFFF" Margin="12,8"/>
-
-                            <Button Style="{StaticResource SidebarButton}"
-                                    Command="{Binding OpenMonitorCommand}"
-                                    Visibility="{Binding CanViewMonitor, Converter={StaticResource BoolToVisibility}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <fa:ImageAwesome Icon="Eye" Width="16" Height="16"
-                                                     Foreground="{StaticResource TextMutedBrush}"
-                                                     VerticalAlignment="Center" Margin="0,0,14,0"/>
-                                    <TextBlock Text="{Binding Lang.NavMonitor}" FontSize="14" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
 
