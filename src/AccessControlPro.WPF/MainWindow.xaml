@@ -152,24 +152,9 @@
                                     </ControlTemplate>
                                 </Button.Template>
                             </Button>
-                            <Button Width="36" Height="36" Cursor="Hand" Click="MaximizeClick"
-                                    Background="Transparent" BorderThickness="0">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="bg" Background="Transparent" CornerRadius="8"
-                                                Width="36" Height="36">
-                                            <fa:ImageAwesome Icon="WindowMaximize" Width="12" Height="12"
-                                                             Foreground="{StaticResource TextMutedBrush}"
-                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bg" Property="Background" Value="#20FFFFFF"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
+                            <!-- Maximize button removed on purpose: the window is locked to full-screen
+                                 (see OnStateChanged in code-behind). At small window sizes the layout
+                                 icons overlapped, so operators may only Minimize or Close now. -->
                             <Button Width="36" Height="36" Cursor="Hand" Click="CloseClick"
                                     Background="Transparent" BorderThickness="0">
                                 <Button.Template>

@@ -26,7 +26,10 @@ public partial class MainWindow : Window
 
     private void MainWindow_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ChangedButton == MouseButton.Left)
+        // Only allow dragging when NOT maximized. The window is locked to full-screen (see
+        // OnStateChanged), so this is effectively a no-op — but it stops a title-bar drag from
+        // restoring the window to a small, icon-overlapping size.
+        if (e.ChangedButton == MouseButton.Left && WindowState != WindowState.Maximized)
             DragMove();
     }
 
@@ -35,11 +38,14 @@ public partial class MainWindow : Window
         WindowState = WindowState.Minimized;
     }
 
-    private void MaximizeClick(object sender, RoutedEventArgs e)
+    // The window is LOCKED to full-screen: any attempt to restore it to a normal (small) size snaps
+    // it straight back to Maximized. Operators can only Minimize or Close now (the Maximize button was
+    // removed). Deliberate — at small window sizes the layout icons overlapped and confused users.
+    protected override void OnStateChanged(System.EventArgs e)
     {
-        WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal
-            : WindowState.Maximized;
+        base.OnStateChanged(e);
+        if (WindowState == WindowState.Normal)
+            WindowState = WindowState.Maximized;
     }
 
     private void CloseClick(object sender, RoutedEventArgs e)

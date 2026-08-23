@@ -43,6 +43,17 @@ public class AccessCardRepository : IAccessCardRepository
             }
         }
 
+        // Reverse leading-zero variant — the device DROPPED a leading zero the card was registered
+        // with ("08598178" registered, the reader reports "8598178" → shows "Not Registered" in the
+        // Monitor even though the gate opens). Try the scanned number with one/two leading zeros
+        // prepended. (Exact match ran first, so this only fires when the exact form isn't found.)
+        if (!cardNumber.StartsWith('0'))
+        {
+            card = await db.AccessCards.Include(c => c.Employee)
+                .FirstOrDefaultAsync(c => c.CardNumber == "0" + cardNumber || c.CardNumber == "00" + cardNumber);
+            if (card != null) return card;
+        }
+
         // Wiegand 8H10D variant — the device reads cards with an extra trailing digit
         // (check/parity bit). E.g. card registered as "0366549" gets scanned as "3665490";
         // card registered as "0374205" gets scanned as "3742052". Diving the scanned value
