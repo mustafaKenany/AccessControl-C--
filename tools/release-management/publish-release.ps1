@@ -95,12 +95,14 @@ Write-Host "----------------------------------------"
 Write-Host "Enter release notes in English. Use semicolons to separate bullets."
 Write-Host "Example: Fixed Events page;Faster card search;New backup splash"
 $notesEnRaw = Read-Host "English notes"
-$notesEn = ($notesEnRaw -split ';' | ForEach-Object { "$Bullet $($_.Trim())" }) -join '\n'
+# JSON-escape double-quotes AFTER the \n join (the join adds no quotes), so a note like
+# 'Fixed the "Today" screen' can't break the manifest JSON and silently stop the rollout.
+$notesEn = (($notesEnRaw -split ';' | ForEach-Object { "$Bullet $($_.Trim())" }) -join '\n').Replace('"','\"')
 
 Write-Host ""
 Write-Host "Enter release notes in Arabic. Use semicolons to separate bullets."
 $notesArRaw = Read-Host "Arabic notes"
-$notesAr = ($notesArRaw -split ';' | ForEach-Object { "$Bullet $($_.Trim())" }) -join '\n'
+$notesAr = (($notesArRaw -split ';' | ForEach-Object { "$Bullet $($_.Trim())" }) -join '\n').Replace('"','\"')
 
 Write-Host ""
 $mandatoryAns = Read-Host "Is this update MANDATORY? Customers cannot skip it. (y/N)"
