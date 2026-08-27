@@ -1,8 +1,7 @@
 <UserControl x:Class="AccessControlPro.WPF.Views.DeletedRecordsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:fa="http://schemas.fontawesome.io/icons/"
-             FlowDirection="{Binding Lang.FlowDirection}">
+             xmlns:fa="http://schemas.fontawesome.io/icons/">
 
     <Grid Margin="32,28,32,32">
         <Grid.RowDefinitions>

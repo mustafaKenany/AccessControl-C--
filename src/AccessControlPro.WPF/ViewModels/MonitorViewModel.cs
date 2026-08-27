@@ -186,61 +186,46 @@ public partial class MonitorViewModel : ObservableObject
     [RelayCommand]
     private async Task StopMonitoringAsync()
     {
-        // Only restart if monitoring was actually running
-        bool wasMonitoring = IsMonitoring;
-
+        // Exiting the Monitor must be INSTANT and SILENT — no app restart, no dialog, no error.
+        // (The old code did Environment.Exit + relaunch "to get fresh SDK state"; that whole-app
+        //  reset is what operators saw as the program "restarting" every time they left Monitor.)
+        // The SDK is already built for clean in-process re-entry: StopMonitoring sends CloseWatch and
+        // StartMonitoring re-establishes with a getDevInfo warm-up handshake, and card ops after
+        // monitoring fall back to a fresh subprocess. So we just tear the watch down cleanly here.
         ActivityLogger.LogAction("Monitor", "StopMonitoring");
-        _opHelper.SetMonitoringState(null, null); // Clear monitoring state
-        _sdk.StopMonitoring();
-        _heartbeatTimer?.Stop();
-        _heartbeatTimer = null;
-        await _monitorLockService.ReleaseAsync();
-        IsMonitoring = false;
-        ConnectedDevices = 0;
-        StatusMessage = "Stopped";
-
-        // Restart app to get fresh SDK state after monitoring session
-        if (wasMonitoring)
+        try
         {
-            // Close the projector display window before restarting
-            CloseDisplay();
+            // Stop the heartbeat + clear shared monitoring state first so nothing re-arms mid-teardown.
+            _heartbeatTimer?.Stop();
+            _heartbeatTimer = null;
+            _opHelper.SetMonitoringState(null, null);
 
-            // Save auto-login marker for seamless restart
-            var pending = new Helpers.PendingOperationHelper.PendingOperation
+            // Tear down the native watch OFF the UI thread: StopMonitoring sends CloseWatch and then
+            // sleeps ~2s waiting for the controller to drop the TCP session, so doing it inline would
+            // freeze the window on exit. Right after, nudge finalization so the orphaned monitor
+            // ConnectMain releases its native socket/window NOW → the next monitor session (or a card
+            // op) gets fresh SDK state WITHOUT restarting the app. (ConnectMain isn't IDisposable, so
+            // running its finalizer is the only handle we have to reclaim the native resources.)
+            await Task.Run(() =>
             {
-                Type = "MonitorRestart",
-                Username = _currentUser?.Username ?? "admin"
-            };
-            Helpers.PendingOperationHelper.Save(pending);
-
-            // Show restart message before restarting
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
-            {
-                Views.CustomMessageBox.Show(
-                    LanguageManager.Instance.IsArabic
-                        ? "سيتم إعادة تشغيل التطبيق لتحديث اتصال الأجهزة..."
-                        : "Application will restart to refresh device connection...",
-                    LanguageManager.Instance.IsArabic ? "إعادة تشغيل" : "Restarting",
-                    Views.MsgType.Info,
-                    System.Windows.Application.Current.MainWindow);
+                try { _sdk.StopMonitoring(); } catch { }
+                try { GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(); } catch { }
             });
 
-            // Release mutex before restart so new process can acquire it
-            App.ReleaseSingleInstanceMutex();
+            try { await _monitorLockService.ReleaseAsync(); } catch { }
 
-            // Brief delay to ensure cleanup completes
-            await Task.Delay(1000);
-
-            // Restart app to get fresh SDK state.
-            // Mark the exit as a planned restart RIGHT BEFORE Environment.Exit, otherwise
-            // the next launch's LastRunStateTracker would read state="running" (because
-            // Environment.Exit doesn't fire OnExit → RecordCleanExit never runs) and
-            // falsely report this as "KILLED OR CRASHED" in the startup log.
-            LastRunStateTracker.RecordPlannedRestart("Monitor stopped — SDK state refresh");
-            var exePath = Environment.ProcessPath;
-            if (exePath != null)
-                System.Diagnostics.Process.Start(exePath);
-            Environment.Exit(0);
+            IsMonitoring = false;
+            ConnectedDevices = 0;
+            StatusMessage = "Stopped";
+            CloseDisplay();
+        }
+        catch (Exception ex)
+        {
+            // Never surface a raw error when leaving Monitor — just log and settle the UI state.
+            System.Diagnostics.Debug.WriteLine($"[Monitor] StopMonitoring error: {ex.Message}");
+            IsMonitoring = false;
+            ConnectedDevices = 0;
+            StatusMessage = "Stopped";
         }
     }
 

@@ -4,6 +4,7 @@
         xmlns:fa="http://schemas.fontawesome.io/icons/"
         xmlns:views="clr-namespace:AccessControlPro.WPF.Views"
         xmlns:vm="clr-namespace:AccessControlPro.WPF.ViewModels"
+        xmlns:ctrl="clr-namespace:AccessControlPro.WPF.Controls"
         Title="{Binding Lang.AppTitle}"
         Height="768" Width="1280"
         MinHeight="600" MinWidth="900"
@@ -17,456 +18,489 @@
         FlowDirection="{Binding Lang.FlowDirection}"
         MouseLeftButtonDown="MainWindow_OnMouseLeftButtonDown">
 
+    <Window.Resources>
+        <!-- Section header in the slim sidebar -->
+        <Style x:Key="SidebarSectionTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#6644A1A0"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="10,16,10,4"/>
+        </Style>
+
+        <!-- Top-bar nav item: icon + text, with an accent underline when its page is active. -->
+        <Style x:Key="TopNavButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Height" Value="52"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Border x:Name="bg" Background="{TemplateBinding Background}" Padding="16,0">
+                                <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            </Border>
+                            <Border x:Name="active" Height="3" CornerRadius="2,2,0,0" Background="#44A1A0"
+                                    VerticalAlignment="Bottom" Margin="12,0">
+                                <Border.Visibility>
+                                    <MultiBinding Converter="{StaticResource PageActiveToVisibility}">
+                                        <Binding Path="DataContext.CurrentPage" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                        <Binding Path="Tag" RelativeSource="{RelativeSource TemplatedParent}"/>
+                                    </MultiBinding>
+                                </Border.Visibility>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#12FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Border Background="{StaticResource BgDarkBrush}" CornerRadius="12">
         <Border.Effect>
             <DropShadowEffect BlurRadius="20" ShadowDepth="0" Opacity="0.5" Color="Black"/>
         </Border.Effect>
 
         <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="260"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="52"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-            <!-- ═══════════ Sidebar ═══════════ -->
-            <Border Grid.Column="0" CornerRadius="12,0,0,12">
+            <!-- ═══════════ TOP BAR ═══════════ -->
+            <Border Grid.Row="0" CornerRadius="12,12,0,0">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#0A2124" Offset="0"/>
-                        <GradientStop Color="#081B1D" Offset="1"/>
+                        <GradientStop Color="#0C2528" Offset="0"/>
+                        <GradientStop Color="#0A2124" Offset="1"/>
                     </LinearGradientBrush>
                 </Border.Background>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <DockPanel>
-                    <!-- ── Logo Area ── -->
-                    <Border DockPanel.Dock="Top" Padding="24,28,24,20">
-                        <StackPanel HorizontalAlignment="Center">
-                            <Border Width="56" Height="56" CornerRadius="14">
-                                <Border.Background>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                        <GradientStop Color="#247B7B" Offset="0"/>
-                                        <GradientStop Color="#44A1A0" Offset="1"/>
-                                    </LinearGradientBrush>
-                                </Border.Background>
-                                <fa:ImageAwesome Icon="Shield" Width="26" Height="26" Foreground="White"
-                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <TextBlock Text="{Binding Lang.AppTitle}"
-                                       FontSize="15" FontWeight="Bold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                       HorizontalAlignment="Center" Margin="0,12,0,0"
-                                       TextAlignment="Center"/>
-                            <!-- Clicking the version opens SuperAdmin settings (password-gated) — a
-                                 discreet entry for the provider to enable POS / online on an offline machine. -->
-                            <TextBlock Text="{Binding AppVersion}"
-                                       FontSize="11" FontWeight="SemiBold"
-                                       Foreground="{StaticResource PrimaryLightBrush}"
-                                       HorizontalAlignment="Center" Margin="0,3,0,0"
-                                       TextAlignment="Center" Opacity="0.85"
-                                       Cursor="Hand" MouseLeftButtonUp="VersionClick"
-                                       ToolTip="SuperAdmin"/>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
+                    <!-- Frequent screens (right side in RTL): Home, Devices, Doors, Deleted, Reminders -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,0">
+                        <!-- الشاشة الرئيسية -->
+                        <Button x:Name="TodayNavBtn" Style="{StaticResource TopNavButton}" Tag="Today" ToolTip="{Binding Lang.NavToday}"
+                                Command="{Binding NavigateToCommand}" CommandParameter="Today"
+                                Visibility="{Binding CanViewDashboard, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="Home" Width="16" Height="16" Foreground="#78CDD7"
+                                                 VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="{Binding Lang.NavToday}" FontSize="13.5" FontWeight="Bold"
+                                           Foreground="#DCE8EE" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- الأجهزة (with pulsing red dot when something needs attention) -->
+                        <Button x:Name="DevicesNavBtn" Style="{StaticResource TopNavButton}" Tag="Devices" ToolTip="{Binding Health.DetailText}"
+                                Command="{Binding NavigateToCommand}" CommandParameter="Devices"
+                                Visibility="{Binding CanViewDevices, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal">
+                                <Grid Margin="0,0,8,0" VerticalAlignment="Center">
+                                    <fa:ImageAwesome Icon="Desktop" Width="16" Height="16" Foreground="#44A1A0"
+                                                     VerticalAlignment="Center"/>
+                                    <Ellipse Width="8" Height="8" Fill="#FF5353" Stroke="#0A2124" StrokeThickness="2"
+                                             HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-4,-4,0"
+                                             Visibility="{Binding Health.HasIssue, Converter={StaticResource BoolToVisibility}}">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Style.Triggers>
+                                                    <EventTrigger RoutedEvent="Loaded">
+                                                        <BeginStoryboard>
+                                                            <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                 From="1" To="0.35" Duration="0:0:1"/>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </EventTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                </Grid>
+                                <TextBlock Text="{Binding Lang.NavDevices}" FontSize="13.5" FontWeight="Bold"
+                                           Foreground="#DCE8EE" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- الأبواب -->
+                        <Button Style="{StaticResource TopNavButton}" Tag="Doors" ToolTip="{Binding Lang.NavDoors}"
+                                Command="{Binding NavigateToCommand}" CommandParameter="Doors"
+                                Visibility="{Binding CanViewDoors, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="Lock" Width="16" Height="16" Foreground="#2ED47A"
+                                                 VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="{Binding Lang.NavDoors}" FontSize="13.5" FontWeight="Bold"
+                                           Foreground="#DCE8EE" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- المحذوفات -->
+                        <Button Style="{StaticResource TopNavButton}" Tag="DeletedRecords" ToolTip="{Binding Lang.NavDeletedRecords}"
+                                Command="{Binding NavigateToCommand}" CommandParameter="DeletedRecords"
+                                Visibility="{Binding CanViewDeletedRecords, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="TrashOutline" Width="16" Height="16" Foreground="#F7685B"
+                                                 VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="{Binding Lang.NavDeletedRecords}" FontSize="13.5" FontWeight="Bold"
+                                           Foreground="#DCE8EE" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- التذكيرات -->
+                        <Button Style="{StaticResource TopNavButton}" Tag="Reminders" ToolTip="{Binding Lang.NavReminders}"
+                                Command="{Binding NavigateToCommand}" CommandParameter="Reminders"
+                                Visibility="{Binding CanViewReminders, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:ImageAwesome Icon="Whatsapp" Width="16" Height="16" Foreground="#25D366"
+                                                 VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="{Binding Lang.NavReminders}" FontSize="13.5" FontWeight="Bold"
+                                           Foreground="#DCE8EE" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Logo + name + version (left side in RTL) -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,20,0">
+                        <Border Width="34" Height="34" CornerRadius="9" Margin="0,0,10,0">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#247B7B" Offset="0"/>
+                                    <GradientStop Color="#44A1A0" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <fa:ImageAwesome Icon="Shield" Width="16" Height="16" Foreground="White"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Lang.AppTitle}" FontSize="13" FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="{Binding AppVersion}" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{StaticResource PrimaryLightBrush}" Opacity="0.85"
+                                       Cursor="Hand" MouseLeftButtonUp="VersionClick" ToolTip="SuperAdmin"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ═══════════ BODY (sidebar + content) ═══════════ -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- ═══════════ Slim Sidebar (right in RTL) ═══════════ -->
+                <Border Grid.Column="0" CornerRadius="0,0,0,12">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#0A2124" Offset="0"/>
+                            <GradientStop Color="#081B1D" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+
+                    <DockPanel Margin="6,8,6,10">
+                        <!-- Bottom: user + Settings + window controls -->
+                        <StackPanel DockPanel.Dock="Bottom">
+                            <Border Height="1" Background="#15FFFFFF" Margin="8,6,8,8"/>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8">
                                 <fa:ImageAwesome Icon="UserCircle" Width="12" Height="12"
                                                  Foreground="{StaticResource PrimaryLightBrush}"
                                                  VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                <TextBlock Text="{Binding CurrentUserDisplayName}"
-                                           FontSize="12" Foreground="{StaticResource PrimaryLightBrush}"
-                                           VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding CurrentUserDisplayName}" FontSize="11"
+                                           Foreground="{StaticResource PrimaryLightBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <Button x:Name="SettingsBtn" Style="{StaticResource SidebarButton}"
+                                    Click="SettingsClick" ToolTip="{Binding Lang.NavSettings}">
+                                <StackPanel Orientation="Horizontal">
+                                    <fa:ImageAwesome Icon="Cog" Width="18" Height="18" Foreground="#8FA3AD"
+                                                     VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                    <TextBlock Text="{Binding Lang.NavSettings}" FontSize="14" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Popup x:Name="SettingsPopup" PlacementTarget="{Binding ElementName=SettingsBtn}"
+                                   Placement="Top" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade"
+                                   HorizontalOffset="0" VerticalOffset="-6">
+                                <Border Background="#12312F" BorderBrush="#2044A1A0" BorderThickness="1"
+                                        CornerRadius="12" Padding="6" Width="236"
+                                        FlowDirection="{Binding Lang.FlowDirection}">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="Black" BlurRadius="24" ShadowDepth="0" Opacity="0.5"/>
+                                    </Border.Effect>
+                                    <StackPanel>
+                                        <Button Style="{StaticResource SidebarButton}" Click="MigrationClick">
+                                            <StackPanel Orientation="Horizontal">
+                                                <fa:ImageAwesome Icon="Database" Width="16" Height="16" Foreground="#8FA3AD"
+                                                                 VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                                <TextBlock Text="{Binding Lang.MigDataMigration}" FontSize="13" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{StaticResource SidebarButton}" Click="ChangePasswordClick">
+                                            <StackPanel Orientation="Horizontal">
+                                                <fa:ImageAwesome Icon="Key" Width="16" Height="16" Foreground="#8FA3AD"
+                                                                 VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                                <TextBlock Text="{Binding Lang.CpwChangePassword}" FontSize="13" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{StaticResource SidebarButton}" Click="SendDiagnosticsClick"
+                                                Visibility="{Binding CanSendDiagnostics, Converter={StaticResource BoolToVisibility}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <fa:ImageAwesome Icon="CloudUpload" Width="16" Height="16" Foreground="#8FA3AD"
+                                                                 VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                                <TextBlock Text="{Binding Lang.DiagSendDiagnostics}" FontSize="13" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{StaticResource SidebarButton}" Click="HelpTourClick">
+                                            <StackPanel Orientation="Horizontal">
+                                                <fa:ImageAwesome Icon="QuestionCircle" Width="16" Height="16" Foreground="#FFD24A"
+                                                                 VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                                <TextBlock Text="{Binding Lang.HelpTour}" FontSize="13" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{StaticResource SidebarButton}" Click="LanguageClick"
+                                                Visibility="{Binding CanChangeLanguage, Converter={StaticResource BoolToVisibility}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <fa:ImageAwesome Icon="Globe" Width="16" Height="16" Foreground="#8FA3AD"
+                                                                 VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                                <TextBlock Text="{Binding Lang.LanguageButtonText}" FontSize="13" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+                            </Popup>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
+                                <Button Width="34" Height="34" Cursor="Hand" Click="MinimizeClick"
+                                        Background="Transparent" BorderThickness="0">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bg" Background="Transparent" CornerRadius="8" Width="34" Height="34">
+                                                <fa:ImageAwesome Icon="WindowMinimize" Width="12" Height="12"
+                                                                 Foreground="{StaticResource TextMutedBrush}"
+                                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bg" Property="Background" Value="#20FFFFFF"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                <Button Width="34" Height="34" Cursor="Hand" Click="CloseClick"
+                                        Background="Transparent" BorderThickness="0">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bg" Background="Transparent" CornerRadius="8" Width="34" Height="34">
+                                                <fa:ImageAwesome Icon="Times" Width="12" Height="12"
+                                                                 Foreground="{StaticResource TextMutedBrush}"
+                                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bg" Property="Background" Value="#40F7685B"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
                             </StackPanel>
                         </StackPanel>
-                    </Border>
 
-                    <Border DockPanel.Dock="Top" Height="1" Background="#15FFFFFF" Margin="20,0"/>
-
-                    <!-- ── Bottom Section: Language + Window Controls ── -->
-                    <StackPanel DockPanel.Dock="Bottom" Margin="12,8,12,16">
-                        <Border Height="1" Background="#15FFFFFF" Margin="8,0,8,12"/>
-
-                        <!-- Data Migration -->
-                        <Button Style="{StaticResource SidebarButton}"
-                                Click="MigrationClick">
-                            <StackPanel Orientation="Horizontal">
-                                <fa:ImageAwesome Icon="Database" Width="16" Height="16"
-                                                 Foreground="{StaticResource TextMutedBrush}"
-                                                 VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                <TextBlock Text="{Binding Lang.MigDataMigration}"
-                                           FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-
-                        <!-- Change Password -->
-                        <Button Style="{StaticResource SidebarButton}"
-                                Click="ChangePasswordClick">
-                            <StackPanel Orientation="Horizontal">
-                                <fa:ImageAwesome Icon="Key" Width="16" Height="16"
-                                                 Foreground="{StaticResource TextMutedBrush}"
-                                                 VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                <TextBlock Text="{Binding Lang.CpwChangePassword}"
-                                           FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-
-                        <!-- Send Diagnostics to Support -->
-                        <Button Style="{StaticResource SidebarButton}"
-                                Click="SendDiagnosticsClick"
-                                Visibility="{Binding CanSendDiagnostics, Converter={StaticResource BoolToVisibility}}">
-                            <StackPanel Orientation="Horizontal">
-                                <fa:ImageAwesome Icon="CloudUpload" Width="16" Height="16"
-                                                 Foreground="{StaticResource TextMutedBrush}"
-                                                 VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                <TextBlock Text="{Binding Lang.DiagSendDiagnostics}"
-                                           FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-
-                        <!-- Language Toggle -->
-                        <Button Style="{StaticResource SidebarButton}"
-                                Command="{Binding ToggleLanguageCommand}"
-                                Visibility="{Binding CanChangeLanguage, Converter={StaticResource BoolToVisibility}}">
-                            <StackPanel Orientation="Horizontal">
-                                <fa:ImageAwesome Icon="Globe" Width="16" Height="16"
-                                                 Foreground="{StaticResource TextMutedBrush}"
-                                                 VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                <TextBlock Text="{Binding Lang.LanguageButtonText}"
-                                           FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-
-                        <!-- Window Controls -->
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
-                            <Button Width="36" Height="36" Cursor="Hand" Click="MinimizeClick"
-                                    Background="Transparent" BorderThickness="0">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="bg" Background="Transparent" CornerRadius="8"
-                                                Width="36" Height="36">
-                                            <fa:ImageAwesome Icon="WindowMinimize" Width="12" Height="12"
-                                                             Foreground="{StaticResource TextMutedBrush}"
-                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bg" Property="Background" Value="#20FFFFFF"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
-                            <!-- Maximize button removed on purpose: the window is locked to full-screen
-                                 (see OnStateChanged in code-behind). At small window sizes the layout
-                                 icons overlapped, so operators may only Minimize or Close now. -->
-                            <Button Width="36" Height="36" Cursor="Hand" Click="CloseClick"
-                                    Background="Transparent" BorderThickness="0">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="bg" Background="Transparent" CornerRadius="8"
-                                                Width="36" Height="36">
-                                            <fa:ImageAwesome Icon="Times" Width="12" Height="12"
-                                                             Foreground="{StaticResource TextMutedBrush}"
-                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bg" Property="Background" Value="#40F7685B"/>
-                                                <Setter TargetName="bg" Property="Tag" Value="danger"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <!-- ── Pinned quick-access: the two most-used screens (Monitor + Players), always
-                         visible + prominent ABOVE the scroll so a gym owner never has to hunt/scroll
-                         for them. Monitor used to sit at the very bottom of the scroll where owners
-                         (especially new ones) kept losing it. ── -->
-                    <StackPanel Margin="8,14,8,0">
-                        <!-- المراقبة المباشرة -->
-                        <Button Command="{Binding OpenMonitorCommand}" Cursor="Hand" Margin="0,0,0,8"
-                                Visibility="{Binding CanViewMonitor, Converter={StaticResource BoolToVisibility}}">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border x:Name="mb" CornerRadius="12" Padding="16,13" Background="#3344A1A0"
-                                            BorderBrush="#7044A1A0" BorderThickness="1.5">
-                                        <StackPanel Orientation="Horizontal">
-                                            <fa:ImageAwesome Icon="Eye" Width="18" Height="18" Foreground="White"
-                                                             VerticalAlignment="Center" Margin="0,0,14,0"/>
-                                            <TextBlock Text="{Binding Lang.NavMonitor}" FontSize="15" FontWeight="Bold"
-                                                       Foreground="White" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="mb" Property="Background" Value="#5544A1A0"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
-                        <!-- اللاعبين -->
-                        <Button Command="{Binding NavigateToCommand}" CommandParameter="Employees" Cursor="Hand"
-                                Visibility="{Binding CanViewPlayers, Converter={StaticResource BoolToVisibility}}">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border x:Name="pb" CornerRadius="12" Padding="16,13" Background="#3344A1A0"
-                                            BorderBrush="#7044A1A0" BorderThickness="1.5">
-                                        <StackPanel Orientation="Horizontal">
-                                            <fa:ImageAwesome Icon="Users" Width="18" Height="18" Foreground="White"
-                                                             VerticalAlignment="Center" Margin="0,0,14,0"/>
-                                            <TextBlock Text="{Binding Lang.NavPlayers}" FontSize="15" FontWeight="Bold"
-                                                       Foreground="White" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="pb" Property="Background" Value="#5544A1A0"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
-                        <Border Height="1" Background="#18FFFFFF" Margin="4,14,4,2"/>
-                    </StackPanel>
-
-                    <!-- ── Navigation Menu ── -->
-                    <ScrollViewer VerticalScrollBarVisibility="Visible" Margin="8,4,8,0">
+                        <!-- Top: sections (Monitor, Players, Events, Logs, Finance, Cash Flow) -->
                         <StackPanel>
-                            <Button Style="{StaticResource SidebarButton}"
-                                    Command="{Binding NavigateToCommand}" CommandParameter="Dashboard">
+                            <Button x:Name="MonitorNavBtn" Style="{StaticResource SidebarButton}" ToolTip="{Binding Lang.NavMonitor}"
+                                    Command="{Binding OpenMonitorCommand}"
+                                    Visibility="{Binding CanViewMonitor, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <fa:ImageAwesome Icon="Tachometer" Width="16" Height="16"
-                                                     Foreground="{StaticResource TextMutedBrush}"
+                                    <fa:ImageAwesome Icon="Eye" Width="18" Height="18" Foreground="#78CDD7"
                                                      VerticalAlignment="Center" Margin="0,0,14,0"/>
-                                    <TextBlock Text="{Binding Lang.NavDashboard}" FontSize="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Lang.NavMonitor}" FontSize="14" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
 
-                            <Button Style="{StaticResource SidebarButton}"
-                                    Command="{Binding NavigateToCommand}" CommandParameter="Devices"
-                                    Visibility="{Binding CanViewDevices, Converter={StaticResource BoolToVisibility}}">
+                            <Button x:Name="PlayersNavBtn" Style="{StaticResource SidebarButton}" ToolTip="{Binding Lang.NavPlayers}"
+                                    Command="{Binding NavigateToCommand}" CommandParameter="Employees"
+                                    Visibility="{Binding CanViewPlayers, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <fa:ImageAwesome Icon="Server" Width="16" Height="16"
-                                                     Foreground="{StaticResource TextMutedBrush}"
+                                    <fa:ImageAwesome Icon="Users" Width="18" Height="18" Foreground="#78CDD7"
                                                      VerticalAlignment="Center" Margin="0,0,14,0"/>
-                                    <TextBlock Text="{Binding Lang.NavDevices}" FontSize="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Lang.NavPlayers}" FontSize="14" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
 
-                            <Button Style="{StaticResource SidebarButton}"
-                                    Command="{Binding NavigateToCommand}" CommandParameter="Doors"
-                                    Visibility="{Binding CanViewDoors, Converter={StaticResource BoolToVisibility}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <fa:ImageAwesome Icon="Lock" Width="16" Height="16"
-                                                     Foreground="{StaticResource TextMutedBrush}"
-                                                     VerticalAlignment="Center" Margin="0,0,14,0"/>
-                                    <TextBlock Text="{Binding Lang.NavDoors}" FontSize="14" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
+                            <Border Height="1" Background="#12FFFFFF" Margin="8,8"/>
 
-                            <Button Style="{StaticResource SidebarButton}"
+                            <Button Style="{StaticResource SidebarButton}" ToolTip="{Binding Lang.NavEvents}"
                                     Command="{Binding NavigateToCommand}" CommandParameter="Events"
                                     Visibility="{Binding CanViewEvents, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <fa:ImageAwesome Icon="ClockOutline" Width="16" Height="16"
-                                                     Foreground="{StaticResource TextMutedBrush}"
+                                    <fa:ImageAwesome Icon="ClockOutline" Width="18" Height="18" Foreground="#FFB946"
                                                      VerticalAlignment="Center" Margin="0,0,14,0"/>
                                     <TextBlock Text="{Binding Lang.NavEvents}" FontSize="14" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
 
-                            <Border Height="1" Background="#10FFFFFF" Margin="12,8"/>
-
-                            <Button Style="{StaticResource SidebarButton}"
-                                    Command="{Binding NavigateToCommand}" CommandParameter="Finance"
-                                    Visibility="{Binding CanViewFinance, Converter={StaticResource BoolToVisibility}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <fa:ImageAwesome Icon="Money" Width="16" Height="16"
-                                                     Foreground="{StaticResource TextMutedBrush}"
-                                                     VerticalAlignment="Center" Margin="0,0,14,0"/>
-                                    <TextBlock Text="{Binding Lang.NavFinance}" FontSize="14" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-
-                            <Button Style="{StaticResource SidebarButton}"
-                                    Command="{Binding NavigateToCommand}" CommandParameter="CashFlow"
-                                    Visibility="{Binding CanViewCashFlow, Converter={StaticResource BoolToVisibility}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <fa:ImageAwesome Icon="Exchange" Width="16" Height="16"
-                                                     Foreground="{StaticResource TextMutedBrush}"
-                                                     VerticalAlignment="Center" Margin="0,0,14,0"/>
-                                    <TextBlock Text="{Binding Lang.NavCashFlow}" FontSize="14" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-
-                            <Border Height="1" Background="#10FFFFFF" Margin="12,8"/>
-
-                            <Button Style="{StaticResource SidebarButton}"
+                            <Button Style="{StaticResource SidebarButton}" ToolTip="{Binding Lang.NavLogs}"
                                     Command="{Binding NavigateToCommand}" CommandParameter="Logs"
                                     Visibility="{Binding CanViewLogs, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <fa:ImageAwesome Icon="FileTextOutline" Width="16" Height="16"
-                                                     Foreground="{StaticResource TextMutedBrush}"
+                                    <fa:ImageAwesome Icon="FileTextOutline" Width="18" Height="18" Foreground="#78CDD7"
                                                      VerticalAlignment="Center" Margin="0,0,14,0"/>
                                     <TextBlock Text="{Binding Lang.NavLogs}" FontSize="14" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
 
-                            <Button Style="{StaticResource SidebarButton}"
-                                    Command="{Binding NavigateToCommand}" CommandParameter="DeletedRecords"
-                                    Visibility="{Binding CanViewDeletedRecords, Converter={StaticResource BoolToVisibility}}">
+                            <Border Height="1" Background="#12FFFFFF" Margin="8,8"/>
+
+                            <Button Style="{StaticResource SidebarButton}" ToolTip="{Binding Lang.NavFinance}"
+                                    Command="{Binding NavigateToCommand}" CommandParameter="Finance"
+                                    Visibility="{Binding CanViewFinance, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <fa:ImageAwesome Icon="TrashOutline" Width="16" Height="16"
-                                                     Foreground="{StaticResource TextMutedBrush}"
+                                    <fa:ImageAwesome Icon="Money" Width="18" Height="18" Foreground="#E0A526"
                                                      VerticalAlignment="Center" Margin="0,0,14,0"/>
-                                    <TextBlock Text="{Binding Lang.NavDeletedRecords}" FontSize="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Lang.NavFinance}" FontSize="14" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
 
-                            <!-- Visitor passes are now CLOUD-ONLY (issued from the owner portal),
-                                 so the local QR/visitor screen is hidden. Daily Pass (paid, same-day)
-                                 stays available from the Dashboard / Players screens. -->
-                            <Button Style="{StaticResource SidebarButton}"
-                                    Command="{Binding NavigateToCommand}" CommandParameter="QrPass"
-                                    Visibility="Collapsed">
+                            <Button Style="{StaticResource SidebarButton}" ToolTip="{Binding Lang.NavCashFlow}"
+                                    Command="{Binding NavigateToCommand}" CommandParameter="CashFlow"
+                                    Visibility="{Binding CanViewCashFlow, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <fa:ImageAwesome Icon="Qrcode" Width="16" Height="16"
-                                                     Foreground="{StaticResource TextMutedBrush}"
+                                    <fa:ImageAwesome Icon="Exchange" Width="18" Height="18" Foreground="#9B8CFF"
                                                      VerticalAlignment="Center" Margin="0,0,14,0"/>
-                                    <TextBlock Text="{Binding Lang.QrNavTitle}" FontSize="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Lang.NavCashFlow}" FontSize="14" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
-
-                            <Button Style="{StaticResource SidebarButton}"
-                                    Command="{Binding NavigateToCommand}" CommandParameter="Reminders"
-                                    Visibility="{Binding CanViewReminders, Converter={StaticResource BoolToVisibility}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <fa:ImageAwesome Icon="Whatsapp" Width="16" Height="16"
-                                                     Foreground="{StaticResource TextMutedBrush}"
-                                                     VerticalAlignment="Center" Margin="0,0,14,0"/>
-                                    <TextBlock Text="{Binding Lang.NavReminders}" FontSize="14" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-
                         </StackPanel>
-                    </ScrollViewer>
-                </DockPanel>
-            </Border>
+                    </DockPanel>
+                </Border>
 
-            <!-- ═══════════ Main Content Area ═══════════ -->
-            <DockPanel Grid.Column="1">
+                <!-- ═══════════ Main Content Area ═══════════ -->
+                <DockPanel Grid.Column="1">
 
-                <!-- Device Notification Bar -->
-                <Border DockPanel.Dock="Top"
-                        Visibility="{Binding ShowDeviceNotification, Converter={StaticResource BoolToVisibility}}"
-                        Margin="12,10,12,0">
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Setter Property="Background" Value="#1AFFB946"/>
-                            <Setter Property="BorderBrush" Value="#FFB946"/>
-                            <Setter Property="BorderThickness" Value="1"/>
-                            <Setter Property="CornerRadius" Value="8"/>
-                            <Setter Property="Padding" Value="12,8"/>
-                        </Style>
-                    </Border.Style>
+                    <!-- Device Notification Bar -->
+                    <Border DockPanel.Dock="Top"
+                            Visibility="{Binding ShowDeviceNotification, Converter={StaticResource BoolToVisibility}}"
+                            Margin="12,10,12,0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#1AFFB946"/>
+                                <Setter Property="BorderBrush" Value="#FFB946"/>
+                                <Setter Property="BorderThickness" Value="1"/>
+                                <Setter Property="CornerRadius" Value="8"/>
+                                <Setter Property="Padding" Value="12,8"/>
+                            </Style>
+                        </Border.Style>
 
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                        <!-- Message -->
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding DeviceNotificationMessage}"
-                                       Foreground="#FFB946" FontWeight="Bold" FontSize="13"/>
-                            <TextBlock Text="{Binding DeviceNotificationDetail}"
-                                       Foreground="#8899A6" FontSize="11"/>
-                        </StackPanel>
-
-                        <!-- Sync Button -->
-                        <Button Grid.Column="1" Command="{Binding SyncDeviceCommand}"
-                                Cursor="Hand" Margin="10,0,0,0"
-                                Background="#FFB946" Padding="15,6" BorderThickness="0">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="bg" Background="#FFB946" CornerRadius="6"
-                                                        Padding="15,6" Cursor="Hand">
-                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="bg" Property="Background" Value="#FFCB5C"/>
-                                                    </Trigger>
-                                                    <Trigger Property="IsEnabled" Value="False">
-                                                        <Setter TargetName="bg" Property="Opacity" Value="0.5"/>
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </Button.Style>
-                            <StackPanel Orientation="Horizontal">
-                                <fa:ImageAwesome Icon="Refresh" Width="12" Height="12" Foreground="White" Margin="0,0,6,0"/>
-                                <TextBlock Text="{Binding Lang.BtnSync, FallbackValue='Sync Now'}" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding DeviceNotificationMessage}"
+                                           Foreground="#FFB946" FontWeight="Bold" FontSize="13"/>
+                                <TextBlock Text="{Binding DeviceNotificationDetail}"
+                                           Foreground="#8899A6" FontSize="11"/>
                             </StackPanel>
-                        </Button>
-                    </Grid>
-                </Border>
 
-                <!-- Operation Progress Bar (shown during sync) -->
-                <Border DockPanel.Dock="Top"
-                        Visibility="{Binding IsDeviceOperationRunning, Converter={StaticResource BoolToVisibility}}"
-                        Background="#0E2E30" CornerRadius="8" Padding="12,8" Margin="12,8,12,0">
-                    <StackPanel Orientation="Horizontal">
-                        <fa:ImageAwesome Icon="Spinner" Width="14" Height="14" Foreground="#44A1A0"
-                                         Margin="0,0,10,0" Spin="True"/>
-                        <TextBlock Text="{Binding DeviceOperationProgress}" Foreground="#E0E6ED" FontSize="13"/>
-                    </StackPanel>
-                </Border>
+                            <Button Grid.Column="1" Command="{Binding SyncDeviceCommand}"
+                                    Cursor="Hand" Margin="10,0,0,0"
+                                    Background="#FFB946" Padding="15,6" BorderThickness="0">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bg" Background="#FFB946" CornerRadius="6"
+                                                            Padding="15,6" Cursor="Hand">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bg" Property="Background" Value="#FFCB5C"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsEnabled" Value="False">
+                                                            <Setter TargetName="bg" Property="Opacity" Value="0.5"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <fa:ImageAwesome Icon="Refresh" Width="12" Height="12" Foreground="White" Margin="0,0,6,0"/>
+                                    <TextBlock Text="{Binding Lang.BtnSync, FallbackValue='Sync Now'}" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Border>
 
-            <ContentControl Content="{Binding CurrentView}" Margin="0">
-                <ContentControl.Resources>
-                    <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
-                        <views:DashboardView/>
-                    </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:DevicesViewModel}">
-                        <views:DevicesView/>
-                    </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:DoorsViewModel}">
-                        <views:DoorsView/>
-                    </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:EmployeesViewModel}">
-                        <views:EmployeesView/>
-                    </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:LogsViewModel}">
-                        <views:LogsView/>
-                    </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:DeletedRecordsViewModel}">
-                        <views:DeletedRecordsView/>
-                    </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:EventsViewModel}">
-                        <views:EventsView/>
-                    </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:FinanceViewModel}">
-                        <views:FinanceView/>
-                    </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:CashFlowViewModel}">
-                        <views:CashFlowView/>
-                    </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:QrPassViewModel}">
-                        <views:QrPassView/>
-                    </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:RemindersViewModel}">
-                        <views:RemindersView/>
-                    </DataTemplate>
-                </ContentControl.Resources>
-            </ContentControl>
-            </DockPanel>
+                    <!-- Operation Progress Bar (shown during sync) -->
+                    <Border DockPanel.Dock="Top"
+                            Visibility="{Binding IsDeviceOperationRunning, Converter={StaticResource BoolToVisibility}}"
+                            Background="#0E2E30" CornerRadius="8" Padding="12,8" Margin="12,8,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <fa:ImageAwesome Icon="Spinner" Width="14" Height="14" Foreground="#44A1A0"
+                                             Margin="0,0,10,0" Spin="True"/>
+                            <TextBlock Text="{Binding DeviceOperationProgress}" Foreground="#E0E6ED" FontSize="13"/>
+                        </StackPanel>
+                    </Border>
+
+                    <ContentControl Content="{Binding CurrentView}" Margin="0">
+                        <ContentControl.Resources>
+                            <DataTemplate DataType="{x:Type vm:TodayViewModel}">
+                                <views:TodayView/>
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+                                <views:DashboardView/>
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type vm:DevicesViewModel}">
+                                <views:DevicesView/>
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type vm:DoorsViewModel}">
+                                <views:DoorsView/>
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type vm:EmployeesViewModel}">
+                                <views:EmployeesView/>
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type vm:LogsViewModel}">
+                                <views:LogsView/>
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type vm:DeletedRecordsViewModel}">
+                                <views:DeletedRecordsView/>
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type vm:EventsViewModel}">
+                                <views:EventsView/>
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type vm:FinanceViewModel}">
+                                <views:FinanceView/>
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type vm:CashFlowViewModel}">
+                                <views:CashFlowView/>
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type vm:QrPassViewModel}">
+                                <views:QrPassView/>
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type vm:RemindersViewModel}">
+                                <views:RemindersView/>
+                            </DataTemplate>
+                        </ContentControl.Resources>
+                    </ContentControl>
+                </DockPanel>
+            </Grid>
+
+            <!-- First-run guided tour overlay — spans the whole window, above everything -->
+            <ctrl:CoachMarkOverlay x:Name="Tour" Grid.Row="0" Grid.RowSpan="2"/>
         </Grid>
     </Border>
 </Window>

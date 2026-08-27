@@ -285,6 +285,81 @@ public partial class EmployeesViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 3-tap quick add: name + plan tile + card. Uses the SAME creation pipeline as the full add
+    /// (AddEmployeeAsync → AssignCard → gate sync) so nothing about registration/expiry/sync differs;
+    /// it's only a faster, keyboard-light front door for a non-typing owner. Photo can be added later.
+    /// </summary>
+    [RelayCommand]
+    private async Task QuickAddEmployeeAsync()
+    {
+        var dialog = new QuickAddMemberDialog(_lookupService)
+        {
+            Owner = System.Windows.Application.Current.MainWindow,
+            WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            ActivityLogger.LogAction("Employees", "QuickAddEmployee", dialog.FullNameEn);
+            IsLoading = true;
+            StatusMessage = "Adding new player...";
+
+            var dto = new EmployeeDto
+            {
+                FullNameEn = dialog.FullNameEn,
+                FullNameAr = dialog.FullNameAr,
+                CardNo = dialog.CardNo,
+                SubscriptionType = dialog.SubscriptionType,
+                Phone = dialog.Phone,
+                PhotoData = dialog.PhotoData,
+                SubscriptionFee = dialog.SubscriptionFee,
+                Discount = dialog.Discount,
+                AmountPaid = dialog.AmountPaid,
+                StartDate = dialog.StartDate,
+                EndDate = dialog.EndDate,
+                MaxVisits = dialog.MaxVisits
+            };
+
+            var newId = await _employeeService.AddEmployeeAsync(dto);
+            StatusMessage = Lang.AddPlayerSuccess;
+            IsDataLoaded = true;
+            await LoadPagedAsync();
+
+            // Same as the full flow: jump into Assign Card (pre-filled + gate sync) so the member
+            // can badge in immediately.
+            if (!string.IsNullOrWhiteSpace(dto.CardNo))
+            {
+                var created = await _employeeService.GetEmployeeByIdAsync(newId);
+                if (created != null)
+                    await AssignCardAsync(created);
+            }
+            else
+            {
+                CustomMessageBox.Show(Lang.AddPlayerSuccess, Lang.AddPlayer, MsgType.Success,
+                    System.Windows.Application.Current.MainWindow);
+            }
+        }
+        catch (Exception ex)
+        {
+            var msg = ex.Message;
+            if (msg.StartsWith("DUPLICATE_CARD:"))
+                msg = string.Format(Lang.DuplicateCardNo, msg.Replace("DUPLICATE_CARD:", ""));
+            else if (msg.StartsWith("DUPLICATE_PHONE:"))
+                msg = string.Format(Lang.DuplicatePhone, msg.Replace("DUPLICATE_PHONE:", ""));
+            else if (msg.Contains("constraint"))
+                msg = "Database constraint violation. Please check your input and try again.";
+
+            CustomMessageBox.Show(msg, Lang.AddPlayer, MsgType.Error,
+                System.Windows.Application.Current.MainWindow);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
     /// <summary>A member still on the placeholder "Migrated" subscription — imported from the old
     /// system, not yet activated. These are corrected inside Renew, never edited directly.</summary>
     private static bool IsMigratedType(string? subscriptionType)

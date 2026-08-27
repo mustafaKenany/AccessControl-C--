@@ -34,6 +34,10 @@
   <!-- App -->
   <data name="AppTitle" xml:space="preserve"><value>Access Control Pro</value></data>
   <!-- Navigation -->
+  <data name="NavToday" xml:space="preserve"><value>Today</value></data>
+  <data name="QuickAddPlayer" xml:space="preserve"><value>Quick Add</value></data>
+  <data name="HelpTour" xml:space="preserve"><value>How to use</value></data>
+  <data name="NavSystemMgmt" xml:space="preserve"><value>System</value></data>
   <data name="NavDashboard" xml:space="preserve"><value>Dashboard</value></data>
   <data name="NavDevices" xml:space="preserve"><value>Devices</value></data>
   <data name="NavDoors" xml:space="preserve"><value>Doors</value></data>
@@ -806,8 +810,7 @@ Sync errors on some devices:
   <data name="RenewedSuccessfully" xml:space="preserve"><value>Subscription renewed successfully</value></data>
   <data name="RenewSyncErrors" xml:space="preserve"><value>Subscription renewed successfully.
 
-Card sync errors on some devices:
-{0}</value></data>
+The card didn't reach some devices (they may be temporarily offline). It will sync automatically when the connection returns — or re-sync from "Sync All Players" on the Devices screen.</value></data>
   <data name="SyncingCardDevices" xml:space="preserve"><value>Syncing card {0} to devices...</value></data>
   <data name="RenewingSubscription" xml:space="preserve"><value>Renewing subscription...</value></data>
   <data name="PlayerDbInconsistent" xml:space="preserve"><value>Player data in database is inconsistent. Please try again.</value></data>

@@ -16,6 +16,9 @@
             <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
             <conv:StockToBoolConverter x:Key="StockToBool"/>
             <conv:GreaterThanZeroToVisibilityConverter x:Key="GreaterThanZeroToVisibility"/>
+            <conv:BytesToImageConverter x:Key="BytesToImage"/>
+            <conv:PageActiveToVisibilityConverter x:Key="PageActiveToVisibility"/>
+            <conv:PageActiveToBrushConverter x:Key="PageActiveToBrush"/>
 
             <!-- Global default font: Cairo Bold for ALL text -->
             <Style TargetType="TextBlock">

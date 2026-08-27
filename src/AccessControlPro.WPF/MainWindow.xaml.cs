@@ -22,6 +22,58 @@ public partial class MainWindow : Window
         _serviceProvider = serviceProvider;
         InitializeComponent();
         DataContext = viewModel;
+        Loaded += MainWindow_Loaded;
+    }
+
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        // Show the guided tour once, on the very first launch. After that it only runs from the
+        // "?" help button. Delayed a beat so the sidebar has finished laying out (target bounds).
+        if (Helpers.TourState.HasSeen()) return;
+        var t = new System.Windows.Threading.DispatcherTimer { Interval = System.TimeSpan.FromMilliseconds(1200) };
+        t.Tick += (_, _) => { t.Stop(); StartTour(); };
+        t.Start();
+    }
+
+    private void HelpTourClick(object sender, RoutedEventArgs e)
+    {
+        CloseSettingsPopup();
+        StartTour();
+    }
+
+    private void StartTour()
+    {
+        Tour.Start(new System.Collections.Generic.List<Controls.CoachStep>
+        {
+            new()
+            {
+                Target = TodayNavBtn,
+                TitleAr = "شاشة اليوم", TitleEn = "Today screen",
+                BodyAr = "أهم شاشة: كم عضو دخل اليوم، كم اشتراك، كم فلوس، ومن ينتهي اشتراكه قريباً.",
+                BodyEn = "Your main screen: entries today, subscriptions, revenue, and who's about to expire.",
+            },
+            new()
+            {
+                Target = MonitorNavBtn,
+                TitleAr = "المراقبة المباشرة", TitleEn = "Live monitor",
+                BodyAr = "افتحها عند البوابة لترى كل عضو يدخل مع صورته وحالة اشتراكه لحظياً.",
+                BodyEn = "Open it at the gate to see each member entering with their photo and status live.",
+            },
+            new()
+            {
+                Target = PlayersNavBtn,
+                TitleAr = "اللاعبين", TitleEn = "Members",
+                BodyAr = "من هنا تضيف عضو جديد (جرّب زر «إضافة سريعة») وتعرض وتجدّد المشتركين.",
+                BodyEn = "Add a new member here (try the “Quick Add” button), and view or renew members.",
+            },
+            new()
+            {
+                Target = DevicesNavBtn,
+                TitleAr = "الأجهزة وحالة النظام", TitleEn = "Devices & status",
+                BodyAr = "شاشة الأجهزة. تظهر نقطة حمراء نابضة هنا إذا كانت البوابة غير متصلة أو يحتاج النظام انتباهك.",
+                BodyEn = "The Devices screen. A pulsing red dot appears here if the gate is offline or the system needs attention.",
+            },
+        });
     }
 
     private void MainWindow_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -64,8 +116,21 @@ public partial class MainWindow : Window
         dlg.ShowDialog();
     }
 
+    // ── Settings popup (rarely-used tools grouped under one button) ──
+    private void SettingsClick(object sender, RoutedEventArgs e)
+        => SettingsPopup.IsOpen = !SettingsPopup.IsOpen;
+
+    private void CloseSettingsPopup() => SettingsPopup.IsOpen = false;
+
+    private void LanguageClick(object sender, RoutedEventArgs e)
+    {
+        CloseSettingsPopup();
+        Helpers.LanguageManager.Instance.SwitchLanguage();
+    }
+
     private void MigrationClick(object sender, RoutedEventArgs e)
     {
+        CloseSettingsPopup();
         // SuperAdmin-reserved: bulk data import/export can move/overwrite data, so it needs the
         // provider's step-up password (online gyms are controlled centrally; this is the offline path).
         if (!Helpers.SuperAdminGate.RequireSuperAdmin(
@@ -82,6 +147,7 @@ public partial class MainWindow : Window
 
     private void ChangePasswordClick(object sender, RoutedEventArgs e)
     {
+        CloseSettingsPopup();
         var dialog = new ChangePasswordDialog(_authService, _currentUser.Username!);
         dialog.Owner = this;
         if (dialog.ShowDialog() == true)
@@ -95,6 +161,7 @@ public partial class MainWindow : Window
 
     private async void SendDiagnosticsClick(object sender, RoutedEventArgs e)
     {
+        CloseSettingsPopup();
         var lang = LanguageManager.Instance;
         var (ok, note) = SendDiagnosticsDialog.Show(this);
         if (!ok) return;

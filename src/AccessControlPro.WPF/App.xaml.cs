@@ -62,6 +62,9 @@ public partial class App : System.Windows.Application
     private static readonly string HeapLogPath = Path.Combine(AppContext.BaseDirectory, "heap_log.txt");
     private static DateTime _lastHeapCaptureAt = DateTime.MinValue;
     private static int _heapCaptureRunning; // 0/1 guard so two captures never overlap
+    // Throttle for the silent "auto-error" diagnostics report fired from the friendly error wall,
+    // so a burst of cascading exceptions can't spam the cloud (one report per 10 min is plenty).
+    private static DateTime _lastErrorReportAt = DateTime.MinValue;
 
     // === Native debug-dialog suppression =================================================
     // The Hikvision/Dnake SDK (FCardCDrive.dll and friends) is built against the DEBUG
@@ -156,18 +159,14 @@ public partial class App : System.Windows.Application
                 return;
             }
 
-            if (DbConnectionHelper.IsConnectionError(e.Exception))
-            {
-                CustomMessageBox.Show(
-                    "Database server connection lost.\nPlease check that the database server is running and the network is connected.",
-                    "Connection Lost", MsgType.Error);
-            }
-            else
-            {
-                CustomMessageBox.Show(
-                    $"An error occurred. Details saved to:\n{CrashLogPath}\n\n{e.Exception.Message}",
-                    "Error", MsgType.Error);
-            }
+            // Friendly error wall: NEVER show the raw English message / file path / "Exception" to
+            // the operator (a non-technical gym owner reads that as "the program is broken" and panics).
+            // Report it to us silently (online gyms), then show a short, calm, bilingual message with a
+            // single OK button. Full technical details are still in crash_log.txt for support.
+            bool reported = TryFireSilentErrorReport(e.Exception);
+            var (title, body) = Helpers.FriendlyError.Describe(e.Exception, reported);
+            var msgType = DbConnectionHelper.IsConnectionError(e.Exception) ? MsgType.Warning : MsgType.Info;
+            CustomMessageBox.Show(body, title, msgType);
         };
 
         AppDomain.CurrentDomain.UnhandledException += (s, e) =>
@@ -198,6 +197,35 @@ public partial class App : System.Windows.Application
 
     private static void WriteCrashLog(string source, Exception? ex)
         => CrashContextLogger.Write(CrashLogPath, source, ex);
+
+    /// <summary>
+    /// Silently upload a diagnostics bundle tagged "auto-error" so support sees a handled crash the
+    /// moment it happens — without any prompt to the operator. Returns true if the gym is online (so
+    /// the friendly message may say "the company was notified"); false on offline/local-only installs.
+    /// Throttled to one report per 10 minutes so a burst of cascading errors can't flood the cloud.
+    /// </summary>
+    private static bool TryFireSilentErrorReport(Exception? ex)
+    {
+        try
+        {
+            if (!CloudSyncService.IsCloudSyncEnabledFlag()) return false;
+            if ((DateTime.Now - _lastErrorReportAt).TotalMinutes < 10) return true; // already reported one recently
+            _lastErrorReportAt = DateTime.Now;
+
+            var summary = ex == null ? "unknown error" : $"{ex.GetType().Name}: {ex.Message}";
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var diag = new DiagnosticsService(LoadConnectionString());
+                    await diag.UploadAsync("auto-error", summary);
+                }
+                catch { /* best-effort — the crash log still has the details */ }
+            });
+            return true;
+        }
+        catch { return false; }
+    }
 
     private static string LoadConnectionString()
     {
@@ -314,6 +342,8 @@ public partial class App : System.Windows.Application
 
         // ViewModels
         services.AddTransient<MainViewModel>();
+        services.AddTransient<TodayViewModel>();
+        services.AddSingleton<HealthViewModel>();
         services.AddTransient<QrPassViewModel>();
         services.AddTransient<RemindersViewModel>();
         services.AddTransient<DashboardViewModel>();

@@ -50,6 +50,10 @@ public class LanguageManager : INotifyPropertyChanged
 
     // Localized string properties
     public string AppTitle => GetString("AppTitle");
+    public string NavToday => GetString("NavToday");
+    public string QuickAddPlayer => GetString("QuickAddPlayer");
+    public string HelpTour => GetString("HelpTour");
+    public string NavSystemMgmt => GetString("NavSystemMgmt");
     public string NavDashboard => GetString("NavDashboard");
     public string NavDevices => GetString("NavDevices");
     public string NavDoors => GetString("NavDoors");
@@ -1049,6 +1053,10 @@ public class LanguageManager : INotifyPropertyChanged
 
         // Notify all string properties changed
         OnPropertyChanged(nameof(AppTitle));
+        OnPropertyChanged(nameof(NavToday));
+        OnPropertyChanged(nameof(QuickAddPlayer));
+        OnPropertyChanged(nameof(HelpTour));
+        OnPropertyChanged(nameof(NavSystemMgmt));
         OnPropertyChanged(nameof(NavDashboard));
         OnPropertyChanged(nameof(NavDevices));
         OnPropertyChanged(nameof(NavDoors));

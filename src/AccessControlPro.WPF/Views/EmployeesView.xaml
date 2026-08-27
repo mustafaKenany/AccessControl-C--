@@ -31,15 +31,16 @@
                     </StackPanel>
                 </Button>
 
+
+                <!-- Quick Add: the fast, keyboard-light path (name + plan tile + card scan). -->
                 <Button Style="{StaticResource PrimaryButton}"
-                        Background="#2E7D32"
-                        Command="{Binding CreateDailyPassCommand}" Margin="0,0,10,0"
-                        ToolTip="{Binding Lang.DailyPass}"
-                        Visibility="{Binding CanDailyPass, Converter={StaticResource BoolToVisibility}}">
+                        Background="#44A1A0"
+                        Command="{Binding QuickAddEmployeeCommand}" Margin="0,0,10,0"
+                        Visibility="{Binding CanAdd, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Orientation="Horizontal">
-                        <fa:ImageAwesome Icon="Qrcode" Width="13" Height="13"
+                        <fa:ImageAwesome Icon="Bolt" Width="13" Height="13"
                                          Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding Lang.DailyPass}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Lang.QuickAddPlayer}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 

@@ -1,0 +1,54 @@
+<UserControl x:Class="AccessControlPro.WPF.Controls.NumericKeypad"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fa="http://schemas.fontawesome.io/icons/">
+    <UserControl.Resources>
+        <Style x:Key="KeyBtn" TargetType="Button">
+            <Setter Property="Height" Value="52"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="22"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" CornerRadius="12" Background="#2444A1A0"
+                                BorderBrush="#4044A1A0" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#4044A1A0"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#6044A1A0"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <UniformGrid Columns="3" Rows="4">
+        <Button Style="{StaticResource KeyBtn}" Content="1" Click="Digit_Click"/>
+        <Button Style="{StaticResource KeyBtn}" Content="2" Click="Digit_Click"/>
+        <Button Style="{StaticResource KeyBtn}" Content="3" Click="Digit_Click"/>
+        <Button Style="{StaticResource KeyBtn}" Content="4" Click="Digit_Click"/>
+        <Button Style="{StaticResource KeyBtn}" Content="5" Click="Digit_Click"/>
+        <Button Style="{StaticResource KeyBtn}" Content="6" Click="Digit_Click"/>
+        <Button Style="{StaticResource KeyBtn}" Content="7" Click="Digit_Click"/>
+        <Button Style="{StaticResource KeyBtn}" Content="8" Click="Digit_Click"/>
+        <Button Style="{StaticResource KeyBtn}" Content="9" Click="Digit_Click"/>
+        <!-- Clear -->
+        <Button Style="{StaticResource KeyBtn}" Click="Clear_Click">
+            <fa:ImageAwesome Icon="Ban" Width="20" Height="20" Foreground="#F7685B"/>
+        </Button>
+        <Button Style="{StaticResource KeyBtn}" Content="0" Click="Digit_Click"/>
+        <!-- Backspace -->
+        <Button Style="{StaticResource KeyBtn}" Click="Backspace_Click">
+            <fa:ImageAwesome Icon="LongArrowLeft" Width="22" Height="22" Foreground="#FFB946"/>
+        </Button>
+    </UniformGrid>
+</UserControl>

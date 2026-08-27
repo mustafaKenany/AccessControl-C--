@@ -2,8 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:fa="http://schemas.fontawesome.io/icons/"
-             xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers"
-             FlowDirection="{Binding Lang.FlowDirection}">
+             xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers">
 
     <Grid Margin="32,28,32,32">
         <Grid.RowDefinitions>
@@ -15,25 +14,40 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
+        <!-- Header: title (start) · total badge + refresh (centered) · Show All (end) -->
         <DockPanel Grid.Row="0" Margin="0,0,0,16">
-            <TextBlock Text="{Binding Lang.NavEvents}"
-                       FontSize="26" FontWeight="Bold"
-                       Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Style="{StaticResource PrimaryButton}"
-                        Background="{StaticResource PrimaryLightBrush}"
-                        Command="{Binding ShowAllCommand}" Margin="0,0,10,0">
+            <!-- Show All at the end (left in RTL) -->
+            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}"
+                    Background="{StaticResource PrimaryLightBrush}"
+                    Command="{Binding ShowAllCommand}" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                    <fa:ImageAwesome Icon="Database" Width="13" Height="13"
+                                     Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Lang.ShowAll}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+
+            <!-- Title + total badge BESIDE it (start / right in RTL) -->
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Lang.NavEvents}" FontSize="26" FontWeight="Bold"
+                           Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                <Border Background="{StaticResource BgCardBrush}" CornerRadius="10" Padding="14,8"
+                        Margin="18,0,0,0" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
-                        <fa:ImageAwesome Icon="Database" Width="13" Height="13"
-                                         Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding Lang.ShowAll}" VerticalAlignment="Center"/>
+                        <fa:ImageAwesome Icon="Bolt" Width="12" Height="12"
+                                         Foreground="{StaticResource PrimaryLightBrush}"
+                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock FontSize="14" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center">
+                            <Run Text="{Binding TotalCount, Mode=OneWay}"/>
+                            <Run Text=" "/>
+                            <Run Text="{Binding Lang.Total, Mode=OneWay}"/>
+                        </TextBlock>
                     </StackPanel>
-                </Button>
-                <Button Style="{StaticResource SecondaryButton}"
-                        Command="{Binding RefreshCommand}">
-                    <fa:ImageAwesome Icon="Refresh" Width="14" Height="14"
-                                     Foreground="{StaticResource TextPrimaryBrush}"/>
+                </Border>
+                <Button Style="{StaticResource SecondaryButton}" Padding="12,7"
+                        Command="{Binding RefreshCommand}" Margin="8,0,0,0" VerticalAlignment="Center">
+                    <fa:ImageAwesome Icon="Refresh" Width="13" Height="13"
+                                     Foreground="{StaticResource TextMutedBrush}"/>
                 </Button>
             </StackPanel>
         </DockPanel>
@@ -41,8 +55,13 @@
         <!-- Filter Bar -->
         <Border Grid.Row="1" Style="{StaticResource DashboardCard}" Padding="16,12" Margin="0,0,0,14">
             <StackPanel>
-                <!-- Search (prominent, by name or card number) -->
-                <DockPanel Margin="0,0,0,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                <!-- Search (fills; on the SAME row as the filters) -->
+                <DockPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
                     <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}" Padding="16,9"
                             Command="{Binding SearchCommand}" Margin="8,0,0,0">
                         <fa:ImageAwesome Icon="Search" Width="14" Height="14" Foreground="{StaticResource TextPrimaryBrush}"/>
@@ -74,8 +93,8 @@
                     </Border>
                 </DockPanel>
 
-                <!-- Filters (type / device / period) — wrap on narrow screens -->
-                <WrapPanel>
+                <!-- Filters on the SAME row as the search -->
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                     <ComboBox Width="150" SelectedIndex="{Binding SelectedEventTypeIndex}" Margin="0,0,10,6"
                               Style="{StaticResource DarkComboBox}"
                               ToolTip="{Binding EventType, Source={x:Static helpers:LanguageManager.Instance}}">
@@ -119,35 +138,13 @@
                                          Foreground="{StaticResource TextMutedBrush}"/>
                     </Button>
                 </WrapPanel>
+                </Grid>
 
                 <!-- Date Range Display -->
                 <TextBlock Text="{Binding DateRangeText}"
                            FontSize="11" Foreground="#44A1A0" Margin="0,6,0,0"/>
             </StackPanel>
         </Border>
-
-        <!-- Stats Bar -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,14">
-            <Border Background="{StaticResource BgCardBrush}" CornerRadius="10"
-                    Padding="16,10" Margin="0,0,10,0">
-                <StackPanel Orientation="Horizontal">
-                    <fa:ImageAwesome Icon="Bolt" Width="12" Height="12"
-                                     Foreground="{StaticResource PrimaryLightBrush}"
-                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock FontSize="14" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center">
-                        <Run Text="{Binding TotalCount, Mode=OneWay}"/>
-                        <Run Text=" "/>
-                        <Run Text="{Binding Lang.Total, Mode=OneWay}"/>
-                    </TextBlock>
-                </StackPanel>
-            </Border>
-
-            <Button Style="{StaticResource SidebarButton}"
-                    Command="{Binding RefreshCommand}" Margin="10,0,0,0">
-                <fa:ImageAwesome Icon="Refresh" Width="14" Height="14"
-                                 Foreground="{StaticResource TextMutedBrush}"/>
-            </Button>
-        </StackPanel>
 
         <!-- Table Header -->
         <Border Grid.Row="3" Background="{StaticResource BgInputBrush}" CornerRadius="12,12,0,0" Padding="18,12">

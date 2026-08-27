@@ -34,6 +34,10 @@
   <!-- App -->
   <data name="AppTitle" xml:space="preserve"><value>نظام التحكم بالوصول</value></data>
   <!-- Navigation -->
+  <data name="NavToday" xml:space="preserve"><value>شاشة اليوم</value></data>
+  <data name="QuickAddPlayer" xml:space="preserve"><value>إضافة سريعة</value></data>
+  <data name="HelpTour" xml:space="preserve"><value>شرح البرنامج</value></data>
+  <data name="NavSystemMgmt" xml:space="preserve"><value>إدارة النظام</value></data>
   <data name="NavDashboard" xml:space="preserve"><value>لوحة التحكم</value></data>
   <data name="NavDevices" xml:space="preserve"><value>الأجهزة</value></data>
   <data name="NavDoors" xml:space="preserve"><value>الأبواب</value></data>
@@ -811,10 +815,9 @@
   <data name="PlayerNotFoundDeleted" xml:space="preserve"><value>اللاعب غير موجود. ربما تم حذفه.</value></data>
   <data name="RenewalCancelled" xml:space="preserve"><value>تم إلغاء التجديد</value></data>
   <data name="RenewedSuccessfully" xml:space="preserve"><value>تم تجديد الاشتراك بنجاح</value></data>
-  <data name="RenewSyncErrors" xml:space="preserve"><value>تم تجديد الاشتراك بنجاح.
+  <data name="RenewSyncErrors" xml:space="preserve"><value>تم تجديد الاشتراك بنجاح ✅
 
-أخطاء مزامنة البطاقة في بعض الأجهزة:
-{0}</value></data>
+لم تصل البطاقة إلى بعض الأجهزة (قد تكون غير متصلة مؤقتاً). ستتم المزامنة تلقائياً عند عودة الاتصال — أو أعد المزامنة من زر "مزامنة اللاعبين" في شاشة الأجهزة.</value></data>
   <data name="SyncingCardDevices" xml:space="preserve"><value>جاري مزامنة البطاقة {0} مع الأجهزة...</value></data>
   <data name="RenewingSubscription" xml:space="preserve"><value>جاري تجديد الاشتراك...</value></data>
   <data name="PlayerDbInconsistent" xml:space="preserve"><value>بيانات اللاعب في قاعدة البيانات غير متسقة. يرجى المحاولة مرة أخرى.</value></data>

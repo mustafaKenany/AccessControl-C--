@@ -17,6 +17,7 @@ namespace AccessControlPro.WPF.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
+    private readonly TodayViewModel _todayViewModel;
     private readonly DashboardViewModel _dashboardViewModel;
     private readonly DevicesViewModel _devicesViewModel;
     private readonly DoorsViewModel _doorsViewModel;
@@ -31,6 +32,9 @@ public partial class MainViewModel : ObservableObject
     private readonly MonitorViewModel _monitorViewModel;
     private readonly CurrentUserService _currentUser;
     private readonly IServiceProvider _serviceProvider;
+
+    /// <summary>The single always-visible health badge (gate + backup) shown in the sidebar.</summary>
+    public HealthViewModel Health { get; }
 
     [ObservableProperty]
     private object? _currentView;
@@ -87,6 +91,7 @@ public partial class MainViewModel : ObservableObject
     public bool CanChangeLanguage => _currentUser.HasPermission(AppPermission.AppChangeLanguage);
 
     public MainViewModel(
+        TodayViewModel todayViewModel,
         DashboardViewModel dashboardViewModel,
         DevicesViewModel devicesViewModel,
         DoorsViewModel doorsViewModel,
@@ -100,8 +105,12 @@ public partial class MainViewModel : ObservableObject
         RemindersViewModel remindersViewModel,
         MonitorViewModel monitorViewModel,
         CurrentUserService currentUser,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        HealthViewModel health)
     {
+        Health = health;
+        Health.Start();
+        _todayViewModel = todayViewModel;
         _dashboardViewModel = dashboardViewModel;
         _devicesViewModel = devicesViewModel;
         _doorsViewModel = doorsViewModel;
@@ -116,8 +125,11 @@ public partial class MainViewModel : ObservableObject
         _monitorViewModel = monitorViewModel;
         _currentUser = currentUser;
         _serviceProvider = serviceProvider;
-        CurrentView = dashboardViewModel;
-        _ = _dashboardViewModel.InitializeAsync();
+        // Land on the owner's "Today" home (entries / subscriptions / revenue today + expiring soon)
+        // instead of the security dashboard — the first thing a gym owner wants to see each day.
+        CurrentView = todayViewModel;
+        CurrentPage = "Today";
+        _ = _todayViewModel.InitializeAsync();
     }
 
     [RelayCommand]
@@ -132,6 +144,7 @@ public partial class MainViewModel : ObservableObject
         // Enforce permission check before navigation
         var allowed = page switch
         {
+            "Today" => CanViewDashboard,
             "Dashboard" => CanViewDashboard,
             "Devices" => CanViewDevices,
             "Doors" => CanViewDoors,
@@ -157,6 +170,7 @@ public partial class MainViewModel : ObservableObject
 
         CurrentView = page switch
         {
+            "Today" => _todayViewModel,
             "Dashboard" => _dashboardViewModel,
             "Devices" => _devicesViewModel,
             "Doors" => _doorsViewModel,
@@ -174,6 +188,9 @@ public partial class MainViewModel : ObservableObject
         // Initialize data-loading ViewModels on first navigation
         switch (page)
         {
+            case "Today":
+                await _todayViewModel.RefreshAsync();
+                break;
             case "Dashboard":
                 await _dashboardViewModel.InitializeAsync();
                 break;

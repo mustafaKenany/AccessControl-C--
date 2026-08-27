@@ -2,8 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:fa="http://schemas.fontawesome.io/icons/"
-             xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers"
-             FlowDirection="{Binding Lang.FlowDirection}">
+             xmlns:helpers="clr-namespace:AccessControlPro.WPF.Helpers">
     <UserControl.Resources>
         <helpers:BindingProxy x:Key="Proxy" Data="{Binding}"/>
     </UserControl.Resources>
@@ -52,9 +51,49 @@
             <Grid>
                 <DataGrid ItemsSource="{Binding Members}" AutoGenerateColumns="False" IsReadOnly="True"
                           Background="Transparent" BorderThickness="0" RowBackground="Transparent"
-                          GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                          Foreground="{StaticResource TextPrimaryBrush}" FontSize="13"
-                          CanUserAddRows="False" HorizontalScrollBarVisibility="Disabled">
+                          GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#12FFFFFF"
+                          HeadersVisibility="Column" ColumnHeaderHeight="42" RowHeight="46"
+                          Foreground="{StaticResource TextPrimaryBrush}" FontSize="13" FontFamily="{StaticResource CairoFont}"
+                          CanUserAddRows="False" CanUserResizeRows="False" SelectionMode="Single"
+                          HorizontalScrollBarVisibility="Disabled">
+                    <!-- Dark-theme header (default WPF header is light grey and clashed with the theme) -->
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="{StaticResource BgInputBrush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+                            <Setter Property="FontSize" Value="12"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Padding" Value="12,0"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="VerticalContentAlignment" Value="Center"/>
+                            <Setter Property="SeparatorVisibility" Value="Collapsed"/>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Padding" Value="12,0"/>
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#1044A1A0"/>
+                                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.CellStyle>
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#0AFFFFFF"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="{Binding Data.Lang.PlayerName, Source={StaticResource Proxy}}"
                                             Binding="{Binding Name}" Width="*"/>
